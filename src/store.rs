@@ -8,44 +8,53 @@ pub enum Store {
     Bitmap([u32, ..2048]),
 }
 
-fn set_array(vec: &mut Vec<u16>, index: u16, value: bool) -> bool {
-    match (value, vec.binary_search(|elem| elem.cmp(&index))) {
-        (false, Found(loc)) => { vec.remove(loc); true },
-        (true, NotFound(loc)) => { vec.insert(loc, index); true },
+fn insert_array(vec: &mut Vec<u16>, index: u16) -> bool {
+    match vec.binary_search(|elem| elem.cmp(&index)) {
+        NotFound(loc) => { vec.insert(loc, index); true },
         _ => false,
     }
 }
 
-fn set_bitmap(bits: &mut [u32, ..2048], index: u16, value: bool) -> bool {
-    let key = (index / (u32::BITS as u16)) as uint;
-    let bit = (index % (u32::BITS as u16)) as uint;
-    if value {
-        if bits[key] & (1 << bit) == 0 {
-            bits[key] |= 1 << bit;
-            true
-        } else {
-            false
-        }
-    } else {
-        if bits[key] & (1 << bit) != 0 {
-            bits[key] &= !(1 << bit);
-            true
-        } else {
-            false
-        }
+fn remove_array(vec: &mut Vec<u16>, index: u16) -> bool {
+    match vec.binary_search(|elem| elem.cmp(&index)) {
+        Found(loc) => { vec.remove(loc); true },
+        _ => false,
     }
 }
 
-fn get_array(vec: &Vec<u16>, index: u16) -> bool {
+fn bitmap_location(index: u16) -> (uint, uint) {
+    ((index / (u32::BITS as u16)) as uint, (index % (u32::BITS as u16)) as uint)
+}
+
+fn insert_bitmap(bits: &mut [u32, ..2048], index: u16) -> bool {
+    let (key, bit) = bitmap_location(index);
+    if bits[key] & (1 << bit) == 0 {
+        bits[key] |= 1 << bit;
+        true
+    } else {
+        false
+    }
+}
+
+fn remove_bitmap(bits: &mut [u32, ..2048], index: u16) -> bool {
+    let (key, bit) = bitmap_location(index);
+    if bits[key] & (1 << bit) != 0 {
+        bits[key] &= !(1 << bit);
+        true
+    } else {
+        false
+    }
+}
+
+fn contains_array(vec: &Vec<u16>, index: u16) -> bool {
     match vec.binary_search(|elem| elem.cmp(&index)) {
         Found(_) => true,
         NotFound(_) => false,
     }
 }
 
-fn get_bitmap(bits: &[u32, ..2048], index: u16) -> bool {
-    let key = (index / (u32::BITS as u16)) as uint;
-    let bit = (index % (u32::BITS as u16)) as uint;
+fn contains_bitmap(bits: &[u32, ..2048], index: u16) -> bool {
+    let (key, bit) = bitmap_location(index);
     bits[key] & (1 << bit) != 0
 }
 
@@ -75,17 +84,24 @@ fn array_to_bitmap(vec: &Vec<u16>) -> [u32, ..2048] {
 }
 
 impl Store {
-    pub fn set(&mut self, index: u16, value: bool) -> bool {
+    pub fn insert(&mut self, index: u16) -> bool {
         match *self {
-            Array(ref mut vec) => set_array(vec, index, value),
-            Bitmap(ref mut bits) => set_bitmap(bits, index, value),
+            Array(ref mut vec) => insert_array(vec, index),
+            Bitmap(ref mut bits) => insert_bitmap(bits, index),
         }
     }
 
-    pub fn get(&self, index: u16) -> bool {
+    pub fn remove(&mut self, index: u16) -> bool {
         match *self {
-            Array(ref vec) => get_array(vec, index),
-            Bitmap(ref bits) => get_bitmap(bits, index),
+            Array(ref mut vec) => remove_array(vec, index),
+            Bitmap(ref mut bits) => remove_bitmap(bits, index),
+        }
+    }
+
+    pub fn contains(&self, index: u16) -> bool {
+        match *self {
+            Array(ref vec) => contains_array(vec, index),
+            Bitmap(ref bits) => contains_bitmap(bits, index),
         }
     }
 }

@@ -23,19 +23,33 @@ impl Container {
     #[inline]
     pub fn cardinality(&self) -> u16 { self.cardinality }
 
-    pub fn set(&mut self, index: u16, value: bool) {
-        match (self.store.set(index, value), value, self.cardinality) {
-            (true, true, 4096) => { self.cardinality += 1; self.store = self.store.to_bitmap() },
-            (true, true, _) => self.cardinality += 1,
-            (true, false, 4097) => { self.cardinality -= 1; self.store = self.store.to_array() },
-            (true, false, _) => self.cardinality -= 1,
-            (false, _, _) => (),
+    pub fn insert(&mut self, index: u16) -> bool {
+        if self.store.insert(index) {
+            self.cardinality += 1;
+            if self.cardinality == 4097 {
+                self.store = self.store.to_bitmap();
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn remove(&mut self, index: u16) -> bool {
+        if self.store.remove(index) {
+            self.cardinality -= 1;
+            if self.cardinality == 4096 {
+                self.store = self.store.to_array();
+            }
+            true
+        } else {
+            false
         }
     }
 
     #[inline]
-    pub fn get(&self, index: u16) -> bool {
-        self.store.get(index)
+    pub fn contains(&self, index: u16) -> bool {
+        self.store.contains(index)
     }
 }
 

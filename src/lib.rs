@@ -16,10 +16,10 @@ mod container;
 /// let mut rb = RoaringBitmap::new();
 ///
 /// // insert all primes less than 10
-/// rb.set(2, true);
-/// rb.set(3, true);
-/// rb.set(5, true);
-/// rb.set(7, true);
+/// rb.insert(2);
+/// rb.insert(3);
+/// rb.insert(5);
+/// rb.insert(7);
 /// println!("total bits set to true: {}", rb.cardinality());
 /// ```
 pub struct RoaringBitmap {
@@ -41,7 +41,7 @@ impl RoaringBitmap {
 }
 
 impl RoaringBitmap {
-    /// Sets the value of a bit at an index `i`.
+    /// Adds a value to the set. Returns `true` if the value was not already present in the set.
     ///
     /// # Examples
     ///
@@ -49,11 +49,12 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     ///
     /// let mut rb = RoaringBitmap::new();
-    /// rb.set(3, true);
-    /// assert_eq!(rb[3], true);
+    /// assert_eq!(rb.insert(3), true);
+    /// assert_eq!(rb.insert(3), false);
+    /// assert_eq!(rb.contains(3), true);
     /// ```
-    pub fn set(&mut self, index: u32, value: bool) {
-        let (key, index) = calc_loc(index);
+    pub fn insert(&mut self, value: u32) -> bool {
+        let (key, index) = calc_loc(value);
         let container = match self.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
             Found(loc) => &mut self.containers[loc],
             NotFound(loc) => {
@@ -61,13 +62,10 @@ impl RoaringBitmap {
                 &mut self.containers[loc]
             },
         };
-        container.set(index, value);
+        container.insert(index)
     }
 
-    /// Retrieves the value at index `i`, will never return `None`.
-    ///
-    /// > TODO: Should this just return a bool, or will it be important that the API is similar to
-    /// `std::collections::Bitv`'s?
+    /// Removes a value from the set. Returns `true` if the value was present in the set.
     ///
     /// # Examples
     ///
@@ -75,42 +73,43 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     ///
     /// let mut rb = RoaringBitmap::new();
-    /// rb.set(1, true);
-    /// assert_eq!(rb.get(0), Some(false));
-    /// assert_eq!(rb.get(1), Some(true));
-    /// assert_eq!(rb.get(100), Some(false));
-    ///
-    /// // Can also use array indexing
-    /// assert_eq!(rb[1], true);
+    /// rb.insert(3);
+    /// assert_eq!(rb.remove(3), true);
+    /// assert_eq!(rb.remove(3), false);
+    /// assert_eq!(rb.contains(3), false);
     /// ```
-    pub fn get(&self, index: u32) -> Option<bool> {
-        let (key, index) = calc_loc(index);
+    pub fn remove(&mut self, value: u32) -> bool {
+        let (key, index) = calc_loc(value);
         match self.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
-            Found(loc) => Some(self.containers[loc].get(index)),
-            NotFound(_) => Some(false),
+            Found(loc) => self.containers[loc].remove(index),
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if this set contains the specified integer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// rb.insert(1);
+    /// assert_eq!(rb.contains(0), false);
+    /// assert_eq!(rb.contains(1), true);
+    /// assert_eq!(rb.contains(100), false);
+    /// ```
+    pub fn contains(&self, value: u32) -> bool {
+        let (key, index) = calc_loc(value);
+        match self.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
+            Found(loc) => self.containers[loc].contains(index),
+            NotFound(_) => false,
         }
     }
 }
 
 impl RoaringBitmap {
-    /// Returns true if all bits are 0.
-    ///
-    /// #Examples
-    ///
-    /// ```rust
-    /// use roaring::RoaringBitmap;
-    ///
-    /// let mut rb = RoaringBitmap::new();
-    /// assert_eq!(rb.none(), true);
-    ///
-    /// rb.set(3, true);
-    /// assert_eq!(rb.none(), false);
-    /// ```
-    pub fn none(&self) -> bool {
-        self.cardinality() == 0u32
-    }
-
-    /// Returns true if any bit is 1.
+    /// Returns `true` if there are no integers in this set.
     ///
     /// # Examples
     ///
@@ -118,16 +117,16 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     ///
     /// let mut rb = RoaringBitmap::new();
-    /// assert_eq!(rb.any(), false);
+    /// assert_eq!(rb.is_empty(), true);
     ///
-    /// rb.set(3, true);
-    /// assert_eq!(rb.any(), true);
+    /// rb.insert(3);
+    /// assert_eq!(rb.is_empty(), false);
     /// ```
-    pub fn any(&self) -> bool {
-        self.cardinality() != 0u32
+    pub fn is_empty(&self) -> bool {
+        self.cardinality() == 0u32
     }
 
-    /// Returns the number of distinct integers added to the bitmap (e.g., number of bits set).
+    /// Returns the number of distinct integers added to the set.
     ///
     /// # Examples
     ///
@@ -137,11 +136,11 @@ impl RoaringBitmap {
     /// let mut rb = RoaringBitmap::new();
     /// assert_eq!(rb.cardinality(), 0);
     ///
-    /// rb.set(3, true);
+    /// rb.insert(3);
     /// assert_eq!(rb.cardinality(), 1);
     ///
-    /// rb.set(3, true);
-    /// rb.set(4, true);
+    /// rb.insert(3);
+    /// rb.insert(4);
     /// assert_eq!(rb.cardinality(), 2);
     /// ```
     pub fn cardinality(&self) -> u32 {
@@ -157,7 +156,13 @@ static FALSE: bool = false;
 
 impl Index<u32, bool> for RoaringBitmap {
     fn index(&self, index: &u32) -> &bool {
-        if self.get(*index).unwrap() { &TRUE } else { &FALSE }
+        if self.contains(*index) { &TRUE } else { &FALSE }
+    }
+}
+
+impl FromIterator<u32> for RoaringBitmap {
+    fn from_iter<I: Iterator<u32>>(iterator: I) -> RoaringBitmap {
+        unimplemented!();
     }
 }
 
