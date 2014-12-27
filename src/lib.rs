@@ -6,17 +6,52 @@ use container::Container;
 mod store;
 mod container;
 
+/// A compressed bitmap using the [Roaring bitmap compression scheme](http://roaringbitmap.org).
+///
+/// # Examples
+///
+/// ```rust
+/// use roaring::RoaringBitmap;
+///
+/// let mut rb = RoaringBitmap::new();
+///
+/// // insert all primes less than 10
+/// rb.set(2, true);
+/// rb.set(3, true);
+/// rb.set(5, true);
+/// rb.set(7, true);
+/// println!("total bits set to true: {}", rb.cardinality());
+/// ```
 pub struct RoaringBitmap {
     containers: Vec<Container>,
 }
 
 impl RoaringBitmap {
+    /// Creates an empty `RoaringBitmap`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    /// let mut rb = RoaringBitmap::new();
+    /// ```
     pub fn new() -> RoaringBitmap {
         RoaringBitmap { containers: Vec::new(), }
     }
 }
 
 impl RoaringBitmap {
+    /// Sets the value of a bit at an index `i`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// rb.set(3, true);
+    /// assert_eq!(rb[3], true);
+    /// ```
     pub fn set(&mut self, index: u32, value: bool) {
         let (key, index) = calc_loc(index);
         let container = match self.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
@@ -29,29 +64,100 @@ impl RoaringBitmap {
         container.set(index, value);
     }
 
-    pub fn get(&self, index: u32) -> bool {
+    /// Retrieves the value at index `i`, will never return `None`.
+    ///
+    /// > TODO: Should this just return a bool, or will it be important that the API is similar to
+    /// `std::collections::Bitv`'s?
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// rb.set(1, true);
+    /// assert_eq!(rb.get(0), Some(false));
+    /// assert_eq!(rb.get(1), Some(true));
+    /// assert_eq!(rb.get(100), Some(false));
+    ///
+    /// // Can also use array indexing
+    /// assert_eq!(rb[1], true);
+    /// ```
+    pub fn get(&self, index: u32) -> Option<bool> {
         let (key, index) = calc_loc(index);
         match self.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
-            Found(loc) => self.containers[loc].get(index),
-            NotFound(_) => false,
+            Found(loc) => Some(self.containers[loc].get(index)),
+            NotFound(_) => Some(false),
         }
     }
 }
 
 impl RoaringBitmap {
+    /// Returns true if all bits are 0.
+    ///
+    /// #Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// assert_eq!(rb.none(), true);
+    ///
+    /// rb.set(3, true);
+    /// assert_eq!(rb.none(), false);
+    /// ```
     pub fn none(&self) -> bool {
         self.cardinality() == 0u32
     }
 
+    /// Returns true if any bit is 1.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// assert_eq!(rb.any(), false);
+    ///
+    /// rb.set(3, true);
+    /// assert_eq!(rb.any(), true);
+    /// ```
     pub fn any(&self) -> bool {
         self.cardinality() != 0u32
     }
 
+    /// Returns the number of distinct integers added to the bitmap (e.g., number of bits set).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// assert_eq!(rb.cardinality(), 0);
+    ///
+    /// rb.set(3, true);
+    /// assert_eq!(rb.cardinality(), 1);
+    ///
+    /// rb.set(3, true);
+    /// rb.set(4, true);
+    /// assert_eq!(rb.cardinality(), 2);
+    /// ```
     pub fn cardinality(&self) -> u32 {
         self.containers
             .iter()
             .map(|container| container.cardinality() as u32)
             .fold(0, |sum, cardinality| sum + cardinality)
+    }
+}
+
+static TRUE: bool = true;
+static FALSE: bool = false;
+
+impl Index<u32, bool> for RoaringBitmap {
+    fn index(&self, index: &u32) -> &bool {
+        if self.get(*index).unwrap() { &TRUE } else { &FALSE }
     }
 }
 

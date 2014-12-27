@@ -26,12 +26,12 @@ fn smoke() {
     assert_eq!(bitmap.cardinality(), 4);
     bitmap.set(2, false);
     assert_eq!(bitmap.cardinality(), 3);
-    assert_eq!(bitmap.get(0), false);
-    assert_eq!(bitmap.get(1), true);
-    assert_eq!(bitmap.get(100), false);
-    assert_eq!(bitmap.get(u32::MAX - 2), true);
-    assert_eq!(bitmap.get(u32::MAX - 1), false);
-    assert_eq!(bitmap.get(u32::MAX), true);
+    assert_eq!(bitmap.get(0), Some(false));
+    assert_eq!(bitmap.get(1), Some(true));
+    assert_eq!(bitmap.get(100), Some(false));
+    assert_eq!(bitmap.get(u32::MAX - 2), Some(true));
+    assert_eq!(bitmap.get(u32::MAX - 1), Some(false));
+    assert_eq!(bitmap.get(u32::MAX), Some(true));
 }
 
 #[test]
@@ -41,11 +41,11 @@ fn to_bitmap() {
         bitmap.set(i, true);
     }
     assert_eq!(bitmap.cardinality(), 4999);
-    assert_eq!(bitmap.get(0), false);
+    assert_eq!(bitmap.get(0), Some(false));
     for i in 1..5000 {
-        assert_eq!(bitmap.get(i), true);
+        assert_eq!(bitmap.get(i), Some(true));
     }
-    assert_eq!(bitmap.get(5001), false);
+    assert_eq!(bitmap.get(5001), Some(false));
 }
 
 #[test]
@@ -58,11 +58,11 @@ fn to_array() {
         bitmap.set(i, false);
     }
     assert_eq!(bitmap.cardinality(), 2999);
-    assert_eq!(bitmap.get(0), false);
+    assert_eq!(bitmap.get(0), Some(false));
     for i in 1..2999 {
-        assert_eq!(bitmap.get(i), true);
+        assert_eq!(bitmap.get(i), Some(true));
     }
     for i in 3000..5001 {
-        assert_eq!(bitmap.get(i), false);
+        assert_eq!(bitmap.get(i), Some(false));
     }
 }
