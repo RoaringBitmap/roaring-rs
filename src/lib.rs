@@ -20,7 +20,7 @@ mod container;
 /// rb.insert(3);
 /// rb.insert(5);
 /// rb.insert(7);
-/// println!("total bits set to true: {}", rb.cardinality());
+/// println!("total bits set to true: {}", rb.len());
 /// ```
 pub struct RoaringBitmap {
     containers: Vec<Container>,
@@ -36,7 +36,7 @@ impl RoaringBitmap {
     /// let mut rb = RoaringBitmap::new();
     /// ```
     pub fn new() -> RoaringBitmap {
-        RoaringBitmap { containers: Vec::new(), }
+        RoaringBitmap { containers: Vec::new() }
     }
 }
 
@@ -81,7 +81,16 @@ impl RoaringBitmap {
     pub fn remove(&mut self, value: u32) -> bool {
         let (key, index) = calc_loc(value);
         match self.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
-            Found(loc) => self.containers[loc].remove(index),
+            Found(loc) => {
+                if self.containers[loc].remove(index) {
+                    if self.containers[loc].len() == 0 {
+                        self.containers.remove(loc);
+                    }
+                    true
+                } else {
+                    false
+                }
+            }
             _ => false,
         }
     }
@@ -106,9 +115,24 @@ impl RoaringBitmap {
             NotFound(_) => false,
         }
     }
-}
 
-impl RoaringBitmap {
+    /// Clears all integers in this set.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// rb.insert(1);
+    /// assert_eq!(rb.contains(1), true);
+    /// rb.clear();
+    /// assert_eq!(rb.contains(1), false);
+    /// ```
+    pub fn clear(&mut self) {
+        self.containers.clear();
+    }
+
     /// Returns `true` if there are no integers in this set.
     ///
     /// # Examples
@@ -123,7 +147,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.is_empty(), false);
     /// ```
     pub fn is_empty(&self) -> bool {
-        self.cardinality() == 0u32
+        self.containers.is_empty()
     }
 
     /// Returns the number of distinct integers added to the set.
@@ -134,35 +158,58 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     ///
     /// let mut rb = RoaringBitmap::new();
-    /// assert_eq!(rb.cardinality(), 0);
+    /// assert_eq!(rb.len(), 0);
     ///
     /// rb.insert(3);
-    /// assert_eq!(rb.cardinality(), 1);
+    /// assert_eq!(rb.len(), 1);
     ///
     /// rb.insert(3);
     /// rb.insert(4);
-    /// assert_eq!(rb.cardinality(), 2);
+    /// assert_eq!(rb.len(), 2);
     /// ```
-    pub fn cardinality(&self) -> u32 {
+    pub fn len(&self) -> uint {
         self.containers
             .iter()
-            .map(|container| container.cardinality() as u32)
-            .fold(0, |sum, cardinality| sum + cardinality)
+            .map(|container| container.len() as uint)
+            .fold(0, |sum, len| sum + len)
     }
-}
 
-static TRUE: bool = true;
-static FALSE: bool = false;
-
-impl Index<u32, bool> for RoaringBitmap {
-    fn index(&self, index: &u32) -> &bool {
-        if self.contains(*index) { &TRUE } else { &FALSE }
+    /// Iterator over each u32 stored in the RoaringBitmap.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    ///
+    /// rb.insert(1);
+    /// rb.insert(4);
+    /// rb.insert(6);
+    ///
+    /// // Print 1, 4, 6 in arbitrary order
+    /// for x in rb.iter() {
+    ///     println!("{}", x);
+    /// }
+    /// ```
+    pub fn iter<'a>(&'a self) -> RoaringIterator<'a> {
+        unimplemented!()
     }
 }
 
 impl FromIterator<u32> for RoaringBitmap {
     fn from_iter<I: Iterator<u32>>(iterator: I) -> RoaringBitmap {
-        unimplemented!();
+        let mut rb = RoaringBitmap::new();
+        rb.extend(iterator);
+        rb
+    }
+}
+
+impl Extend<u32> for RoaringBitmap {
+    fn extend<I: Iterator<u32>>(&mut self, mut iterator: I) {
+        for value in iterator {
+            self.insert(value);
+        }
     }
 }
 

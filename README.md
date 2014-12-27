@@ -6,16 +6,6 @@ This is a [Rust][] port of the [Roaring bitmap][] data structure, initially
 defined as a [Java library][roaring-java] and described in [_Better bitmap
 performance with Roaring bitmaps_][roaring-paper].
 
-## Example
-
-```rust
-let mut rr = roaring::RoaringBitmap::new();
-for k in 4000..4255 {
-  rr.set(k, true);
-}
-assert!(bitmap.get(4100))
-```
-
 ## Developing
 
 Take note of the [Collections reform RFC][collections-rfc] for the API.  Mostly aiming to
