@@ -9,7 +9,7 @@ homepage = "https://github.com/Nemo157/roaring-rs"
 repository = "https://github.com/Nemo157/roaring-rs"
 
 readme = "README.md"
-keywords = ["roaring", "data structure", "bitmap"]
+keywords = ["roaring", "data-structure", "bitmap"]
 
 license = "MIT"
 license-file = "LICENSE"
