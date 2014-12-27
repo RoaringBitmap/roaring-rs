@@ -2,11 +2,10 @@
 
 > This is not yet production ready.
 
-This is a [Rust](https://rust-lang.org) port of the Roaring bitmap data
-structure. The data structure was initially defined as a [Java
-library](https://github.com/lemire/RoaringBitmap) and is described at its
-[homepage](http://roaringbitmap.org) and associated
-[paper](http://arxiv.org/pdf/1402.6407v4).
+This is a [Rust](https://rust-lang.org) port of the [Roaring
+bitmap](http://roaringbitmap.org) data structure, initially defined as a [Java
+library](https://github.com/lemire/RoaringBitmap) and described in [Better bitmap
+performance with Roaring bitmaps](http://arxiv.org/pdf/1402.6407v4).
 
 ## Example
 
