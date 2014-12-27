@@ -82,8 +82,8 @@ impl<'a> BitmapIter<'a> {
     }
 }
 
-impl<'a> Iterator<&'a u16> for BitmapIter<'a> {
-    fn next(&mut self) -> Option<&'a u16> {
+impl<'a> Iterator<u16> for BitmapIter<'a> {
+    fn next(&mut self) -> Option<u16> {
         loop {
             if self.key == 2049 {
                 break;
@@ -103,7 +103,7 @@ impl<'a> Iterator<&'a u16> for BitmapIter<'a> {
         if self.key == 2049 {
             None
         } else {
-            Some(&((self.key * u32::BITS + self.bit) as u16))
+            Some((self.key * u32::BITS + self.bit) as u16)
         }
     }
 }

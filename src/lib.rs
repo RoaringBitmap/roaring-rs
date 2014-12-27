@@ -196,7 +196,7 @@ impl RoaringBitmap {
     /// }
     /// ```
     pub fn iter<'a>(&'a self) -> RoaringIterator<'a> {
-        RoaringIterator::new(&self.containers.iter())
+        RoaringIterator::new(&mut self.containers.iter())
     }
 }
 
