@@ -1,4 +1,4 @@
-# RoaringBitmap
+# RoaringBitmap [![Travis CI Build Status](https://img.shields.io/travis/Nemo157/roaring-rs.svg?style=flat-square)](https://travis-ci.org/Nemo157/roaring-rs)
 
 > This is not yet production ready.
 
