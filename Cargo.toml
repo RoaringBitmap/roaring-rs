@@ -1,0 +1,5 @@
+[package]
+
+name = "roaring"
+version = "0.0.1"
+authors = ["Wim Looman <ghostunderscore@gmail.com>"]
