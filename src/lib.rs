@@ -192,7 +192,7 @@ impl RoaringBitmap {
     ///     println!("{}", x);
     /// }
     /// ```
-    pub fn iter<'a>(&'a self) -> RoaringIterator<'a> {
+    pub fn iter<'a>(&'a self) {
         unimplemented!()
     }
 }
