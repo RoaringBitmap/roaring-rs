@@ -16,3 +16,8 @@ for k in 4000..4255 {
 }
 assert!(bitmap.get(4100))
 ```
+
+## Developing
+
+Take note of the [Collections
+reform RFC](https://github.com/rust-lang/rfcs/pull/235) for the API.
