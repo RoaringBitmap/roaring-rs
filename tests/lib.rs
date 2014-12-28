@@ -109,3 +109,69 @@ fn disjoint_different_containers() {
     assert_eq!(bitmap1.is_disjoint(&bitmap2), false);
 }
 
+#[test]
+fn subset_array() {
+    let mut bitmap1 = RoaringBitmap::new();
+    let mut bitmap2 = RoaringBitmap::new();
+    for i in 1..3000 {
+        bitmap1.insert(i);
+    }
+    for i in 1001..2000 {
+        bitmap2.insert(i);
+    }
+    assert_eq!(bitmap2.is_subset(&bitmap1), true);
+    bitmap2.insert(6000);
+    assert_eq!(bitmap2.is_subset(&bitmap1), false);
+}
+
+#[test]
+fn subset_bitmap() {
+    let mut bitmap1 = RoaringBitmap::new();
+    let mut bitmap2 = RoaringBitmap::new();
+    for i in 1..10000 {
+        bitmap1.insert(i);
+    }
+    for i in 2001..8000 {
+        bitmap2.insert(i);
+    }
+    assert_eq!(bitmap2.is_subset(&bitmap1), true);
+    bitmap2.insert(13000);
+    assert_eq!(bitmap2.is_subset(&bitmap1), false);
+}
+
+#[test]
+fn subset_array_bitmap() {
+    let mut bitmap1 = RoaringBitmap::new();
+    let mut bitmap2 = RoaringBitmap::new();
+    for i in 1..10000 {
+        bitmap1.insert(i);
+    }
+    for i in 2001..3000 {
+        bitmap2.insert(i);
+    }
+    assert_eq!(bitmap2.is_subset(&bitmap1), true);
+    bitmap2.insert(13000);
+    assert_eq!(bitmap2.is_subset(&bitmap1), false);
+}
+
+#[test]
+fn subset_different_containers() {
+    let mut bitmap1 = RoaringBitmap::new();
+    let mut bitmap2 = RoaringBitmap::new();
+    for i in 1..4000 {
+        bitmap1.insert(i);
+    }
+    for i in 1..4000 {
+        bitmap2.insert(u32::MAX - i);
+    }
+    assert_eq!(bitmap2.is_subset(&bitmap1), false);
+    for i in 2001..3000 {
+        bitmap2.insert(i);
+    }
+    assert_eq!(bitmap2.is_subset(&bitmap1), false);
+    for i in 1..4000 {
+        bitmap2.remove(u32::MAX - i);
+    }
+    assert_eq!(bitmap2.is_subset(&bitmap1), true);
+}
+
