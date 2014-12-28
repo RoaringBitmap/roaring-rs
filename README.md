@@ -13,29 +13,29 @@ duplicate the [BitvSet][] API.
 
 ### TODO
 
-- [ ] [Bounded Iterators][]
-  - [ ] `fn range(&self, min: Bound<&T>, max: Bound<&T>) -> RangedItems<'a, T>;`
-- [ ] [Set Operations][]
-  - [ ] Comparisons
-    - [X] `fn is_disjoint(&self, other: &Self) -> bool;`
-    - [ ] `fn is_subset(&self, other: &Self) -> bool;`
-    - [ ] `fn is_superset(&self, other: &Self) -> bool;`
-  - [ ] Combinations
-    - [ ] Iterated Functions
-      - [ ] `fn union<'a>(&'a self, other: &'a Self) -> I;`
-      - [ ] `fn intersection<'a>(&'a self, other: &'a Self) -> I;`
-      - [ ] `fn difference<'a>(&'a self, other: &'a Self) -> I;`
-      - [ ] `fn symmetric_difference<'a>(&'a self, other: &'a Self) -> I;`
-    - [ ] Operator Traits
-      - [ ] `std::ops::BitOr`
-      - [ ] `std::ops::BitAnd`
-      - [ ] `std::ops::BitXor`
-      - [ ] `std::ops::Sub`
-    - [ ] Inplace Functions
-      - [ ] `fn union_with(&mut self, other: &BitvSet)`
-      - [ ] `fn intersect_with(&mut self, other: &BitvSet)`
-      - [ ] `fn difference_with(&mut self, other: &BitvSet)`
-      - [ ] `fn symmetric_difference_with(&mut self, other: &BitvSet)`
+  - [ ] [Bounded Iterators][]
+    - [ ] `fn range(&self, min: Bound<&T>, max: Bound<&T>) -> RangedItems<'a, T>;`
+  - [ ] [Set Operations][]
+    - [ ] Comparisons
+      - [X] `fn is_disjoint(&self, other: &Self) -> bool;`
+      - [ ] `fn is_subset(&self, other: &Self) -> bool;`
+      - [ ] `fn is_superset(&self, other: &Self) -> bool;`
+    - [ ] Combinations
+      - [ ] Iterated Functions
+        - [ ] `fn union<'a>(&'a self, other: &'a Self) -> I;`
+        - [ ] `fn intersection<'a>(&'a self, other: &'a Self) -> I;`
+        - [ ] `fn difference<'a>(&'a self, other: &'a Self) -> I;`
+        - [ ] `fn symmetric_difference<'a>(&'a self, other: &'a Self) -> I;`
+      - [ ] Operator Traits
+        - [ ] `std::ops::BitOr`
+        - [ ] `std::ops::BitAnd`
+        - [ ] `std::ops::BitXor`
+        - [ ] `std::ops::Sub`
+      - [ ] Inplace Functions
+        - [ ] `fn union_with(&mut self, other: &BitvSet)`
+        - [ ] `fn intersect_with(&mut self, other: &BitvSet)`
+        - [ ] `fn difference_with(&mut self, other: &BitvSet)`
+        - [ ] `fn symmetric_difference_with(&mut self, other: &BitvSet)`
 
 [Travis CI Build Status]: https://img.shields.io/travis/Nemo157/roaring-rs.svg?style=flat-square
 [travis]: https://travis-ci.org/Nemo157/roaring-rs
