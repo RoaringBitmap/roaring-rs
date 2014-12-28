@@ -17,7 +17,7 @@ deploy:
   provider: releases
   api-key:
     secure: SCvJD8WFvhaK1tSpigmVvbuKlGobfAvw/cDbZE59a0dj3hNfBqb/BiWuZ6goZq33ZBT4d+fvxc3rE846VopcURtIUmtF2wxVdFmMUF5t4N4dXv+YvZ2l0KKXD+HxzI4aUYQepQJmcP/01omjD/mYQB+lRBWQHEu/E1IdyoiLU7c=
-  file: target/package/roaring-*.crate
+  file: target/package/roaring-$TRAVIS_TAG.crate
   skip_cleanup: true
   on:
     tags: true
