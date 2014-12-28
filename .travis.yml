@@ -24,9 +24,10 @@ deploy:
     all_branches: true
 
 after_deploy:
-  - git fetch git://github.com/$TRAVIS_REPO_SLUG gh-pages
+  - git remote add github https://$GITHUB_TOKEN:x-oauth-basic@github.com/$TRAVIS_REPO_SLUG.git
+  - git fetch github gh-pages
   - git checkout -b gh-pages FETCH_HEAD
   - mv target/doc docs/$TRAVIS_TAG
   - git add docs/$TRAVIS_TAG
   - git commit -m "Add API docs for $TRAVIS_TAG"
-  - git push git://$GITHUB_TOKEN:x-oauth-basic@github.com/$TRAVIS_REPO_SLUG gh-pages
+  - git push github gh-pages:gh-pages
