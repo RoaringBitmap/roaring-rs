@@ -29,4 +29,4 @@ after_deploy:
   - mv target/doc docs/$TRAVIS_TAG
   - git add docs/$TRAVIS_TAG
   - git commit -m "Add API docs for $TRAVIS_TAG"
-  - git push $GITHUB_TOKEN@github.com/$TRAVIS_REPO_SLUG gh-pages
+  - git push $GITHUB_TOKEN@github.com:$TRAVIS_REPO_SLUG gh-pages
