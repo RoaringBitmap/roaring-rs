@@ -4,6 +4,7 @@ sudo: false
 env:
   global:
     - secure: aOiqRRhbGw+r7P1PleSNKk5JTkItW/tQBYBhxGdJ7gN9KvlBHEmBHNd5Yl8AuE5R9W27Eo/BgtXIu09EMuND8cLr92b1P1ru1ebQMM+2FburF1y4psZakecSWAMDlF+km/cdES/AzIJ7dI1Fc4dGE/zNMuLLYEKmSDtVMHXucaI=
+    - secure: QRaXkP2OkP9KIwN/ifxclkKUhifeu2pGE6jEkNr/8kluxPDPplX3QtR/qwYzt6v24QsAW+rGvA0atB3yIiiWRrxxq3DcrV5v4xpc6ZoqFJYxVfnPqMGqDkh0pV1+6Z9RP9upP1ol3eOWnHPK0EHSH8sBAWENxE9k0WcilgjHxeo=
 
 script:
   - cargo build --release --verbose
@@ -24,6 +25,7 @@ deploy:
     all_branches: true
 
 after_deploy:
+  - cargo publish --token $CRATES_IO_TOKEN
   - echo "machine github.com login $GITHUB_TOKEN password x-oauth-basic" >> ~/.netrc
   - chmod 0600 ~/.netrc
   - git remote add github https://github.com/$TRAVIS_REPO_SLUG.git
