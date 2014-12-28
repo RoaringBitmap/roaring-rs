@@ -1,8 +1,6 @@
-use std::{ u16, u32 };
+use std::{ u32 };
 use std::slice::Iter;
 
-use util::Either;
-use util::Either::{ Left, Right };
 use store::Store;
 use store::Store::{ Array, Bitmap };
 
@@ -58,12 +56,17 @@ impl Container {
         self.store.contains(index)
     }
 
-    pub fn iter<'a>(&'a self) -> Either<Iter<'a, u16>, BitmapIter<'a>> {
+    pub fn iter<'a>(&'a self) -> ContainerIter<'a> {
         match self.store {
-            Array(ref vec) => Left(vec.iter()),
-            Bitmap(ref bits) => Right(BitmapIter::new(bits)),
+            Array(ref vec) => ContainerIter::ArrayIter(vec.iter()),
+            Bitmap(ref bits) => ContainerIter::BitmapIter(BitmapIter::new(bits)),
         }
     }
+}
+
+pub enum ContainerIter<'a> {
+    ArrayIter(Iter<'a, u16>),
+    BitmapIter(BitmapIter<'a>),
 }
 
 pub struct BitmapIter<'a> {
