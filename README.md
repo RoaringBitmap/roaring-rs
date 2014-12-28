@@ -17,7 +17,7 @@ duplicate the [BitvSet][] API.
   - [ ] `fn range(&self, min: Bound<&T>, max: Bound<&T>) -> RangedItems<'a, T>;`
 - [ ] [Set Operations][]
   - [ ] Comparisons
-    - [ ] `fn is_disjoint(&self, other: &Self) -> bool;`
+    - [X] `fn is_disjoint(&self, other: &Self) -> bool;`
     - [ ] `fn is_subset(&self, other: &Self) -> bool;`
     - [ ] `fn is_superset(&self, other: &Self) -> bool;`
   - [ ] Combinations

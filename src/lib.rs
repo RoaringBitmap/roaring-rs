@@ -38,12 +38,10 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     /// let mut rb = RoaringBitmap::new();
     /// ```
-    pub fn new() -> RoaringBitmap {
+    pub fn new() -> Self {
         RoaringBitmap { containers: Vec::new() }
     }
-}
 
-impl RoaringBitmap {
     /// Adds a value to the set. Returns `true` if the value was not already present in the set.
     ///
     /// # Examples
@@ -197,6 +195,57 @@ impl RoaringBitmap {
     /// ```
     pub fn iter<'a>(&'a self) -> RoaringIterator<'a> {
         RoaringIterator::new(box self.containers.iter())
+    }
+
+    /// Returns true if the set has no elements in common with other. This is equivalent to
+    /// checking for an empty intersection.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb1 = RoaringBitmap::new();
+    /// let mut rb2 = RoaringBitmap::new();
+    ///
+    /// rb1.insert(1);
+    ///
+    /// assert_eq!(rb1.is_disjoint(&rb2), true);
+    ///
+    /// rb2.insert(1);
+    ///
+    /// assert_eq!(rb1.is_disjoint(&rb2), false);
+    ///
+    /// ```
+    pub fn is_disjoint(&self, other: &Self) -> bool {
+        let result: bool;
+        let mut iter1 = self.containers.iter();
+        let mut iter2 = other.containers.iter();
+        let mut container1 = iter1.next();
+        let mut container2 = iter2.next();
+        loop {
+            match (container1, container2) {
+                (Some(c1), Some(c2)) => {
+                    match (c1.key(), c2.key()) {
+                    (key1, key2) if key1 == key2 => {
+                        if !c1.is_disjoint(c2) {
+                            result = false;
+                            break;
+                        }
+                        container1 = iter1.next();
+                    },
+                    (key1, key2) if key1 < key2 => container1 = iter1.next(),
+                    (key1, key2) if key1 > key2 => container2 = iter2.next(),
+                    (_, _) => panic!(),
+                    }
+                },
+                (_, _) => {
+                    result = true;
+                    break;
+                },
+            }
+        }
+        result
     }
 }
 
