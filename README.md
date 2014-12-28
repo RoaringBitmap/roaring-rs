@@ -13,9 +13,9 @@ duplicate the [BitvSet][] API.
 
 ### TODO
 
-  - [ ] [Bounded Iterators][]
+  - [ ] Bounded Iterators ([§ in the RFC][bounded-iterators])
     - [ ] `fn range(&self, min: Bound<&T>, max: Bound<&T>) -> RangedItems<'a, T>;`
-  - [ ] [Set Operations][]
+  - [ ] Set Operations ([§ in the RFC][set-operations])
     - [ ] Comparisons
       - [X] `fn is_disjoint(&self, other: &Self) -> bool;`
       - [ ] `fn is_subset(&self, other: &Self) -> bool;`
@@ -45,5 +45,5 @@ duplicate the [BitvSet][] API.
 [roaring-paper]: http://arxiv.org/pdf/1402.6407v4
 [collections-rfc]: https://github.com/rust-lang/rfcs/pull/235
 [BitvSet]: http://doc.rust-lang.org/std/collections/bitv_set/struct.BitvSet.html
-[Bounded Iterators]: https://github.com/aturon/rfcs/blob/collections-conventions/text/0000-collection-conventions.md#bounded-iterators
-[Set Operations]: https://github.com/aturon/rfcs/blob/collections-conventions/text/0000-collection-conventions.md#set-operations
+[bounded-iterators]: https://github.com/aturon/rfcs/blob/collections-conventions/text/0000-collection-conventions.md#bounded-iterators
+[set-operations]: https://github.com/aturon/rfcs/blob/collections-conventions/text/0000-collection-conventions.md#set-operations
