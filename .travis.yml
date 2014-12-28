@@ -24,7 +24,8 @@ deploy:
     all_branches: true
 
 after_deploy:
-  - git checkout gh-pages
+  - git fetch git://github.com/$TRAVIS_REPO_SLUG gh-pages
+  - git checkout -b gh-pages FETCH_HEAD
   - mv target/doc docs/$TRAVIS_TAG
   - git add docs/$TRAVIS_TAG
   - git commit -m "Add API docs for $TRAVIS_TAG"
