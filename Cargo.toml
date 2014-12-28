@@ -1,7 +1,7 @@
 [package]
 
 name = "roaring"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Wim Looman <ghostunderscore@gmail.com>"]
 description = "http://roaringbitmap.org for http://www.rust-lang.org"
 
