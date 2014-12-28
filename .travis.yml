@@ -3,7 +3,7 @@ sudo: false
 
 env:
   global:
-    - secure: d+r3ZOcTpOSMfY5Udey1E1De93HiuLnsH29+/cHu0Rtp+1cEfh3VYvEca2P1AJZes0ujodnQkYjh7P3ySZmhNRq//UIxXBcQ8mM9hmXDLf68mFButXaQ/hPP0YyiuZ+TEaX7SVMkljYrKcpzxWG1eowJeEhg+nTf3zZH27ZOEX0=
+    - secure: HtdcoBljsPpR2xPwlgKLzWWADjV30KrqD7Zc2gnDbAcbdfwGZ67z4ykpACKYjKJyYIjAkA4LxrzKghIH6bugg+qYDtUb74tG/QUSFKFbexM2PtmV6YDP4k7bfda3p1qrjL/JmmUeP3g6WZFHVjMHKtks1cb05vY4tIM7kyfayNE=
 
 script:
   - cargo build --release --verbose
@@ -16,7 +16,7 @@ before_deploy:
 deploy:
   provider: releases
   api-key:
-    secure: SCvJD8WFvhaK1tSpigmVvbuKlGobfAvw/cDbZE59a0dj3hNfBqb/BiWuZ6goZq33ZBT4d+fvxc3rE846VopcURtIUmtF2wxVdFmMUF5t4N4dXv+YvZ2l0KKXD+HxzI4aUYQepQJmcP/01omjD/mYQB+lRBWQHEu/E1IdyoiLU7c=
+    secure: g3+keH6uHwJdJyoqNUokW+ydRyJHpy5s/a0tUFFK6zDXL92srhRQt4bzn0zBAH+Upi9GtWhiXmbhlUJx7pfRzZuYxCEv/TyqS1e/F3l93BO+w3j397xfxUzHI+wjtmomWZz6hCiHWmy77w7VeOJ1Id/Xc9ZwSB1HtII/1F5T4Eo=
   file: target/package/roaring-$TRAVIS_TAG.crate
   skip_cleanup: true
   on:
