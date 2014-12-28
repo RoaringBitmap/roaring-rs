@@ -128,6 +128,59 @@ fn is_disjoint_array_bitmap(vec: &Vec<u16>, bits: &[u32, ..2048]) -> bool {
     result
 }
 
+fn is_subset_array(vec1: &Vec<u16>, vec2: &Vec<u16>) -> bool {
+    let result: bool;
+    let mut iter1 = vec1.iter();
+    let mut iter2 = vec2.iter();
+    let mut index1 = iter1.next();
+    let mut index2 = iter2.next();
+    loop {
+        match (index1, index2) {
+            (Some(i1), Some(i2)) if i1 == i2 => {
+                index1 = iter1.next();
+                index2 = iter2.next();
+            },
+            (Some(i1), Some(i2)) if i1 < i2 => {
+                result = false;
+                break;
+            },
+            (Some(i1), Some(i2)) if i1 > i2 => index2 = iter2.next(),
+            (Some(_), Some(_)) => panic!(),
+            (None, _) => {
+                result = true;
+                break;
+            },
+            (_, None) => {
+                result = false;
+                break;
+            },
+        }
+    }
+    result
+}
+
+fn is_subset_bitmap(bits1: &[u32, ..2048], bits2: &[u32, ..2048]) -> bool {
+    let mut result = true;
+    for (index1, index2) in bits1.iter().zip(bits2.iter()) {
+        if *index1 & *index2 != *index1 {
+            result = false;
+            break;
+        }
+    }
+    result
+}
+
+fn is_subset_array_bitmap(vec: &Vec<u16>, bits: &[u32, ..2048]) -> bool {
+    let mut result = true;
+    for index in vec.iter() {
+        if !contains_bitmap(bits, *index) {
+            result = false;
+            break;
+        }
+    }
+    result
+}
+
 impl Store {
     pub fn insert(&mut self, index: u16) -> bool {
         match self {
@@ -156,6 +209,15 @@ impl Store {
             (&Bitmap(ref bits1), &Bitmap(ref bits2)) => is_disjoint_bitmap(bits1, bits2),
             (&Array(ref vec), &Bitmap(ref bits)) => is_disjoint_array_bitmap(vec, bits),
             (&Bitmap(ref bits), &Array(ref vec)) => is_disjoint_array_bitmap(vec, bits),
+        }
+    }
+
+    pub fn is_subset(&self, other: &Self) -> bool {
+        match (self, other) {
+            (&Array(ref vec1), &Array(ref vec2)) => is_subset_array(vec1, vec2),
+            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => is_subset_bitmap(bits1, bits2),
+            (&Array(ref vec), &Bitmap(ref bits)) => is_subset_array_bitmap(vec, bits),
+            (&Bitmap(..), &Array(..)) => false,
         }
     }
 

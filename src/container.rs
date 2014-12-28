@@ -27,6 +27,7 @@ impl Container {
     #[inline]
     pub fn len(&self) -> u16 { self.len }
 
+    #[inline]
     pub fn insert(&mut self, index: u16) -> bool {
         if self.store.insert(index) {
             self.len += 1;
@@ -39,6 +40,7 @@ impl Container {
         }
     }
 
+    #[inline]
     pub fn remove(&mut self, index: u16) -> bool {
         if self.store.remove(index) {
             self.len -= 1;
@@ -56,6 +58,7 @@ impl Container {
         self.store.contains(index)
     }
 
+    #[inline]
     pub fn iter<'a>(&'a self) -> ContainerIter<'a> {
         match self.store {
             Array(ref vec) => ContainerIter::ArrayIter(vec.iter()),
@@ -63,8 +66,18 @@ impl Container {
         }
     }
 
+    #[inline]
     pub fn is_disjoint(&self, other: &Self) -> bool {
         self.store.is_disjoint(&other.store)
+    }
+
+    #[inline]
+    pub fn is_subset(&self, other: &Self) -> bool {
+        if self.len > other.len {
+            false
+        } else {
+            self.store.is_subset(&other.store)
+        }
     }
 }
 

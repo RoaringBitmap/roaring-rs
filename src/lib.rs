@@ -233,6 +233,7 @@ impl RoaringBitmap {
                             break;
                         }
                         container1 = iter1.next();
+                        container2 = iter2.next();
                     },
                     (key1, key2) if key1 < key2 => container1 = iter1.next(),
                     (key1, key2) if key1 > key2 => container2 = iter2.next(),
@@ -241,6 +242,66 @@ impl RoaringBitmap {
                 },
                 (_, _) => {
                     result = true;
+                    break;
+                },
+            }
+        }
+        result
+    }
+
+    /// Returns `true` if this set is a subset of `other`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb1 = RoaringBitmap::new();
+    /// let mut rb2 = RoaringBitmap::new();
+    ///
+    /// rb1.insert(1);
+    ///
+    /// assert_eq!(rb1.is_subset(&rb2), false);
+    ///
+    /// rb2.insert(1);
+    ///
+    /// assert_eq!(rb1.is_subset(&rb2), true);
+    ///
+    /// rb1.insert(2);
+    ///
+    /// assert_eq!(rb1.is_subset(&rb2), false);
+    /// ```
+    pub fn is_subset(&self, other: &Self) -> bool {
+        let result: bool;
+        let mut iter1 = self.containers.iter();
+        let mut iter2 = other.containers.iter();
+        let mut container1 = iter1.next();
+        let mut container2 = iter2.next();
+        loop {
+            match (container1, container2) {
+                (Some(c1), Some(c2)) =>
+                    match (c1.key(), c2.key()) {
+                        (key1, key2) if key1 == key2 => {
+                            if !c1.is_subset(c2) {
+                                result = false;
+                                break;
+                            }
+                            container1 = iter1.next();
+                            container2 = iter2.next();
+                        },
+                        (key1, key2) if key1 < key2 => {
+                            result = false;
+                            break;
+                        },
+                        (key1, key2) if key1 > key2 => container2 = iter2.next(),
+                        (_, _) => panic!(),
+                    },
+                (None, _) => {
+                    result = true;
+                    break;
+                },
+                (_, None) => {
+                    result = false;
                     break;
                 },
             }
