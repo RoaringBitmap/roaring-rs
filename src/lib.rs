@@ -1,8 +1,11 @@
 use std::{ u16 };
 use std::slice::BinarySearchResult::{ Found, NotFound };
 
+use iter::RoaringIterator;
 use container::Container;
 
+mod util;
+mod iter;
 mod store;
 mod container;
 
@@ -178,7 +181,7 @@ impl RoaringBitmap {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust
     /// use roaring::RoaringBitmap;
     ///
     /// let mut rb = RoaringBitmap::new();
@@ -192,8 +195,8 @@ impl RoaringBitmap {
     ///     println!("{}", x);
     /// }
     /// ```
-    pub fn iter<'a>(&'a self) {
-        unimplemented!()
+    pub fn iter<'a>(&'a self) -> RoaringIterator<'a> {
+        RoaringIterator::new(box self.containers.iter())
     }
 }
 

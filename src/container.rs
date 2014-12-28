@@ -1,3 +1,6 @@
+use std::{ u32 };
+use std::slice::Iter;
+
 use store::Store;
 use store::Store::{ Array, Bitmap };
 
@@ -52,5 +55,58 @@ impl Container {
     pub fn contains(&self, index: u16) -> bool {
         self.store.contains(index)
     }
+
+    pub fn iter<'a>(&'a self) -> ContainerIter<'a> {
+        match self.store {
+            Array(ref vec) => ContainerIter::ArrayIter(vec.iter()),
+            Bitmap(ref bits) => ContainerIter::BitmapIter(BitmapIter::new(bits)),
+        }
+    }
 }
 
+pub enum ContainerIter<'a> {
+    ArrayIter(Iter<'a, u16>),
+    BitmapIter(BitmapIter<'a>),
+}
+
+pub struct BitmapIter<'a> {
+    key: uint,
+    bit: uint,
+    bits: &'a [u32, ..2048],
+}
+
+impl<'a> BitmapIter<'a> {
+    fn new(bits: &'a [u32, ..2048]) -> BitmapIter<'a> {
+        BitmapIter {
+            key: 0,
+            bit: 0,
+            bits: bits,
+        }
+    }
+}
+
+impl<'a> Iterator<u16> for BitmapIter<'a> {
+    fn next(&mut self) -> Option<u16> {
+        loop {
+            if self.key == 2049 {
+                break;
+            }
+            self.bit += 1;
+            if self.bit == u32::BITS {
+                self.bit = 0;
+                self.key += 1;
+            }
+            if self.key == 2048 {
+                break;
+            }
+            if (self.bits[self.key] & (1 << self.bit)) != 0 {
+                break;
+            }
+        }
+        if self.key == 2049 {
+            None
+        } else {
+            Some((self.key * u32::BITS + self.bit) as u16)
+        }
+    }
+}
