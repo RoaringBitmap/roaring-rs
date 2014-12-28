@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `RoaringBitmap` struct in crate `roaring`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, RoaringBitmap">
+
+    <title>roaring::RoaringBitmap - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        
+        <p class='location'><a href='index.html'>roaring</a></p><div class='block struct'><h2>Structs</h2><a class='struct current' href='struct.RoaringBitmap.html'>RoaringBitmap</a></div>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press 'S' to search, '?' for more options..."
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='index.html'>roaring</a>::<wbr><a class='struct' href=''>RoaringBitmap</a><wbr></span><span class='out-of-band'><span id='render-detail'>
+            <a id="collapse-all" href="#">[-]
+            </a>&nbsp;<a id="expand-all" href="#">[+]</a>
+        </span><a id='src-1843' href='../src/roaring/lib.rs.html#28-30'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct RoaringBitmap {
+    // some fields omitted
+}</pre><div class='docblock'><p>A compressed bitmap using the <a href="http://roaringbitmap.org">Roaring bitmap compression scheme</a>.</p>
+
+<h1 id="examples" class='section-header'><a
+                           href="#examples">Examples</a></h1><pre class='rust '>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+
+<span class='comment'>// insert all primes less than 10</span>
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>2</span>);
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>);
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>5</span>);
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>7</span>);
+<span class='macro'>println</span><span class='macro'>!</span>(<span class='string'>&quot;total bits set to true: {}&quot;</span>, <span class='ident'>rb</span>.<span class='ident'>len</span>());
+</pre>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><a class='stability Unmarked' title='No stability level'></a><code>impl <a class='struct' href='../roaring/struct.RoaringBitmap.html' title='roaring::RoaringBitmap'>RoaringBitmap</a></code></h3><div class='impl-items'><h4 id='method.new' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.new' class='fnname'>new</a>() -&gt; <a class='struct' href='../roaring/struct.RoaringBitmap.html' title='roaring::RoaringBitmap'>RoaringBitmap</a></code></h4>
+<div class='docblock'><p>Creates an empty <code>RoaringBitmap</code>.</p>
+
+<h1 id="examples" class='section-header'><a
+                           href="#examples">Examples</a></h1><pre class='rust '>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+</pre>
+</div><h4 id='method.insert' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.insert' class='fnname'>insert</a>(&amp;mut self, value: <a href='http://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<div class='docblock'><p>Adds a value to the set. Returns <code>true</code> if the value was not already present in the set.</p>
+
+<h1 id="examples" class='section-header'><a
+                           href="#examples">Examples</a></h1><pre class='rust '>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>), <span class='boolval'>true</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>), <span class='boolval'>false</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>contains</span>(<span class='number'>3</span>), <span class='boolval'>true</span>);
+</pre>
+</div><h4 id='method.remove' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.remove' class='fnname'>remove</a>(&amp;mut self, value: <a href='http://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<div class='docblock'><p>Removes a value from the set. Returns <code>true</code> if the value was present in the set.</p>
+
+<h1 id="examples" class='section-header'><a
+                           href="#examples">Examples</a></h1><pre class='rust '>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>remove</span>(<span class='number'>3</span>), <span class='boolval'>true</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>remove</span>(<span class='number'>3</span>), <span class='boolval'>false</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>contains</span>(<span class='number'>3</span>), <span class='boolval'>false</span>);
+</pre>
+</div><h4 id='method.contains' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.contains' class='fnname'>contains</a>(&amp;self, value: <a href='http://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<div class='docblock'><p>Returns <code>true</code> if this set contains the specified integer.</p>
+
+<h1 id="examples" class='section-header'><a
+                           href="#examples">Examples</a></h1><pre class='rust '>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>contains</span>(<span class='number'>0</span>), <span class='boolval'>false</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>contains</span>(<span class='number'>1</span>), <span class='boolval'>true</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>contains</span>(<span class='number'>100</span>), <span class='boolval'>false</span>);
+</pre>
+</div><h4 id='method.clear' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.clear' class='fnname'>clear</a>(&amp;mut self)</code></h4>
+<div class='docblock'><p>Clears all integers in this set.</p>
+
+<h1 id="examples" class='section-header'><a
+                           href="#examples">Examples</a></h1><pre class='rust '>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>contains</span>(<span class='number'>1</span>), <span class='boolval'>true</span>);
+<span class='ident'>rb</span>.<span class='ident'>clear</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>contains</span>(<span class='number'>1</span>), <span class='boolval'>false</span>);
+</pre>
+</div><h4 id='method.is_empty' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.is_empty' class='fnname'>is_empty</a>(&amp;self) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<div class='docblock'><p>Returns <code>true</code> if there are no integers in this set.</p>
+
+<h1 id="examples" class='section-header'><a
+                           href="#examples">Examples</a></h1><pre class='rust '>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>is_empty</span>(), <span class='boolval'>true</span>);
+
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>is_empty</span>(), <span class='boolval'>false</span>);
+</pre>
+</div><h4 id='method.len' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.len' class='fnname'>len</a>(&amp;self) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.uint.html'>uint</a></code></h4>
+<div class='docblock'><p>Returns the number of distinct integers added to the set.</p>
+
+<h1 id="examples" class='section-header'><a
+                           href="#examples">Examples</a></h1><pre class='rust '>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>len</span>(), <span class='number'>0</span>);
+
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>len</span>(), <span class='number'>1</span>);
+
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>);
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>4</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>len</span>(), <span class='number'>2</span>);
+</pre>
+</div><h4 id='method.iter' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.iter' class='fnname'>iter</a>&lt;'a&gt;(&amp;'a self) -&gt; RoaringIterator&lt;'a&gt;</code></h4>
+<div class='docblock'><p>Iterator over each u32 stored in the RoaringBitmap.</p>
+
+<h1 id="examples" class='section-header'><a
+                           href="#examples">Examples</a></h1><pre class='rust '>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>4</span>);
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>6</span>);
+
+<span class='comment'>// Print 1, 4, 6 in arbitrary order</span>
+<span class='kw'>for</span> <span class='ident'>x</span> <span class='kw'>in</span> <span class='ident'>rb</span>.<span class='ident'>iter</span>() {
+    <span class='macro'>println</span><span class='macro'>!</span>(<span class='string'>&quot;{}&quot;</span>, <span class='ident'>x</span>);
+}
+</pre>
+</div><h4 id='method.is_disjoint' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.is_disjoint' class='fnname'>is_disjoint</a>(&amp;self, other: &amp;<a class='struct' href='../roaring/struct.RoaringBitmap.html' title='roaring::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<div class='docblock'><p>Returns true if the set has no elements in common with other. This is equivalent to
+checking for an empty intersection.</p>
+
+<h1 id="examples" class='section-header'><a
+                           href="#examples">Examples</a></h1><pre class='rust '>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb1</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb2</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+
+<span class='ident'>rb1</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>.<span class='ident'>is_disjoint</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb2</span>), <span class='boolval'>true</span>);
+
+<span class='ident'>rb2</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>.<span class='ident'>is_disjoint</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb2</span>), <span class='boolval'>false</span>);
+</pre>
+</div><h4 id='method.is_subset' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.is_subset' class='fnname'>is_subset</a>(&amp;self, other: &amp;<a class='struct' href='../roaring/struct.RoaringBitmap.html' title='roaring::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<div class='docblock'><p>Returns <code>true</code> if this set is a subset of <code>other</code>.</p>
+
+<h1 id="examples" class='section-header'><a
+                           href="#examples">Examples</a></h1><pre class='rust '>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb1</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb2</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+
+<span class='ident'>rb1</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>.<span class='ident'>is_subset</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb2</span>), <span class='boolval'>false</span>);
+
+<span class='ident'>rb2</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>.<span class='ident'>is_subset</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb2</span>), <span class='boolval'>true</span>);
+
+<span class='ident'>rb1</span>.<span class='ident'>insert</span>(<span class='number'>2</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>.<span class='ident'>is_subset</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb2</span>), <span class='boolval'>false</span>);
+</pre>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><a class='stability Unstable' title='Unstable: may be replaced by a more general conversion trait'></a><code>impl <a class='trait' href='http://doc.rust-lang.org/nightly/core/iter/trait.FromIterator.html' title='core::iter::FromIterator'>FromIterator</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>&gt; for <a class='struct' href='../roaring/struct.RoaringBitmap.html' title='roaring::RoaringBitmap'>RoaringBitmap</a></code></h3><div class='impl-items'><h4 id='method.from_iter' class='method'><a class='stability Unstable' title='Unstable: may be replaced by a more general conversion trait'></a><code>fn <a href='#method.from_iter' class='fnname'>from_iter</a>&lt;I: <a class='trait' href='http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html' title='core::iter::Iterator'>Iterator</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>&gt;&gt;(iterator: I) -&gt; <a class='struct' href='../roaring/struct.RoaringBitmap.html' title='roaring::RoaringBitmap'>RoaringBitmap</a></code></h4>
+</div><h3 class='impl'><a class='stability Unstable' title='Unstable: just renamed as part of collections reform'></a><code>impl <a class='trait' href='http://doc.rust-lang.org/nightly/core/iter/trait.Extend.html' title='core::iter::Extend'>Extend</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>&gt; for <a class='struct' href='../roaring/struct.RoaringBitmap.html' title='roaring::RoaringBitmap'>RoaringBitmap</a></code></h3><div class='impl-items'><h4 id='method.extend' class='method'><a class='stability Unstable' title='Unstable: just renamed as part of collections reform'></a><code>fn <a href='#method.extend' class='fnname'>extend</a>&lt;I: <a class='trait' href='http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html' title='core::iter::Iterator'>Iterator</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>&gt;&gt;(&amp;mut self, iterator: I)</code></h4>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div class="shortcuts">
+            <h1>Keyboard shortcuts</h1>
+            <dl>
+                <dt>?</dt>
+                <dd>Show this help dialog</dd>
+                <dt>S</dt>
+                <dd>Focus the search field</dd>
+                <dt>&larrb;</dt>
+                <dd>Move up in search results</dd>
+                <dt>&rarrb;</dt>
+                <dd>Move down in search results</dd>
+                <dt>&#9166;</dt>
+                <dd>Go to active search result</dd>
+            </dl>
+        </div>
+        <div class="infos">
+            <h1>Search tricks</h1>
+            <p>
+                Prefix searches with a type followed by a colon (e.g.
+                <code>fn:</code>) to restrict the search to a given type.
+            </p>
+            <p>
+                Accepted types are: <code>fn</code>, <code>mod</code>,
+                <code>struct</code>, <code>enum</code>,
+                <code>trait</code>, <code>typedef</code> (or
+                <code>tdef</code>).
+            </p>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "roaring";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script async src="../search-index.js"></script>
+</body>
+</html>
