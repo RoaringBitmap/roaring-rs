@@ -63,3 +63,49 @@ fn to_array() {
         assert_eq!(bitmap.contains(i), false);
     }
 }
+
+#[test]
+fn disjoint_array() {
+    let mut bitmap1 = RoaringBitmap::new();
+    let mut bitmap2 = RoaringBitmap::new();
+    for i in 1..4000 {
+        bitmap1.insert(i);
+    }
+    for i in 5001..9000 {
+        bitmap2.insert(i);
+    }
+    assert_eq!(bitmap1.is_disjoint(&bitmap2), true);
+    bitmap1.insert(6000);
+    assert_eq!(bitmap1.is_disjoint(&bitmap2), false);
+}
+
+#[test]
+fn disjoint_bitmap() {
+    let mut bitmap1 = RoaringBitmap::new();
+    let mut bitmap2 = RoaringBitmap::new();
+    for i in 1..6000 {
+        bitmap1.insert(i);
+    }
+    for i in 7001..13000 {
+        bitmap2.insert(i);
+    }
+    assert_eq!(bitmap1.is_disjoint(&bitmap2), true);
+    bitmap1.insert(9000);
+    assert_eq!(bitmap1.is_disjoint(&bitmap2), false);
+}
+
+#[test]
+fn disjoint_different_containers() {
+    let mut bitmap1 = RoaringBitmap::new();
+    let mut bitmap2 = RoaringBitmap::new();
+    for i in 1..4000 {
+        bitmap1.insert(i);
+    }
+    for i in 1..4000 {
+        bitmap2.insert(u32::MAX - i);
+    }
+    assert_eq!(bitmap1.is_disjoint(&bitmap2), true);
+    bitmap1.insert(u32::MAX - 2000);
+    assert_eq!(bitmap1.is_disjoint(&bitmap2), false);
+}
+

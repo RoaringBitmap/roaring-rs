@@ -62,6 +62,10 @@ impl Container {
             Bitmap(ref bits) => ContainerIter::BitmapIter(BitmapIter::new(bits)),
         }
     }
+
+    pub fn is_disjoint(&self, other: &Self) -> bool {
+        self.store.is_disjoint(&other.store)
+    }
 }
 
 pub enum ContainerIter<'a> {
