@@ -5,7 +5,11 @@ use store::Store::{ Array, Bitmap };
 
 pub enum Store {
     Array(Vec<u16>),
-    Bitmap([u32, ..2048]),
+    Bitmap([u32; 2048]),
+}
+
+fn bitmap_location(index: u16) -> (uint, uint) {
+    ((index / (u32::BITS as u16)) as uint, (index % (u32::BITS as u16)) as uint)
 }
 
 fn insert_array(vec: &mut Vec<u16>, index: u16) -> bool {
@@ -22,11 +26,7 @@ fn remove_array(vec: &mut Vec<u16>, index: u16) -> bool {
     }
 }
 
-fn bitmap_location(index: u16) -> (uint, uint) {
-    ((index / (u32::BITS as u16)) as uint, (index % (u32::BITS as u16)) as uint)
-}
-
-fn insert_bitmap(bits: &mut [u32, ..2048], index: u16) -> bool {
+fn insert_bitmap(bits: &mut [u32; 2048], index: u16) -> bool {
     let (key, bit) = bitmap_location(index);
     if bits[key] & (1 << bit) == 0 {
         bits[key] |= 1 << bit;
@@ -36,7 +36,7 @@ fn insert_bitmap(bits: &mut [u32, ..2048], index: u16) -> bool {
     }
 }
 
-fn remove_bitmap(bits: &mut [u32, ..2048], index: u16) -> bool {
+fn remove_bitmap(bits: &mut [u32; 2048], index: u16) -> bool {
     let (key, bit) = bitmap_location(index);
     if bits[key] & (1 << bit) != 0 {
         bits[key] &= !(1 << bit);
@@ -53,18 +53,18 @@ fn contains_array(vec: &Vec<u16>, index: u16) -> bool {
     }
 }
 
-fn contains_bitmap(bits: &[u32, ..2048], index: u16) -> bool {
+fn contains_bitmap(bits: &[u32; 2048], index: u16) -> bool {
     let (key, bit) = bitmap_location(index);
     bits[key] & (1 << bit) != 0
 }
 
-fn bitmap_to_array(bits: &[u32, ..2048]) -> Vec<u16> {
+fn bitmap_to_array(bits: &[u32; 2048]) -> Vec<u16> {
     let mut vec = Vec::new();
-    for key in 0..2048 {
+    for key in 0..bits.len() {
         if bits[key] == 0 {
             continue
         }
-        for bit in 0..32 {
+        for bit in 0..(u32::BITS) {
             if (bits[key] & (1 << bit)) != 0 {
                 vec.push((key * u32::BITS + bit) as u16);
             }
@@ -73,112 +73,81 @@ fn bitmap_to_array(bits: &[u32, ..2048]) -> Vec<u16> {
     vec
 }
 
-fn array_to_bitmap(vec: &Vec<u16>) -> [u32, ..2048] {
-    let mut bits = [0, ..2048];
+fn array_to_bitmap(vec: &Vec<u16>) -> [u32; 2048] {
+    let mut bits = [0; 2048];
     for index in vec.iter() {
-        let key = (*index / (u32::BITS as u16)) as uint;
-        let bit = (*index % (u32::BITS as u16)) as uint;
+        let (key, bit) = bitmap_location(*index);
         bits[key] |= 1 << bit;
     }
     bits
 }
 
 fn is_disjoint_array(vec1: &Vec<u16>, vec2: &Vec<u16>) -> bool {
-    let result: bool;
-    let mut iter1 = vec1.iter();
-    let mut iter2 = vec2.iter();
-    let mut index1 = iter1.next();
-    let mut index2 = iter2.next();
+    let (mut i1, mut i2) = (vec1.iter(), vec2.iter());
+    let (mut value1, mut value2) = (i1.next(), i2.next());
     loop {
-        match (index1, index2) {
-            (Some(i1), Some(i2)) if i1 == i2 => {
-                result = false;
-                break;
-            },
-            (Some(i1), Some(i2)) if i1 < i2 => index1 = iter1.next(),
-            (Some(i1), Some(i2)) if i1 > i2 => index2 = iter2.next(),
-            (_, _) => {
-                result = true;
-                break;
-            },
+        match (value1, value2) {
+            (None, _) | (_, None) => return true,
+            (v1, v2) if v1 == v2 => return false,
+            (v1, v2) if v1 < v2 => value1 = i1.next(),
+            (v1, v2) if v1 > v2 => value2 = i2.next(),
+            (_, _) => panic!(),
         }
     }
-    result
 }
 
-fn is_disjoint_bitmap(bits1: &[u32, ..2048], bits2: &[u32, ..2048]) -> bool {
-    let mut result = true;
+fn is_disjoint_bitmap(bits1: &[u32; 2048], bits2: &[u32; 2048]) -> bool {
     for (index1, index2) in bits1.iter().zip(bits2.iter()) {
         if *index1 & *index2 != 0 {
-            result = false;
-            break;
+            return false;
         }
     }
-    result
+    return true;
 }
 
-fn is_disjoint_array_bitmap(vec: &Vec<u16>, bits: &[u32, ..2048]) -> bool {
-    let mut result = true;
+fn is_disjoint_array_bitmap(vec: &Vec<u16>, bits: &[u32; 2048]) -> bool {
     for index in vec.iter() {
         if contains_bitmap(bits, *index) {
-            result = false;
-            break;
+            return false;
         }
     }
-    result
+    return true;
 }
 
 fn is_subset_array(vec1: &Vec<u16>, vec2: &Vec<u16>) -> bool {
-    let result: bool;
-    let mut iter1 = vec1.iter();
-    let mut iter2 = vec2.iter();
-    let mut index1 = iter1.next();
-    let mut index2 = iter2.next();
+    let (mut i1, mut i2) = (vec1.iter(), vec2.iter());
+    let (mut value1, mut value2) = (i1.next(), i2.next());
     loop {
-        match (index1, index2) {
-            (Some(i1), Some(i2)) if i1 == i2 => {
-                index1 = iter1.next();
-                index2 = iter2.next();
+        match (value1, value2) {
+            (None, _) => return true,
+            (_, None) => return false,
+            (v1, v2) if v1 == v2 => {
+                value1 = i1.next();
+                value2 = i2.next();
             },
-            (Some(i1), Some(i2)) if i1 < i2 => {
-                result = false;
-                break;
-            },
-            (Some(i1), Some(i2)) if i1 > i2 => index2 = iter2.next(),
-            (Some(_), Some(_)) => panic!(),
-            (None, _) => {
-                result = true;
-                break;
-            },
-            (_, None) => {
-                result = false;
-                break;
-            },
+            (v1, v2) if v1 < v2 => return false,
+            (v1, v2) if v1 > v2 => value2 = i2.next(),
+            (_, _) => panic!(),
         }
     }
-    result
 }
 
-fn is_subset_bitmap(bits1: &[u32, ..2048], bits2: &[u32, ..2048]) -> bool {
-    let mut result = true;
+fn is_subset_bitmap(bits1: &[u32; 2048], bits2: &[u32; 2048]) -> bool {
     for (index1, index2) in bits1.iter().zip(bits2.iter()) {
         if *index1 & *index2 != *index1 {
-            result = false;
-            break;
+            return false;
         }
     }
-    result
+    return true;
 }
 
-fn is_subset_array_bitmap(vec: &Vec<u16>, bits: &[u32, ..2048]) -> bool {
-    let mut result = true;
+fn is_subset_array_bitmap(vec: &Vec<u16>, bits: &[u32; 2048]) -> bool {
     for index in vec.iter() {
         if !contains_bitmap(bits, *index) {
-            result = false;
-            break;
+            return false;
         }
     }
-    result
+    return true;
 }
 
 impl Store {
