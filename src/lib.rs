@@ -1,9 +1,4 @@
-use std::{ u16 };
-use std::slice::BinarySearchResult::{ Found, NotFound };
-
-use iter::RoaringIterator;
-use container::Container;
-
+mod imp;
 mod util;
 mod iter;
 mod store;
@@ -25,9 +20,9 @@ mod container;
 /// rb.insert(7);
 /// println!("total bits set to true: {}", rb.len());
 /// ```
-pub struct RoaringBitmap {
-    containers: Vec<Container>,
-}
+pub type RoaringBitmap = imp::RoaringBitmap;
+
+pub type Iter<'a> = iter::RoaringIterator<'a>;
 
 impl RoaringBitmap {
     /// Creates an empty `RoaringBitmap`.
@@ -38,8 +33,9 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     /// let mut rb = RoaringBitmap::new();
     /// ```
+    #[inline]
     pub fn new() -> Self {
-        RoaringBitmap { containers: Vec::new() }
+        imp::new()
     }
 
     /// Adds a value to the set. Returns `true` if the value was not already present in the set.
@@ -54,16 +50,9 @@ impl RoaringBitmap {
     /// assert_eq!(rb.insert(3), false);
     /// assert_eq!(rb.contains(3), true);
     /// ```
+    #[inline]
     pub fn insert(&mut self, value: u32) -> bool {
-        let (key, index) = calc_loc(value);
-        let container = match self.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
-            Found(loc) => &mut self.containers[loc],
-            NotFound(loc) => {
-                self.containers.insert(loc, Container::new(key));
-                &mut self.containers[loc]
-            },
-        };
-        container.insert(index)
+        imp::insert(self, value)
     }
 
     /// Removes a value from the set. Returns `true` if the value was present in the set.
@@ -79,21 +68,9 @@ impl RoaringBitmap {
     /// assert_eq!(rb.remove(3), false);
     /// assert_eq!(rb.contains(3), false);
     /// ```
+    #[inline]
     pub fn remove(&mut self, value: u32) -> bool {
-        let (key, index) = calc_loc(value);
-        match self.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
-            Found(loc) => {
-                if self.containers[loc].remove(index) {
-                    if self.containers[loc].len() == 0 {
-                        self.containers.remove(loc);
-                    }
-                    true
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        }
+        imp::remove(self, value)
     }
 
     /// Returns `true` if this set contains the specified integer.
@@ -109,12 +86,9 @@ impl RoaringBitmap {
     /// assert_eq!(rb.contains(1), true);
     /// assert_eq!(rb.contains(100), false);
     /// ```
+    #[inline]
     pub fn contains(&self, value: u32) -> bool {
-        let (key, index) = calc_loc(value);
-        match self.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
-            Found(loc) => self.containers[loc].contains(index),
-            NotFound(_) => false,
-        }
+        imp::contains(self, value)
     }
 
     /// Clears all integers in this set.
@@ -130,8 +104,9 @@ impl RoaringBitmap {
     /// rb.clear();
     /// assert_eq!(rb.contains(1), false);
     /// ```
+    #[inline]
     pub fn clear(&mut self) {
-        self.containers.clear();
+        imp::clear(self)
     }
 
     /// Returns `true` if there are no integers in this set.
@@ -147,8 +122,9 @@ impl RoaringBitmap {
     /// rb.insert(3);
     /// assert_eq!(rb.is_empty(), false);
     /// ```
+    #[inline]
     pub fn is_empty(&self) -> bool {
-        self.containers.is_empty()
+        imp::is_empty(self)
     }
 
     /// Returns the number of distinct integers added to the set.
@@ -168,11 +144,9 @@ impl RoaringBitmap {
     /// rb.insert(4);
     /// assert_eq!(rb.len(), 2);
     /// ```
+    #[inline]
     pub fn len(&self) -> uint {
-        self.containers
-            .iter()
-            .map(|container| container.len() as uint)
-            .fold(0, |sum, len| sum + len)
+        imp::len(self)
     }
 
     /// Iterator over each u32 stored in the RoaringBitmap.
@@ -193,8 +167,9 @@ impl RoaringBitmap {
     ///     println!("{}", x);
     /// }
     /// ```
-    pub fn iter<'a>(&'a self) -> RoaringIterator<'a> {
-        RoaringIterator::new(box self.containers.iter())
+    #[inline]
+    pub fn iter<'a>(&'a self) -> Iter<'a> {
+        imp::iter(self)
     }
 
     /// Returns true if the set has no elements in common with other. This is equivalent to
@@ -217,36 +192,9 @@ impl RoaringBitmap {
     /// assert_eq!(rb1.is_disjoint(&rb2), false);
     ///
     /// ```
+    #[inline]
     pub fn is_disjoint(&self, other: &Self) -> bool {
-        let result: bool;
-        let mut iter1 = self.containers.iter();
-        let mut iter2 = other.containers.iter();
-        let mut container1 = iter1.next();
-        let mut container2 = iter2.next();
-        loop {
-            match (container1, container2) {
-                (Some(c1), Some(c2)) => {
-                    match (c1.key(), c2.key()) {
-                    (key1, key2) if key1 == key2 => {
-                        if !c1.is_disjoint(c2) {
-                            result = false;
-                            break;
-                        }
-                        container1 = iter1.next();
-                        container2 = iter2.next();
-                    },
-                    (key1, key2) if key1 < key2 => container1 = iter1.next(),
-                    (key1, key2) if key1 > key2 => container2 = iter2.next(),
-                    (_, _) => panic!(),
-                    }
-                },
-                (_, _) => {
-                    result = true;
-                    break;
-                },
-            }
-        }
-        result
+        imp::is_disjoint(self, other)
     }
 
     /// Returns `true` if this set is a subset of `other`.
@@ -271,78 +219,22 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb1.is_subset(&rb2), false);
     /// ```
+    #[inline]
     pub fn is_subset(&self, other: &Self) -> bool {
-        let result: bool;
-        let mut iter1 = self.containers.iter();
-        let mut iter2 = other.containers.iter();
-        let mut container1 = iter1.next();
-        let mut container2 = iter2.next();
-        loop {
-            match (container1, container2) {
-                (Some(c1), Some(c2)) =>
-                    match (c1.key(), c2.key()) {
-                        (key1, key2) if key1 == key2 => {
-                            if !c1.is_subset(c2) {
-                                result = false;
-                                break;
-                            }
-                            container1 = iter1.next();
-                            container2 = iter2.next();
-                        },
-                        (key1, key2) if key1 < key2 => {
-                            result = false;
-                            break;
-                        },
-                        (key1, key2) if key1 > key2 => container2 = iter2.next(),
-                        (_, _) => panic!(),
-                    },
-                (None, _) => {
-                    result = true;
-                    break;
-                },
-                (_, None) => {
-                    result = false;
-                    break;
-                },
-            }
-        }
-        result
+        imp::is_subset(self, other)
     }
 }
 
 impl FromIterator<u32> for RoaringBitmap {
+    #[inline]
     fn from_iter<I: Iterator<u32>>(iterator: I) -> RoaringBitmap {
-        let mut rb = RoaringBitmap::new();
-        rb.extend(iterator);
-        rb
+        imp::from_iter(iterator)
     }
 }
 
 impl Extend<u32> for RoaringBitmap {
-    fn extend<I: Iterator<u32>>(&mut self, mut iterator: I) {
-        for value in iterator {
-            self.insert(value);
-        }
-    }
-}
-
-#[inline]
-fn calc_loc(index: u32) -> (u16, u16) { ((index >> u16::BITS) as u16, index as u16) }
-
-#[cfg(test)]
-mod test {
-    use std::{ u16, u32 };
-    use super::{ calc_loc };
-
-    #[test]
-    fn test_calc_location() {
-        assert_eq!((0, 0), calc_loc(0));
-        assert_eq!((0, 1), calc_loc(1));
-        assert_eq!((0, u16::MAX - 1), calc_loc(u16::MAX as u32 - 1));
-        assert_eq!((0, u16::MAX), calc_loc(u16::MAX as u32));
-        assert_eq!((1, 0), calc_loc(u16::MAX as u32 + 1));
-        assert_eq!((1, 1), calc_loc(u16::MAX as u32 + 2));
-        assert_eq!((u16::MAX, u16::MAX - 1), calc_loc(u32::MAX - 1));
-        assert_eq!((u16::MAX, u16::MAX), calc_loc(u32::MAX));
+    #[inline]
+    fn extend<I: Iterator<u32>>(&mut self, iterator: I) {
+        imp::extend(self, iterator)
     }
 }
