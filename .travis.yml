@@ -26,12 +26,5 @@ deploy:
 
 after_deploy:
   - cargo publish --token $CRATES_IO_TOKEN
-  - echo "machine github.com login $GITHUB_TOKEN password x-oauth-basic" >> ~/.netrc
-  - chmod 0600 ~/.netrc
-  - git remote add github https://github.com/$TRAVIS_REPO_SLUG.git
-  - git fetch github gh-pages
-  - git checkout -b gh-pages FETCH_HEAD
-  - mv target/doc docs/$TRAVIS_TAG
-  - git add docs/$TRAVIS_TAG
-  - git commit -m "Add API docs for $TRAVIS_TAG"
-  - git push github gh-pages:gh-pages
+  - ./save_credentials.sh $GITHUB_TOKEN
+  - ./publish_docs.sh $TRAVIS_TAG

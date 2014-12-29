@@ -1,10 +1,11 @@
 [package]
 
 name = "roaring"
-version = "0.0.8"
+version = "0.0.9"
 authors = ["Wim Looman <ghostunderscore@gmail.com>"]
 description = "http://roaringbitmap.org for http://www.rust-lang.org"
 
+documentation = "https://nemo157.github.io/roaring-rs"
 homepage = "https://github.com/Nemo157/roaring-rs"
 repository = "https://github.com/Nemo157/roaring-rs"
 
