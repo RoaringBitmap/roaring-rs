@@ -5,7 +5,7 @@ use util::Either;
 use util::Either::{ Left, Right };
 use container::{ Container };
 
-pub struct RoaringIterator<'a> {
+pub struct Iter<'a> {
     inner_iter: Option<(u16, Box<Iterator<u16> + 'a>)>,
     container_iter: Box<slice::Iter<'a, Container>>,
 }
@@ -18,9 +18,9 @@ fn next_iter<'a>(container_iter: &mut slice::Iter<'a, Container>) -> Option<(u16
     container_iter.next().map(|container| (container.key(), container.iter()))
 }
 
-impl<'a> RoaringIterator<'a> {
-    pub fn new(mut container_iter: Box<slice::Iter<'a, Container>>) -> RoaringIterator<'a> {
-        RoaringIterator {
+impl<'a> Iter<'a> {
+    pub fn new(mut container_iter: Box<slice::Iter<'a, Container>>) -> Iter<'a> {
+        Iter {
             inner_iter: next_iter(&mut *container_iter),
             container_iter: container_iter
         }
@@ -37,7 +37,7 @@ impl<'a> RoaringIterator<'a> {
     }
 }
 
-impl<'a> Iterator<u32> for RoaringIterator<'a> {
+impl<'a> Iterator<u32> for Iter<'a> {
     fn next(&mut self) -> Option<u32> {
         match self.choose_next() {
             None => None,
@@ -46,6 +46,42 @@ impl<'a> Iterator<u32> for RoaringIterator<'a> {
                 self.inner_iter = new_iter;
                 self.next()
             },
+        }
+    }
+}
+
+pub struct UnionIter<'a> {
+    current1: Option<u32>,
+    current2: Option<u32>,
+    iter1: Iter<'a>,
+    iter2: Iter<'a>,
+}
+
+impl<'a> UnionIter<'a> {
+    pub fn new(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> UnionIter<'a> {
+        UnionIter {
+            current1: iter1.next(),
+            current2: iter2.next(),
+            iter1: iter1,
+            iter2: iter2,
+        }
+    }
+}
+
+impl<'a> Iterator<u32> for UnionIter<'a> {
+    fn next(&mut self) -> Option<u32> {
+        match (self.current1, self.current2) {
+            (None, None) => None,
+            (val, None) => { self.current1 = self.iter1.next(); val },
+            (None, val) => { self.current2 = self.iter2.next(); val },
+            (val1, val2) if val1 < val2 => { self.current1 = self.iter1.next(); val1 },
+            (val1, val2) if val1 > val2 => { self.current2 = self.iter2.next(); val2 },
+            (val1, val2) if val1 == val2 => {
+                self.current1 = self.iter1.next();
+                self.current2 = self.iter2.next();
+                val1
+            },
+            _ => panic!(),
         }
     }
 }

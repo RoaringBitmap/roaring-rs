@@ -1,3 +1,5 @@
+pub use iter::{ Iter, UnionIter };
+
 mod imp;
 mod util;
 mod iter;
@@ -21,8 +23,6 @@ mod container;
 /// println!("total bits set to true: {}", rb.len());
 /// ```
 pub type RoaringBitmap = imp::RoaringBitmap;
-
-pub type Iter<'a> = iter::RoaringIterator<'a>;
 
 impl RoaringBitmap {
     /// Creates an empty `RoaringBitmap`.
@@ -149,7 +149,7 @@ impl RoaringBitmap {
         imp::len(self)
     }
 
-    /// Iterator over each u32 stored in the RoaringBitmap.
+    /// Iterator over each u32 stored in the RoaringBitmap, guarantees values are ordered by value.
     ///
     /// # Examples
     ///
@@ -159,13 +159,15 @@ impl RoaringBitmap {
     /// let mut rb = RoaringBitmap::new();
     ///
     /// rb.insert(1);
-    /// rb.insert(4);
     /// rb.insert(6);
+    /// rb.insert(4);
     ///
-    /// // Print 1, 4, 6 in arbitrary order
-    /// for x in rb.iter() {
-    ///     println!("{}", x);
-    /// }
+    /// let mut iter = rb.iter();
+    ///
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(4));
+    /// assert_eq!(iter.next(), Some(6));
+    /// assert_eq!(iter.next(), None);
     /// ```
     #[inline]
     pub fn iter<'a>(&'a self) -> Iter<'a> {
@@ -249,6 +251,36 @@ impl RoaringBitmap {
     #[inline]
     pub fn is_superset(&self, other: &Self) -> bool {
         imp::is_superset(self, other)
+    }
+
+    /// Returns an iterator over the union of this bitmap with the `other` bitmap.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb1 = RoaringBitmap::new();
+    /// let mut rb2 = RoaringBitmap::new();
+    ///
+    /// rb1.insert(1);
+    /// rb1.insert(2);
+    ///
+    /// rb2.insert(1);
+    /// rb2.insert(3);
+    ///
+    /// let mut iter = rb1.union(&rb2);
+    ///
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(3));
+    /// assert_eq!(iter.next(), None);
+    ///
+    /// assert_eq!(rb2.is_superset(&rb1), false);
+    /// ```
+    #[inline]
+    pub fn union<'a>(&'a self, other: &'a Self) -> UnionIter<'a> {
+        imp::union(self, other)
     }
 }
 

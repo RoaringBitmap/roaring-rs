@@ -1,7 +1,7 @@
 use std::{ u16 };
 use std::slice::BinarySearchResult::{ Found, NotFound };
 
-use iter::RoaringIterator;
+use iter::{ Iter, UnionIter };
 use container::Container;
 
 pub struct RoaringBitmap {
@@ -70,8 +70,8 @@ pub fn len(this: &RB) -> uint {
 }
 
 #[inline]
-pub fn iter<'a>(this: &'a RB) -> RoaringIterator<'a> {
-    RoaringIterator::new(box this.containers.iter())
+pub fn iter<'a>(this: &'a RB) -> Iter<'a> {
+    Iter::new(box this.containers.iter())
 }
 
 pub fn is_disjoint(this: &RB, other: &RB) -> bool {
@@ -120,6 +120,11 @@ pub fn is_subset(this: &RB, other: &RB) -> bool {
 #[inline]
 pub fn is_superset(this: &RB, other: &RB) -> bool {
     other.is_subset(this)
+}
+
+#[inline]
+pub fn union<'a>(this: &'a RB, other: &'a RB) -> UnionIter<'a> {
+    UnionIter::new(this.iter(), other.iter())
 }
 
 #[inline]

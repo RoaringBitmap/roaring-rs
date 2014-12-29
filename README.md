@@ -22,7 +22,7 @@ duplicate the [BitvSet][] API.
       - [X] `fn is_superset(&self, other: &Self) -> bool;`
     - [ ] Combinations
       - [ ] Iterated Functions
-        - [ ] `fn union<'a>(&'a self, other: &'a Self) -> I;`
+        - [X] `fn union<'a>(&'a self, other: &'a Self) -> I;`
         - [ ] `fn intersection<'a>(&'a self, other: &'a Self) -> I;`
         - [ ] `fn difference<'a>(&'a self, other: &'a Self) -> I;`
         - [ ] `fn symmetric_difference<'a>(&'a self, other: &'a Self) -> I;`
