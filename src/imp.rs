@@ -52,10 +52,12 @@ pub fn contains(this: &RB, value: u32) -> bool {
     }
 }
 
+#[inline]
 pub fn clear(this: &mut RB) {
     this.containers.clear();
 }
 
+#[inline]
 pub fn is_empty(this: &RB) -> bool {
     this.containers.is_empty()
 }
@@ -67,78 +69,52 @@ pub fn len(this: &RB) -> uint {
         .fold(0, |sum, len| sum + len)
 }
 
+#[inline]
 pub fn iter<'a>(this: &'a RB) -> RoaringIterator<'a> {
     RoaringIterator::new(box this.containers.iter())
 }
 
 pub fn is_disjoint(this: &RB, other: &RB) -> bool {
-    let result: bool;
-    let mut iter1 = this.containers.iter();
-    let mut iter2 = other.containers.iter();
-    let mut container1 = iter1.next();
-    let mut container2 = iter2.next();
+    let (mut i1, mut i2) = (this.containers.iter(), other.containers.iter());
+    let (mut c1, mut c2) = (i1.next(), i2.next());
     loop {
-        match (container1, container2) {
-            (Some(c1), Some(c2)) => {
-                match (c1.key(), c2.key()) {
-                (key1, key2) if key1 == key2 => {
-                    if !c1.is_disjoint(c2) {
-                        result = false;
-                        break;
-                    }
-                    container1 = iter1.next();
-                    container2 = iter2.next();
-                },
-                (key1, key2) if key1 < key2 => container1 = iter1.next(),
-                (key1, key2) if key1 > key2 => container2 = iter2.next(),
-                (_, _) => panic!(),
+        match (c1.map(|c| c.key()), c2.map(|c| c.key())) {
+            (None, _) | (_, None) => return true,
+            (key1, key2) if key1 == key2 => {
+                if c1.unwrap().is_disjoint(c2.unwrap()) {
+                    c1 = i1.next();
+                    c2 = i2.next();
+                } else {
+                    return false;
                 }
             },
-            (_, _) => {
-                result = true;
-                break;
-            },
+            (key1, key2) if key1 < key2 => c1 = i1.next(),
+            (key1, key2) if key1 > key2 => c2 = i2.next(),
+            (_, _) => panic!(),
         }
     }
-    result
 }
 
 pub fn is_subset(this: &RB, other: &RB) -> bool {
-    let result: bool;
-    let mut iter1 = this.containers.iter();
-    let mut iter2 = other.containers.iter();
-    let mut container1 = iter1.next();
-    let mut container2 = iter2.next();
+    let (mut i1, mut i2) = (this.containers.iter(), other.containers.iter());
+    let (mut c1, mut c2) = (i1.next(), i2.next());
     loop {
-        match (container1, container2) {
-            (Some(c1), Some(c2)) =>
-                match (c1.key(), c2.key()) {
-                    (key1, key2) if key1 == key2 => {
-                        if !c1.is_subset(c2) {
-                            result = false;
-                            break;
-                        }
-                        container1 = iter1.next();
-                        container2 = iter2.next();
-                    },
-                    (key1, key2) if key1 < key2 => {
-                        result = false;
-                        break;
-                    },
-                    (key1, key2) if key1 > key2 => container2 = iter2.next(),
-                    (_, _) => panic!(),
-                },
-            (None, _) => {
-                result = true;
-                break;
+        match (c1.map(|c| c.key()), c2.map(|c| c.key())) {
+            (None, _) => return true,
+            (_, None) => return false,
+            (key1, key2) if key1 == key2 => {
+                if c1.unwrap().is_subset(c2.unwrap()) {
+                    c1 = i1.next();
+                    c2 = i2.next();
+                } else {
+                    return false;
+                }
             },
-            (_, None) => {
-                result = false;
-                break;
-            },
+            (key1, key2) if key1 < key2 => return false,
+            (key1, key2) if key1 > key2 => c2 = i2.next(),
+            (_, _) => panic!(),
         }
     }
-    result
 }
 
 #[inline]
