@@ -13,9 +13,8 @@ git checkout -b gh-pages FETCH_HEAD
 mv target/doc docs/$TAG
 
 # Update the index to point to the versioned docs
-sed -i '' -e '/<!-- DOCS INDEX -->/i\
-<li><a href="docs/'"$TAG"'/roaring/">'"$TAG"'</a></li>' \
-  index.html
+sed -i '' -e '/<!-- DOCS INDEX -->/a\
+<li><a href="docs/'"$TAG"'/roaring/">'"$TAG"'</a></li>' index.html
 
 # Add the changes
 git add docs/$TAG
