@@ -1,5 +1,4 @@
 use std::{ u32 };
-use std::slice::Iter;
 
 use store::Store;
 use store::Store::{ Array, Bitmap };
@@ -59,10 +58,10 @@ impl Container {
     }
 
     #[inline]
-    pub fn iter<'a>(&'a self) -> ContainerIter<'a> {
+    pub fn iter<'a>(&'a self) -> Box<Iterator<u16> + 'a> {
         match self.store {
-            Array(ref vec) => ContainerIter::ArrayIter(vec.iter()),
-            Bitmap(ref bits) => ContainerIter::BitmapIter(BitmapIter::new(bits)),
+            Array(ref vec) => box vec.iter().map(|x| *x),
+            Bitmap(ref bits) => box BitmapIter::new(bits),
         }
     }
 
@@ -81,12 +80,7 @@ impl Container {
     }
 }
 
-pub enum ContainerIter<'a> {
-    ArrayIter(Iter<'a, u16>),
-    BitmapIter(BitmapIter<'a>),
-}
-
-pub struct BitmapIter<'a> {
+struct BitmapIter<'a> {
     key: uint,
     bit: uint,
     bits: &'a [u32, ..2048],

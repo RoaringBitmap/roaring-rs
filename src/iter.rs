@@ -1,45 +1,36 @@
 use std::{ u16 };
-use std::slice::Iter;
+use std::slice;
 
 use util::Either;
 use util::Either::{ Left, Right };
-use container::{ Container, ContainerIter };
+use container::{ Container };
 
 pub struct RoaringIterator<'a> {
-    inner_iter: Option<(u16, ContainerIter<'a>)>,
-    container_iter: Box<Iter<'a, Container>>,
+    inner_iter: Option<(u16, Box<Iterator<u16> + 'a>)>,
+    container_iter: Box<slice::Iter<'a, Container>>,
 }
 
 fn calc(key: u16, value: u16) -> u32 {
     ((key as u32) << u16::BITS) + (value as u32)
 }
 
-fn find_next_iter<'a>(container_iter: &mut Iter<'a, Container>) -> Option<(u16, ContainerIter<'a>)> {
-    match container_iter.next() {
-        Some(container) => Some((container.key(), container.iter())),
-        None => None
-    }
+fn next_iter<'a>(container_iter: &mut slice::Iter<'a, Container>) -> Option<(u16, Box<Iterator<u16> + 'a>)> {
+    container_iter.next().map(|container| (container.key(), container.iter()))
 }
 
 impl<'a> RoaringIterator<'a> {
-    pub fn new(mut container_iter: Box<Iter<'a, Container>>) -> RoaringIterator<'a> {
+    pub fn new(mut container_iter: Box<slice::Iter<'a, Container>>) -> RoaringIterator<'a> {
         RoaringIterator {
-            inner_iter: find_next_iter(&mut *container_iter),
+            inner_iter: next_iter(&mut *container_iter),
             container_iter: container_iter
         }
     }
 
-    fn choose_next(&mut self) -> Option<Either<u32, Option<(u16, ContainerIter<'a>)>>> {
+    fn choose_next(&mut self) -> Option<Either<u32, Option<(u16, Box<Iterator<u16> + 'a>)>>> {
         match self.inner_iter {
-            Some((key, ref mut iter)) => Some(match *iter {
-                ContainerIter::ArrayIter(ref mut iter) => match iter.next() {
-                    Some(value) => Left(calc(key, *value)),
-                    None => Right(find_next_iter(&mut *self.container_iter)),
-                },
-                ContainerIter::BitmapIter(ref mut iter) => match iter.next() {
-                    Some(value) => Left(calc(key, value)),
-                    None => Right(find_next_iter(&mut *self.container_iter)),
-                },
+            Some((key, ref mut iter)) => Some(match iter.next() {
+                Some(value) => Left(calc(key, value)),
+                None => Right(next_iter(&mut *self.container_iter)),
             }),
             None => None,
         }
