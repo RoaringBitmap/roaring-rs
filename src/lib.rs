@@ -223,6 +223,33 @@ impl RoaringBitmap {
     pub fn is_subset(&self, other: &Self) -> bool {
         imp::is_subset(self, other)
     }
+
+    /// Returns `true` if this set is a superset of `other`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb1 = RoaringBitmap::new();
+    /// let mut rb2 = RoaringBitmap::new();
+    ///
+    /// rb1.insert(1);
+    ///
+    /// assert_eq!(rb2.is_superset(&rb1), false);
+    ///
+    /// rb2.insert(1);
+    ///
+    /// assert_eq!(rb2.is_superset(&rb1), true);
+    ///
+    /// rb1.insert(2);
+    ///
+    /// assert_eq!(rb2.is_superset(&rb1), false);
+    /// ```
+    #[inline]
+    pub fn is_superset(&self, other: &Self) -> bool {
+        imp::is_superset(self, other)
+    }
 }
 
 impl FromIterator<u32> for RoaringBitmap {

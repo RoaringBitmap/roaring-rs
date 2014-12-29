@@ -16,10 +16,10 @@ duplicate the [BitvSet][] API.
   - [ ] Bounded Iterators ([§ in the RFC][bounded-iterators])
     - [ ] `fn range(&self, min: Bound<&T>, max: Bound<&T>) -> RangedItems<'a, T>;`
   - [ ] Set Operations ([§ in the RFC][set-operations])
-    - [ ] Comparisons
+    - [X] Comparisons
       - [X] `fn is_disjoint(&self, other: &Self) -> bool;`
       - [X] `fn is_subset(&self, other: &Self) -> bool;`
-      - [ ] `fn is_superset(&self, other: &Self) -> bool;`
+      - [X] `fn is_superset(&self, other: &Self) -> bool;`
     - [ ] Combinations
       - [ ] Iterated Functions
         - [ ] `fn union<'a>(&'a self, other: &'a Self) -> I;`

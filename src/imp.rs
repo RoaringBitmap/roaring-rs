@@ -142,6 +142,11 @@ pub fn is_subset(this: &RB, other: &RB) -> bool {
 }
 
 #[inline]
+pub fn is_superset(this: &RB, other: &RB) -> bool {
+    other.is_subset(this)
+}
+
+#[inline]
 pub fn from_iter<I: Iterator<u32>>(iterator: I) -> RB {
     let mut rb = new();
     rb.extend(iterator);
