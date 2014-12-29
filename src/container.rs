@@ -83,11 +83,11 @@ impl Container {
 struct BitmapIter<'a> {
     key: uint,
     bit: uint,
-    bits: &'a [u32, ..2048],
+    bits: &'a [u32; 2048],
 }
 
 impl<'a> BitmapIter<'a> {
-    fn new(bits: &'a [u32, ..2048]) -> BitmapIter<'a> {
+    fn new(bits: &'a [u32; 2048]) -> BitmapIter<'a> {
         BitmapIter {
             key: 0,
             bit: 0,

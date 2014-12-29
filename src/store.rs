@@ -60,12 +60,12 @@ fn contains_bitmap(bits: &[u32; 2048], index: u16) -> bool {
 
 fn bitmap_to_array(bits: &[u32; 2048]) -> Vec<u16> {
     let mut vec = Vec::new();
-    for key in 0..bits.len() {
-        if bits[key] == 0 {
+    for (key, val) in bits.iter().map(|v| *v).enumerate() {
+        if val == 0 {
             continue
         }
         for bit in 0..(u32::BITS) {
-            if (bits[key] & (1 << bit)) != 0 {
+            if (val & (1 << bit)) != 0 {
                 vec.push((key * u32::BITS + bit) as u16);
             }
         }
