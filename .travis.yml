@@ -26,5 +26,5 @@ deploy:
 
 after_deploy:
   - cargo publish --token "$CRATES_IO_TOKEN"
-  - ./save_credentials.sh "$GITHUB_TOKEN" "$TRAVIS_REPO_SLUG"
-  - ./publish_docs.sh "$TRAVIS_TAG"
+  - ./ci/save_credentials.sh "$GITHUB_TOKEN" "$TRAVIS_REPO_SLUG"
+  - ./ci/publish_docs.sh "$TRAVIS_TAG"
