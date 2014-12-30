@@ -71,7 +71,7 @@ pub fn len(this: &RB) -> uint {
 
 #[inline]
 pub fn iter<'a>(this: &'a RB) -> Iter<'a> {
-    Iter::new(box this.containers.iter())
+    Iter::new(this.containers.iter())
 }
 
 pub fn is_disjoint(this: &RB, other: &RB) -> bool {
