@@ -10,15 +10,18 @@ pub struct Iter<'a> {
     container_iter: slice::Iter<'a, Container>,
 }
 
+#[inline]
 fn calc(key: u16, value: u16) -> u32 {
     ((key as u32) << u16::BITS) + (value as u32)
 }
 
+#[inline]
 fn next_iter<'a>(container_iter: &mut slice::Iter<'a, Container>) -> Option<(u16, Box<Iterator<u16> + 'a>)> {
     container_iter.next().map(|container| (container.key(), container.iter()))
 }
 
 impl<'a> Iter<'a> {
+    #[inline]
     pub fn new(mut container_iter: slice::Iter<'a, Container>) -> Iter<'a> {
         Iter {
             inner_iter: next_iter(&mut container_iter),
@@ -26,6 +29,7 @@ impl<'a> Iter<'a> {
         }
     }
 
+    #[inline]
     fn choose_next(&mut self) -> Option<Either<u32, Option<(u16, Box<Iterator<u16> + 'a>)>>> {
         match self.inner_iter {
             Some((key, ref mut iter)) => Some(match iter.next() {
@@ -58,6 +62,7 @@ pub struct UnionIter<'a> {
 }
 
 impl<'a> UnionIter<'a> {
+    #[inline]
     pub fn new(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> UnionIter<'a> {
         UnionIter {
             current1: iter1.next(),
@@ -76,6 +81,41 @@ impl<'a> Iterator<u32> for UnionIter<'a> {
             (None, val) => { self.current2 = self.iter2.next(); val },
             (val1, val2) if val1 < val2 => { self.current1 = self.iter1.next(); val1 },
             (val1, val2) if val1 > val2 => { self.current2 = self.iter2.next(); val2 },
+            (val1, val2) if val1 == val2 => {
+                self.current1 = self.iter1.next();
+                self.current2 = self.iter2.next();
+                val1
+            },
+            _ => panic!(),
+        }
+    }
+}
+
+pub struct IntersectionIter<'a> {
+    current1: Option<u32>,
+    current2: Option<u32>,
+    iter1: Iter<'a>,
+    iter2: Iter<'a>,
+}
+
+impl<'a> IntersectionIter<'a> {
+    #[inline]
+    pub fn new(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> IntersectionIter<'a> {
+        IntersectionIter {
+            current1: iter1.next(),
+            current2: iter2.next(),
+            iter1: iter1,
+            iter2: iter2,
+        }
+    }
+}
+
+impl<'a> Iterator<u32> for IntersectionIter<'a> {
+    fn next(&mut self) -> Option<u32> {
+        match (self.current1, self.current2) {
+            (None, _) | (_, None) => None,
+            (val1, val2) if val1 < val2 => { self.current1 = self.iter1.next(); self.next() },
+            (val1, val2) if val1 > val2 => { self.current2 = self.iter2.next(); self.next() },
             (val1, val2) if val1 == val2 => {
                 self.current1 = self.iter1.next();
                 self.current2 = self.iter2.next();

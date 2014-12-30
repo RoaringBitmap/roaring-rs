@@ -1,7 +1,7 @@
 use std::{ u16 };
 use std::slice::BinarySearchResult::{ Found, NotFound };
 
-use iter::{ Iter, UnionIter };
+use iter::{ Iter, UnionIter, IntersectionIter };
 use container::Container;
 
 pub struct RoaringBitmap {
@@ -125,6 +125,11 @@ pub fn is_superset(this: &RB, other: &RB) -> bool {
 #[inline]
 pub fn union<'a>(this: &'a RB, other: &'a RB) -> UnionIter<'a> {
     UnionIter::new(this.iter(), other.iter())
+}
+
+#[inline]
+pub fn intersection<'a>(this: &'a RB, other: &'a RB) -> IntersectionIter<'a> {
+    IntersectionIter::new(this.iter(), other.iter())
 }
 
 #[inline]

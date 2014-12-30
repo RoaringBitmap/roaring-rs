@@ -1,4 +1,4 @@
-pub use iter::{ Iter, UnionIter };
+pub use iter::{ Iter, UnionIter, IntersectionIter };
 
 mod imp;
 mod util;
@@ -275,12 +275,39 @@ impl RoaringBitmap {
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), Some(3));
     /// assert_eq!(iter.next(), None);
-    ///
-    /// assert_eq!(rb2.is_superset(&rb1), false);
     /// ```
     #[inline]
     pub fn union<'a>(&'a self, other: &'a Self) -> UnionIter<'a> {
         imp::union(self, other)
+    }
+
+    /// Returns an iterator over the intersection of this bitmap with the `other` bitmap.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb1 = RoaringBitmap::new();
+    /// let mut rb2 = RoaringBitmap::new();
+    ///
+    /// rb1.insert(1);
+    /// rb1.insert(2);
+    /// rb1.insert(4);
+    ///
+    /// rb2.insert(1);
+    /// rb2.insert(3);
+    /// rb2.insert(4);
+    ///
+    /// let mut iter = rb1.intersection(&rb2);
+    ///
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(4));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    #[inline]
+    pub fn intersection<'a>(&'a self, other: &'a Self) -> IntersectionIter<'a> {
+        imp::intersection(self, other)
     }
 }
 

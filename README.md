@@ -23,7 +23,7 @@ duplicate the [BitvSet][] API.
     - [ ] Combinations
       - [ ] Iterated Functions
         - [X] `fn union<'a>(&'a self, other: &'a Self) -> I;`
-        - [ ] `fn intersection<'a>(&'a self, other: &'a Self) -> I;`
+        - [X] `fn intersection<'a>(&'a self, other: &'a Self) -> I;`
         - [ ] `fn difference<'a>(&'a self, other: &'a Self) -> I;`
         - [ ] `fn symmetric_difference<'a>(&'a self, other: &'a Self) -> I;`
       - [ ] Operator Traits
