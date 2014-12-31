@@ -86,7 +86,7 @@ impl<'a> Iterator<u32> for UnionIter<'a> {
                 self.current2 = self.iter2.next();
                 val1
             },
-            _ => panic!(),
+            _ => panic!("Should not be possible to get here"),
         }
     }
 }
@@ -121,7 +121,7 @@ impl<'a> Iterator<u32> for IntersectionIter<'a> {
                 self.current2 = self.iter2.next();
                 val1
             },
-            _ => panic!(),
+            _ => panic!("Should not be possible to get here"),
         }
     }
 }

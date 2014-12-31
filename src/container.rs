@@ -61,7 +61,8 @@ impl Container {
     pub fn iter<'a>(&'a self) -> Box<Iterator<u16> + 'a> {
         match self.store {
             Array(ref vec) => box vec.iter().map(|x| *x),
-            Bitmap(ref bits) => box BitmapIter::new(bits),
+            _ => panic!("↓ causes the compiler to do something stupid"),
+            // Bitmap(ref bits) => box BitmapIter::new(bits),
         }
     }
 
