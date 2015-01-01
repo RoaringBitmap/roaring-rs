@@ -125,3 +125,38 @@ impl<'a> Iterator<u32> for IntersectionIter<'a> {
         }
     }
 }
+
+pub struct DifferenceIter<'a> {
+    current1: Option<u32>,
+    current2: Option<u32>,
+    iter1: Iter<'a>,
+    iter2: Iter<'a>,
+}
+
+impl<'a> DifferenceIter<'a> {
+    #[inline]
+    pub fn new(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> DifferenceIter<'a> {
+        DifferenceIter {
+            current1: iter1.next(),
+            current2: iter2.next(),
+            iter1: iter1,
+            iter2: iter2,
+        }
+    }
+}
+
+impl<'a> Iterator<u32> for DifferenceIter<'a> {
+    fn next(&mut self) -> Option<u32> {
+        match (self.current1, self.current2) {
+            (None, _) | (_, None) => None,
+            (val1, val2) if val1 < val2 => { self.current1 = self.iter1.next(); val1 },
+            (val1, val2) if val1 > val2 => { self.current2 = self.iter2.next(); self.next() },
+            (val1, val2) if val1 == val2 => {
+                self.current1 = self.iter1.next();
+                self.current2 = self.iter2.next();
+                self.next()
+            },
+            _ => panic!("Should not be possible to get here"),
+        }
+    }
+}
