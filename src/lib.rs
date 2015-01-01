@@ -1,3 +1,5 @@
+#![feature(slicing_syntax)]
+
 pub use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
 
 mod imp;
