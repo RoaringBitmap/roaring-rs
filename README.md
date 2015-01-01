@@ -21,11 +21,11 @@ duplicate the [BitvSet][] API.
       - [X] `fn is_subset(&self, other: &Self) -> bool;`
       - [X] `fn is_superset(&self, other: &Self) -> bool;`
     - [ ] Combinations
-      - [ ] Iterated Functions
+      - [X] Iterated Functions
         - [X] `fn union<'a>(&'a self, other: &'a Self) -> I;`
         - [X] `fn intersection<'a>(&'a self, other: &'a Self) -> I;`
         - [X] `fn difference<'a>(&'a self, other: &'a Self) -> I;`
-        - [ ] `fn symmetric_difference<'a>(&'a self, other: &'a Self) -> I;`
+        - [X] `fn symmetric_difference<'a>(&'a self, other: &'a Self) -> I;`
       - [ ] Operator Traits
         - [ ] `std::ops::BitOr`
         - [ ] `std::ops::BitAnd`

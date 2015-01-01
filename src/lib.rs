@@ -1,4 +1,4 @@
-pub use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter };
+pub use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
 
 mod imp;
 mod util;
@@ -341,6 +341,36 @@ impl RoaringBitmap {
     #[inline]
     pub fn difference<'a>(&'a self, other: &'a Self) -> DifferenceIter<'a> {
         imp::difference(self, other)
+    }
+
+    /// Returns an iterator over the set of `u32`s in `this` that are not in `other` + in `other`
+    /// that are not in `this`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb1 = RoaringBitmap::new();
+    /// let mut rb2 = RoaringBitmap::new();
+    ///
+    /// rb1.insert(1);
+    /// rb1.insert(2);
+    /// rb1.insert(4);
+    ///
+    /// rb2.insert(1);
+    /// rb2.insert(3);
+    /// rb2.insert(4);
+    ///
+    /// let mut iter = rb1.symmetric_difference(&rb2);
+    ///
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(3));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    #[inline]
+    pub fn symmetric_difference<'a>(&'a self, other: &'a Self) -> SymmetricDifferenceIter<'a> {
+        imp::symmetric_difference(self, other)
     }
 }
 

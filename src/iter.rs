@@ -160,3 +160,38 @@ impl<'a> Iterator<u32> for DifferenceIter<'a> {
         }
     }
 }
+
+pub struct SymmetricDifferenceIter<'a> {
+    current1: Option<u32>,
+    current2: Option<u32>,
+    iter1: Iter<'a>,
+    iter2: Iter<'a>,
+}
+
+impl<'a> SymmetricDifferenceIter<'a> {
+    #[inline]
+    pub fn new(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> SymmetricDifferenceIter<'a> {
+        SymmetricDifferenceIter {
+            current1: iter1.next(),
+            current2: iter2.next(),
+            iter1: iter1,
+            iter2: iter2,
+        }
+    }
+}
+
+impl<'a> Iterator<u32> for SymmetricDifferenceIter<'a> {
+    fn next(&mut self) -> Option<u32> {
+        match (self.current1, self.current2) {
+            (None, _) | (_, None) => None,
+            (val1, val2) if val1 < val2 => { self.current1 = self.iter1.next(); val1 },
+            (val1, val2) if val1 > val2 => { self.current2 = self.iter2.next(); val2 },
+            (val1, val2) if val1 == val2 => {
+                self.current1 = self.iter1.next();
+                self.current2 = self.iter2.next();
+                self.next()
+            },
+            _ => panic!("Should not be possible to get here"),
+        }
+    }
+}

@@ -1,7 +1,7 @@
 use std::{ u16 };
 use std::slice::BinarySearchResult::{ Found, NotFound };
 
-use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter };
+use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
 use container::Container;
 
 pub struct RoaringBitmap {
@@ -135,6 +135,11 @@ pub fn intersection<'a>(this: &'a RB, other: &'a RB) -> IntersectionIter<'a> {
 #[inline]
 pub fn difference<'a>(this: &'a RB, other: &'a RB) -> DifferenceIter<'a> {
     DifferenceIter::new(this.iter(), other.iter())
+}
+
+#[inline]
+pub fn symmetric_difference<'a>(this: &'a RB, other: &'a RB) -> SymmetricDifferenceIter<'a> {
+    SymmetricDifferenceIter::new(this.iter(), other.iter())
 }
 
 #[inline]
