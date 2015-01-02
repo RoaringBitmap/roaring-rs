@@ -430,6 +430,52 @@ impl<'a> Extend<&'a u32> for RoaringBitmap {
     }
 }
 
+impl BitOr<RoaringBitmap, RoaringBitmap> for RoaringBitmap {
+    /// Unions the `rhs` into this `RoaringBitmap`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = FromIterator::from_iter(1..4);
+    /// let rb2: RoaringBitmap = FromIterator::from_iter(2..5);
+    /// let rb3: RoaringBitmap = FromIterator::from_iter(1..5);
+    ///
+    /// let rb4 = rb1 | rb2;
+    ///
+    /// assert_eq!(rb3, rb4);
+    /// ```
+    #[inline]
+    fn bitor(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
+        self.union_with(&rhs);
+        self
+    }
+}
+
+impl<'a> BitOr<&'a RoaringBitmap, RoaringBitmap> for RoaringBitmap {
+    /// Unions the `rhs` into this `RoaringBitmap`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = FromIterator::from_iter(1..4);
+    /// let rb2: RoaringBitmap = FromIterator::from_iter(2..5);
+    /// let rb3: RoaringBitmap = FromIterator::from_iter(1..5);
+    ///
+    /// let rb4 = rb1 | &rb2;
+    ///
+    /// assert_eq!(rb3, rb4);
+    /// ```
+    #[inline]
+    fn bitor(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+        self.union_with(rhs);
+        self
+    }
+}
+
 impl Show for RoaringBitmap {
     #[inline]
     fn fmt(&self, formatter: &mut Formatter) -> Result {

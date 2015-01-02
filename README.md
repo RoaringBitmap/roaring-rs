@@ -27,7 +27,7 @@ duplicate the [BitvSet][] API.
         - [X] `fn difference<'a>(&'a self, other: &'a Self) -> I;`
         - [X] `fn symmetric_difference<'a>(&'a self, other: &'a Self) -> I;`
       - [ ] Operator Traits
-        - [ ] `std::ops::BitOr`
+        - [X] `std::ops::BitOr`
         - [ ] `std::ops::BitAnd`
         - [ ] `std::ops::BitXor`
         - [ ] `std::ops::Sub`
