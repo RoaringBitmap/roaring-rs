@@ -174,7 +174,7 @@ fn union_with(mut this: &mut Store, other: &Store) {
         (& &Array(ref mut vec1), &Array(ref vec2)) => union_with_array(vec1, vec2),
         (& &Bitmap(ref mut bits1), &Bitmap(ref bits2)) => union_with_bitmap(bits1, bits2),
         (& &Bitmap(ref mut bits), &Array(ref vec)) => union_with_bitmap_array(bits, vec),
-        (& &Array(_), &Bitmap(ref bits2)) => {
+        (& &Array(_), &Bitmap(_)) => {
             *this = this.to_bitmap();
             this.union_with(other);
         },
