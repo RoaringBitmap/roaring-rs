@@ -1,9 +1,10 @@
-use std::{ u16 };
+use std::{ u16, u32 };
 use std::slice::BinarySearchResult::{ Found, NotFound };
 
 use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
 use container::Container;
 
+#[deriving(PartialEq)]
 pub struct RoaringBitmap {
     containers: Vec<Container>,
 }
@@ -143,7 +144,35 @@ pub fn symmetric_difference<'a>(this: &'a RB, other: &'a RB) -> SymmetricDiffere
 }
 
 #[inline]
+pub fn union_with(this: &mut RB, other: &RB) {
+    let (mut i1, mut i2) = (this.containers.iter_mut(), other.containers.iter());
+    let (mut c1, mut c2) = (i1.next(), i2.next());
+    loop {
+        match (&mut c1, c2) {
+            (&None, _) | (_, None) => return,
+            (&Some(ref mut container1), Some(container2)) => match (container1.key(), container2.key()) {
+                (key1, key2) if key1 == key2 => {
+                    container1.union_with(container2);
+                    c1 = i1.next();
+                    c2 = i2.next();
+                },
+                (key1, key2) if key1 < key2 => c1 = i1.next(),
+                (key1, key2) if key1 > key2 => c2 = i2.next(),
+                (_, _) => panic!(),
+            }
+        }
+    }
+}
+
+#[inline]
 pub fn from_iter<I: Iterator<u32>>(iterator: I) -> RB {
+    let mut rb = new();
+    rb.extend(iterator);
+    rb
+}
+
+#[inline]
+pub fn from_iter_ref<'a, I: Iterator<&'a u32>>(iterator: I) -> RB {
     let mut rb = new();
     rb.extend(iterator);
     rb
@@ -154,6 +183,32 @@ pub fn extend<I: Iterator<u32>>(this: &mut RB, mut iterator: I) {
     for value in iterator {
         this.insert(value);
     }
+}
+
+#[inline]
+pub fn extend_ref<'a, I: Iterator<&'a u32>>(this: &mut RB, mut iterator: I) {
+    for value in iterator {
+        this.insert(*value);
+    }
+}
+
+pub fn min(this: &RB) -> u32 {
+    match this.containers[] {
+        [ref head, ..] => calc(head.key(), head.min()),
+        [] => u32::MIN,
+    }
+}
+
+pub fn max(this: &RB) -> u32 {
+    match this.containers[] {
+        [.., ref tail] => calc(tail.key(), tail.max()),
+        [] => u32::MAX,
+    }
+}
+
+#[inline]
+fn calc(key: u16, value: u16) -> u32 {
+    ((key as u32) << u16::BITS) + (value as u32)
 }
 
 #[inline]

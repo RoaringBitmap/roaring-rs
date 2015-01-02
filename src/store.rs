@@ -1,4 +1,5 @@
-use std::{ u32 };
+use std::{ u16, u32 };
+use std::num::Int;
 use std::slice::BinarySearchResult::{ Found, NotFound };
 
 use store::Store::{ Array, Bitmap };
@@ -150,6 +151,36 @@ fn is_subset_array_bitmap(vec: &Vec<u16>, bits: &[u32; 2048]) -> bool {
     return true;
 }
 
+fn union_with_array(vec1: &mut Vec<u16>, vec2: &Vec<u16>) {
+    for index in vec2.iter() {
+        insert_array(vec1, *index);
+    }
+}
+
+fn union_with_bitmap(bits1: &mut [u32; 2048], bits2: &[u32; 2048]) {
+    for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
+        *index1 &= *index2;
+    }
+}
+
+fn union_with_bitmap_array(bits: &mut [u32; 2048], vec: &Vec<u16>) {
+    for index in vec.iter() {
+        insert_bitmap(bits, *index);
+    }
+}
+
+fn union_with(mut this: &mut Store, other: &Store) {
+    match (&mut this, other) {
+        (& &Array(ref mut vec1), &Array(ref vec2)) => union_with_array(vec1, vec2),
+        (& &Bitmap(ref mut bits1), &Bitmap(ref bits2)) => union_with_bitmap(bits1, bits2),
+        (& &Bitmap(ref mut bits), &Array(ref vec)) => union_with_bitmap_array(bits, vec),
+        (& &Array(_), &Bitmap(ref bits2)) => {
+            *this = this.to_bitmap();
+            this.union_with(other);
+        },
+    }
+}
+
 impl Store {
     pub fn insert(&mut self, index: u16) -> bool {
         match self {
@@ -190,17 +221,76 @@ impl Store {
         }
     }
 
-    pub fn to_array(&self) -> Store {
+    pub fn to_array(&self) -> Self {
         match self {
             &Array(_) => panic!("Cannot convert array to array"),
             &Bitmap(ref bits) => Array(bitmap_to_array(bits)),
         }
     }
 
-    pub fn to_bitmap(&self) -> Store {
+    pub fn to_bitmap(&self) -> Self {
         match self {
             &Array(ref vec) => Bitmap(array_to_bitmap(vec)),
             &Bitmap(_) => panic!("Cannot convert bitmap to bitmap"),
+        }
+    }
+
+    pub fn union_with(&mut self, other: &Self) {
+        union_with(self, other);
+    }
+
+    pub fn len(&self) -> u16 {
+        match self {
+            &Array(ref vec) => vec.len() as u16,
+            &Bitmap(ref bits) => {
+                let mut len = u32::BITS * 2048;
+                for bit in bits.iter() {
+                    len -= bit.count_zeros()
+                }
+                len as u16
+            },
+        }
+    }
+
+    pub fn min(&self) -> u16 {
+        match self {
+            &Array(ref vec) => vec[0],
+            &Bitmap(ref bits) => {
+                for (index, bit) in bits.iter().enumerate() {
+                    if *bit != 0 {
+                        return (index * u32::BITS + bit.leading_zeros()) as u16;
+                    }
+                }
+                return u16::MIN;
+            },
+        }
+    }
+
+    pub fn max(&self) -> u16 {
+        match self {
+            &Array(ref vec) => vec[vec.len() - 1],
+            &Bitmap(ref bits) => {
+                for (index, bit) in bits.iter().enumerate().rev() {
+                    if *bit != 0 {
+                        return ((index + 1) * u32::BITS - bit.trailing_zeros()) as u16;
+                    }
+                }
+                return u16::MAX;
+            },
+        }
+    }
+}
+
+impl PartialEq for Store {
+    fn eq(&self, other: &Store) -> bool {
+        match (self, other) {
+            (&Array(ref vec1), &Array(ref vec2)) => {
+                vec1 == vec2
+            },
+            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => {
+                bits1.iter().zip(bits2.iter()).map(|(i1, i2)| i1 == i2).fold(true, |acc, n| acc & n)
+            },
+            _ => false,
         }
     }
 }

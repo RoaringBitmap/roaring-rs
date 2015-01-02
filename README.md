@@ -32,7 +32,7 @@ duplicate the [BitvSet][] API.
         - [ ] `std::ops::BitXor`
         - [ ] `std::ops::Sub`
       - [ ] Inplace Functions
-        - [ ] `fn union_with(&mut self, other: &BitvSet)`
+        - [X] `fn union_with(&mut self, other: &BitvSet)`
         - [ ] `fn intersect_with(&mut self, other: &BitvSet)`
         - [ ] `fn difference_with(&mut self, other: &BitvSet)`
         - [ ] `fn symmetric_difference_with(&mut self, other: &BitvSet)`

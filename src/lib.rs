@@ -1,4 +1,7 @@
 #![feature(slicing_syntax)]
+#![feature(advanced_slice_patterns)]
+
+use std::fmt::{ Show, Formatter, Result };
 
 pub use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
 
@@ -374,6 +377,26 @@ impl RoaringBitmap {
     pub fn symmetric_difference<'a>(&'a self, other: &'a Self) -> SymmetricDifferenceIter<'a> {
         imp::symmetric_difference(self, other)
     }
+
+    /// Unions in-place with the specified other bitmap.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb1: RoaringBitmap = FromIterator::from_iter(1..4);
+    /// let rb2: RoaringBitmap = FromIterator::from_iter(3..5);
+    /// let rb3: RoaringBitmap = FromIterator::from_iter(1..5);
+    ///
+    /// rb1.union_with(&rb2);
+    ///
+    /// assert_eq!(rb1, rb3);
+    /// ```
+    #[inline]
+    pub fn union_with(&mut self, other: &Self) {
+        imp::union_with(self, other)
+    }
 }
 
 impl FromIterator<u32> for RoaringBitmap {
@@ -383,9 +406,30 @@ impl FromIterator<u32> for RoaringBitmap {
     }
 }
 
+impl<'a> FromIterator<&'a u32> for RoaringBitmap {
+    #[inline]
+    fn from_iter<I: Iterator<&'a u32>>(iterator: I) -> RoaringBitmap {
+        imp::from_iter_ref(iterator)
+    }
+}
+
 impl Extend<u32> for RoaringBitmap {
     #[inline]
     fn extend<I: Iterator<u32>>(&mut self, iterator: I) {
         imp::extend(self, iterator)
+    }
+}
+
+impl<'a> Extend<&'a u32> for RoaringBitmap {
+    #[inline]
+    fn extend<I: Iterator<&'a u32>>(&mut self, iterator: I) {
+        imp::extend_ref(self, iterator)
+    }
+}
+
+impl Show for RoaringBitmap {
+    #[inline]
+    fn fmt(&self, formatter: &mut Formatter) -> Result {
+        format!("RoaringBitmap<{} values between {} and {}>", self.len(), imp::min(self), imp::max(self)).fmt(formatter)
     }
 }

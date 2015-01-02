@@ -3,6 +3,7 @@ use std::{ u32 };
 use store::Store;
 use store::Store::{ Array, Bitmap };
 
+#[deriving(PartialEq)]
 pub struct Container {
     key: u16,
     len: u16,
@@ -78,6 +79,22 @@ impl Container {
         } else {
             self.store.is_subset(&other.store)
         }
+    }
+
+    #[inline]
+    pub fn union_with(&mut self, other: &Self) {
+        self.store.union_with(&other.store);
+        self.len = self.store.len();
+    }
+
+    #[inline]
+    pub fn min(&self) -> u16 {
+        self.store.min()
+    }
+
+    #[inline]
+    pub fn max(&self) -> u16 {
+        self.store.max()
     }
 }
 
