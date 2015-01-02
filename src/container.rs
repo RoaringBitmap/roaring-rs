@@ -60,10 +60,12 @@ impl Container {
 
     #[inline]
     pub fn iter<'a>(&'a self) -> Box<Iterator<u16> + 'a> {
+        let result: Box<Iterator<u16> + 'a>;
         match self.store {
-            Array(ref vec) => box vec.iter().map(|x| *x),
-            Bitmap(ref bits) => box BitmapIter::new(bits),
+            Array(ref vec) => result = box vec.iter().map(|x| *x),
+            Bitmap(ref bits) => result = box BitmapIter::new(bits),
         }
+        result
     }
 
     #[inline]
