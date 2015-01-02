@@ -160,6 +160,27 @@ pub fn union_with(this: &mut RB, other: &RB) {
 }
 
 #[inline]
+pub fn intersect_with(this: &mut RB, other: &RB) {
+    let (mut i1, mut i2) = (this.containers.iter_mut(), other.containers.iter());
+    let (mut c1, mut c2) = (i1.next(), i2.next());
+    loop {
+        match (&mut c1, c2) {
+            (&None, _) | (_, None) => return,
+            (&Some(ref mut container1), Some(container2)) => match (container1.key(), container2.key()) {
+                (key1, key2) if key1 == key2 => {
+                    container1.intersect_with(container2);
+                    c1 = i1.next();
+                    c2 = i2.next();
+                },
+                (key1, key2) if key1 < key2 => c1 = i1.next(),
+                (key1, key2) if key1 > key2 => c2 = i2.next(),
+                (_, _) => panic!(),
+            }
+        }
+    }
+}
+
+#[inline]
 pub fn from_iter<I: Iterator<u32>>(iterator: I) -> RB {
     let mut rb = new();
     rb.extend(iterator);

@@ -400,6 +400,26 @@ impl RoaringBitmap {
     pub fn union_with(&mut self, other: &Self) {
         imp::union_with(self, other)
     }
+
+    /// Intersects in-place with the specified other bitmap.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb1: RoaringBitmap = FromIterator::from_iter(1..4);
+    /// let rb2: RoaringBitmap = FromIterator::from_iter(3..5);
+    /// let rb3: RoaringBitmap = FromIterator::from_iter(3..4);
+    ///
+    /// rb1.intersect_with(&rb2);
+    ///
+    /// assert_eq!(rb1, rb3);
+    /// ```
+    #[inline]
+    pub fn intersect_with(&mut self, other: &Self) {
+        imp::intersect_with(self, other)
+    }
 }
 
 impl FromIterator<u32> for RoaringBitmap {

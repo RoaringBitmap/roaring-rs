@@ -159,7 +159,7 @@ fn union_with_array(vec1: &mut Vec<u16>, vec2: &Vec<u16>) {
 
 fn union_with_bitmap(bits1: &mut [u32; 2048], bits2: &[u32; 2048]) {
     for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
-        *index1 &= *index2;
+        *index1 |= *index2;
     }
 }
 
@@ -177,6 +177,53 @@ fn union_with(mut this: &mut Store, other: &Store) {
         (& &Array(_), &Bitmap(_)) => {
             *this = this.to_bitmap();
             this.union_with(other);
+        },
+    }
+}
+
+fn intersect_with_array(vec1: &mut Vec<u16>, vec2: &Vec<u16>) {
+    let mut i1 = 0u;
+    let mut iter2 = vec2.iter();
+    let mut current2 = iter2.next();
+    while i1 < vec1.len() {
+        match (vec1[i1], current2) {
+            (_, None) => { vec1.remove(i1); },
+            (ref val1, Some(val2)) if val1 < val2 => { vec1.remove(i1); },
+            (ref val1, Some(val2)) if val1 > val2 => { current2 = iter2.next(); },
+            (ref val1, Some(val2)) if val1 == val2 => {
+                i1 += 1;
+                current2 = iter2.next();
+            },
+            _ => panic!("Should not be possible to get here"),
+        }
+    }
+}
+
+fn intersect_with_bitmap(bits1: &mut [u32; 2048], bits2: &[u32; 2048]) {
+    for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
+        *index1 &= *index2;
+    }
+}
+
+fn intersect_with_array_bitmap(vec: &mut Vec<u16>, bits: &[u32; 2048]) {
+    let mut i = 0;
+    while i < vec.len() {
+        if contains_bitmap(bits, vec[i]) {
+            i += 1;
+        } else {
+            vec.remove(i);
+        }
+    }
+}
+
+fn intersect_with(mut this: &mut Store, other: &Store) {
+    match (&mut this, other) {
+        (& &Array(ref mut vec1), &Array(ref vec2)) => intersect_with_array(vec1, vec2),
+        (& &Bitmap(ref mut bits1), &Bitmap(ref bits2)) => intersect_with_bitmap(bits1, bits2),
+        (& &Array(ref mut vec), &Bitmap(ref bits)) => intersect_with_array_bitmap(vec, bits),
+        (& &Bitmap(_), &Array(_)) => {
+            *this = this.to_array();
+            this.intersect_with(other);
         },
     }
 }
@@ -237,6 +284,10 @@ impl Store {
 
     pub fn union_with(&mut self, other: &Self) {
         union_with(self, other);
+    }
+
+    pub fn intersect_with(&mut self, other: &Self) {
+        intersect_with(self, other);
     }
 
     pub fn len(&self) -> u16 {

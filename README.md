@@ -33,7 +33,7 @@ duplicate the [BitvSet][] API.
         - [ ] `std::ops::Sub`
       - [ ] Inplace Functions
         - [X] `fn union_with(&mut self, other: &BitvSet)`
-        - [ ] `fn intersect_with(&mut self, other: &BitvSet)`
+        - [X] `fn intersect_with(&mut self, other: &BitvSet)`
         - [ ] `fn difference_with(&mut self, other: &BitvSet)`
         - [ ] `fn symmetric_difference_with(&mut self, other: &BitvSet)`
 

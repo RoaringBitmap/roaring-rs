@@ -87,6 +87,12 @@ impl Container {
     }
 
     #[inline]
+    pub fn intersect_with(&mut self, other: &Self) {
+        self.store.intersect_with(&other.store);
+        self.len = self.store.len();
+    }
+
+    #[inline]
     pub fn min(&self) -> u16 {
         self.store.min()
     }
