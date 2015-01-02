@@ -28,9 +28,9 @@ duplicate the [BitvSet][] API.
         - [X] `fn symmetric_difference<'a>(&'a self, other: &'a Self) -> I;`
       - [ ] Operator Traits
         - [X] `std::ops::BitOr`
-        - [ ] `std::ops::BitAnd`
-        - [ ] `std::ops::BitXor`
+        - [X] `std::ops::BitAnd`
         - [ ] `std::ops::Sub`
+        - [ ] `std::ops::BitXor`
       - [ ] Inplace Functions
         - [X] `fn union_with(&mut self, other: &BitvSet)`
         - [X] `fn intersect_with(&mut self, other: &BitvSet)`
