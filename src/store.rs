@@ -243,9 +243,9 @@ impl Store {
         match self {
             &Array(ref vec) => vec.len() as u16,
             &Bitmap(ref bits) => {
-                let mut len = u32::BITS * 2048;
+                let mut len = 0;
                 for bit in bits.iter() {
-                    len -= bit.count_zeros()
+                    len += bit.count_ones()
                 }
                 len as u16
             },
