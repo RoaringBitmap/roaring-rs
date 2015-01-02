@@ -4,12 +4,7 @@ use std::slice::BinarySearchResult::{ Found, NotFound };
 use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
 use container::Container;
 
-#[deriving(PartialEq)]
-pub struct RoaringBitmap {
-    containers: Vec<Container>,
-}
-
-type RB = RoaringBitmap;
+type RB = ::RoaringBitmap;
 
 #[inline]
 pub fn new() -> RB {

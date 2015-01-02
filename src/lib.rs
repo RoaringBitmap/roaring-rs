@@ -27,7 +27,10 @@ mod container;
 /// rb.insert(7);
 /// println!("total bits set to true: {}", rb.len());
 /// ```
-pub type RoaringBitmap = imp::RoaringBitmap;
+#[deriving(PartialEq)]
+pub struct RoaringBitmap {
+    containers: Vec<container::Container>,
+}
 
 impl RoaringBitmap {
     /// Creates an empty `RoaringBitmap`.
