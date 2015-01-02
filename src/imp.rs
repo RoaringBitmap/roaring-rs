@@ -1,4 +1,5 @@
 use std::{ u16, u32 };
+use std::slice;
 use std::slice::BinarySearchResult::{ Found, NotFound };
 
 use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
@@ -70,47 +71,22 @@ pub fn iter<'a>(this: &'a RB) -> Iter<'a> {
     Iter::new(this.containers.iter())
 }
 
+fn pairs<'a>(this: &'a RB, other: &'a RB) -> Pairs<'a> {
+    Pairs::new(this.containers.iter(), other.containers.iter())
+}
+
 pub fn is_disjoint(this: &RB, other: &RB) -> bool {
-    let (mut i1, mut i2) = (this.containers.iter(), other.containers.iter());
-    let (mut c1, mut c2) = (i1.next(), i2.next());
-    loop {
-        match (c1.map(|c| c.key()), c2.map(|c| c.key())) {
-            (None, _) | (_, None) => return true,
-            (key1, key2) if key1 == key2 => {
-                if c1.unwrap().is_disjoint(c2.unwrap()) {
-                    c1 = i1.next();
-                    c2 = i2.next();
-                } else {
-                    return false;
-                }
-            },
-            (key1, key2) if key1 < key2 => c1 = i1.next(),
-            (key1, key2) if key1 > key2 => c2 = i2.next(),
-            (_, _) => panic!(),
-        }
-    }
+    pairs(this, other)
+        .filter(|&(c1, c2)| c1.is_some() && c2.is_some())
+        .all(|(c1, c2)| c1.unwrap().is_disjoint(c2.unwrap()))
 }
 
 pub fn is_subset(this: &RB, other: &RB) -> bool {
-    let (mut i1, mut i2) = (this.containers.iter(), other.containers.iter());
-    let (mut c1, mut c2) = (i1.next(), i2.next());
-    loop {
-        match (c1.map(|c| c.key()), c2.map(|c| c.key())) {
-            (None, _) => return true,
-            (_, None) => return false,
-            (key1, key2) if key1 == key2 => {
-                if c1.unwrap().is_subset(c2.unwrap()) {
-                    c1 = i1.next();
-                    c2 = i2.next();
-                } else {
-                    return false;
-                }
-            },
-            (key1, key2) if key1 < key2 => return false,
-            (key1, key2) if key1 > key2 => c2 = i2.next(),
-            (_, _) => panic!(),
-        }
-    }
+    pairs(this, other).all(|pairs| match pairs {
+        (None, _) => return true,
+        (_, None) => return false,
+        (Some(c1), Some(c2)) => c1.is_subset(c2),
+    })
 }
 
 #[inline]
@@ -140,43 +116,25 @@ pub fn symmetric_difference<'a>(this: &'a RB, other: &'a RB) -> SymmetricDiffere
 
 #[inline]
 pub fn union_with(this: &mut RB, other: &RB) {
-    let (mut i1, mut i2) = (this.containers.iter_mut(), other.containers.iter());
-    let (mut c1, mut c2) = (i1.next(), i2.next());
-    loop {
-        match (&mut c1, c2) {
-            (&None, _) | (_, None) => return,
-            (&Some(ref mut container1), Some(container2)) => match (container1.key(), container2.key()) {
-                (key1, key2) if key1 == key2 => {
-                    container1.union_with(container2);
-                    c1 = i1.next();
-                    c2 = i2.next();
-                },
-                (key1, key2) if key1 < key2 => c1 = i1.next(),
-                (key1, key2) if key1 > key2 => c2 = i2.next(),
-                (_, _) => panic!(),
-            }
-        }
+    for container in other.containers.iter() {
+        let key = container.key();
+        match this.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
+            NotFound(loc) => this.containers.insert(loc, (*container).clone()),
+            Found(loc) => this.containers[loc].union_with(container),
+        };
     }
 }
 
 #[inline]
 pub fn intersect_with(this: &mut RB, other: &RB) {
-    let (mut i1, mut i2) = (this.containers.iter_mut(), other.containers.iter());
-    let (mut c1, mut c2) = (i1.next(), i2.next());
-    loop {
-        match (&mut c1, c2) {
-            (&None, _) | (_, None) => return,
-            (&Some(ref mut container1), Some(container2)) => match (container1.key(), container2.key()) {
-                (key1, key2) if key1 == key2 => {
-                    container1.intersect_with(container2);
-                    c1 = i1.next();
-                    c2 = i2.next();
-                },
-                (key1, key2) if key1 < key2 => c1 = i1.next(),
-                (key1, key2) if key1 > key2 => c2 = i2.next(),
-                (_, _) => panic!(),
-            }
-        }
+    let mut index = 0;
+    while index < this.containers.len() {
+        let key = this.containers[index].key();
+        match other.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
+            NotFound(_) => { this.containers.remove(index); },
+            Found(loc) => this.containers[index].intersect_with(&other.containers[loc]),
+        };
+        index += 1;
     }
 }
 
@@ -229,6 +187,56 @@ fn calc(key: u16, value: u16) -> u32 {
 
 #[inline]
 fn calc_loc(index: u32) -> (u16, u16) { ((index >> u16::BITS) as u16, index as u16) }
+
+struct Pairs<'a> {
+    iter1: slice::Iter<'a, Container>,
+    iter2: slice::Iter<'a, Container>,
+    current1: Option<&'a Container>,
+    current2: Option<&'a Container>,
+}
+
+impl<'a> Pairs<'a> {
+    fn new(mut iter1: slice::Iter<'a, Container>, mut iter2: slice::Iter<'a, Container>) -> Pairs<'a> {
+        Pairs {
+            iter1: iter1,
+            iter2: iter2,
+            current1: iter1.next(),
+            current2: iter2.next(),
+        }
+    }
+}
+
+impl<'a> Iterator<(Option<&'a Container>, Option<&'a Container>)> for Pairs<'a> {
+    fn next(&mut self) -> Option<(Option<&'a Container>, Option<&'a Container>)> {
+        match (self.current1, self.current2) {
+            (None, None) => None,
+            (Some(c1), None) => {
+                self.current1 = self.iter1.next();
+                Some((Some(c1), None))
+            },
+            (None, Some(c2)) => {
+                self.current2 = self.iter2.next();
+                Some((None, Some(c2)))
+            },
+            (Some(c1), Some(c2)) => match (c1.key(), c2.key()) {
+                (key1, key2) if key1 == key2 => {
+                    self.current1 = self.iter1.next();
+                    self.current2 = self.iter2.next();
+                    Some((Some(c1), Some(c2)))
+                },
+                (key1, key2) if key1 < key2 => {
+                    self.current1 = self.iter1.next();
+                    Some((Some(c1), None))
+                },
+                (key1, key2) if key1 > key2 => {
+                    self.current2 = self.iter2.next();
+                    Some((None, Some(c2)))
+                },
+                (_, _) => panic!(),
+            }
+        }
+    }
+}
 
 #[cfg(test)]
 mod test {

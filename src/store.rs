@@ -1,4 +1,5 @@
 use std::{ u16, u32 };
+use std::ptr;
 use std::num::Int;
 use std::slice::BinarySearchResult::{ Found, NotFound };
 
@@ -342,6 +343,21 @@ impl PartialEq for Store {
                 bits1.iter().zip(bits2.iter()).map(|(i1, i2)| i1 == i2).fold(true, |acc, n| acc & n)
             },
             _ => false,
+        }
+    }
+}
+
+impl Clone for Store {
+    fn clone(&self) -> Self {
+        match self {
+            &Array(ref vec) => Array(vec.clone()),
+            &Bitmap(ref bits) => {
+                let mut new_bits = [0u32; 2048];
+                unsafe {
+                    ptr::copy_memory(&mut new_bits, bits, 2048);
+                }
+                Bitmap(new_bits)
+            },
         }
     }
 }

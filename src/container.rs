@@ -3,7 +3,7 @@ use std::{ u32 };
 use store::Store;
 use store::Store::{ Array, Bitmap };
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Clone)]
 pub struct Container {
     key: u16,
     len: u16,
