@@ -27,7 +27,7 @@ mod container;
 /// rb.insert(7);
 /// println!("total bits set to true: {}", rb.len());
 /// ```
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Clone)]
 pub struct RoaringBitmap {
     containers: Vec<container::Container>,
 }

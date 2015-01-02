@@ -14,7 +14,7 @@ pub fn new() -> RB {
 
 pub fn insert(this: &mut RB, value: u32) -> bool {
     let (key, index) = calc_loc(value);
-    let container = match this.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
+    let container = match this.containers.as_slice().binary_search(|container| container.key().cmp(&key)) {
         Found(loc) => &mut this.containers[loc],
         NotFound(loc) => {
             this.containers.insert(loc, Container::new(key));
@@ -26,7 +26,7 @@ pub fn insert(this: &mut RB, value: u32) -> bool {
 
 pub fn remove(this: &mut RB, value: u32) -> bool {
     let (key, index) = calc_loc(value);
-    match this.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
+    match this.containers.as_slice().binary_search(|container| container.key().cmp(&key)) {
         Found(loc) => {
             if this.containers[loc].remove(index) {
                 if this.containers[loc].len() == 0 {
@@ -43,7 +43,7 @@ pub fn remove(this: &mut RB, value: u32) -> bool {
 
 pub fn contains(this: &RB, value: u32) -> bool {
     let (key, index) = calc_loc(value);
-    match this.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
+    match this.containers.as_slice().binary_search(|container| container.key().cmp(&key)) {
         Found(loc) => this.containers[loc].contains(index),
         NotFound(_) => false,
     }
@@ -118,7 +118,7 @@ pub fn symmetric_difference<'a>(this: &'a RB, other: &'a RB) -> SymmetricDiffere
 pub fn union_with(this: &mut RB, other: &RB) {
     for container in other.containers.iter() {
         let key = container.key();
-        match this.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
+        match this.containers.as_slice().binary_search(|container| container.key().cmp(&key)) {
             NotFound(loc) => this.containers.insert(loc, (*container).clone()),
             Found(loc) => this.containers[loc].union_with(container),
         };
@@ -130,11 +130,15 @@ pub fn intersect_with(this: &mut RB, other: &RB) {
     let mut index = 0;
     while index < this.containers.len() {
         let key = this.containers[index].key();
-        match other.containers.as_slice().binary_search(|container| key.cmp(&container.key())) {
-            NotFound(_) => { this.containers.remove(index); },
-            Found(loc) => this.containers[index].intersect_with(&other.containers[loc]),
+        match other.containers.as_slice().binary_search(|container| container.key().cmp(&key)) {
+            NotFound(_) => {
+                this.containers.remove(index);
+            },
+            Found(loc) => {
+                this.containers[index].intersect_with(&other.containers[loc]);
+                index += 1;
+            },
         };
-        index += 1;
     }
 }
 

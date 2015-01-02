@@ -1,4 +1,5 @@
-use std::{ u32 };
+use std::{ u16, u32 };
+use std::fmt::{ Show, Formatter, Result };
 
 use store::Store;
 use store::Store::{ Array, Bitmap };
@@ -14,7 +15,7 @@ impl Container {
     pub fn new(key: u16) -> Container {
         Container {
             key: key,
-            len: 0,
+            len: u16::MAX,
             store: Array(Vec::new()),
         }
     }
@@ -25,13 +26,13 @@ impl Container {
     pub fn key(&self) -> u16 { self.key }
 
     #[inline]
-    pub fn len(&self) -> u16 { self.len }
+    pub fn len(&self) -> u16 { self.len + 1 }
 
     #[inline]
     pub fn insert(&mut self, index: u16) -> bool {
         if self.store.insert(index) {
             self.len += 1;
-            if self.len == 4097 {
+            if self.len == 4096 {
                 self.store = self.store.to_bitmap();
             }
             true
@@ -44,7 +45,7 @@ impl Container {
     pub fn remove(&mut self, index: u16) -> bool {
         if self.store.remove(index) {
             self.len -= 1;
-            if self.len == 4096 {
+            if self.len == 4095 {
                 self.store = self.store.to_array();
             }
             true
@@ -83,13 +84,13 @@ impl Container {
     #[inline]
     pub fn union_with(&mut self, other: &Self) {
         self.store.union_with(&other.store);
-        self.len = self.store.len();
+        self.len = self.store.len() - 1;
     }
 
     #[inline]
     pub fn intersect_with(&mut self, other: &Self) {
         self.store.intersect_with(&other.store);
-        self.len = self.store.len();
+        self.len = self.store.len() - 1;
     }
 
     #[inline]
@@ -142,5 +143,12 @@ impl<'a> Iterator<u16> for BitmapIter<'a> {
         } else {
             Some((self.key * u32::BITS + self.bit) as u16)
         }
+    }
+}
+
+impl Show for Container {
+    #[inline]
+    fn fmt(&self, formatter: &mut Formatter) -> Result {
+        format!("Container<{} @ {}>", self.len(), self.key()).fmt(formatter)
     }
 }
