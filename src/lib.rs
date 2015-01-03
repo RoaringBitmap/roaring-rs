@@ -513,6 +513,53 @@ impl BitOr<RoaringBitmap, RoaringBitmap> for RoaringBitmap {
     }
 }
 
+impl<'a> BitOr<RoaringBitmap, RoaringBitmap> for &'a RoaringBitmap {
+    /// Unions`rhs` and `self`, writes result in place to `rhs`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = FromIterator::from_iter(1..4);
+    /// let rb2: RoaringBitmap = FromIterator::from_iter(2..5);
+    /// let rb3: RoaringBitmap = FromIterator::from_iter(1..5);
+    ///
+    /// let rb4 = &rb1 | rb2;
+    ///
+    /// assert_eq!(rb3, rb4);
+    /// ```
+    #[inline]
+    fn bitor(self, mut rhs: RoaringBitmap) -> RoaringBitmap {
+        rhs.union_with(self);
+        rhs
+    }
+}
+
+impl<'a, 'b> BitOr<&'a RoaringBitmap, RoaringBitmap> for &'b RoaringBitmap {
+    /// Unions`rhs` and `self`, allocates new bitmap for result.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = FromIterator::from_iter(1..4);
+    /// let rb2: RoaringBitmap = FromIterator::from_iter(2..5);
+    /// let rb3: RoaringBitmap = FromIterator::from_iter(1..5);
+    ///
+    /// let rb4 = rb1 | &rb2;
+    ///
+    /// assert_eq!(rb3, rb4);
+    /// ```
+    #[inline]
+    fn bitor(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+        let mut result = self.clone();
+        result.union_with(rhs);
+        result
+    }
+}
+
 impl<'a> BitOr<&'a RoaringBitmap, RoaringBitmap> for RoaringBitmap {
     /// Unions the `rhs` into this `RoaringBitmap`.
     ///
@@ -582,6 +629,53 @@ impl<'a> BitAnd<&'a RoaringBitmap, RoaringBitmap> for RoaringBitmap {
     }
 }
 
+impl<'a> BitAnd<RoaringBitmap, RoaringBitmap> for &'a RoaringBitmap {
+    /// Intersects `self` into the `rhs` `RoaringBitmap`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = FromIterator::from_iter(1..4);
+    /// let rb2: RoaringBitmap = FromIterator::from_iter(2..5);
+    /// let rb3: RoaringBitmap = FromIterator::from_iter(2..4);
+    ///
+    /// let rb4 = &rb1 & rb2;
+    ///
+    /// assert_eq!(rb3, rb4);
+    /// ```
+    #[inline]
+    fn bitand(self, mut rhs: RoaringBitmap) -> RoaringBitmap {
+        rhs.intersect_with(self);
+        rhs
+    }
+}
+
+impl<'a, 'b> BitAnd<&'a RoaringBitmap, RoaringBitmap> for &'b RoaringBitmap {
+    /// Intersects `self` and `rhs` into a new `RoaringBitmap`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = FromIterator::from_iter(1..4);
+    /// let rb2: RoaringBitmap = FromIterator::from_iter(2..5);
+    /// let rb3: RoaringBitmap = FromIterator::from_iter(2..4);
+    ///
+    /// let rb4 = &rb1 & &rb2;
+    ///
+    /// assert_eq!(rb3, rb4);
+    /// ```
+    #[inline]
+    fn bitand(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+        let mut result = self.clone();
+        result.intersect_with(rhs);
+        result
+    }
+}
+
 impl Sub<RoaringBitmap, RoaringBitmap> for RoaringBitmap {
     /// Subtracts the `rhs` into this `RoaringBitmap`.
     ///
@@ -628,6 +722,30 @@ impl<'a> Sub<&'a RoaringBitmap, RoaringBitmap> for RoaringBitmap {
     }
 }
 
+impl<'a, 'b> Sub<&'a RoaringBitmap, RoaringBitmap> for &'b RoaringBitmap {
+    /// Subtracts `rhs` from `self` and allocates a new `RoaringBitmap`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = FromIterator::from_iter(1..4);
+    /// let rb2: RoaringBitmap = FromIterator::from_iter(3..5);
+    /// let rb3: RoaringBitmap = FromIterator::from_iter(1..3);
+    ///
+    /// let rb4 = &rb1 - &rb2;
+    ///
+    /// assert_eq!(rb3, rb4);
+    /// ```
+    #[inline]
+    fn sub(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+        let mut result = self.clone();
+        result.difference_with(rhs);
+        result
+    }
+}
+
 impl BitXor<RoaringBitmap, RoaringBitmap> for RoaringBitmap {
     /// Subtracts the `rhs` into this `RoaringBitmap`.
     ///
@@ -652,7 +770,7 @@ impl BitXor<RoaringBitmap, RoaringBitmap> for RoaringBitmap {
 }
 
 impl<'a> BitXor<&'a RoaringBitmap, RoaringBitmap> for RoaringBitmap {
-    /// Subtracts the `rhs` into this `RoaringBitmap`.
+    /// Exclusive ors the `rhs` into this `RoaringBitmap`.
     ///
     /// # Examples
     ///
@@ -671,6 +789,53 @@ impl<'a> BitXor<&'a RoaringBitmap, RoaringBitmap> for RoaringBitmap {
     fn bitxor(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
         self.symmetric_difference_with(rhs);
         self
+    }
+}
+
+impl<'a> BitXor<RoaringBitmap, RoaringBitmap> for &'a RoaringBitmap {
+    /// Exclusive ors `rhs` and `self`, writes result in place to `rhs`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = FromIterator::from_iter(1..4);
+    /// let rb2: RoaringBitmap = FromIterator::from_iter(3..6);
+    /// let rb3: RoaringBitmap = FromIterator::from_iter((1..3).chain(4..6));
+    ///
+    /// let rb4 = &rb1 ^ rb2;
+    ///
+    /// assert_eq!(rb3, rb4);
+    /// ```
+    #[inline]
+    fn bitxor(self, mut rhs: RoaringBitmap) -> RoaringBitmap {
+        rhs.symmetric_difference_with(self);
+        rhs
+    }
+}
+
+impl<'a, 'b> BitXor<&'a RoaringBitmap, RoaringBitmap> for &'b RoaringBitmap {
+    /// Exclusive ors `rhs` and `self`, allocates a new bitmap for the result.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = FromIterator::from_iter(1..4);
+    /// let rb2: RoaringBitmap = FromIterator::from_iter(3..6);
+    /// let rb3: RoaringBitmap = FromIterator::from_iter((1..3).chain(4..6));
+    ///
+    /// let rb4 = &rb1 ^ &rb2;
+    ///
+    /// assert_eq!(rb3, rb4);
+    /// ```
+    #[inline]
+    fn bitxor(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+        let mut result = self.clone();
+        result.symmetric_difference_with(rhs);
+        result
     }
 }
 
