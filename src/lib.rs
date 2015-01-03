@@ -440,6 +440,26 @@ impl RoaringBitmap {
     pub fn difference_with(&mut self, other: &Self) {
         imp::difference_with(self, other)
     }
+
+    /// Replaces this bitmap with one that is equivalent to `self XOR other`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb1: RoaringBitmap = FromIterator::from_iter(1..4);
+    /// let rb2: RoaringBitmap = FromIterator::from_iter(3..6);
+    /// let rb3: RoaringBitmap = FromIterator::from_iter((1..3).chain(4..6));
+    ///
+    /// rb1.symmetric_difference_with(&rb2);
+    ///
+    /// assert_eq!(rb1, rb3);
+    /// ```
+    #[inline]
+    pub fn symmetric_difference_with(&mut self, other: &Self) {
+        imp::symmetric_difference_with(self, other)
+    }
 }
 
 impl FromIterator<u32> for RoaringBitmap {

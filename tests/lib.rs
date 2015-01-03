@@ -4,10 +4,6 @@ use std::{ u32 };
 
 use roaring::RoaringBitmap;
 
-mod is_disjoint;
-mod is_subset;
-mod difference_with;
-
 #[test]
 fn smoke() {
     let mut bitmap = RoaringBitmap::new();

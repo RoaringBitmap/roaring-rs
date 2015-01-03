@@ -99,6 +99,13 @@ impl Container {
     }
 
     #[inline]
+    pub fn symmetric_difference_with(&mut self, other: &Self) {
+        self.store.symmetric_difference_with(&other.store);
+        self.len = self.store.len() - 1;
+        self.ensure_correct_store();
+    }
+
+    #[inline]
     pub fn min(&self) -> u16 {
         self.store.min()
     }

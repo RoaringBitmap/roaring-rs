@@ -1,5 +1,4 @@
 use std::{ u16, u32 };
-use std::ptr;
 use std::num::Int;
 use std::slice::BinarySearchResult::{ Found, NotFound };
 
@@ -222,9 +221,32 @@ fn intersect_with(mut this: &mut Store, other: &Store) {
         (& &Array(ref mut vec1), &Array(ref vec2)) => intersect_with_array(vec1, vec2),
         (& &Bitmap(ref mut bits1), &Bitmap(ref bits2)) => intersect_with_bitmap(bits1, bits2),
         (& &Array(ref mut vec), &Bitmap(ref bits)) => intersect_with_array_bitmap(vec, bits),
-        (& &Bitmap(_), &Array(_)) => {
+        (& &Bitmap(..), &Array(..)) => {
             *this = this.to_array();
             this.intersect_with(other);
+        },
+    }
+}
+
+fn symmetric_difference_with(mut this: &mut Store, other: &Store) {
+    match (&mut this, other) {
+        (_, &Array(ref vec2)) => {
+            for index in vec2.iter() {
+                if this.contains(*index) {
+                    this.remove(*index);
+                } else {
+                    this.insert(*index);
+                }
+            }
+        },
+        (& &Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
+            for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
+                *index1 ^= *index2;
+            }
+        },
+        (& &Array(..), &Bitmap(..)) => {
+            *this = this.to_bitmap();
+            this.symmetric_difference_with(other);
         },
     }
 }
@@ -313,6 +335,10 @@ impl Store {
         }
     }
 
+    pub fn symmetric_difference_with(&mut self, other: &Self) {
+        symmetric_difference_with(self, other);
+    }
+
     pub fn len(&self) -> u16 {
         match self {
             &Array(ref vec) => vec.len() as u16,
@@ -375,8 +401,8 @@ impl Clone for Store {
             &Array(ref vec) => Array(vec.clone()),
             &Bitmap(ref bits) => {
                 let mut new_bits = [0u32; 2048];
-                unsafe {
-                    ptr::copy_memory(&mut new_bits, bits, 2048);
+                for (i1, i2) in new_bits.iter_mut().zip(bits.iter()) {
+                    *i1 = *i2;
                 }
                 Bitmap(new_bits)
             },

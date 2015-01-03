@@ -31,11 +31,11 @@ duplicate the [BitvSet][] API.
         - [X] `std::ops::BitAnd`
         - [X] `std::ops::Sub`
         - [ ] `std::ops::BitXor`
-      - [ ] Inplace Functions
+      - [X] Inplace Functions
         - [X] `fn union_with(&mut self, other: &BitvSet)`
         - [X] `fn intersect_with(&mut self, other: &BitvSet)`
         - [X] `fn difference_with(&mut self, other: &BitvSet)`
-        - [ ] `fn symmetric_difference_with(&mut self, other: &BitvSet)`
+        - [X] `fn symmetric_difference_with(&mut self, other: &BitvSet)`
 
 [Travis CI Build Status]: https://img.shields.io/travis/Nemo157/roaring-rs.svg?style=flat-square
 [travis]: https://travis-ci.org/Nemo157/roaring-rs

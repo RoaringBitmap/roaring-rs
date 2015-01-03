@@ -159,6 +159,22 @@ pub fn difference_with(this: &mut RB, other: &RB) {
 }
 
 #[inline]
+pub fn symmetric_difference_with(this: &mut RB, other: &RB) {
+    for container in other.containers.iter() {
+        let key = container.key();
+        match this.containers.as_slice().binary_search(|container| container.key().cmp(&key)) {
+            NotFound(loc) => this.containers.insert(loc, (*container).clone()),
+            Found(loc) => {
+                this.containers[loc].symmetric_difference_with(container);
+                if this.containers[loc].len() == 0 {
+                    this.containers.remove(loc);
+                }
+            }
+        };
+    }
+}
+
+#[inline]
 pub fn from_iter<I: Iterator<u32>>(iterator: I) -> RB {
     let mut rb = new();
     rb.extend(iterator);
