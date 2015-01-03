@@ -291,6 +291,28 @@ impl Store {
         intersect_with(self, other);
     }
 
+    pub fn difference_with(&mut self, other: &Self) {
+        match (self, other) {
+            (ref mut this @ _, &Array(ref vec2)) => {
+                for index in vec2.iter() {
+                    this.remove(*index);
+                }
+            },
+            (&Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
+                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
+                    *index1 &= !*index2;
+                }
+            },
+            (&Array(ref mut vec), &Bitmap(ref bits)) => {
+                for i in range(0, vec.len()).rev() {
+                    if contains_bitmap(bits, vec[i]) {
+                        vec.remove(i);
+                    }
+                }
+            },
+        }
+    }
+
     pub fn len(&self) -> u16 {
         match self {
             &Array(ref vec) => vec.len() as u16,

@@ -32,9 +32,7 @@ impl Container {
     pub fn insert(&mut self, index: u16) -> bool {
         if self.store.insert(index) {
             self.len += 1;
-            if self.len == 4096 {
-                self.store = self.store.to_bitmap();
-            }
+            self.ensure_correct_store();
             true
         } else {
             false
@@ -45,9 +43,7 @@ impl Container {
     pub fn remove(&mut self, index: u16) -> bool {
         if self.store.remove(index) {
             self.len -= 1;
-            if self.len == 4095 {
-                self.store = self.store.to_array();
-            }
+            self.ensure_correct_store();
             true
         } else {
             false
@@ -85,12 +81,21 @@ impl Container {
     pub fn union_with(&mut self, other: &Self) {
         self.store.union_with(&other.store);
         self.len = self.store.len() - 1;
+        self.ensure_correct_store();
     }
 
     #[inline]
     pub fn intersect_with(&mut self, other: &Self) {
         self.store.intersect_with(&other.store);
         self.len = self.store.len() - 1;
+        self.ensure_correct_store();
+    }
+
+    #[inline]
+    pub fn difference_with(&mut self, other: &Self) {
+        self.store.difference_with(&other.store);
+        self.len = self.store.len() - 1;
+        self.ensure_correct_store();
     }
 
     #[inline]
@@ -101,6 +106,18 @@ impl Container {
     #[inline]
     pub fn max(&self) -> u16 {
         self.store.max()
+    }
+
+    #[inline]
+    fn ensure_correct_store(&mut self) {
+        let new_store = match (&self.store, self.len) {
+            (store @ &Bitmap(..), len) if len < 4096 => Some(store.to_array()),
+            (store @ &Array(..), len) if len >= 4096 => Some(store.to_bitmap()),
+            _ => None,
+        };
+        if let Some(new_store) = new_store {
+            self.store = new_store;
+        }
     }
 }
 

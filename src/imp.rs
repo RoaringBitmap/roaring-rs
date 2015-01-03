@@ -143,6 +143,22 @@ pub fn intersect_with(this: &mut RB, other: &RB) {
 }
 
 #[inline]
+pub fn difference_with(this: &mut RB, other: &RB) {
+    for index in range(0, this.containers.len()) {
+        let key = this.containers[index].key();
+        match other.containers.as_slice().binary_search(|container| container.key().cmp(&key)) {
+            Found(loc) => {
+                this.containers[index].difference_with(&other.containers[loc]);
+                if this.containers[index].len() == 0 {
+                    this.containers.remove(index);
+                }
+            },
+            _ => (),
+        };
+    }
+}
+
+#[inline]
 pub fn from_iter<I: Iterator<u32>>(iterator: I) -> RB {
     let mut rb = new();
     rb.extend(iterator);
