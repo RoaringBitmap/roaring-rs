@@ -5,6 +5,7 @@ use util::Either;
 use util::Either::{ Left, Right };
 use container::{ Container };
 
+/// An iterator for `RoaringBitmap`.
 pub struct Iter<'a> {
     inner_iter: Option<(u16, Box<Iterator<u16> + 'a>)>,
     container_iter: slice::Iter<'a, Container>,
@@ -20,15 +21,15 @@ fn next_iter<'a>(container_iter: &mut slice::Iter<'a, Container>) -> Option<(u16
     container_iter.next().map(|container| (container.key(), container.iter()))
 }
 
-impl<'a> Iter<'a> {
-    #[inline]
-    pub fn new(mut container_iter: slice::Iter<'a, Container>) -> Iter<'a> {
-        Iter {
-            inner_iter: next_iter(&mut container_iter),
-            container_iter: container_iter
-        }
+#[inline]
+pub fn new<'a>(mut container_iter: slice::Iter<'a, Container>) -> Iter<'a> {
+    Iter {
+        inner_iter: next_iter(&mut container_iter),
+        container_iter: container_iter
     }
+}
 
+impl<'a> Iter<'a> {
     #[inline]
     fn choose_next(&mut self) -> Option<Either<u32, Option<(u16, Box<Iterator<u16> + 'a>)>>> {
         match self.inner_iter {
@@ -54,6 +55,7 @@ impl<'a> Iterator<u32> for Iter<'a> {
     }
 }
 
+/// An iterator for `RoaringBitmap`.
 pub struct UnionIter<'a> {
     current1: Option<u32>,
     current2: Option<u32>,
@@ -61,9 +63,11 @@ pub struct UnionIter<'a> {
     iter2: Iter<'a>,
 }
 
-impl<'a> UnionIter<'a> {
+pub mod union {
+    use super::{ Iter, UnionIter };
+
     #[inline]
-    pub fn new(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> UnionIter<'a> {
+    pub fn new<'a>(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> UnionIter<'a> {
         UnionIter {
             current1: iter1.next(),
             current2: iter2.next(),
@@ -91,6 +95,7 @@ impl<'a> Iterator<u32> for UnionIter<'a> {
     }
 }
 
+/// An iterator for `RoaringBitmap`.
 pub struct IntersectionIter<'a> {
     current1: Option<u32>,
     current2: Option<u32>,
@@ -98,9 +103,11 @@ pub struct IntersectionIter<'a> {
     iter2: Iter<'a>,
 }
 
-impl<'a> IntersectionIter<'a> {
+pub mod intersection {
+    use super::{ Iter, IntersectionIter };
+
     #[inline]
-    pub fn new(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> IntersectionIter<'a> {
+    pub fn new<'a>(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> IntersectionIter<'a> {
         IntersectionIter {
             current1: iter1.next(),
             current2: iter2.next(),
@@ -126,6 +133,7 @@ impl<'a> Iterator<u32> for IntersectionIter<'a> {
     }
 }
 
+/// An iterator for `RoaringBitmap`.
 pub struct DifferenceIter<'a> {
     current1: Option<u32>,
     current2: Option<u32>,
@@ -133,9 +141,11 @@ pub struct DifferenceIter<'a> {
     iter2: Iter<'a>,
 }
 
-impl<'a> DifferenceIter<'a> {
+pub mod difference {
+    use super::{ Iter, DifferenceIter };
+
     #[inline]
-    pub fn new(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> DifferenceIter<'a> {
+    pub fn new<'a>(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> DifferenceIter<'a> {
         DifferenceIter {
             current1: iter1.next(),
             current2: iter2.next(),
@@ -162,6 +172,7 @@ impl<'a> Iterator<u32> for DifferenceIter<'a> {
     }
 }
 
+/// An iterator for `RoaringBitmap`.
 pub struct SymmetricDifferenceIter<'a> {
     current1: Option<u32>,
     current2: Option<u32>,
@@ -169,9 +180,11 @@ pub struct SymmetricDifferenceIter<'a> {
     iter2: Iter<'a>,
 }
 
-impl<'a> SymmetricDifferenceIter<'a> {
+pub mod symmetric_difference {
+    use super::{ Iter, SymmetricDifferenceIter };
+
     #[inline]
-    pub fn new(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> SymmetricDifferenceIter<'a> {
+    pub fn new<'a>(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> SymmetricDifferenceIter<'a> {
         SymmetricDifferenceIter {
             current1: iter1.next(),
             current2: iter2.next(),

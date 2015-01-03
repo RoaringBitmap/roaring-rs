@@ -1,5 +1,16 @@
+//! This is a [Rust][] port of the [Roaring bitmap][] data structure, initially
+//! defined as a [Java library][roaring-java] and described in [_Better bitmap
+//! performance with Roaring bitmaps_][roaring-paper].
+//!
+//! [Rust]: https://rust-lang.org
+//! [Roaring bitmap]: http://roaringbitmap.org
+//! [roaring-java]: https://github.com/lemire/RoaringBitmap
+//! [roaring-paper]: http://arxiv.org/pdf/1402.6407v4
+
 #![feature(slicing_syntax)]
 #![feature(advanced_slice_patterns)]
+
+#![warn(missing_docs)]
 
 use std::fmt::{ Show, Formatter, Result };
 

@@ -2,6 +2,7 @@ use std::{ u16, u32 };
 use std::slice;
 use std::slice::BinarySearchResult::{ Found, NotFound };
 
+use iter;
 use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
 use container::Container;
 
@@ -68,7 +69,7 @@ pub fn len(this: &RB) -> uint {
 
 #[inline]
 pub fn iter<'a>(this: &'a RB) -> Iter<'a> {
-    Iter::new(this.containers.iter())
+    iter::new(this.containers.iter())
 }
 
 fn pairs<'a>(this: &'a RB, other: &'a RB) -> Pairs<'a> {
@@ -96,22 +97,22 @@ pub fn is_superset(this: &RB, other: &RB) -> bool {
 
 #[inline]
 pub fn union<'a>(this: &'a RB, other: &'a RB) -> UnionIter<'a> {
-    UnionIter::new(this.iter(), other.iter())
+    iter::union::new(this.iter(), other.iter())
 }
 
 #[inline]
 pub fn intersection<'a>(this: &'a RB, other: &'a RB) -> IntersectionIter<'a> {
-    IntersectionIter::new(this.iter(), other.iter())
+    iter::intersection::new(this.iter(), other.iter())
 }
 
 #[inline]
 pub fn difference<'a>(this: &'a RB, other: &'a RB) -> DifferenceIter<'a> {
-    DifferenceIter::new(this.iter(), other.iter())
+    iter::difference::new(this.iter(), other.iter())
 }
 
 #[inline]
 pub fn symmetric_difference<'a>(this: &'a RB, other: &'a RB) -> SymmetricDifferenceIter<'a> {
-    SymmetricDifferenceIter::new(this.iter(), other.iter())
+    iter::symmetric_difference::new(this.iter(), other.iter())
 }
 
 #[inline]
