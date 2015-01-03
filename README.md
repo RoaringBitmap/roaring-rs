@@ -29,7 +29,7 @@ duplicate the [BitvSet][] API.
       - [ ] Operator Traits
         - [X] `std::ops::BitOr`
         - [X] `std::ops::BitAnd`
-        - [ ] `std::ops::Sub`
+        - [X] `std::ops::Sub`
         - [ ] `std::ops::BitXor`
       - [ ] Inplace Functions
         - [X] `fn union_with(&mut self, other: &BitvSet)`
