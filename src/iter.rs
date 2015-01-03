@@ -147,16 +147,17 @@ impl<'a> DifferenceIter<'a> {
 
 impl<'a> Iterator<u32> for DifferenceIter<'a> {
     fn next(&mut self) -> Option<u32> {
-        match (self.current1, self.current2) {
-            (None, _) | (_, None) => None,
-            (val1, val2) if val1 < val2 => { self.current1 = self.iter1.next(); val1 },
-            (val1, val2) if val1 > val2 => { self.current2 = self.iter2.next(); self.next() },
-            (val1, val2) if val1 == val2 => {
-                self.current1 = self.iter1.next();
-                self.current2 = self.iter2.next();
-                self.next()
-            },
-            _ => panic!("Should not be possible to get here"),
+        loop {
+            match (self.current1, self.current2) {
+                (None, _) | (_, None) => return None,
+                (val1, val2) if val1 < val2 => { self.current1 = self.iter1.next(); return val1; },
+                (val1, val2) if val1 > val2 => self.current2 = self.iter2.next(),
+                (val1, val2) if val1 == val2 => {
+                    self.current1 = self.iter1.next();
+                    self.current2 = self.iter2.next();
+                },
+                _ => panic!("Should not be possible to get here"),
+            }
         }
     }
 }
