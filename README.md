@@ -15,22 +15,22 @@ duplicate the [BitvSet][] API.
 
   - [ ] Bounded Iterators ([§ in the RFC][bounded-iterators])
     - [ ] `fn range(&self, min: Bound<&T>, max: Bound<&T>) -> RangedItems<'a, T>;`
-  - [ ] Set Operations ([§ in the RFC][set-operations])
+  - [X] Set Operations ([§ in the RFC][set-operations])
     - [X] Comparisons
       - [X] `fn is_disjoint(&self, other: &Self) -> bool;`
       - [X] `fn is_subset(&self, other: &Self) -> bool;`
       - [X] `fn is_superset(&self, other: &Self) -> bool;`
-    - [ ] Combinations
+    - [X] Combinations
       - [X] Iterated Functions
         - [X] `fn union<'a>(&'a self, other: &'a Self) -> I;`
         - [X] `fn intersection<'a>(&'a self, other: &'a Self) -> I;`
         - [X] `fn difference<'a>(&'a self, other: &'a Self) -> I;`
         - [X] `fn symmetric_difference<'a>(&'a self, other: &'a Self) -> I;`
-      - [ ] Operator Traits
+      - [X] Operator Traits
         - [X] `std::ops::BitOr`
         - [X] `std::ops::BitAnd`
         - [X] `std::ops::Sub`
-        - [ ] `std::ops::BitXor`
+        - [X] `std::ops::BitXor`
       - [X] Inplace Functions
         - [X] `fn union_with(&mut self, other: &BitvSet)`
         - [X] `fn intersect_with(&mut self, other: &BitvSet)`
