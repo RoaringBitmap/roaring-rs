@@ -69,13 +69,9 @@ fn bitmap_and_array_to_array() {
 
 #[test]
 fn arrays() {
-    let mut bitmap1: RoaringBitmap = FromIterator::from_iter(0..2000);
-    let mut bitmap2: RoaringBitmap = FromIterator::from_iter(1000..3000);
-    let mut bitmap3: RoaringBitmap = FromIterator::from_iter(0..1000);
-
-    bitmap1.extend(1000000..1002000);
-    bitmap2.extend(1001000..1003000);
-    bitmap3.extend(1000000..1001000);
+    let mut bitmap1: RoaringBitmap = FromIterator::from_iter((0..2000).chain(1000000..1002000).chain(2000000..2001000));
+    let bitmap2: RoaringBitmap = FromIterator::from_iter((1000..3000).chain(1001000..1003000).chain(2000000..2001000));
+    let bitmap3: RoaringBitmap = FromIterator::from_iter((0..1000).chain(1000000..1001000));
 
     bitmap1.difference_with(&bitmap2);
 
@@ -84,13 +80,9 @@ fn arrays() {
 
 #[test]
 fn bitmaps() {
-    let mut bitmap1: RoaringBitmap = FromIterator::from_iter(0..6000);
-    let mut bitmap2: RoaringBitmap = FromIterator::from_iter(3000..9000);
-    let mut bitmap3: RoaringBitmap = FromIterator::from_iter(0..3000);
-
-    bitmap1.extend(1000000..1012000);
-    bitmap2.extend(1006000..1018000);
-    bitmap3.extend(1000000..1006000);
+    let mut bitmap1: RoaringBitmap = FromIterator::from_iter((0..6000).chain(1000000..1012000).chain(2000000..2010000));
+    let bitmap2: RoaringBitmap = FromIterator::from_iter((3000..9000).chain(1006000..1018000).chain(2000000..2010000));
+    let bitmap3: RoaringBitmap = FromIterator::from_iter((0..3000).chain(1000000..1006000));
 
     bitmap1.difference_with(&bitmap2);
 

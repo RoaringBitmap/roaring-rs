@@ -66,14 +66,14 @@ fn arrays() {
 
 #[test]
 fn bitmaps_not() {
-    let sup: RoaringBitmap = FromIterator::from_iter((0..6000).chain(0..1006000));
+    let sup: RoaringBitmap = FromIterator::from_iter((0..6000).chain(1000000..1006000).chain(2000000..2010000));
     let sub: RoaringBitmap = FromIterator::from_iter((100000..106000).chain(1100000..1106000));
     assert_eq!(sub.is_subset(&sup), false);
 }
 
 #[test]
 fn bitmaps() {
-    let sup: RoaringBitmap = FromIterator::from_iter(0..1_000_000);
+    let sup: RoaringBitmap = FromIterator::from_iter((0..1_000_000).chain(2000000..2010000));
     let sub: RoaringBitmap = FromIterator::from_iter((0..10_000).chain(500_000..510_000));
     assert_eq!(sub.is_subset(&sup), true);
 }
