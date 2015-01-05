@@ -1,4 +1,4 @@
-# RoaringBitmap [![Travis CI Build Status][]][travis]
+# RoaringBitmap [![travis-badge][]][travis] [![cargo-badge][]][cargo] [![docs-badge][]][docs] [![license-badge][]][license]
 
 > This is not yet production ready. The API should be mostly complete now.
 
@@ -11,8 +11,14 @@ performance with Roaring bitmaps_][roaring-paper].
 Take note of the [Collections reform RFC][collections-rfc] for the API.  Mostly aiming to
 duplicate the [BitvSet][] API.
 
-[Travis CI Build Status]: https://img.shields.io/travis/Nemo157/roaring-rs.svg?style=flat-square
+[travis-badge]: https://img.shields.io/travis/Nemo157/roaring-rs.svg?style=flat-square
 [travis]: https://travis-ci.org/Nemo157/roaring-rs
+[cargo-badge]: https://img.shields.io/badge/CARGO-roaring-yellow.svg?style=flat-square
+[cargo]: https://crates.io/crates/roaring
+[docs-badge]: https://img.shields.io/badge/API-docs-blue.svg?style=flat-square
+[docs]: http://nemo157.github.io/roaring-rs/
+[license-badge]: https://img.shields.io/badge/license-MIT-lightgray.svg?style=flat-square
+[license]: https://github.com/Nemo157/roaring-rs/blob/master/LICENSE
 [Rust]: https://rust-lang.org
 [Roaring bitmap]: http://roaringbitmap.org
 [roaring-java]: https://github.com/lemire/RoaringBitmap
