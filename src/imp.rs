@@ -1,6 +1,5 @@
 use std::{ u16, u32 };
 use std::slice;
-use std::slice::BinarySearchResult::{ Found, NotFound };
 
 use iter;
 use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
@@ -15,9 +14,9 @@ pub fn new() -> RB {
 
 pub fn insert(this: &mut RB, value: u32) -> bool {
     let (key, index) = calc_loc(value);
-    let container = match this.containers.as_slice().binary_search(|container| container.key().cmp(&key)) {
-        Found(loc) => &mut this.containers[loc],
-        NotFound(loc) => {
+    let container = match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
+        Ok(loc) => &mut this.containers[loc],
+        Err(loc) => {
             this.containers.insert(loc, Container::new(key));
             &mut this.containers[loc]
         },
@@ -27,8 +26,8 @@ pub fn insert(this: &mut RB, value: u32) -> bool {
 
 pub fn remove(this: &mut RB, value: u32) -> bool {
     let (key, index) = calc_loc(value);
-    match this.containers.as_slice().binary_search(|container| container.key().cmp(&key)) {
-        Found(loc) => {
+    match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
+        Ok(loc) => {
             if this.containers[loc].remove(index) {
                 if this.containers[loc].len() == 0 {
                     this.containers.remove(loc);
@@ -44,9 +43,9 @@ pub fn remove(this: &mut RB, value: u32) -> bool {
 
 pub fn contains(this: &RB, value: u32) -> bool {
     let (key, index) = calc_loc(value);
-    match this.containers.as_slice().binary_search(|container| container.key().cmp(&key)) {
-        Found(loc) => this.containers[loc].contains(index),
-        NotFound(_) => false,
+    match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
+        Ok(loc) => this.containers[loc].contains(index),
+        Err(_) => false,
     }
 }
 
@@ -119,9 +118,9 @@ pub fn symmetric_difference<'a>(this: &'a RB, other: &'a RB) -> SymmetricDiffere
 pub fn union_with(this: &mut RB, other: &RB) {
     for container in other.containers.iter() {
         let key = container.key();
-        match this.containers.as_slice().binary_search(|container| container.key().cmp(&key)) {
-            NotFound(loc) => this.containers.insert(loc, (*container).clone()),
-            Found(loc) => this.containers[loc].union_with(container),
+        match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
+            Err(loc) => this.containers.insert(loc, (*container).clone()),
+            Ok(loc) => this.containers[loc].union_with(container),
         };
     }
 }
@@ -131,11 +130,11 @@ pub fn intersect_with(this: &mut RB, other: &RB) {
     let mut index = 0;
     while index < this.containers.len() {
         let key = this.containers[index].key();
-        match other.containers.as_slice().binary_search(|container| container.key().cmp(&key)) {
-            NotFound(_) => {
+        match other.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
+            Err(_) => {
                 this.containers.remove(index);
             },
-            Found(loc) => {
+            Ok(loc) => {
                 this.containers[index].intersect_with(&other.containers[loc]);
                 index += 1;
             },
@@ -147,8 +146,8 @@ pub fn intersect_with(this: &mut RB, other: &RB) {
 pub fn difference_with(this: &mut RB, other: &RB) {
     for index in range(0, this.containers.len()) {
         let key = this.containers[index].key();
-        match other.containers.as_slice().binary_search(|container| container.key().cmp(&key)) {
-            Found(loc) => {
+        match other.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
+            Ok(loc) => {
                 this.containers[index].difference_with(&other.containers[loc]);
                 if this.containers[index].len() == 0 {
                     this.containers.remove(index);
@@ -163,9 +162,9 @@ pub fn difference_with(this: &mut RB, other: &RB) {
 pub fn symmetric_difference_with(this: &mut RB, other: &RB) {
     for container in other.containers.iter() {
         let key = container.key();
-        match this.containers.as_slice().binary_search(|container| container.key().cmp(&key)) {
-            NotFound(loc) => this.containers.insert(loc, (*container).clone()),
-            Found(loc) => {
+        match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
+            Err(loc) => this.containers.insert(loc, (*container).clone()),
+            Ok(loc) => {
                 this.containers[loc].symmetric_difference_with(container);
                 if this.containers[loc].len() == 0 {
                     this.containers.remove(loc);
@@ -176,28 +175,28 @@ pub fn symmetric_difference_with(this: &mut RB, other: &RB) {
 }
 
 #[inline]
-pub fn from_iter<I: Iterator<u32>>(iterator: I) -> RB {
+pub fn from_iter<I: Iterator<Item = u32>>(iterator: I) -> RB {
     let mut rb = new();
     rb.extend(iterator);
     rb
 }
 
 #[inline]
-pub fn from_iter_ref<'a, I: Iterator<&'a u32>>(iterator: I) -> RB {
+pub fn from_iter_ref<'a, I: Iterator<Item = &'a u32>>(iterator: I) -> RB {
     let mut rb = new();
     rb.extend(iterator);
     rb
 }
 
 #[inline]
-pub fn extend<I: Iterator<u32>>(this: &mut RB, mut iterator: I) {
+pub fn extend<I: Iterator<Item = u32>>(this: &mut RB, mut iterator: I) {
     for value in iterator {
         this.insert(value);
     }
 }
 
 #[inline]
-pub fn extend_ref<'a, I: Iterator<&'a u32>>(this: &mut RB, mut iterator: I) {
+pub fn extend_ref<'a, I: Iterator<Item = &'a u32>>(this: &mut RB, mut iterator: I) {
     for value in iterator {
         this.insert(*value);
     }
@@ -243,7 +242,9 @@ impl<'a> Pairs<'a> {
     }
 }
 
-impl<'a> Iterator<(Option<&'a Container>, Option<&'a Container>)> for Pairs<'a> {
+impl<'a> Iterator for Pairs<'a> {
+    type Item = (Option<&'a Container>, Option<&'a Container>);
+
     fn next(&mut self) -> Option<(Option<&'a Container>, Option<&'a Container>)> {
         match (self.current1, self.current2) {
             (None, None) => None,

@@ -7,7 +7,7 @@ use container::{ Container };
 
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a> {
-    inner_iter: Option<(u16, Box<Iterator<u16> + 'a>)>,
+    inner_iter: Option<(u16, Box<Iterator<Item = u16> + 'a>)>,
     container_iter: slice::Iter<'a, Container>,
 }
 
@@ -17,7 +17,7 @@ fn calc(key: u16, value: u16) -> u32 {
 }
 
 #[inline]
-fn next_iter<'a>(container_iter: &mut slice::Iter<'a, Container>) -> Option<(u16, Box<Iterator<u16> + 'a>)> {
+fn next_iter<'a>(container_iter: &mut slice::Iter<'a, Container>) -> Option<(u16, Box<Iterator<Item = u16> + 'a>)> {
     container_iter.next().map(|container| (container.key(), container.iter()))
 }
 
@@ -31,7 +31,7 @@ pub fn new<'a>(mut container_iter: slice::Iter<'a, Container>) -> Iter<'a> {
 
 impl<'a> Iter<'a> {
     #[inline]
-    fn choose_next(&mut self) -> Option<Either<u32, Option<(u16, Box<Iterator<u16> + 'a>)>>> {
+    fn choose_next(&mut self) -> Option<Either<u32, Option<(u16, Box<Iterator<Item = u16> + 'a>)>>> {
         match self.inner_iter {
             Some((key, ref mut iter)) => Some(match iter.next() {
                 Some(value) => Left(calc(key, value)),
@@ -42,7 +42,9 @@ impl<'a> Iter<'a> {
     }
 }
 
-impl<'a> Iterator<u32> for Iter<'a> {
+impl<'a> Iterator for Iter<'a> {
+    type Item = u32;
+
     fn next(&mut self) -> Option<u32> {
         match self.choose_next() {
             None => None,
@@ -77,7 +79,9 @@ pub mod union {
     }
 }
 
-impl<'a> Iterator<u32> for UnionIter<'a> {
+impl<'a> Iterator for UnionIter<'a> {
+    type Item = u32;
+
     fn next(&mut self) -> Option<u32> {
         match (self.current1, self.current2) {
             (None, None) => None,
@@ -117,7 +121,9 @@ pub mod intersection {
     }
 }
 
-impl<'a> Iterator<u32> for IntersectionIter<'a> {
+impl<'a> Iterator for IntersectionIter<'a> {
+    type Item = u32;
+
     fn next(&mut self) -> Option<u32> {
         match (self.current1, self.current2) {
             (None, _) | (_, None) => None,
@@ -155,7 +161,9 @@ pub mod difference {
     }
 }
 
-impl<'a> Iterator<u32> for DifferenceIter<'a> {
+impl<'a> Iterator for DifferenceIter<'a> {
+    type Item = u32;
+
     fn next(&mut self) -> Option<u32> {
         loop {
             match (self.current1, self.current2) {
@@ -194,7 +202,9 @@ pub mod symmetric_difference {
     }
 }
 
-impl<'a> Iterator<u32> for SymmetricDifferenceIter<'a> {
+impl<'a> Iterator for SymmetricDifferenceIter<'a> {
+    type Item = u32;
+
     fn next(&mut self) -> Option<u32> {
         match (self.current1, self.current2) {
             (None, _) | (_, None) => None,

@@ -1,12 +1,14 @@
+#![feature(slicing_syntax)]
+
 extern crate roaring;
 
 use roaring::RoaringBitmap;
 
 #[test]
 fn or() {
-    let rb1: RoaringBitmap = FromIterator::from_iter(1..4);
-    let rb2: RoaringBitmap = FromIterator::from_iter(3..6);
-    let rb3: RoaringBitmap = FromIterator::from_iter(1..6);
+    let rb1: RoaringBitmap = (1..4).collect();
+    let rb2: RoaringBitmap = (3..6).collect();
+    let rb3: RoaringBitmap = (1..6).collect();
 
     assert_eq!(rb3, &rb1 | &rb2);
     assert_eq!(rb3, rb1 | rb2 | &rb3);
@@ -14,9 +16,9 @@ fn or() {
 
 #[test]
 fn and() {
-    let rb1: RoaringBitmap = FromIterator::from_iter(1..4);
-    let rb2: RoaringBitmap = FromIterator::from_iter(3..6);
-    let rb3: RoaringBitmap = FromIterator::from_iter(3..4);
+    let rb1: RoaringBitmap = (1..4).collect();
+    let rb2: RoaringBitmap = (3..6).collect();
+    let rb3: RoaringBitmap = (3..4).collect();
 
     assert_eq!(rb3, &rb1 & &rb2);
     assert_eq!(rb3, rb1 & rb2 & &rb3);
@@ -24,10 +26,10 @@ fn and() {
 
 #[test]
 fn sub() {
-    let rb1: RoaringBitmap = FromIterator::from_iter(1..4);
-    let rb2: RoaringBitmap = FromIterator::from_iter(3..6);
-    let rb3: RoaringBitmap = FromIterator::from_iter(1..3);
-    let rb4: RoaringBitmap = FromIterator::from_iter(0..0);
+    let rb1: RoaringBitmap = (1..4).collect();
+    let rb2: RoaringBitmap = (3..6).collect();
+    let rb3: RoaringBitmap = (1..3).collect();
+    let rb4: RoaringBitmap = (0..0).collect();
 
     assert_eq!(rb3, &rb1 - &rb2);
     assert_eq!(rb4, rb1 - rb2 - rb3);
@@ -35,10 +37,10 @@ fn sub() {
 
 #[test]
 fn xor() {
-    let rb1: RoaringBitmap = FromIterator::from_iter(1..4);
-    let rb2: RoaringBitmap = FromIterator::from_iter(3..6);
-    let rb3: RoaringBitmap = FromIterator::from_iter((1..3).chain(4..6));
-    let rb4: RoaringBitmap = FromIterator::from_iter(0..0);
+    let rb1: RoaringBitmap = (1..4).collect();
+    let rb2: RoaringBitmap = (3..6).collect();
+    let rb3: RoaringBitmap = (1..3).chain(4..6).collect();
+    let rb4: RoaringBitmap = (0..0).collect();
 
     assert_eq!(rb3, &rb1 ^ &rb2);
     assert_eq!(rb4, rb1 ^ rb2 ^ rb3);

@@ -1,3 +1,5 @@
+#![feature(slicing_syntax)]
+
 extern crate roaring;
 
 use std::{ u32 };
@@ -38,7 +40,7 @@ fn smoke() {
 
 #[test]
 fn to_bitmap() {
-    let bitmap: RoaringBitmap = FromIterator::from_iter(0..5000);
+    let bitmap: RoaringBitmap = (0..5000).collect();
     assert_eq!(bitmap.len(), 5000);
     for i in 1..5000 {
         assert_eq!(bitmap.contains(i), true);
@@ -48,7 +50,7 @@ fn to_bitmap() {
 
 #[test]
 fn to_array() {
-    let mut bitmap: RoaringBitmap = FromIterator::from_iter(0..5000);
+    let mut bitmap: RoaringBitmap = (0..5000).collect();
     for i in 3000..5000 {
         bitmap.remove(i);
     }

@@ -1,6 +1,5 @@
 use std::{ u16, u32 };
 use std::num::Int;
-use std::slice::BinarySearchResult::{ Found, NotFound };
 
 use store::Store::{ Array, Bitmap };
 
@@ -14,15 +13,15 @@ fn bitmap_location(index: u16) -> (uint, uint) {
 }
 
 fn insert_array(vec: &mut Vec<u16>, index: u16) -> bool {
-    match vec.binary_search(|elem| elem.cmp(&index)) {
-        NotFound(loc) => { vec.insert(loc, index); true },
+    match vec.binary_search_by(|elem| elem.cmp(&index)) {
+        Err(loc) => { vec.insert(loc, index); true },
         _ => false,
     }
 }
 
 fn remove_array(vec: &mut Vec<u16>, index: u16) -> bool {
-    match vec.binary_search(|elem| elem.cmp(&index)) {
-        Found(loc) => { vec.remove(loc); true },
+    match vec.binary_search_by(|elem| elem.cmp(&index)) {
+        Ok(loc) => { vec.remove(loc); true },
         _ => false,
     }
 }
@@ -48,9 +47,9 @@ fn remove_bitmap(bits: &mut [u32; 2048], index: u16) -> bool {
 }
 
 fn contains_array(vec: &Vec<u16>, index: u16) -> bool {
-    match vec.binary_search(|elem| elem.cmp(&index)) {
-        Found(_) => true,
-        NotFound(_) => false,
+    match vec.binary_search_by(|elem| elem.cmp(&index)) {
+        Ok(_) => true,
+        Err(_) => false,
     }
 }
 

@@ -4,7 +4,7 @@ use std::fmt::{ Show, Formatter, Result };
 use store::Store;
 use store::Store::{ Array, Bitmap };
 
-#[deriving(PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct Container {
     key: u16,
     len: u16,
@@ -56,10 +56,10 @@ impl Container {
     }
 
     #[inline]
-    pub fn iter<'a>(&'a self) -> Box<Iterator<u16> + 'a> {
+    pub fn iter<'a>(&'a self) -> Box<Iterator<Item = u16> + 'a> {
         match self.store {
-            Array(ref vec) => box vec.iter().map(|x| *x) as Box<Iterator<u16> + 'a>,
-            Bitmap(ref bits) => box BitmapIter::new(bits) as Box<Iterator<u16> + 'a>,
+            Array(ref vec) => box vec.iter().map(|x| *x) as Box<Iterator<Item = u16> + 'a>,
+            Bitmap(ref bits) => box BitmapIter::new(bits) as Box<Iterator<Item = u16> + 'a>,
         }
     }
 
@@ -144,7 +144,9 @@ impl<'a> BitmapIter<'a> {
     }
 }
 
-impl<'a> Iterator<u16> for BitmapIter<'a> {
+impl<'a> Iterator for BitmapIter<'a> {
+    type Item = u16;
+
     fn next(&mut self) -> Option<u16> {
         loop {
             if self.key == 2047 && self.bit == (u32::BITS - 1) {
