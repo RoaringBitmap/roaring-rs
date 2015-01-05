@@ -1,4 +1,4 @@
-# RoaringBitmap [![travis-badge][]][travis] [![cargo-badge][]][cargo] [![docs-badge][]][docs] [![license-badge][]][license]
+# RoaringBitmap [![travis-badge][]][travis] [![release-badge][]][cargo] [![docs-badge][]][docs] [![license-badge][]][license]
 
 > This is not yet production ready. The API should be mostly complete now.
 
@@ -13,7 +13,7 @@ duplicate the [BitvSet][] API.
 
 [travis-badge]: https://img.shields.io/travis/Nemo157/roaring-rs.svg?style=flat-square
 [travis]: https://travis-ci.org/Nemo157/roaring-rs
-[cargo-badge]: https://img.shields.io/badge/CARGO-roaring-yellow.svg?style=flat-square
+[release-badge]: https://img.shields.io/github/release/Nemo157/roaring-rs.svg?style=flat-square
 [cargo]: https://crates.io/crates/roaring
 [docs-badge]: https://img.shields.io/badge/API-docs-blue.svg?style=flat-square
 [docs]: http://nemo157.github.io/roaring-rs/
