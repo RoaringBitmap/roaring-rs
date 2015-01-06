@@ -1027,6 +1027,10 @@ impl<'a, 'b> BitXor<&'a RoaringBitmap> for &'b RoaringBitmap {
 impl Show for RoaringBitmap {
     #[inline]
     fn fmt(&self, formatter: &mut Formatter) -> Result {
-        format!("RoaringBitmap<{} values between {} and {}>", self.len(), imp::min(self), imp::max(self)).fmt(formatter)
+        if self.len() < 16 {
+            format!("RoaringBitmap<{}>", self.iter().collect::<Vec<u32>>()).fmt(formatter)
+        } else {
+            format!("RoaringBitmap<{} values between {} and {}>", self.len(), imp::min(self), imp::max(self)).fmt(formatter)
+        }
     }
 }
