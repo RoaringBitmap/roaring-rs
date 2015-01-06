@@ -12,7 +12,7 @@ impl Store {
     pub fn insert(&mut self, index: u16) -> bool {
         match self {
             &Array(ref mut vec) => {
-                vec.binary_search_by(|elem| elem.cmp(&index))
+                vec.binary_search(&index)
                     .map_err(|loc| vec.insert(loc, index))
                     .is_err()
             },
@@ -31,7 +31,7 @@ impl Store {
     pub fn remove(&mut self, index: u16) -> bool {
         match self {
             &Array(ref mut vec) => {
-                vec.binary_search_by(|elem| elem.cmp(&index))
+                vec.binary_search(&index)
                     .map(|loc| vec.remove(loc))
                     .is_ok()
             },
@@ -50,7 +50,7 @@ impl Store {
     pub fn contains(&self, index: u16) -> bool {
         match self {
             &Array(ref vec) => {
-                vec.binary_search_by(|elem| elem.cmp(&index)).is_ok()
+                vec.binary_search(&index).is_ok()
             },
             &Bitmap(ref bits) => {
                 let (key, bit) = bitmap_location(index);
