@@ -1,4 +1,4 @@
-use std::{ u32 };
+use std::{ u64, uint };
 use std::num::Int;
 use std::cmp::Ordering::{ Equal, Less, Greater };
 
@@ -6,7 +6,7 @@ use store::Store::{ Array, Bitmap };
 
 pub enum Store {
     Array(Vec<u16>),
-    Bitmap([u32; 2048]),
+    Bitmap(Box<[u64]>),
 }
 
 impl Store {
@@ -115,9 +115,9 @@ impl Store {
             &Bitmap(ref bits) => {
                 let mut vec = Vec::new();
                 for (key, val) in bits.iter().map(|v| *v).enumerate().filter(|&(_, v)| v != 0) {
-                    for bit in 0..(u32::BITS) {
+                    for bit in 0..(u64::BITS) {
                         if (val & (1 << bit)) != 0 {
-                            vec.push((key * u32::BITS + bit) as u16);
+                            vec.push((key * u64::BITS + bit) as u16);
                         }
                     }
                 }
@@ -129,7 +129,7 @@ impl Store {
     pub fn to_bitmap(&self) -> Self {
         match self {
             &Array(ref vec) => {
-                let mut bits = [0; 2048];
+                let mut bits = box [0; 1024];
                 for &index in vec.iter() {
                     bits[key(index)] |= 1 << bit(index);
                 }
@@ -300,7 +300,7 @@ impl Store {
             &Bitmap(ref bits) => {
                 bits.iter().enumerate()
                     .filter(|&(_, &bit)| bit != 0)
-                    .next().map(|(index, bit)| (index * u32::BITS + bit.leading_zeros()) as u16)
+                    .next().map(|(index, bit)| (index * u64::BITS + bit.leading_zeros()) as u16)
                     .unwrap()
             },
         }
@@ -312,11 +312,20 @@ impl Store {
             &Bitmap(ref bits) => {
                 bits.iter().enumerate().rev()
                     .filter(|&(_, &bit)| bit != 0)
-                    .next().map(|(index, bit)| (index * u32::BITS + bit.leading_zeros()) as u16)
+                    .next().map(|(index, bit)| (index * u64::BITS + bit.leading_zeros()) as u16)
                     .unwrap()
             },
         }
     }
+
+    #[inline]
+    pub fn iter<'a>(&'a self) -> Box<Iterator<Item = u16> + 'a> {
+        match self {
+            &Array(ref vec) => box vec.iter().map(|x| *x) as Box<Iterator<Item = u16> + 'a>,
+            &Bitmap(ref bits) => box BitmapIter::new(bits) as Box<Iterator<Item = u16> + 'a>,
+        }
+    }
+
 }
 
 impl PartialEq for Store {
@@ -338,12 +347,48 @@ impl Clone for Store {
         match self {
             &Array(ref vec) => Array(vec.clone()),
             &Bitmap(ref bits) => {
-                let mut new_bits = [0u32; 2048];
+                let mut new_bits = [0; 1024];
                 for (i1, &i2) in new_bits.iter_mut().zip(bits.iter()) {
                     *i1 = i2;
                 }
-                Bitmap(new_bits)
+                Bitmap(box new_bits)
             },
+        }
+    }
+}
+
+struct BitmapIter<'a> {
+    key: uint,
+    bit: uint,
+    bits: &'a Box<[u64]>,
+}
+
+impl<'a> BitmapIter<'a> {
+    fn new(bits: &'a Box<[u64]>) -> BitmapIter<'a> {
+        BitmapIter {
+            key: 0,
+            bit: uint::MAX,
+            bits: bits,
+        }
+    }
+}
+
+impl<'a> Iterator for BitmapIter<'a> {
+    type Item = u16;
+
+    fn next(&mut self) -> Option<u16> {
+        loop {
+            if self.key == 1023 && self.bit == (u64::BITS - 1) {
+                return None;
+            }
+            self.bit += 1;
+            if self.bit == u64::BITS {
+                self.bit = 0;
+                self.key += 1;
+            }
+            if (self.bits[self.key] & (1 << self.bit)) != 0 {
+                return Some((self.key * u64::BITS + self.bit) as u16);
+            }
         }
     }
 }
@@ -352,7 +397,7 @@ impl Clone for Store {
 fn bitmap_location(index: u16) -> (uint, uint) { (key(index), bit(index)) }
 
 #[inline]
-fn key(index: u16) -> uint { (index / (u32::BITS as u16)) as uint }
+fn key(index: u16) -> uint { (index / (u64::BITS as u16)) as uint }
 
 #[inline]
-fn bit(index: u16) -> uint { (index % (u32::BITS as u16)) as uint }
+fn bit(index: u16) -> uint { (index % (u64::BITS as u16)) as uint }

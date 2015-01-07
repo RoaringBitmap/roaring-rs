@@ -1,4 +1,4 @@
-use std::{ u16, u32, uint };
+use std::{ u16 };
 use std::fmt::{ Show, Formatter, Result };
 
 use store::Store;
@@ -57,10 +57,7 @@ impl Container {
 
     #[inline]
     pub fn iter<'a>(&'a self) -> Box<Iterator<Item = u16> + 'a> {
-        match self.store {
-            Array(ref vec) => box vec.iter().map(|x| *x) as Box<Iterator<Item = u16> + 'a>,
-            Bitmap(ref bits) => box BitmapIter::new(bits) as Box<Iterator<Item = u16> + 'a>,
-        }
+        self.store.iter()
     }
 
     #[inline]
@@ -124,42 +121,6 @@ impl Container {
         };
         if let Some(new_store) = new_store {
             self.store = new_store;
-        }
-    }
-}
-
-struct BitmapIter<'a> {
-    key: uint,
-    bit: uint,
-    bits: &'a [u32; 2048],
-}
-
-impl<'a> BitmapIter<'a> {
-    fn new(bits: &'a [u32; 2048]) -> BitmapIter<'a> {
-        BitmapIter {
-            key: 0,
-            bit: uint::MAX,
-            bits: bits,
-        }
-    }
-}
-
-impl<'a> Iterator for BitmapIter<'a> {
-    type Item = u16;
-
-    fn next(&mut self) -> Option<u16> {
-        loop {
-            if self.key == 2047 && self.bit == (u32::BITS - 1) {
-                return None;
-            }
-            self.bit += 1;
-            if self.bit == u32::BITS {
-                self.bit = 0;
-                self.key += 1;
-            }
-            if (self.bits[self.key] & (1 << self.bit)) != 0 {
-                return Some((self.key * u32::BITS + self.bit) as u16);
-            }
         }
     }
 }
