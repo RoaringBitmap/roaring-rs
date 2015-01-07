@@ -13,6 +13,7 @@
 #![feature(default_type_params)]
 
 #![warn(missing_docs)]
+#![warn(variant_size_differences)]
 
 use std::fmt::{ Show, Formatter, Result };
 use std::ops::{ BitXor, BitAnd, BitOr, Sub };
