@@ -1,37 +1,37 @@
-use std::{ u16 };
+use std::num::Int;
 use std::fmt::{ Show, Formatter, Result };
 
 use store::Store;
 use store::Store::{ Array, Bitmap };
 
 #[derive(PartialEq, Clone)]
-pub struct Container {
-    key: u16,
-    len: u16,
-    store: Store,
+pub struct Container<Size> where Size: Int {
+    key: Size,
+    len: Size,
+    store: Store<Size>,
 }
 
-impl Container {
-    pub fn new(key: u16) -> Container {
+impl<Size> Container<Size> where Size: Int {
+    pub fn new(key: Size) -> Container<Size> {
         Container {
             key: key,
-            len: u16::MAX,
+            len: Int::max_value(),
             store: Array(Vec::new()),
         }
     }
 }
 
-impl Container {
+impl<Size> Container<Size> where Size: Int {
     #[inline]
-    pub fn key(&self) -> u16 { self.key }
+    pub fn key(&self) -> Size { self.key }
 
     #[inline]
-    pub fn len(&self) -> u16 { self.len + 1 }
+    pub fn len(&self) -> Size { self.len + Int::one() }
 
     #[inline]
-    pub fn insert(&mut self, index: u16) -> bool {
+    pub fn insert(&mut self, index: Size) -> bool {
         if self.store.insert(index) {
-            self.len += 1;
+            self.len = self.len + Int::one();
             self.ensure_correct_store();
             true
         } else {
@@ -40,9 +40,9 @@ impl Container {
     }
 
     #[inline]
-    pub fn remove(&mut self, index: u16) -> bool {
+    pub fn remove(&mut self, index: Size) -> bool {
         if self.store.remove(index) {
-            self.len -= 1;
+            self.len = self.len - Int::one();
             self.ensure_correct_store();
             true
         } else {
@@ -51,12 +51,12 @@ impl Container {
     }
 
     #[inline]
-    pub fn contains(&self, index: u16) -> bool {
+    pub fn contains(&self, index: Size) -> bool {
         self.store.contains(index)
     }
 
     #[inline]
-    pub fn iter<'a>(&'a self) -> Box<Iterator<Item = u16> + 'a> {
+    pub fn iter<'a>(&'a self) -> Box<Iterator<Item = Size> + 'a> {
         self.store.iter()
     }
 
@@ -77,46 +77,48 @@ impl Container {
     #[inline]
     pub fn union_with(&mut self, other: &Self) {
         self.store.union_with(&other.store);
-        self.len = self.store.len() - 1;
+        self.len = self.store.len() - Int::one();
         self.ensure_correct_store();
     }
 
     #[inline]
     pub fn intersect_with(&mut self, other: &Self) {
         self.store.intersect_with(&other.store);
-        self.len = self.store.len() - 1;
+        self.len = self.store.len() - Int::one();
         self.ensure_correct_store();
     }
 
     #[inline]
     pub fn difference_with(&mut self, other: &Self) {
         self.store.difference_with(&other.store);
-        self.len = self.store.len() - 1;
+        self.len = self.store.len() - Int::one();
         self.ensure_correct_store();
     }
 
     #[inline]
     pub fn symmetric_difference_with(&mut self, other: &Self) {
         self.store.symmetric_difference_with(&other.store);
-        self.len = self.store.len() - 1;
+        self.len = self.store.len() - Int::one();
         self.ensure_correct_store();
     }
 
     #[inline]
-    pub fn min(&self) -> u16 {
+    pub fn min(&self) -> Size {
         self.store.min()
     }
 
     #[inline]
-    pub fn max(&self) -> u16 {
+    pub fn max(&self) -> Size {
         self.store.max()
     }
 
     #[inline]
     fn ensure_correct_store(&mut self) {
+        let one: Size = Int::one();
+        let limit = one.rotate_right(4);
         let new_store = match (&self.store, self.len) {
-            (store @ &Bitmap(..), len) if len < 4096 => Some(store.to_array()),
-            (store @ &Array(..), len) if len >= 4096 => Some(store.to_bitmap()),
+            (store @ &Bitmap(..), len) if len < limit => Some(store.to_array()),
+            (store @ &Array(..), len) if len >= limit => Some(store.to_bitmap()),
             _ => None,
         };
         if let Some(new_store) = new_store {
@@ -125,7 +127,7 @@ impl Container {
     }
 }
 
-impl Show for Container {
+impl<Size> Show for Container<Size> where Size: Int + Show {
     #[inline]
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         format!("Container<{} @ {}>", self.len(), self.key()).fmt(formatter)

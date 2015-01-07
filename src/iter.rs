@@ -8,7 +8,7 @@ use container::{ Container };
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a> {
     inner_iter: Option<(u16, Box<Iterator<Item = u16> + 'a>)>,
-    container_iter: slice::Iter<'a, Container>,
+    container_iter: slice::Iter<'a, Container<u16>>,
 }
 
 #[inline]
@@ -17,12 +17,12 @@ fn calc(key: u16, value: u16) -> u32 {
 }
 
 #[inline]
-fn next_iter<'a>(container_iter: &mut slice::Iter<'a, Container>) -> Option<(u16, Box<Iterator<Item = u16> + 'a>)> {
+fn next_iter<'a>(container_iter: &mut slice::Iter<'a, Container<u16>>) -> Option<(u16, Box<Iterator<Item = u16> + 'a>)> {
     container_iter.next().map(|container| (container.key(), container.iter()))
 }
 
 #[inline]
-pub fn new<'a>(mut container_iter: slice::Iter<'a, Container>) -> Iter<'a> {
+pub fn new<'a>(mut container_iter: slice::Iter<'a, Container<u16>>) -> Iter<'a> {
     Iter {
         inner_iter: next_iter(&mut container_iter),
         container_iter: container_iter

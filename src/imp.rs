@@ -225,14 +225,14 @@ fn calc(key: u16, value: u16) -> u32 {
 fn calc_loc(index: u32) -> (u16, u16) { ((index >> u16::BITS) as u16, index as u16) }
 
 struct Pairs<'a> {
-    iter1: slice::Iter<'a, Container>,
-    iter2: slice::Iter<'a, Container>,
-    current1: Option<&'a Container>,
-    current2: Option<&'a Container>,
+    iter1: slice::Iter<'a, Container<u16>>,
+    iter2: slice::Iter<'a, Container<u16>>,
+    current1: Option<&'a Container<u16>>,
+    current2: Option<&'a Container<u16>>,
 }
 
 impl<'a> Pairs<'a> {
-    fn new(mut iter1: slice::Iter<'a, Container>, mut iter2: slice::Iter<'a, Container>) -> Pairs<'a> {
+    fn new(mut iter1: slice::Iter<'a, Container<u16>>, mut iter2: slice::Iter<'a, Container<u16>>) -> Pairs<'a> {
         Pairs {
             iter1: iter1,
             iter2: iter2,
@@ -243,9 +243,9 @@ impl<'a> Pairs<'a> {
 }
 
 impl<'a> Iterator for Pairs<'a> {
-    type Item = (Option<&'a Container>, Option<&'a Container>);
+    type Item = (Option<&'a Container<u16>>, Option<&'a Container<u16>>);
 
-    fn next(&mut self) -> Option<(Option<&'a Container>, Option<&'a Container>)> {
+    fn next(&mut self) -> Option<(Option<&'a Container<u16>>, Option<&'a Container<u16>>)> {
         match (self.current1, self.current2) {
             (None, None) => None,
             (Some(c1), None) => {

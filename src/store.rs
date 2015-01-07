@@ -1,16 +1,18 @@
-use std::{ u64, uint };
+use std::{ u64 };
+use std::iter;
+use std::num;
 use std::num::Int;
 use std::cmp::Ordering::{ Equal, Less, Greater };
 
 use store::Store::{ Array, Bitmap };
 
-pub enum Store {
-    Array(Vec<u16>),
+pub enum Store<Size> {
+    Array(Vec<Size>),
     Bitmap(Box<[u64]>),
 }
 
-impl Store {
-    pub fn insert(&mut self, index: u16) -> bool {
+impl<Size> Store<Size> where Size: Int {
+    pub fn insert(&mut self, index: Size) -> bool {
         match self {
             &Array(ref mut vec) => {
                 vec.binary_search(&index)
@@ -29,7 +31,7 @@ impl Store {
         }
     }
 
-    pub fn remove(&mut self, index: u16) -> bool {
+    pub fn remove(&mut self, index: Size) -> bool {
         match self {
             &Array(ref mut vec) => {
                 vec.binary_search(&index)
@@ -49,7 +51,7 @@ impl Store {
     }
 
     #[inline]
-    pub fn contains(&self, index: u16) -> bool {
+    pub fn contains(&self, index: Size) -> bool {
         match self {
             &Array(ref vec) => vec.binary_search(&index).is_ok(),
             &Bitmap(ref bits) => bits[key(index)] & (1 << bit(index)) != 0
@@ -117,7 +119,7 @@ impl Store {
                 for (key, val) in bits.iter().map(|v| *v).enumerate().filter(|&(_, v)| v != 0) {
                     for bit in 0..(u64::BITS) {
                         if (val & (1 << bit)) != 0 {
-                            vec.push((key * u64::BITS + bit) as u16);
+                            vec.push(num::cast(key * u64::BITS + bit).unwrap());
                         }
                     }
                 }
@@ -129,7 +131,9 @@ impl Store {
     pub fn to_bitmap(&self) -> Self {
         match self {
             &Array(ref vec) => {
-                let mut bits = box [0; 1024];
+                let one: Size = Int::one();
+                let count = one.rotate_right(6);
+                let mut bits = iter::repeat(0).take(num::cast(count).unwrap()).collect::<Vec<u64>>().into_boxed_slice();
                 for &index in vec.iter() {
                     bits[key(index)] |= 1 << bit(index);
                 }
@@ -281,55 +285,55 @@ impl Store {
         }
     }
 
-    pub fn len(&self) -> u16 {
+    pub fn len(&self) -> Size {
         match self {
-            &Array(ref vec) => vec.len() as u16,
+            &Array(ref vec) => num::cast(vec.len()).unwrap(),
             &Bitmap(ref bits) => {
                 let mut len = 0;
                 for bit in bits.iter() {
                     len += bit.count_ones();
                 }
-                len as u16
+                num::cast(len).unwrap()
             },
         }
     }
 
-    pub fn min(&self) -> u16 {
+    pub fn min(&self) -> Size {
         match self {
             &Array(ref vec) => vec[0],
             &Bitmap(ref bits) => {
                 bits.iter().enumerate()
                     .filter(|&(_, &bit)| bit != 0)
-                    .next().map(|(index, bit)| (index * u64::BITS + bit.leading_zeros()) as u16)
+                    .next().map(|(index, bit)| num::cast(index * u64::BITS + bit.leading_zeros()).unwrap())
                     .unwrap()
             },
         }
     }
 
-    pub fn max(&self) -> u16 {
+    pub fn max(&self) -> Size {
         match self {
             &Array(ref vec) => vec[vec.len() - 1],
             &Bitmap(ref bits) => {
                 bits.iter().enumerate().rev()
                     .filter(|&(_, &bit)| bit != 0)
-                    .next().map(|(index, bit)| (index * u64::BITS + bit.leading_zeros()) as u16)
+                    .next().map(|(index, bit)| num::cast(index * u64::BITS + bit.leading_zeros()).unwrap())
                     .unwrap()
             },
         }
     }
 
     #[inline]
-    pub fn iter<'a>(&'a self) -> Box<Iterator<Item = u16> + 'a> {
+    pub fn iter<'a>(&'a self) -> Box<Iterator<Item = Size> + 'a> {
         match self {
-            &Array(ref vec) => box vec.iter().map(|x| *x) as Box<Iterator<Item = u16> + 'a>,
-            &Bitmap(ref bits) => box BitmapIter::new(bits) as Box<Iterator<Item = u16> + 'a>,
+            &Array(ref vec) => box vec.iter().map(|x| *x) as Box<Iterator<Item = Size> + 'a>,
+            &Bitmap(ref bits) => box BitmapIter::new(bits) as Box<Iterator<Item = Size> + 'a>,
         }
     }
 
 }
 
-impl PartialEq for Store {
-    fn eq(&self, other: &Store) -> bool {
+impl<Size> PartialEq for Store<Size> where Size: Int {
+    fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (&Array(ref vec1), &Array(ref vec2)) => {
                 vec1 == vec2
@@ -342,62 +346,58 @@ impl PartialEq for Store {
     }
 }
 
-impl Clone for Store {
+impl<Size> Clone for Store<Size> where Size: Int {
     fn clone(&self) -> Self {
         match self {
             &Array(ref vec) => Array(vec.clone()),
             &Bitmap(ref bits) => {
-                let mut new_bits = [0; 1024];
-                for (i1, &i2) in new_bits.iter_mut().zip(bits.iter()) {
-                    *i1 = i2;
-                }
-                Bitmap(box new_bits)
+                Bitmap(bits.iter().map(|&i| i).collect::<Vec<u64>>().into_boxed_slice())
             },
         }
     }
 }
 
-struct BitmapIter<'a> {
+struct BitmapIter<'a, Size> {
     key: uint,
-    bit: uint,
+    bit: u8,
     bits: &'a Box<[u64]>,
 }
 
-impl<'a> BitmapIter<'a> {
-    fn new(bits: &'a Box<[u64]>) -> BitmapIter<'a> {
+impl<'a, Size> BitmapIter<'a, Size> where Size: Int {
+    fn new(bits: &'a Box<[u64]>) -> BitmapIter<'a, Size> {
         BitmapIter {
             key: 0,
-            bit: uint::MAX,
+            bit: Int::max_value(),
             bits: bits,
         }
     }
 }
 
-impl<'a> Iterator for BitmapIter<'a> {
-    type Item = u16;
+impl<'a, Size> Iterator for BitmapIter<'a, Size> where Size: Int {
+    type Item = Size;
 
-    fn next(&mut self) -> Option<u16> {
+    fn next(&mut self) -> Option<Size> {
         loop {
-            if self.key == 1023 && self.bit == (u64::BITS - 1) {
-                return None;
-            }
             self.bit += 1;
-            if self.bit == u64::BITS {
+            if self.bit == num::cast(u64::BITS).unwrap() {
                 self.bit = 0;
                 self.key += 1;
             }
-            if (self.bits[self.key] & (1 << self.bit)) != 0 {
-                return Some((self.key * u64::BITS + self.bit) as u16);
+            if self.key == self.bits.len() {
+                return None;
+            }
+            if (self.bits[self.key] & (1u64 << num::cast(self.bit).unwrap())) != 0 {
+                return num::cast(self.key * u64::BITS + num::cast(self.bit).unwrap());
             }
         }
     }
 }
 
 #[inline]
-fn bitmap_location(index: u16) -> (uint, uint) { (key(index), bit(index)) }
+fn bitmap_location<Size>(index: Size) -> (uint, uint) where Size: Int { (key(index), bit(index)) }
 
 #[inline]
-fn key(index: u16) -> uint { (index / (u64::BITS as u16)) as uint }
+fn key<Size>(index: Size) -> uint where Size: Int { num::cast(index / num::cast(u64::BITS).unwrap()).unwrap() }
 
 #[inline]
-fn bit(index: u16) -> uint { (index % (u64::BITS as u16)) as uint }
+fn bit<Size>(index: Size) -> uint where Size: Int { num::cast(index % num::cast(u64::BITS).unwrap()).unwrap() }

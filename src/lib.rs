@@ -49,7 +49,7 @@ mod container;
 /// ```
 #[derive(PartialEq, Clone)]
 pub struct RoaringBitmap {
-    containers: Vec<container::Container>,
+    containers: Vec<container::Container<u16>>,
 }
 
 impl RoaringBitmap {
