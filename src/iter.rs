@@ -1,20 +1,18 @@
-use std::{ u16 };
-use std::num;
 use std::slice;
 
 use util;
-use util::{ Either, Halveable, ExtInt, bits };
+use util::{ Either, ExtInt, bits };
 use util::Either::{ Left, Right };
 use container::Container;
 
 /// An iterator for `RoaringBitmap`.
-pub struct Iter<'a, Size> where Size: ExtInt {
-    inner_iter: Option<(<Size as Halveable>::HalfSize, Box<Iterator<Item = <Size as Halveable>::HalfSize> + 'a>)>,
-    container_iter: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>,
+pub struct Iter<'a, Size: ExtInt, HalfSize: ExtInt + 'a> {
+    inner_iter: Option<(HalfSize, Box<Iterator<Item = HalfSize> + 'a>)>,
+    container_iter: slice::Iter<'a, Container<HalfSize>>,
 }
 
 #[inline]
-fn calc<Size>(key: <Size as Halveable>::HalfSize, value: <Size as Halveable>::HalfSize) -> Size where Size: ExtInt {
+fn calc<Size: ExtInt, HalfSize: ExtInt>(key: HalfSize, value: HalfSize) -> Size {
     let bits = util::bits::<Size>();
     let _key: Size = util::cast(key);
     let _value: Size = util::cast(value);
@@ -22,32 +20,32 @@ fn calc<Size>(key: <Size as Halveable>::HalfSize, value: <Size as Halveable>::Ha
 }
 
 #[inline]
-fn next_iter<'a, Size>(container_iter: &mut slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>) -> Option<(<Size as Halveable>::HalfSize, Box<Iterator<Item = <Size as Halveable>::HalfSize> + 'a>)> where Size: ExtInt {
+fn next_iter<'a, Size: ExtInt, HalfSize: ExtInt + 'a>(container_iter: &mut slice::Iter<'a, Container<HalfSize>>) -> Option<(HalfSize, Box<Iterator<Item = HalfSize> + 'a>)> {
     container_iter.next().map(|container| (container.key(), container.iter()))
 }
 
 #[inline]
-pub fn new<'a, Size>(mut container_iter: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>) -> Iter<'a, Size> where Size: ExtInt {
+pub fn new<'a, Size: ExtInt, HalfSize: ExtInt + 'a>(mut container_iter: slice::Iter<'a, Container<HalfSize>>) -> Iter<'a, Size, HalfSize> {
     Iter {
-        inner_iter: next_iter(&mut container_iter),
+        inner_iter: next_iter::<'a, Size, HalfSize>(&mut container_iter),
         container_iter: container_iter
     }
 }
 
-impl<'a, Size> Iter<'a, Size> where Size: ExtInt {
+impl<'a, Size: ExtInt, HalfSize: ExtInt + 'a> Iter<'a, Size, HalfSize> {
     #[inline]
-    fn choose_next(&mut self) -> Option<Either<Size, Option<(<Size as Halveable>::HalfSize, Box<Iterator<Item = <Size as Halveable>::HalfSize> + 'a>)>>> {
+    fn choose_next(&mut self) -> Option<Either<Size, Option<(HalfSize, Box<Iterator<Item = HalfSize> + 'a>)>>> {
         match self.inner_iter {
             Some((key, ref mut iter)) => Some(match iter.next() {
                 Some(value) => Left(calc(key, value)),
-                None => Right(next_iter(&mut self.container_iter)),
+                None => Right(next_iter::<'a, Size, HalfSize>(&mut self.container_iter)),
             }),
             None => None,
         }
     }
 }
 
-impl<'a, Size> Iterator for Iter<'a, Size> where Size: ExtInt {
+impl<'a, Size: ExtInt, HalfSize: ExtInt> Iterator for Iter<'a, Size, HalfSize> {
     type Item = Size;
 
     fn next(&mut self) -> Option<Size> {
@@ -63,11 +61,11 @@ impl<'a, Size> Iterator for Iter<'a, Size> where Size: ExtInt {
 }
 
 /// An iterator for `RoaringBitmap`.
-pub struct UnionIter<'a, Size> where Size: ExtInt {
+pub struct UnionIter<'a, Size: ExtInt, HalfSize: ExtInt + 'a> {
     current1: Option<Size>,
     current2: Option<Size>,
-    iter1: Iter<'a, Size>,
-    iter2: Iter<'a, Size>,
+    iter1: Iter<'a, Size, HalfSize>,
+    iter2: Iter<'a, Size, HalfSize>,
 }
 
 pub mod union {
@@ -75,7 +73,7 @@ pub mod union {
     use super::{ Iter, UnionIter };
 
     #[inline]
-    pub fn new<'a, Size>(mut iter1: Iter<'a, Size>, mut iter2: Iter<'a, Size>) -> UnionIter<'a, Size> where Size: ExtInt {
+    pub fn new<'a, Size: ExtInt, HalfSize: ExtInt + 'a>(mut iter1: Iter<'a, Size, HalfSize>, mut iter2: Iter<'a, Size, HalfSize>) -> UnionIter<'a, Size, HalfSize> {
         UnionIter {
             current1: iter1.next(),
             current2: iter2.next(),
@@ -85,7 +83,7 @@ pub mod union {
     }
 }
 
-impl<'a, Size> Iterator for UnionIter<'a, Size> where Size: ExtInt {
+impl<'a, Size: ExtInt, HalfSize: ExtInt + 'a> Iterator for UnionIter<'a, Size, HalfSize> {
     type Item = Size;
 
     fn next(&mut self) -> Option<Size> {
@@ -106,11 +104,11 @@ impl<'a, Size> Iterator for UnionIter<'a, Size> where Size: ExtInt {
 }
 
 /// An iterator for `RoaringBitmap`.
-pub struct IntersectionIter<'a, Size> where Size: ExtInt {
+pub struct IntersectionIter<'a, Size: ExtInt, HalfSize: ExtInt + 'a> {
     current1: Option<Size>,
     current2: Option<Size>,
-    iter1: Iter<'a, Size>,
-    iter2: Iter<'a, Size>,
+    iter1: Iter<'a, Size, HalfSize>,
+    iter2: Iter<'a, Size, HalfSize>,
 }
 
 pub mod intersection {
@@ -118,7 +116,7 @@ pub mod intersection {
     use super::{ Iter, IntersectionIter };
 
     #[inline]
-    pub fn new<'a, Size>(mut iter1: Iter<'a, Size>, mut iter2: Iter<'a, Size>) -> IntersectionIter<'a, Size> where Size: ExtInt {
+    pub fn new<'a, Size: ExtInt, HalfSize: ExtInt + 'a>(mut iter1: Iter<'a, Size, HalfSize>, mut iter2: Iter<'a, Size, HalfSize>) -> IntersectionIter<'a, Size, HalfSize> {
         IntersectionIter {
             current1: iter1.next(),
             current2: iter2.next(),
@@ -128,7 +126,7 @@ pub mod intersection {
     }
 }
 
-impl<'a, Size> Iterator for IntersectionIter<'a, Size> where Size: ExtInt {
+impl<'a, Size: ExtInt, HalfSize: ExtInt + 'a> Iterator for IntersectionIter<'a, Size, HalfSize> {
     type Item = Size;
 
     fn next(&mut self) -> Option<Size> {
@@ -147,11 +145,11 @@ impl<'a, Size> Iterator for IntersectionIter<'a, Size> where Size: ExtInt {
 }
 
 /// An iterator for `RoaringBitmap`.
-pub struct DifferenceIter<'a, Size> where Size: ExtInt {
+pub struct DifferenceIter<'a, Size: ExtInt, HalfSize: ExtInt + 'a> {
     current1: Option<Size>,
     current2: Option<Size>,
-    iter1: Iter<'a, Size>,
-    iter2: Iter<'a, Size>,
+    iter1: Iter<'a, Size, HalfSize>,
+    iter2: Iter<'a, Size, HalfSize>,
 }
 
 pub mod difference {
@@ -159,7 +157,7 @@ pub mod difference {
     use super::{ Iter, DifferenceIter };
 
     #[inline]
-    pub fn new<'a, Size>(mut iter1: Iter<'a, Size>, mut iter2: Iter<'a, Size>) -> DifferenceIter<'a, Size> where Size: ExtInt {
+    pub fn new<'a, Size: ExtInt, HalfSize: ExtInt + 'a>(mut iter1: Iter<'a, Size, HalfSize>, mut iter2: Iter<'a, Size, HalfSize>) -> DifferenceIter<'a, Size, HalfSize> {
         DifferenceIter {
             current1: iter1.next(),
             current2: iter2.next(),
@@ -169,7 +167,7 @@ pub mod difference {
     }
 }
 
-impl<'a, Size> Iterator for DifferenceIter<'a, Size> where Size: ExtInt {
+impl<'a, Size: ExtInt, HalfSize: ExtInt + 'a> Iterator for DifferenceIter<'a, Size, HalfSize> {
     type Item = Size;
 
     fn next(&mut self) -> Option<Size> {
@@ -189,11 +187,11 @@ impl<'a, Size> Iterator for DifferenceIter<'a, Size> where Size: ExtInt {
 }
 
 /// An iterator for `RoaringBitmap`.
-pub struct SymmetricDifferenceIter<'a, Size> where Size: ExtInt {
+pub struct SymmetricDifferenceIter<'a, Size: ExtInt, HalfSize: ExtInt + 'a> {
     current1: Option<Size>,
     current2: Option<Size>,
-    iter1: Iter<'a, Size>,
-    iter2: Iter<'a, Size>,
+    iter1: Iter<'a, Size, HalfSize>,
+    iter2: Iter<'a, Size, HalfSize>,
 }
 
 pub mod symmetric_difference {
@@ -201,7 +199,7 @@ pub mod symmetric_difference {
     use super::{ Iter, SymmetricDifferenceIter };
 
     #[inline]
-    pub fn new<'a, Size>(mut iter1: Iter<'a, Size>, mut iter2: Iter<'a, Size>) -> SymmetricDifferenceIter<'a, Size> where Size: ExtInt {
+    pub fn new<'a, Size: ExtInt, HalfSize: ExtInt + 'a>(mut iter1: Iter<'a, Size, HalfSize>, mut iter2: Iter<'a, Size, HalfSize>) -> SymmetricDifferenceIter<'a, Size, HalfSize> {
         SymmetricDifferenceIter {
             current1: iter1.next(),
             current2: iter2.next(),
@@ -211,7 +209,7 @@ pub mod symmetric_difference {
     }
 }
 
-impl<'a, Size> Iterator for SymmetricDifferenceIter<'a, Size> where Size: ExtInt {
+impl<'a, Size: ExtInt, HalfSize: ExtInt + 'a> Iterator for SymmetricDifferenceIter<'a, Size, HalfSize> {
     type Item = Size;
 
     fn next(&mut self) -> Option<Size> {

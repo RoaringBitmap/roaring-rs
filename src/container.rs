@@ -1,17 +1,18 @@
 use std::num::Int;
 use std::fmt::{ Show, Formatter, Result };
 
+use util::ExtInt;
 use store::Store;
 use store::Store::{ Array, Bitmap };
 
 #[derive(PartialEq, Clone)]
-pub struct Container<Size> where Size: Int {
+pub struct Container<Size: ExtInt> {
     key: Size,
     len: Size,
     store: Store<Size>,
 }
 
-impl<Size> Container<Size> where Size: Int {
+impl<Size: ExtInt> Container<Size> {
     pub fn new(key: Size) -> Container<Size> {
         Container {
             key: key,
@@ -21,7 +22,7 @@ impl<Size> Container<Size> where Size: Int {
     }
 }
 
-impl<Size> Container<Size> where Size: Int {
+impl<Size: ExtInt> Container<Size> {
     #[inline]
     pub fn key(&self) -> Size { self.key }
 
@@ -127,7 +128,7 @@ impl<Size> Container<Size> where Size: Int {
     }
 }
 
-impl<Size> Show for Container<Size> where Size: Int + Show {
+impl<Size: ExtInt + Show> Show for Container<Size> {
     #[inline]
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         format!("Container<{} @ {}>", self.len(), self.key()).fmt(formatter)
