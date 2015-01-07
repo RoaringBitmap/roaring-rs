@@ -1,37 +1,42 @@
 use std::{ u16 };
+use std::num;
 use std::slice;
 
-use util::Either;
+use util;
+use util::{ Either, Halveable, ExtInt, bits };
 use util::Either::{ Left, Right };
-use container::{ Container };
+use container::Container;
 
 /// An iterator for `RoaringBitmap`.
-pub struct Iter<'a> {
-    inner_iter: Option<(u16, Box<Iterator<Item = u16> + 'a>)>,
-    container_iter: slice::Iter<'a, Container<u16>>,
+pub struct Iter<'a, Size> where Size: ExtInt {
+    inner_iter: Option<(<Size as Halveable>::HalfSize, Box<Iterator<Item = <Size as Halveable>::HalfSize> + 'a>)>,
+    container_iter: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>,
 }
 
 #[inline]
-fn calc(key: u16, value: u16) -> u32 {
-    ((key as u32) << u16::BITS) + (value as u32)
+fn calc<Size>(key: <Size as Halveable>::HalfSize, value: <Size as Halveable>::HalfSize) -> Size where Size: ExtInt {
+    let bits = util::bits::<Size>();
+    let _key: Size = util::cast(key);
+    let _value: Size = util::cast(value);
+    (_key << bits) + _value
 }
 
 #[inline]
-fn next_iter<'a>(container_iter: &mut slice::Iter<'a, Container<u16>>) -> Option<(u16, Box<Iterator<Item = u16> + 'a>)> {
+fn next_iter<'a, Size>(container_iter: &mut slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>) -> Option<(<Size as Halveable>::HalfSize, Box<Iterator<Item = <Size as Halveable>::HalfSize> + 'a>)> where Size: ExtInt {
     container_iter.next().map(|container| (container.key(), container.iter()))
 }
 
 #[inline]
-pub fn new<'a>(mut container_iter: slice::Iter<'a, Container<u16>>) -> Iter<'a> {
+pub fn new<'a, Size>(mut container_iter: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>) -> Iter<'a, Size> where Size: ExtInt {
     Iter {
         inner_iter: next_iter(&mut container_iter),
         container_iter: container_iter
     }
 }
 
-impl<'a> Iter<'a> {
+impl<'a, Size> Iter<'a, Size> where Size: ExtInt {
     #[inline]
-    fn choose_next(&mut self) -> Option<Either<u32, Option<(u16, Box<Iterator<Item = u16> + 'a>)>>> {
+    fn choose_next(&mut self) -> Option<Either<Size, Option<(<Size as Halveable>::HalfSize, Box<Iterator<Item = <Size as Halveable>::HalfSize> + 'a>)>>> {
         match self.inner_iter {
             Some((key, ref mut iter)) => Some(match iter.next() {
                 Some(value) => Left(calc(key, value)),
@@ -42,10 +47,10 @@ impl<'a> Iter<'a> {
     }
 }
 
-impl<'a> Iterator for Iter<'a> {
-    type Item = u32;
+impl<'a, Size> Iterator for Iter<'a, Size> where Size: ExtInt {
+    type Item = Size;
 
-    fn next(&mut self) -> Option<u32> {
+    fn next(&mut self) -> Option<Size> {
         match self.choose_next() {
             None => None,
             Some(Left(val)) => Some(val),
@@ -58,18 +63,19 @@ impl<'a> Iterator for Iter<'a> {
 }
 
 /// An iterator for `RoaringBitmap`.
-pub struct UnionIter<'a> {
-    current1: Option<u32>,
-    current2: Option<u32>,
-    iter1: Iter<'a>,
-    iter2: Iter<'a>,
+pub struct UnionIter<'a, Size> where Size: ExtInt {
+    current1: Option<Size>,
+    current2: Option<Size>,
+    iter1: Iter<'a, Size>,
+    iter2: Iter<'a, Size>,
 }
 
 pub mod union {
+    use util::{ ExtInt };
     use super::{ Iter, UnionIter };
 
     #[inline]
-    pub fn new<'a>(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> UnionIter<'a> {
+    pub fn new<'a, Size>(mut iter1: Iter<'a, Size>, mut iter2: Iter<'a, Size>) -> UnionIter<'a, Size> where Size: ExtInt {
         UnionIter {
             current1: iter1.next(),
             current2: iter2.next(),
@@ -79,10 +85,10 @@ pub mod union {
     }
 }
 
-impl<'a> Iterator for UnionIter<'a> {
-    type Item = u32;
+impl<'a, Size> Iterator for UnionIter<'a, Size> where Size: ExtInt {
+    type Item = Size;
 
-    fn next(&mut self) -> Option<u32> {
+    fn next(&mut self) -> Option<Size> {
         match (self.current1, self.current2) {
             (None, None) => None,
             (val, None) => { self.current1 = self.iter1.next(); val },
@@ -100,18 +106,19 @@ impl<'a> Iterator for UnionIter<'a> {
 }
 
 /// An iterator for `RoaringBitmap`.
-pub struct IntersectionIter<'a> {
-    current1: Option<u32>,
-    current2: Option<u32>,
-    iter1: Iter<'a>,
-    iter2: Iter<'a>,
+pub struct IntersectionIter<'a, Size> where Size: ExtInt {
+    current1: Option<Size>,
+    current2: Option<Size>,
+    iter1: Iter<'a, Size>,
+    iter2: Iter<'a, Size>,
 }
 
 pub mod intersection {
+    use util::{ ExtInt };
     use super::{ Iter, IntersectionIter };
 
     #[inline]
-    pub fn new<'a>(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> IntersectionIter<'a> {
+    pub fn new<'a, Size>(mut iter1: Iter<'a, Size>, mut iter2: Iter<'a, Size>) -> IntersectionIter<'a, Size> where Size: ExtInt {
         IntersectionIter {
             current1: iter1.next(),
             current2: iter2.next(),
@@ -121,10 +128,10 @@ pub mod intersection {
     }
 }
 
-impl<'a> Iterator for IntersectionIter<'a> {
-    type Item = u32;
+impl<'a, Size> Iterator for IntersectionIter<'a, Size> where Size: ExtInt {
+    type Item = Size;
 
-    fn next(&mut self) -> Option<u32> {
+    fn next(&mut self) -> Option<Size> {
         match (self.current1, self.current2) {
             (None, _) | (_, None) => None,
             (val1, val2) if val1 < val2 => { self.current1 = self.iter1.next(); self.next() },
@@ -140,18 +147,19 @@ impl<'a> Iterator for IntersectionIter<'a> {
 }
 
 /// An iterator for `RoaringBitmap`.
-pub struct DifferenceIter<'a> {
-    current1: Option<u32>,
-    current2: Option<u32>,
-    iter1: Iter<'a>,
-    iter2: Iter<'a>,
+pub struct DifferenceIter<'a, Size> where Size: ExtInt {
+    current1: Option<Size>,
+    current2: Option<Size>,
+    iter1: Iter<'a, Size>,
+    iter2: Iter<'a, Size>,
 }
 
 pub mod difference {
+    use util::{ ExtInt };
     use super::{ Iter, DifferenceIter };
 
     #[inline]
-    pub fn new<'a>(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> DifferenceIter<'a> {
+    pub fn new<'a, Size>(mut iter1: Iter<'a, Size>, mut iter2: Iter<'a, Size>) -> DifferenceIter<'a, Size> where Size: ExtInt {
         DifferenceIter {
             current1: iter1.next(),
             current2: iter2.next(),
@@ -161,10 +169,10 @@ pub mod difference {
     }
 }
 
-impl<'a> Iterator for DifferenceIter<'a> {
-    type Item = u32;
+impl<'a, Size> Iterator for DifferenceIter<'a, Size> where Size: ExtInt {
+    type Item = Size;
 
-    fn next(&mut self) -> Option<u32> {
+    fn next(&mut self) -> Option<Size> {
         loop {
             match (self.current1, self.current2) {
                 (None, _) | (_, None) => return None,
@@ -181,18 +189,19 @@ impl<'a> Iterator for DifferenceIter<'a> {
 }
 
 /// An iterator for `RoaringBitmap`.
-pub struct SymmetricDifferenceIter<'a> {
-    current1: Option<u32>,
-    current2: Option<u32>,
-    iter1: Iter<'a>,
-    iter2: Iter<'a>,
+pub struct SymmetricDifferenceIter<'a, Size> where Size: ExtInt {
+    current1: Option<Size>,
+    current2: Option<Size>,
+    iter1: Iter<'a, Size>,
+    iter2: Iter<'a, Size>,
 }
 
 pub mod symmetric_difference {
+    use util::{ ExtInt };
     use super::{ Iter, SymmetricDifferenceIter };
 
     #[inline]
-    pub fn new<'a>(mut iter1: Iter<'a>, mut iter2: Iter<'a>) -> SymmetricDifferenceIter<'a> {
+    pub fn new<'a, Size>(mut iter1: Iter<'a, Size>, mut iter2: Iter<'a, Size>) -> SymmetricDifferenceIter<'a, Size> where Size: ExtInt {
         SymmetricDifferenceIter {
             current1: iter1.next(),
             current2: iter2.next(),
@@ -202,10 +211,10 @@ pub mod symmetric_difference {
     }
 }
 
-impl<'a> Iterator for SymmetricDifferenceIter<'a> {
-    type Item = u32;
+impl<'a, Size> Iterator for SymmetricDifferenceIter<'a, Size> where Size: ExtInt {
+    type Item = Size;
 
-    fn next(&mut self) -> Option<u32> {
+    fn next(&mut self) -> Option<Size> {
         match (self.current1, self.current2) {
             (None, _) | (_, None) => None,
             (val1, val2) if val1 < val2 => { self.current1 = self.iter1.next(); val1 },

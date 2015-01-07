@@ -15,9 +15,12 @@
 #![warn(missing_docs)]
 #![warn(variant_size_differences)]
 
+use std::num::Int;
 use std::fmt::{ Show, Formatter, Result };
 use std::ops::{ BitXor, BitAnd, BitOr, Sub };
 use std::iter::{ FromIterator };
+
+use util::{ Halveable, ExtInt };
 
 pub use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
 
@@ -48,11 +51,11 @@ mod container;
 /// # }
 /// ```
 #[derive(PartialEq, Clone)]
-pub struct RoaringBitmap {
-    containers: Vec<container::Container<u16>>,
+pub struct RoaringBitmap<Size> where Size: ExtInt {
+    containers: Vec<container::Container<<Size as Halveable>::HalfSize>>,
 }
 
-impl RoaringBitmap {
+impl<Size> RoaringBitmap<Size> where Size: ExtInt {
     /// Creates an empty `RoaringBitmap`.
     ///
     /// # Examples
@@ -87,7 +90,7 @@ impl RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    pub fn insert(&mut self, value: u32) -> bool {
+    pub fn insert(&mut self, value: Size) -> bool {
         imp::insert(self, value)
     }
 
@@ -109,7 +112,7 @@ impl RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    pub fn remove(&mut self, value: u32) -> bool {
+    pub fn remove(&mut self, value: Size) -> bool {
         imp::remove(self, value)
     }
 
@@ -131,7 +134,7 @@ impl RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    pub fn contains(&self, value: u32) -> bool {
+    pub fn contains(&self, value: Size) -> bool {
         imp::contains(self, value)
     }
 
@@ -201,11 +204,11 @@ impl RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    pub fn len(&self) -> uint {
+    pub fn len(&self) -> Size {
         imp::len(self)
     }
 
-    /// Iterator over each u32 stored in the RoaringBitmap, guarantees values are ordered by value.
+    /// Iterator over each value stored in the RoaringBitmap, guarantees values are ordered by value.
     ///
     /// # Examples
     ///
@@ -230,7 +233,7 @@ impl RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    pub fn iter<'a>(&'a self) -> Iter<'a> {
+    pub fn iter<'a>(&'a self) -> Iter<'a, Size> {
         imp::iter(self)
     }
 
@@ -353,7 +356,7 @@ impl RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    pub fn union<'a>(&'a self, other: &'a Self) -> UnionIter<'a> {
+    pub fn union<'a>(&'a self, other: &'a Self) -> UnionIter<'a, Size> {
         imp::union(self, other)
     }
 
@@ -386,11 +389,11 @@ impl RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    pub fn intersection<'a>(&'a self, other: &'a Self) -> IntersectionIter<'a> {
+    pub fn intersection<'a>(&'a self, other: &'a Self) -> IntersectionIter<'a, Size> {
         imp::intersection(self, other)
     }
 
-    /// Returns an iterator over the set of `u32`s in `this` that are not in `other`.
+    /// Returns an iterator over the set of values in `this` that are not in `other`.
     ///
     /// # Examples
     ///
@@ -423,11 +426,11 @@ impl RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    pub fn difference<'a>(&'a self, other: &'a Self) -> DifferenceIter<'a> {
+    pub fn difference<'a>(&'a self, other: &'a Self) -> DifferenceIter<'a, Size> {
         imp::difference(self, other)
     }
 
-    /// Returns an iterator over the set of `u32`s in `this` that are not in `other` + in `other`
+    /// Returns an iterator over the set of values in `this` that are not in `other` + in `other`
     /// that are not in `this`.
     ///
     /// # Examples
@@ -457,7 +460,7 @@ impl RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    pub fn symmetric_difference<'a>(&'a self, other: &'a Self) -> SymmetricDifferenceIter<'a> {
+    pub fn symmetric_difference<'a>(&'a self, other: &'a Self) -> SymmetricDifferenceIter<'a, Size> {
         imp::symmetric_difference(self, other)
     }
 
@@ -558,36 +561,36 @@ impl RoaringBitmap {
     }
 }
 
-impl FromIterator<u32> for RoaringBitmap {
+impl<Size> FromIterator<Size> for RoaringBitmap<Size> where Size: ExtInt {
     #[inline]
-    fn from_iter<I: Iterator<Item = u32>>(iterator: I) -> RoaringBitmap {
+    fn from_iter<I: Iterator<Item = Size>>(iterator: I) -> Self {
         imp::from_iter(iterator)
     }
 }
 
-impl<'a> FromIterator<&'a u32> for RoaringBitmap {
+impl<'a, Size> FromIterator<&'a Size> for RoaringBitmap<Size> where Size: ExtInt + 'a {
     #[inline]
-    fn from_iter<I: Iterator<Item = &'a u32>>(iterator: I) -> RoaringBitmap {
+    fn from_iter<I: Iterator<Item = &'a Size>>(iterator: I) -> Self {
         imp::from_iter_ref(iterator)
     }
 }
 
-impl Extend<u32> for RoaringBitmap {
+impl<Size> Extend<Size> for RoaringBitmap<Size> where Size: ExtInt {
     #[inline]
-    fn extend<I: Iterator<Item = u32>>(&mut self, iterator: I) {
+    fn extend<I: Iterator<Item = Size>>(&mut self, iterator: I) {
         imp::extend(self, iterator)
     }
 }
 
-impl<'a> Extend<&'a u32> for RoaringBitmap {
+impl<'a, Size> Extend<&'a Size> for RoaringBitmap<Size> where Size: ExtInt + 'a {
     #[inline]
-    fn extend<I: Iterator<Item = &'a u32>>(&mut self, iterator: I) {
+    fn extend<I: Iterator<Item = &'a Size>>(&mut self, iterator: I) {
         imp::extend_ref(self, iterator)
     }
 }
 
-impl BitOr<RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<Size> BitOr<Self> for RoaringBitmap<Size> where Size: ExtInt {
+    type Output = Self;
 
     /// Unions the `rhs` into this `RoaringBitmap`.
     ///
@@ -609,14 +612,14 @@ impl BitOr<RoaringBitmap> for RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn bitor(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
+    fn bitor(mut self, rhs: Self) -> Self {
         self.union_with(&rhs);
         self
     }
 }
 
-impl<'a> BitOr<RoaringBitmap> for &'a RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, Size> BitOr<RoaringBitmap<Size>> for &'a RoaringBitmap<Size> where Size: ExtInt {
+    type Output = RoaringBitmap<Size>;
 
     /// Unions`rhs` and `self`, writes result in place to `rhs`.
     ///
@@ -638,14 +641,14 @@ impl<'a> BitOr<RoaringBitmap> for &'a RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn bitor(self, mut rhs: RoaringBitmap) -> RoaringBitmap {
+    fn bitor(self, mut rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         rhs.union_with(self);
         rhs
     }
 }
 
-impl<'a, 'b> BitOr<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, 'b, Size> BitOr<&'a RoaringBitmap<Size>> for &'b RoaringBitmap<Size> where Size: ExtInt {
+    type Output = RoaringBitmap<Size>;
 
     /// Unions`rhs` and `self`, allocates new bitmap for result.
     ///
@@ -667,15 +670,15 @@ impl<'a, 'b> BitOr<&'a RoaringBitmap> for &'b RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn bitor(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn bitor(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         let mut result = self.clone();
         result.union_with(rhs);
         result
     }
 }
 
-impl<'a> BitOr<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, Size> BitOr<&'a Self> for RoaringBitmap<Size> where Size: ExtInt {
+    type Output = Self;
 
     /// Unions the `rhs` into this `RoaringBitmap`.
     ///
@@ -697,14 +700,14 @@ impl<'a> BitOr<&'a RoaringBitmap> for RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn bitor(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn bitor(mut self, rhs: &'a Self) -> Self {
         self.union_with(rhs);
         self
     }
 }
 
-impl BitAnd<RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<Size> BitAnd<Self> for RoaringBitmap<Size> where Size: ExtInt {
+    type Output = Self;
 
     /// Intersects the `rhs` into this `RoaringBitmap`.
     ///
@@ -726,14 +729,14 @@ impl BitAnd<RoaringBitmap> for RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn bitand(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
+    fn bitand(mut self, rhs: Self) -> Self {
         self.intersect_with(&rhs);
         self
     }
 }
 
-impl<'a> BitAnd<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, Size> BitAnd<&'a Self> for RoaringBitmap<Size> where Size: ExtInt {
+    type Output = Self;
 
     /// Intersects the `rhs` into this `RoaringBitmap`.
     ///
@@ -755,14 +758,14 @@ impl<'a> BitAnd<&'a RoaringBitmap> for RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn bitand(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn bitand(mut self, rhs: &'a Self) -> Self {
         self.intersect_with(rhs);
         self
     }
 }
 
-impl<'a> BitAnd<RoaringBitmap> for &'a RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, Size> BitAnd<RoaringBitmap<Size>> for &'a RoaringBitmap<Size> where Size: ExtInt {
+    type Output = RoaringBitmap<Size>;
 
     /// Intersects `self` into the `rhs` `RoaringBitmap`.
     ///
@@ -784,14 +787,14 @@ impl<'a> BitAnd<RoaringBitmap> for &'a RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn bitand(self, mut rhs: RoaringBitmap) -> RoaringBitmap {
+    fn bitand(self, mut rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         rhs.intersect_with(self);
         rhs
     }
 }
 
-impl<'a, 'b> BitAnd<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, 'b, Size> BitAnd<&'a RoaringBitmap<Size>> for &'b RoaringBitmap<Size> where Size: ExtInt {
+    type Output = RoaringBitmap<Size>;
 
     /// Intersects `self` and `rhs` into a new `RoaringBitmap`.
     ///
@@ -813,15 +816,15 @@ impl<'a, 'b> BitAnd<&'a RoaringBitmap> for &'b RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn bitand(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn bitand(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         let mut result = self.clone();
         result.intersect_with(rhs);
         result
     }
 }
 
-impl Sub<RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<Size> Sub<Self> for RoaringBitmap<Size> where Size: ExtInt {
+    type Output = Self;
 
     /// Subtracts the `rhs` into this `RoaringBitmap`.
     ///
@@ -843,14 +846,14 @@ impl Sub<RoaringBitmap> for RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn sub(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
+    fn sub(mut self, rhs: Self) -> Self {
         self.difference_with(&rhs);
         self
     }
 }
 
-impl<'a> Sub<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, Size> Sub<&'a Self> for RoaringBitmap<Size> where Size: ExtInt {
+    type Output = Self;
 
     /// Subtracts the `rhs` into this `RoaringBitmap`.
     ///
@@ -872,14 +875,14 @@ impl<'a> Sub<&'a RoaringBitmap> for RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn sub(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn sub(mut self, rhs: &'a Self) -> Self {
         self.difference_with(rhs);
         self
     }
 }
 
-impl<'a, 'b> Sub<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, 'b, Size> Sub<&'a RoaringBitmap<Size>> for &'b RoaringBitmap<Size> where Size: ExtInt {
+    type Output = RoaringBitmap<Size>;
 
     /// Subtracts `rhs` from `self` and allocates a new `RoaringBitmap`.
     ///
@@ -901,15 +904,15 @@ impl<'a, 'b> Sub<&'a RoaringBitmap> for &'b RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn sub(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn sub(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         let mut result = self.clone();
         result.difference_with(rhs);
         result
     }
 }
 
-impl BitXor<RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<Size> BitXor<Self> for RoaringBitmap<Size> where Size: ExtInt {
+    type Output = Self;
 
     /// Subtracts the `rhs` into this `RoaringBitmap`.
     ///
@@ -931,14 +934,14 @@ impl BitXor<RoaringBitmap> for RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn bitxor(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
+    fn bitxor(mut self, rhs: Self) -> Self {
         self.symmetric_difference_with(&rhs);
         self
     }
 }
 
-impl<'a> BitXor<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, Size> BitXor<&'a Self> for RoaringBitmap<Size> where Size: ExtInt {
+    type Output = RoaringBitmap<Size>;
 
     /// Exclusive ors the `rhs` into this `RoaringBitmap`.
     ///
@@ -960,14 +963,14 @@ impl<'a> BitXor<&'a RoaringBitmap> for RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn bitxor(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn bitxor(mut self, rhs: &'a Self) -> Self {
         self.symmetric_difference_with(rhs);
         self
     }
 }
 
-impl<'a> BitXor<RoaringBitmap> for &'a RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, Size> BitXor<RoaringBitmap<Size>> for &'a RoaringBitmap<Size> where Size: ExtInt {
+    type Output = RoaringBitmap<Size>;
 
     /// Exclusive ors `rhs` and `self`, writes result in place to `rhs`.
     ///
@@ -989,14 +992,14 @@ impl<'a> BitXor<RoaringBitmap> for &'a RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn bitxor(self, mut rhs: RoaringBitmap) -> RoaringBitmap {
+    fn bitxor(self, mut rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         rhs.symmetric_difference_with(self);
         rhs
     }
 }
 
-impl<'a, 'b> BitXor<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, 'b, Size> BitXor<&'a RoaringBitmap<Size>> for &'b RoaringBitmap<Size> where Size: ExtInt {
+    type Output = RoaringBitmap<Size>;
 
     /// Exclusive ors `rhs` and `self`, allocates a new bitmap for the result.
     ///
@@ -1018,18 +1021,18 @@ impl<'a, 'b> BitXor<&'a RoaringBitmap> for &'b RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    fn bitxor(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn bitxor(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         let mut result = self.clone();
         result.symmetric_difference_with(rhs);
         result
     }
 }
 
-impl Show for RoaringBitmap {
+impl<Size> Show for RoaringBitmap<Size> where Size: ExtInt + Show {
     #[inline]
     fn fmt(&self, formatter: &mut Formatter) -> Result {
-        if self.len() < 16 {
-            format!("RoaringBitmap<{}>", self.iter().collect::<Vec<u32>>()).fmt(formatter)
+        if self.len() < util::cast(16u8) {
+            format!("RoaringBitmap<{}>", self.iter().collect::<Vec<Size>>()).fmt(formatter)
         } else {
             format!("RoaringBitmap<{} values between {} and {}>", self.len(), imp::min(self), imp::max(self)).fmt(formatter)
         }

@@ -1,18 +1,21 @@
-use std::{ u16, u32 };
+use std::cmp::Ord;
+use std::num::Int;
 use std::slice;
 
 use iter;
 use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
 use container::Container;
+use util;
+use util::{ Halveable, ExtInt };
 
-type RB = ::RoaringBitmap;
+type RB<Size> = ::RoaringBitmap<Size>;
 
 #[inline]
-pub fn new() -> RB {
+pub fn new<Size>() -> RB<Size> where Size: ExtInt {
     RB { containers: Vec::new() }
 }
 
-pub fn insert(this: &mut RB, value: u32) -> bool {
+pub fn insert<Size>(this: &mut RB<Size>, value: Size) -> bool where Size: ExtInt {
     let (key, index) = calc_loc(value);
     let container = match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
         Ok(loc) => &mut this.containers[loc],
@@ -24,12 +27,12 @@ pub fn insert(this: &mut RB, value: u32) -> bool {
     container.insert(index)
 }
 
-pub fn remove(this: &mut RB, value: u32) -> bool {
+pub fn remove<Size>(this: &mut RB<Size>, value: Size) -> bool where Size: ExtInt {
     let (key, index) = calc_loc(value);
     match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
         Ok(loc) => {
             if this.containers[loc].remove(index) {
-                if this.containers[loc].len() == 0 {
+                if this.containers[loc].len() == Int::zero() {
                     this.containers.remove(loc);
                 }
                 true
@@ -41,7 +44,7 @@ pub fn remove(this: &mut RB, value: u32) -> bool {
     }
 }
 
-pub fn contains(this: &RB, value: u32) -> bool {
+pub fn contains<Size>(this: &RB<Size>, value: Size) -> bool where Size: ExtInt {
     let (key, index) = calc_loc(value);
     match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
         Ok(loc) => this.containers[loc].contains(index),
@@ -50,38 +53,38 @@ pub fn contains(this: &RB, value: u32) -> bool {
 }
 
 #[inline]
-pub fn clear(this: &mut RB) {
+pub fn clear<Size>(this: &mut RB<Size>) where Size: ExtInt {
     this.containers.clear();
 }
 
 #[inline]
-pub fn is_empty(this: &RB) -> bool {
+pub fn is_empty<Size>(this: &RB<Size>) -> bool where Size: ExtInt {
     this.containers.is_empty()
 }
 
-pub fn len(this: &RB) -> uint {
+pub fn len<Size>(this: &RB<Size>) -> Size where Size: ExtInt {
     this.containers
         .iter()
-        .map(|container| container.len() as uint)
-        .fold(0, |sum, len| sum + len)
+        .map(|container| container.len())
+        .fold(Int::zero(), |sum: Size, len| sum + util::cast(len))
 }
 
 #[inline]
-pub fn iter<'a>(this: &'a RB) -> Iter<'a> {
+pub fn iter<'a, Size>(this: &'a RB<Size>) -> Iter<'a, Size> where Size: ExtInt {
     iter::new(this.containers.iter())
 }
 
-fn pairs<'a>(this: &'a RB, other: &'a RB) -> Pairs<'a> {
+fn pairs<'a, Size>(this: &'a RB<Size>, other: &'a RB<Size>) -> Pairs<'a, Size> where Size: ExtInt {
     Pairs::new(this.containers.iter(), other.containers.iter())
 }
 
-pub fn is_disjoint(this: &RB, other: &RB) -> bool {
+pub fn is_disjoint<Size>(this: &RB<Size>, other: &RB<Size>) -> bool where Size: ExtInt {
     pairs(this, other)
         .filter(|&(c1, c2)| c1.is_some() && c2.is_some())
         .all(|(c1, c2)| c1.unwrap().is_disjoint(c2.unwrap()))
 }
 
-pub fn is_subset(this: &RB, other: &RB) -> bool {
+pub fn is_subset<Size>(this: &RB<Size>, other: &RB<Size>) -> bool where Size: ExtInt {
     pairs(this, other).all(|pairs| match pairs {
         (None, _) => return true,
         (_, None) => return false,
@@ -90,32 +93,32 @@ pub fn is_subset(this: &RB, other: &RB) -> bool {
 }
 
 #[inline]
-pub fn is_superset(this: &RB, other: &RB) -> bool {
+pub fn is_superset<Size>(this: &RB<Size>, other: &RB<Size>) -> bool where Size: ExtInt {
     other.is_subset(this)
 }
 
 #[inline]
-pub fn union<'a>(this: &'a RB, other: &'a RB) -> UnionIter<'a> {
+pub fn union<'a, Size>(this: &'a RB<Size>, other: &'a RB<Size>) -> UnionIter<'a, Size> where Size: ExtInt {
     iter::union::new(this.iter(), other.iter())
 }
 
 #[inline]
-pub fn intersection<'a>(this: &'a RB, other: &'a RB) -> IntersectionIter<'a> {
+pub fn intersection<'a, Size>(this: &'a RB<Size>, other: &'a RB<Size>) -> IntersectionIter<'a, Size> where Size: ExtInt {
     iter::intersection::new(this.iter(), other.iter())
 }
 
 #[inline]
-pub fn difference<'a>(this: &'a RB, other: &'a RB) -> DifferenceIter<'a> {
+pub fn difference<'a, Size>(this: &'a RB<Size>, other: &'a RB<Size>) -> DifferenceIter<'a, Size> where Size: ExtInt {
     iter::difference::new(this.iter(), other.iter())
 }
 
 #[inline]
-pub fn symmetric_difference<'a>(this: &'a RB, other: &'a RB) -> SymmetricDifferenceIter<'a> {
+pub fn symmetric_difference<'a, Size>(this: &'a RB<Size>, other: &'a RB<Size>) -> SymmetricDifferenceIter<'a, Size> where Size: ExtInt {
     iter::symmetric_difference::new(this.iter(), other.iter())
 }
 
 #[inline]
-pub fn union_with(this: &mut RB, other: &RB) {
+pub fn union_with<Size>(this: &mut RB<Size>, other: &RB<Size>) where Size: ExtInt {
     for container in other.containers.iter() {
         let key = container.key();
         match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
@@ -126,7 +129,7 @@ pub fn union_with(this: &mut RB, other: &RB) {
 }
 
 #[inline]
-pub fn intersect_with(this: &mut RB, other: &RB) {
+pub fn intersect_with<Size>(this: &mut RB<Size>, other: &RB<Size>) where Size: ExtInt {
     let mut index = 0;
     while index < this.containers.len() {
         let key = this.containers[index].key();
@@ -143,13 +146,13 @@ pub fn intersect_with(this: &mut RB, other: &RB) {
 }
 
 #[inline]
-pub fn difference_with(this: &mut RB, other: &RB) {
+pub fn difference_with<Size>(this: &mut RB<Size>, other: &RB<Size>) where Size: ExtInt {
     for index in range(0, this.containers.len()) {
         let key = this.containers[index].key();
         match other.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
             Ok(loc) => {
                 this.containers[index].difference_with(&other.containers[loc]);
-                if this.containers[index].len() == 0 {
+                if this.containers[index].len() == Int::zero() {
                     this.containers.remove(index);
                 }
             },
@@ -159,14 +162,14 @@ pub fn difference_with(this: &mut RB, other: &RB) {
 }
 
 #[inline]
-pub fn symmetric_difference_with(this: &mut RB, other: &RB) {
+pub fn symmetric_difference_with<Size>(this: &mut RB<Size>, other: &RB<Size>) where Size: ExtInt {
     for container in other.containers.iter() {
         let key = container.key();
         match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
             Err(loc) => this.containers.insert(loc, (*container).clone()),
             Ok(loc) => {
                 this.containers[loc].symmetric_difference_with(container);
-                if this.containers[loc].len() == 0 {
+                if this.containers[loc].len() == Int::zero() {
                     this.containers.remove(loc);
                 }
             }
@@ -175,64 +178,68 @@ pub fn symmetric_difference_with(this: &mut RB, other: &RB) {
 }
 
 #[inline]
-pub fn from_iter<I: Iterator<Item = u32>>(iterator: I) -> RB {
+pub fn from_iter<Size, I: Iterator<Item = Size>>(iterator: I) -> RB<Size> where Size: ExtInt {
     let mut rb = new();
     rb.extend(iterator);
     rb
 }
 
 #[inline]
-pub fn from_iter_ref<'a, I: Iterator<Item = &'a u32>>(iterator: I) -> RB {
+pub fn from_iter_ref<'a, Size, I: Iterator<Item = &'a Size>>(iterator: I) -> RB<Size> where Size: ExtInt + 'a {
     let mut rb = new();
     rb.extend(iterator);
     rb
 }
 
 #[inline]
-pub fn extend<I: Iterator<Item = u32>>(this: &mut RB, mut iterator: I) {
+pub fn extend<Size, I: Iterator<Item = Size>>(this: &mut RB<Size>, mut iterator: I) where Size: ExtInt {
     for value in iterator {
         this.insert(value);
     }
 }
 
 #[inline]
-pub fn extend_ref<'a, I: Iterator<Item = &'a u32>>(this: &mut RB, mut iterator: I) {
+pub fn extend_ref<'a, Size, I: Iterator<Item = &'a Size>>(this: &mut RB<Size>, mut iterator: I) where Size: ExtInt + 'a {
     for value in iterator {
         this.insert(*value);
     }
 }
 
-pub fn min(this: &RB) -> u32 {
+pub fn min<Size>(this: &RB<Size>) -> Size where Size: ExtInt {
     match this.containers[] {
         [ref head, ..] => calc(head.key(), head.min()),
-        [] => u32::MIN,
+        [] => Int::min_value(),
     }
 }
 
-pub fn max(this: &RB) -> u32 {
+pub fn max<Size>(this: &RB<Size>) -> Size where Size: ExtInt {
     match this.containers[] {
         [.., ref tail] => calc(tail.key(), tail.max()),
-        [] => u32::MAX,
+        [] => Int::max_value(),
     }
 }
 
 #[inline]
-fn calc(key: u16, value: u16) -> u32 {
-    ((key as u32) << u16::BITS) + (value as u32)
+fn calc<Size>(key: <Size as Halveable>::HalfSize, value: <Size as Halveable>::HalfSize) -> Size where Size: ExtInt {
+    let bits = util::bits::<<Size as Halveable>::HalfSize>();
+    (util::cast::<<Size as Halveable>::HalfSize, Size>(key) << bits) + util::cast(value)
 }
 
 #[inline]
-fn calc_loc(index: u32) -> (u16, u16) { ((index >> u16::BITS) as u16, index as u16) }
-
-struct Pairs<'a> {
-    iter1: slice::Iter<'a, Container<u16>>,
-    iter2: slice::Iter<'a, Container<u16>>,
-    current1: Option<&'a Container<u16>>,
-    current2: Option<&'a Container<u16>>,
+fn calc_loc<Size>(index: Size) -> (<Size as Halveable>::HalfSize, <Size as Halveable>::HalfSize) where Size: ExtInt {
+    let bits = util::bits::<<Size as Halveable>::HalfSize>();
+    (util::cast::<Size, <Size as Halveable>::HalfSize>(index >> bits), util::cast(index))
 }
 
-impl<'a> Pairs<'a> {
-    fn new(mut iter1: slice::Iter<'a, Container<u16>>, mut iter2: slice::Iter<'a, Container<u16>>) -> Pairs<'a> {
+struct Pairs<'a, Size> where Size: ExtInt {
+    iter1: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>,
+    iter2: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>,
+    current1: Option<&'a Container<<Size as Halveable>::HalfSize>>,
+    current2: Option<&'a Container<<Size as Halveable>::HalfSize>>,
+}
+
+impl<'a, Size> Pairs<'a, Size> where Size: ExtInt {
+    fn new(mut iter1: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>, mut iter2: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>) -> Pairs<'a, Size> {
         Pairs {
             iter1: iter1,
             iter2: iter2,
@@ -242,10 +249,10 @@ impl<'a> Pairs<'a> {
     }
 }
 
-impl<'a> Iterator for Pairs<'a> {
-    type Item = (Option<&'a Container<u16>>, Option<&'a Container<u16>>);
+impl<'a, Size> Iterator for Pairs<'a, Size> where Size: ExtInt {
+    type Item = (Option<&'a Container<<Size as Halveable>::HalfSize>>, Option<&'a Container<<Size as Halveable>::HalfSize>>);
 
-    fn next(&mut self) -> Option<(Option<&'a Container<u16>>, Option<&'a Container<u16>>)> {
+    fn next(&mut self) -> Option<(Option<&'a Container<<Size as Halveable>::HalfSize>>, Option<&'a Container<<Size as Halveable>::HalfSize>>)> {
         match (self.current1, self.current2) {
             (None, None) => None,
             (Some(c1), None) => {
@@ -283,13 +290,13 @@ mod test {
 
     #[test]
     fn test_calc_location() {
-        assert_eq!((0, 0), calc_loc(0));
-        assert_eq!((0, 1), calc_loc(1));
-        assert_eq!((0, u16::MAX - 1), calc_loc(u16::MAX as u32 - 1));
-        assert_eq!((0, u16::MAX), calc_loc(u16::MAX as u32));
-        assert_eq!((1, 0), calc_loc(u16::MAX as u32 + 1));
-        assert_eq!((1, 1), calc_loc(u16::MAX as u32 + 2));
-        assert_eq!((u16::MAX, u16::MAX - 1), calc_loc(u32::MAX - 1));
+        assert_eq!((0u16, 0u16), calc_loc(0u32));
+        assert_eq!((0u16, 1u16), calc_loc(1u32));
+        assert_eq!((0u16, u16::MAX - 1u16), calc_loc(u16::MAX as u32 - 1u32));
+        assert_eq!((0u16, u16::MAX), calc_loc(u16::MAX as u32));
+        assert_eq!((1u16, 0u16), calc_loc(u16::MAX as u32 + 1u32));
+        assert_eq!((1u16, 1u16), calc_loc(u16::MAX as u32 + 2u32));
+        assert_eq!((u16::MAX, u16::MAX - 1u16), calc_loc(u32::MAX - 1u32));
         assert_eq!((u16::MAX, u16::MAX), calc_loc(u32::MAX));
     }
 }
