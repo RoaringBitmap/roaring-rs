@@ -14,7 +14,7 @@ pub fn new() -> RB {
 
 pub fn insert(this: &mut RB, value: u32) -> bool {
     let (key, index) = calc_loc(value);
-    let container = match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
+    let container = match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
         Ok(loc) => &mut this.containers[loc],
         Err(loc) => {
             this.containers.insert(loc, Container::new(key));
@@ -26,7 +26,7 @@ pub fn insert(this: &mut RB, value: u32) -> bool {
 
 pub fn remove(this: &mut RB, value: u32) -> bool {
     let (key, index) = calc_loc(value);
-    match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
+    match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
         Ok(loc) => {
             if this.containers[loc].remove(index) {
                 if this.containers[loc].len() == 0 {
@@ -43,7 +43,7 @@ pub fn remove(this: &mut RB, value: u32) -> bool {
 
 pub fn contains(this: &RB, value: u32) -> bool {
     let (key, index) = calc_loc(value);
-    match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
+    match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
         Ok(loc) => this.containers[loc].contains(index),
         Err(_) => false,
     }
@@ -59,10 +59,10 @@ pub fn is_empty(this: &RB) -> bool {
     this.containers.is_empty()
 }
 
-pub fn len(this: &RB) -> uint {
+pub fn len(this: &RB) -> usize {
     this.containers
         .iter()
-        .map(|container| container.len() as uint)
+        .map(|container| container.len() as usize)
         .fold(0, |sum, len| sum + len)
 }
 
@@ -118,7 +118,7 @@ pub fn symmetric_difference<'a>(this: &'a RB, other: &'a RB) -> SymmetricDiffere
 pub fn union_with(this: &mut RB, other: &RB) {
     for container in other.containers.iter() {
         let key = container.key();
-        match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
+        match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
             Err(loc) => this.containers.insert(loc, (*container).clone()),
             Ok(loc) => this.containers[loc].union_with(container),
         };
@@ -130,7 +130,7 @@ pub fn intersect_with(this: &mut RB, other: &RB) {
     let mut index = 0;
     while index < this.containers.len() {
         let key = this.containers[index].key();
-        match other.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
+        match other.containers.binary_search_by(|container| container.key().cmp(&key)) {
             Err(_) => {
                 this.containers.remove(index);
             },
@@ -144,9 +144,9 @@ pub fn intersect_with(this: &mut RB, other: &RB) {
 
 #[inline]
 pub fn difference_with(this: &mut RB, other: &RB) {
-    for index in range(0, this.containers.len()) {
+    for index in 0..this.containers.len() {
         let key = this.containers[index].key();
-        match other.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
+        match other.containers.binary_search_by(|container| container.key().cmp(&key)) {
             Ok(loc) => {
                 this.containers[index].difference_with(&other.containers[loc]);
                 if this.containers[index].len() == 0 {
@@ -162,7 +162,7 @@ pub fn difference_with(this: &mut RB, other: &RB) {
 pub fn symmetric_difference_with(this: &mut RB, other: &RB) {
     for container in other.containers.iter() {
         let key = container.key();
-        match this.containers.as_slice().binary_search_by(|container| container.key().cmp(&key)) {
+        match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
             Err(loc) => this.containers.insert(loc, (*container).clone()),
             Ok(loc) => {
                 this.containers[loc].symmetric_difference_with(container);
@@ -203,14 +203,14 @@ pub fn extend_ref<'a, I: Iterator<Item = &'a u32>>(this: &mut RB, mut iterator: 
 }
 
 pub fn min(this: &RB) -> u32 {
-    match this.containers[] {
+    match &this.containers[] {
         [ref head, ..] => calc(head.key(), head.min()),
         [] => u32::MIN,
     }
 }
 
 pub fn max(this: &RB) -> u32 {
-    match this.containers[] {
+    match &this.containers[] {
         [.., ref tail] => calc(tail.key(), tail.max()),
         [] => u32::MAX,
     }

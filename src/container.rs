@@ -130,6 +130,6 @@ impl<Size> Container<Size> where Size: Int {
 impl<Size> Show for Container<Size> where Size: Int + Show {
     #[inline]
     fn fmt(&self, formatter: &mut Formatter) -> Result {
-        format!("Container<{} @ {}>", self.len(), self.key()).fmt(formatter)
+        format!("Container<{:?} @ {:?}>", self.len(), self.key()).fmt(formatter)
     }
 }

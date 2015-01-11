@@ -9,8 +9,6 @@
 
 #![feature(slicing_syntax)]
 #![feature(advanced_slice_patterns)]
-#![feature(associated_types)]
-#![feature(default_type_params)]
 
 #![warn(missing_docs)]
 #![warn(variant_size_differences)]
@@ -201,7 +199,7 @@ impl RoaringBitmap {
     /// # }
     /// ```
     #[inline]
-    pub fn len(&self) -> uint {
+    pub fn len(&self) -> usize {
         imp::len(self)
     }
 
@@ -1029,9 +1027,9 @@ impl Show for RoaringBitmap {
     #[inline]
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         if self.len() < 16 {
-            format!("RoaringBitmap<{}>", self.iter().collect::<Vec<u32>>()).fmt(formatter)
+            format!("RoaringBitmap<{:?}>", self.iter().collect::<Vec<u32>>()).fmt(formatter)
         } else {
-            format!("RoaringBitmap<{} values between {} and {}>", self.len(), imp::min(self), imp::max(self)).fmt(formatter)
+            format!("RoaringBitmap<{:?} values between {:?} and {:?}>", self.len(), imp::min(self), imp::max(self)).fmt(formatter)
         }
     }
 }
