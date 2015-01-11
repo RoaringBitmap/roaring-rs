@@ -131,6 +131,6 @@ impl<Size: ExtInt> Container<Size> {
 impl<Size: ExtInt + Show> Show for Container<Size> {
     #[inline]
     fn fmt(&self, formatter: &mut Formatter) -> Result {
-        format!("Container<{} @ {}>", self.len(), self.key()).fmt(formatter)
+        format!("Container<{:?} @ {:?}>", self.len(), self.key()).fmt(formatter)
     }
 }

@@ -15,12 +15,12 @@ pub enum Store<Size: ExtInt> {
 impl<Size: ExtInt> Store<Size> {
     pub fn insert(&mut self, index: Size) -> bool {
         match self {
-            &Array(ref mut vec) => {
+            &mut Array(ref mut vec) => {
                 vec.binary_search(&index)
                     .map_err(|loc| vec.insert(loc, index))
                     .is_err()
             },
-            &Bitmap(ref mut bits) => {
+            &mut Bitmap(ref mut bits) => {
                 let (key, bit) = bitmap_location(index);
                 if bits[key] & (1 << bit) == 0 {
                     bits[key] |= 1 << bit;
@@ -34,12 +34,12 @@ impl<Size: ExtInt> Store<Size> {
 
     pub fn remove(&mut self, index: Size) -> bool {
         match self {
-            &Array(ref mut vec) => {
+            &mut Array(ref mut vec) => {
                 vec.binary_search(&index)
                     .map(|loc| vec.remove(loc))
                     .is_ok()
             },
-            &Bitmap(ref mut bits) => {
+            &mut Bitmap(ref mut bits) => {
                 let (key, bit) = bitmap_location(index);
                 if bits[key] & (1 << bit) != 0 {
                     bits[key] &= !(1 << bit);
@@ -151,12 +151,12 @@ impl<Size: ExtInt> Store<Size> {
                     this.insert(index);
                 }
             },
-            (&Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
+            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
                 for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
                     *index1 |= index2;
                 }
             },
-            (this @ &Array(..), &Bitmap(..)) => {
+            (this @ &mut Array(..), &Bitmap(..)) => {
                 *this = this.to_bitmap();
                 this.union_with(other);
             },
@@ -165,8 +165,8 @@ impl<Size: ExtInt> Store<Size> {
 
     pub fn intersect_with(&mut self, other: &Self) {
         match (self, other) {
-            (&Array(ref mut vec1), &Array(ref vec2)) => {
-                let mut i1 = 0u;
+            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
+                let mut i1 = 0us;
                 let mut iter2 = vec2.iter();
                 let mut current2 = iter2.next();
                 while i1 < vec1.len() {
@@ -180,19 +180,19 @@ impl<Size: ExtInt> Store<Size> {
                     }
                 }
             },
-            (&Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
+            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
                 for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
                     *index1 &= index2;
                 }
             },
-            (&Array(ref mut vec), store @ &Bitmap(..)) => {
+            (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
                 for i in (0..(vec.len())).rev() {
                     if !store.contains(vec[i]) {
                         vec.remove(i);
                     }
                 }
             },
-            (this @ &Bitmap(..), &Array(..)) => {
+            (this @ &mut Bitmap(..), &Array(..)) => {
                 let mut new = other.clone();
                 new.intersect_with(this);
                 *this = new;
@@ -202,8 +202,8 @@ impl<Size: ExtInt> Store<Size> {
 
     pub fn difference_with(&mut self, other: &Self) {
         match (self, other) {
-            (&Array(ref mut vec1), &Array(ref vec2)) => {
-                let mut i1 = 0u;
+            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
+                let mut i1 = 0us;
                 let mut iter2 = vec2.iter();
                 let mut current2 = iter2.next();
                 while i1 < vec1.len() {
@@ -218,17 +218,17 @@ impl<Size: ExtInt> Store<Size> {
                     }
                 }
             },
-            (ref mut this @ &Bitmap(..), &Array(ref vec2)) => {
+            (ref mut this @ &mut Bitmap(..), &Array(ref vec2)) => {
                 for index in vec2.iter() {
                     this.remove(*index);
                 }
             },
-            (&Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
+            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
                 for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
                     *index1 &= !*index2;
                 }
             },
-            (&Array(ref mut vec), store @ &Bitmap(..)) => {
+            (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
                 for i in range(0, vec.len()).rev() {
                     if store.contains(vec[i]) {
                         vec.remove(i);
@@ -240,8 +240,8 @@ impl<Size: ExtInt> Store<Size> {
 
     pub fn symmetric_difference_with(&mut self, other: &Self) {
         match (self, other) {
-            (&Array(ref mut vec1), &Array(ref vec2)) => {
-                let mut i1 = 0u;
+            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
+                let mut i1 = 0us;
                 let mut iter2 = vec2.iter();
                 let mut current2 = iter2.next();
                 while i1 < vec1.len() {
@@ -264,7 +264,7 @@ impl<Size: ExtInt> Store<Size> {
                     vec1.extend(iter2.map(|&x| x));
                 }
             },
-            (ref mut this @ &Bitmap(..), &Array(ref vec2)) => {
+            (ref mut this @ &mut Bitmap(..), &Array(ref vec2)) => {
                 for index in vec2.iter() {
                     if this.contains(*index) {
                         this.remove(*index);
@@ -273,12 +273,12 @@ impl<Size: ExtInt> Store<Size> {
                     }
                 }
             },
-            (&Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
+            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
                 for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
                     *index1 ^= index2;
                 }
             },
-            (this @ &Array(..), &Bitmap(..)) => {
+            (this @ &mut Array(..), &Bitmap(..)) => {
                 let mut new = other.clone();
                 new.symmetric_difference_with(this);
                 *this = new;
@@ -326,8 +326,8 @@ impl<Size: ExtInt> Store<Size> {
     #[inline]
     pub fn iter<'a>(&'a self) -> Box<Iterator<Item = Size> + 'a> {
         match self {
-            &Array(ref vec) => box vec.iter().map(|x| *x) as Box<Iterator<Item = Size> + 'a>,
-            &Bitmap(ref bits) => box BitmapIter::new(bits) as Box<Iterator<Item = Size> + 'a>,
+            &Array(ref vec) => Box::new(vec.iter().map(|x| *x)) as Box<Iterator<Item = Size> + 'a>,
+            &Bitmap(ref bits) => Box::new(BitmapIter::new(bits)) as Box<Iterator<Item = Size> + 'a>,
         }
     }
 
@@ -359,7 +359,7 @@ impl<Size: ExtInt> Clone for Store<Size> {
 }
 
 struct BitmapIter<'a, Size: ExtInt> {
-    key: uint,
+    key: usize,
     bit: u8,
     bits: &'a Box<[u64]>,
 }
@@ -387,7 +387,7 @@ impl<'a, Size: ExtInt> Iterator for BitmapIter<'a, Size> {
             if self.key == self.bits.len() {
                 return None;
             }
-            if (self.bits[self.key] & (1u64 << util::cast(self.bit))) != 0 {
+            if (self.bits[self.key] & (1u64 << util::cast::<u8, usize>(self.bit))) != 0 {
                 return Some(util::cast(self.key * u64::BITS + util::cast(self.bit)));
             }
         }
@@ -395,10 +395,10 @@ impl<'a, Size: ExtInt> Iterator for BitmapIter<'a, Size> {
 }
 
 #[inline]
-fn bitmap_location<Size: ExtInt>(index: Size) -> (uint, uint) { (key(index), bit(index)) }
+fn bitmap_location<Size: ExtInt>(index: Size) -> (usize, usize) { (key(index), bit(index)) }
 
 #[inline]
-fn key<Size: ExtInt>(index: Size) -> uint { util::cast(index / util::cast(u64::BITS)) }
+fn key<Size: ExtInt>(index: Size) -> usize { util::cast(index / util::cast(u64::BITS)) }
 
 #[inline]
-fn bit<Size: ExtInt>(index: Size) -> uint { util::cast(index % util::cast(u64::BITS)) }
+fn bit<Size: ExtInt>(index: Size) -> usize { util::cast(index % util::cast(u64::BITS)) }

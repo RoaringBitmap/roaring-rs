@@ -16,14 +16,9 @@ pub fn new<Size: ExtInt + Halveable>() -> RB<Size> {
     RB { containers: Vec::new() }
 }
 
-#[inline]
-fn cmp<T: Ord>(left: T, right: T) -> Ordering {
-    if left < right { Less } else if left > right { Greater } else { Equal }
-}
-
 pub fn insert<Size: ExtInt + Halveable>(this: &mut RB<Size>, value: Size) -> bool {
     let (key, index) = calc_loc(value);
-    let container = match this.containers.as_slice().binary_search_by(|container| cmp(container.key(), key)) {
+    let container = match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
         Ok(loc) => &mut this.containers[loc],
         Err(loc) => {
             this.containers.insert(loc, Container::new(key));
@@ -35,7 +30,7 @@ pub fn insert<Size: ExtInt + Halveable>(this: &mut RB<Size>, value: Size) -> boo
 
 pub fn remove<Size: ExtInt + Halveable>(this: &mut RB<Size>, value: Size) -> bool {
     let (key, index) = calc_loc(value);
-    match this.containers.as_slice().binary_search_by(|container| cmp(container.key(), key)) {
+    match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
         Ok(loc) => {
             if this.containers[loc].remove(index) {
                 if this.containers[loc].len() == Int::zero() {
@@ -52,7 +47,7 @@ pub fn remove<Size: ExtInt + Halveable>(this: &mut RB<Size>, value: Size) -> boo
 
 pub fn contains<Size: ExtInt + Halveable>(this: &RB<Size>, value: Size) -> bool {
     let (key, index) = calc_loc(value);
-    match this.containers.as_slice().binary_search_by(|container| cmp(container.key(), key)) {
+    match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
         Ok(loc) => this.containers[loc].contains(index),
         Err(_) => false,
     }
@@ -127,7 +122,7 @@ pub fn symmetric_difference<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, ot
 pub fn union_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB<Size>) {
     for container in other.containers.iter() {
         let key = container.key();
-        match this.containers.as_slice().binary_search_by(|container| cmp(container.key(), key)) {
+        match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
             Err(loc) => this.containers.insert(loc, (*container).clone()),
             Ok(loc) => this.containers[loc].union_with(container),
         };
@@ -139,7 +134,7 @@ pub fn intersect_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB<
     let mut index = 0;
     while index < this.containers.len() {
         let key = this.containers[index].key();
-        match other.containers.as_slice().binary_search_by(|container| cmp(container.key(), key)) {
+        match other.containers.binary_search_by(|container| container.key().cmp(&key)) {
             Err(_) => {
                 this.containers.remove(index);
             },
@@ -153,9 +148,9 @@ pub fn intersect_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB<
 
 #[inline]
 pub fn difference_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB<Size>) {
-    for index in range(0, this.containers.len()) {
+    for index in 0..this.containers.len() {
         let key = this.containers[index].key();
-        match other.containers.as_slice().binary_search_by(|container| cmp(container.key(), key)) {
+        match other.containers.binary_search_by(|container| container.key().cmp(&key)) {
             Ok(loc) => {
                 this.containers[index].difference_with(&other.containers[loc]);
                 if this.containers[index].len() == Int::zero() {
@@ -171,7 +166,7 @@ pub fn difference_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB
 pub fn symmetric_difference_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB<Size>) {
     for container in other.containers.iter() {
         let key = container.key();
-        match this.containers.as_slice().binary_search_by(|container| cmp(container.key(), key)) {
+        match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
             Err(loc) => this.containers.insert(loc, (*container).clone()),
             Ok(loc) => {
                 this.containers[loc].symmetric_difference_with(container);
@@ -212,14 +207,14 @@ pub fn extend_ref<'a, Size: ExtInt + Halveable + 'a, I: Iterator<Item = &'a Size
 }
 
 pub fn min<Size: ExtInt + Halveable>(this: &RB<Size>) -> Size {
-    match this.containers[] {
+    match &this.containers[] {
         [ref head, ..] => calc(head.key(), head.min()),
         [] => Int::min_value(),
     }
 }
 
 pub fn max<Size: ExtInt + Halveable>(this: &RB<Size>) -> Size {
-    match this.containers[] {
+    match &this.containers[] {
         [.., ref tail] => calc(tail.key(), tail.max()),
         [] => Int::max_value(),
     }

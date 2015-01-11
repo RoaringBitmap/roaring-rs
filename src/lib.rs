@@ -9,8 +9,6 @@
 
 #![feature(slicing_syntax)]
 #![feature(advanced_slice_patterns)]
-#![feature(associated_types)]
-#![feature(default_type_params)]
 
 #![warn(missing_docs)]
 #![warn(variant_size_differences)]
@@ -1031,9 +1029,9 @@ impl<Size: ExtInt + Halveable + Show> Show for RoaringBitmap<Size> {
     #[inline]
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         if self.len() < util::cast(16u8) {
-            format!("RoaringBitmap<{}>", self.iter().collect::<Vec<Size>>()).fmt(formatter)
+            format!("RoaringBitmap<{:?}>", self.iter().collect::<Vec<Size>>()).fmt(formatter)
         } else {
-            format!("RoaringBitmap<{} values between {} and {}>", self.len(), imp::min(self), imp::max(self)).fmt(formatter)
+            format!("RoaringBitmap<{:?} values between {:?} and {:?}>", self.len(), imp::min(self), imp::max(self)).fmt(formatter)
         }
     }
 }
