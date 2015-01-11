@@ -11,7 +11,7 @@ performance with Roaring bitmaps_][roaring-paper].
 Take note of the [Collections reform RFC][collections-rfc] for the API.  Mostly aiming to
 duplicate the [BitvSet][] API.
 
-[travis-badge]: https://img.shields.io/travis/Nemo157/roaring-rs.svg?style=flat-square
+[travis-badge]: https://img.shields.io/travis/Nemo157/roaring-rs/master.svg?style=flat-square
 [travis]: https://travis-ci.org/Nemo157/roaring-rs
 [release-badge]: https://img.shields.io/github/release/Nemo157/roaring-rs.svg?style=flat-square
 [cargo]: https://crates.io/crates/roaring
