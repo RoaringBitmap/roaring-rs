@@ -230,7 +230,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// # }
     /// ```
     #[inline]
-    pub fn iter<'a>(&'a self) -> Iter<'a, Size, <Size as Halveable>::HalfSize> {
+    pub fn iter<'a>(&'a self) -> Iter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
         imp::iter(self)
     }
 
@@ -353,7 +353,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// # }
     /// ```
     #[inline]
-    pub fn union<'a>(&'a self, other: &'a Self) -> UnionIter<'a, Size, <Size as Halveable>::HalfSize> {
+    pub fn union<'a>(&'a self, other: &'a Self) -> UnionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
         imp::union(self, other)
     }
 
@@ -386,7 +386,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// # }
     /// ```
     #[inline]
-    pub fn intersection<'a>(&'a self, other: &'a Self) -> IntersectionIter<'a, Size, <Size as Halveable>::HalfSize> {
+    pub fn intersection<'a>(&'a self, other: &'a Self) -> IntersectionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
         imp::intersection(self, other)
     }
 
@@ -423,7 +423,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// # }
     /// ```
     #[inline]
-    pub fn difference<'a>(&'a self, other: &'a Self) -> DifferenceIter<'a, Size, <Size as Halveable>::HalfSize> {
+    pub fn difference<'a>(&'a self, other: &'a Self) -> DifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
         imp::difference(self, other)
     }
 
@@ -457,7 +457,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// # }
     /// ```
     #[inline]
-    pub fn symmetric_difference<'a>(&'a self, other: &'a Self) -> SymmetricDifferenceIter<'a, Size, <Size as Halveable>::HalfSize> {
+    pub fn symmetric_difference<'a>(&'a self, other: &'a Self) -> SymmetricDifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
         imp::symmetric_difference(self, other)
     }
 

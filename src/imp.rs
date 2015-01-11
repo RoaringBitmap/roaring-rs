@@ -17,7 +17,7 @@ pub fn new<Size: ExtInt + Halveable>() -> RB<Size> {
 }
 
 pub fn insert<Size: ExtInt + Halveable>(this: &mut RB<Size>, value: Size) -> bool {
-    let (key, index) = calc_loc(value);
+    let (key, index) = value.split();
     let container = match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
         Ok(loc) => &mut this.containers[loc],
         Err(loc) => {
@@ -29,7 +29,7 @@ pub fn insert<Size: ExtInt + Halveable>(this: &mut RB<Size>, value: Size) -> boo
 }
 
 pub fn remove<Size: ExtInt + Halveable>(this: &mut RB<Size>, value: Size) -> bool {
-    let (key, index) = calc_loc(value);
+    let (key, index) = value.split();
     match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
         Ok(loc) => {
             if this.containers[loc].remove(index) {
@@ -46,7 +46,7 @@ pub fn remove<Size: ExtInt + Halveable>(this: &mut RB<Size>, value: Size) -> boo
 }
 
 pub fn contains<Size: ExtInt + Halveable>(this: &RB<Size>, value: Size) -> bool {
-    let (key, index) = calc_loc(value);
+    let (key, index) = value.split();
     match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
         Ok(loc) => this.containers[loc].contains(index),
         Err(_) => false,
@@ -71,11 +71,11 @@ pub fn len<Size: ExtInt + Halveable>(this: &RB<Size>) -> Size {
 }
 
 #[inline]
-pub fn iter<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>) -> Iter<'a, Size, <Size as Halveable>::HalfSize> {
+pub fn iter<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>) -> Iter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
     iter::new(this.containers.iter())
 }
 
-fn pairs<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> Pairs<'a, Size, <Size as Halveable>::HalfSize> where <Size as Halveable>::HalfSize: ExtInt {
+fn pairs<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> Pairs<'a, Size> where <Size as Halveable>::HalfSize : 'a {
     Pairs::new(this.containers.iter(), other.containers.iter())
 }
 
@@ -99,22 +99,22 @@ pub fn is_superset<Size: ExtInt + Halveable>(this: &RB<Size>, other: &RB<Size>) 
 }
 
 #[inline]
-pub fn union<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> UnionIter<'a, Size, <Size as Halveable>::HalfSize> {
+pub fn union<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> UnionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
     iter::union::new(this.iter(), other.iter())
 }
 
 #[inline]
-pub fn intersection<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> IntersectionIter<'a, Size, <Size as Halveable>::HalfSize> {
+pub fn intersection<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> IntersectionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
     iter::intersection::new(this.iter(), other.iter())
 }
 
 #[inline]
-pub fn difference<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> DifferenceIter<'a, Size, <Size as Halveable>::HalfSize> {
+pub fn difference<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> DifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
     iter::difference::new(this.iter(), other.iter())
 }
 
 #[inline]
-pub fn symmetric_difference<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> SymmetricDifferenceIter<'a, Size, <Size as Halveable>::HalfSize> {
+pub fn symmetric_difference<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> SymmetricDifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
     iter::symmetric_difference::new(this.iter(), other.iter())
 }
 
@@ -208,39 +208,27 @@ pub fn extend_ref<'a, Size: ExtInt + Halveable + 'a, I: Iterator<Item = &'a Size
 
 pub fn min<Size: ExtInt + Halveable>(this: &RB<Size>) -> Size {
     match &this.containers[] {
-        [ref head, ..] => calc(head.key(), head.min()),
+        [ref head, ..] => Halveable::join(head.key(), head.min()),
         [] => Int::min_value(),
     }
 }
 
 pub fn max<Size: ExtInt + Halveable>(this: &RB<Size>) -> Size {
     match &this.containers[] {
-        [.., ref tail] => calc(tail.key(), tail.max()),
+        [.., ref tail] => Halveable::join(tail.key(), tail.max()),
         [] => Int::max_value(),
     }
 }
 
-#[inline]
-fn calc<Size: ExtInt + Halveable, HalfSize: ExtInt>(key: HalfSize, value: HalfSize) -> Size {
-    let bits = util::bits::<HalfSize>();
-    (util::cast::<HalfSize, Size>(key) << bits) + util::cast(value)
+struct Pairs<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::HalfSize : 'a {
+    iter1: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>,
+    iter2: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>,
+    current1: Option<&'a Container<<Size as Halveable>::HalfSize>>,
+    current2: Option<&'a Container<<Size as Halveable>::HalfSize>>,
 }
 
-#[inline]
-fn calc_loc<Size: ExtInt + Halveable, HalfSize: ExtInt>(index: Size) -> (HalfSize, HalfSize) {
-    let bits = util::bits::<HalfSize>();
-    (util::cast::<Size, HalfSize>(index >> bits), util::cast(index))
-}
-
-struct Pairs<'a, Size: ExtInt + Halveable, HalfSize: ExtInt + 'a> {
-    iter1: slice::Iter<'a, Container<HalfSize>>,
-    iter2: slice::Iter<'a, Container<HalfSize>>,
-    current1: Option<&'a Container<HalfSize>>,
-    current2: Option<&'a Container<HalfSize>>,
-}
-
-impl<'a, Size: ExtInt + Halveable, HalfSize: ExtInt + 'a> Pairs<'a, Size, HalfSize> {
-    fn new(mut iter1: slice::Iter<'a, Container<HalfSize>>, mut iter2: slice::Iter<'a, Container<HalfSize>>) -> Pairs<'a, Size, HalfSize> {
+impl<'a, Size: ExtInt + Halveable> Pairs<'a, Size> {
+    fn new(mut iter1: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>, mut iter2: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>) -> Pairs<'a, Size> {
         Pairs {
             iter1: iter1,
             iter2: iter2,
@@ -250,10 +238,10 @@ impl<'a, Size: ExtInt + Halveable, HalfSize: ExtInt + 'a> Pairs<'a, Size, HalfSi
     }
 }
 
-impl<'a, Size: ExtInt + Halveable, HalfSize: ExtInt + 'a> Iterator for Pairs<'a, Size, HalfSize> {
-    type Item = (Option<&'a Container<HalfSize>>, Option<&'a Container<HalfSize>>);
+impl<'a, Size: ExtInt + Halveable> Iterator for Pairs<'a, Size> {
+    type Item = (Option<&'a Container<<Size as Halveable>::HalfSize>>, Option<&'a Container<<Size as Halveable>::HalfSize>>);
 
-    fn next(&mut self) -> Option<(Option<&'a Container<HalfSize>>, Option<&'a Container<HalfSize>>)> {
+    fn next(&mut self) -> Option<(Option<&'a Container<<Size as Halveable>::HalfSize>>, Option<&'a Container<<Size as Halveable>::HalfSize>>)> {
         match (self.current1, self.current2) {
             (None, None) => None,
             (Some(c1), None) => {
@@ -281,23 +269,5 @@ impl<'a, Size: ExtInt + Halveable, HalfSize: ExtInt + 'a> Iterator for Pairs<'a,
                 (_, _) => panic!(),
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use std::{ u16, u32 };
-    use super::{ calc_loc };
-
-    #[test]
-    fn test_calc_location() {
-        assert_eq!((0u16, 0u16), calc_loc(0u32));
-        assert_eq!((0u16, 1u16), calc_loc(1u32));
-        assert_eq!((0u16, u16::MAX - 1u16), calc_loc(u16::MAX as u32 - 1u32));
-        assert_eq!((0u16, u16::MAX), calc_loc(u16::MAX as u32));
-        assert_eq!((1u16, 0u16), calc_loc(u16::MAX as u32 + 1u32));
-        assert_eq!((1u16, 1u16), calc_loc(u16::MAX as u32 + 2u32));
-        assert_eq!((u16::MAX, u16::MAX - 1u16), calc_loc(u32::MAX - 1u32));
-        assert_eq!((u16::MAX, u16::MAX), calc_loc(u32::MAX));
     }
 }
