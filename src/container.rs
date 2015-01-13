@@ -1,8 +1,7 @@
 use std::num::Int;
 use std::fmt::{ Show, Formatter, Result };
 
-use store::Store;
-use store::Store::{ Array, Bitmap };
+use store::Store::{ self, Array, Bitmap };
 
 #[derive(PartialEq, Clone)]
 pub struct Container<Size> where Size: Int {

@@ -1,8 +1,7 @@
 use std::{ u16 };
 use std::slice;
 
-use util::Either;
-use util::Either::{ Left, Right };
+use util::Either::{ self, Left, Right };
 use container::{ Container };
 
 /// An iterator for `RoaringBitmap`.

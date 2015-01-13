@@ -1,8 +1,7 @@
 use std::{ u16, u32 };
 use std::slice;
 
-use iter;
-use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
+use iter::{ self, Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
 use container::Container;
 
 type RB = ::RoaringBitmap;
