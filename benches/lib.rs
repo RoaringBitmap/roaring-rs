@@ -11,7 +11,7 @@ use roaring::RoaringBitmap;
 #[bench]
 fn create(b: &mut Bencher) {
     b.iter(|| {
-        let mut bitmap = RoaringBitmap::new();
+        let mut bitmap: RoaringBitmap<u32> = RoaringBitmap::new();
         bitmap
     })
 }
@@ -19,7 +19,7 @@ fn create(b: &mut Bencher) {
 #[bench]
 fn insert1(b: &mut Bencher) {
     b.iter(|| {
-        let mut bitmap = RoaringBitmap::new();
+        let mut bitmap: RoaringBitmap<u32> = RoaringBitmap::new();
         bitmap.insert(1);
         bitmap
     })
@@ -28,7 +28,7 @@ fn insert1(b: &mut Bencher) {
 #[bench]
 fn insert2(b: &mut Bencher) {
     b.iter(|| {
-        let mut bitmap = RoaringBitmap::new();
+        let mut bitmap: RoaringBitmap<u32> = RoaringBitmap::new();
         bitmap.insert(1);
         bitmap.insert(2);
         bitmap
