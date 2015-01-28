@@ -5,32 +5,32 @@ use roaring::RoaringBitmap;
 
 #[test]
 fn array() {
-    let original: RoaringBitmap = (0..2000).collect();
-    let clone: RoaringBitmap = (original.iter()).collect();
+    let original: RoaringBitmap<u32> = (0..2000u32).collect();
+    let clone: RoaringBitmap<u32> = (original.iter()).collect();
 
     assert_eq!(clone, original);
 }
 
 #[test]
 fn bitmap() {
-    let original: RoaringBitmap = (0..6000).collect();
-    let clone: RoaringBitmap = (original.iter()).collect();
+    let original: RoaringBitmap<u32> = (0..6000u32).collect();
+    let clone: RoaringBitmap<u32> = (original.iter()).collect();
 
     assert_eq!(clone, original);
 }
 
 #[test]
 fn arrays() {
-    let original: RoaringBitmap = (0..2000).chain(1000000..1002000).chain(2000000..2001000).collect();
-    let clone: RoaringBitmap = (original.iter()).collect();
+    let original: RoaringBitmap<u32> = (0..2000u32).chain(1000000..1002000u32).chain(2000000..2001000u32).collect();
+    let clone: RoaringBitmap<u32> = (original.iter()).collect();
 
     assert_eq!(clone, original);
 }
 
 #[test]
 fn bitmaps() {
-    let original: RoaringBitmap = (0..6000).chain(1000000..1012000).chain(2000000..2010000).collect();
-    let clone: RoaringBitmap = (original.iter()).collect();
+    let original: RoaringBitmap<u32> = (0..6000u32).chain(1000000..1012000u32).chain(2000000..2010000u32).collect();
+    let clone: RoaringBitmap<u32> = (original.iter()).collect();
 
     assert_eq!(clone, original);
 }

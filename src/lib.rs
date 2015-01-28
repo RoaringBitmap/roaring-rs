@@ -17,6 +17,8 @@ use std::fmt::{ Debug, Formatter, Result };
 use std::ops::{ BitXor, BitAnd, BitOr, Sub };
 use std::iter::{ FromIterator };
 
+use util::{ Halveable, ExtInt };
+
 pub use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
 
 mod imp;
@@ -30,12 +32,9 @@ mod container;
 /// # Examples
 ///
 /// ```rust
-/// # #![feature(slicing_syntax)]
-/// # extern crate roaring;
-/// # fn main() {
 /// use roaring::RoaringBitmap;
 ///
-/// let mut rb = RoaringBitmap::new();
+/// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
 ///
 /// // insert all primes less than 10
 /// rb.insert(2);
@@ -43,25 +42,20 @@ mod container;
 /// rb.insert(5);
 /// rb.insert(7);
 /// println!("total bits set to true: {}", rb.len());
-/// # }
 /// ```
 #[derive(PartialEq, Clone)]
-pub struct RoaringBitmap {
-    containers: Vec<container::Container<u16>>,
+pub struct RoaringBitmap<Size: ExtInt + Halveable> where <Size as Halveable>::HalfSize: ExtInt {
+    containers: Vec<container::Container<<Size as Halveable>::HalfSize>>,
 }
 
-impl RoaringBitmap {
+impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// Creates an empty `RoaringBitmap`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
-    /// let mut rb = RoaringBitmap::new();
-    /// # }
+    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
     /// ```
     #[inline]
     pub fn new() -> Self {
@@ -73,19 +67,15 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb = RoaringBitmap::new();
+    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
     /// assert_eq!(rb.insert(3), true);
     /// assert_eq!(rb.insert(3), false);
     /// assert_eq!(rb.contains(3), true);
-    /// # }
     /// ```
     #[inline]
-    pub fn insert(&mut self, value: u32) -> bool {
+    pub fn insert(&mut self, value: Size) -> bool {
         imp::insert(self, value)
     }
 
@@ -94,20 +84,16 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb = RoaringBitmap::new();
+    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
     /// rb.insert(3);
     /// assert_eq!(rb.remove(3), true);
     /// assert_eq!(rb.remove(3), false);
     /// assert_eq!(rb.contains(3), false);
-    /// # }
     /// ```
     #[inline]
-    pub fn remove(&mut self, value: u32) -> bool {
+    pub fn remove(&mut self, value: Size) -> bool {
         imp::remove(self, value)
     }
 
@@ -116,20 +102,16 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb = RoaringBitmap::new();
+    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
     /// rb.insert(1);
     /// assert_eq!(rb.contains(0), false);
     /// assert_eq!(rb.contains(1), true);
     /// assert_eq!(rb.contains(100), false);
-    /// # }
     /// ```
     #[inline]
-    pub fn contains(&self, value: u32) -> bool {
+    pub fn contains(&self, value: Size) -> bool {
         imp::contains(self, value)
     }
 
@@ -138,17 +120,13 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb = RoaringBitmap::new();
+    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
     /// rb.insert(1);
     /// assert_eq!(rb.contains(1), true);
     /// rb.clear();
     /// assert_eq!(rb.contains(1), false);
-    /// # }
     /// ```
     #[inline]
     pub fn clear(&mut self) {
@@ -160,17 +138,13 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb = RoaringBitmap::new();
+    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
     /// assert_eq!(rb.is_empty(), true);
     ///
     /// rb.insert(3);
     /// assert_eq!(rb.is_empty(), false);
-    /// # }
     /// ```
     #[inline]
     pub fn is_empty(&self) -> bool {
@@ -182,12 +156,9 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb = RoaringBitmap::new();
+    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
     /// assert_eq!(rb.len(), 0);
     ///
     /// rb.insert(3);
@@ -196,24 +167,20 @@ impl RoaringBitmap {
     /// rb.insert(3);
     /// rb.insert(4);
     /// assert_eq!(rb.len(), 2);
-    /// # }
     /// ```
     #[inline]
-    pub fn len(&self) -> usize {
+    pub fn len(&self) -> Size {
         imp::len(self)
     }
 
-    /// Iterator over each u32 stored in the RoaringBitmap, guarantees values are ordered by value.
+    /// Iterator over each value stored in the RoaringBitmap, guarantees values are ordered by value.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb = RoaringBitmap::new();
+    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
     ///
     /// rb.insert(1);
     /// rb.insert(6);
@@ -225,10 +192,9 @@ impl RoaringBitmap {
     /// assert_eq!(iter.next(), Some(4));
     /// assert_eq!(iter.next(), Some(6));
     /// assert_eq!(iter.next(), None);
-    /// # }
     /// ```
     #[inline]
-    pub fn iter<'a>(&'a self) -> Iter<'a> {
+    pub fn iter<'a>(&'a self) -> Iter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
         imp::iter(self)
     }
 
@@ -238,13 +204,10 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1 = RoaringBitmap::new();
-    /// let mut rb2 = RoaringBitmap::new();
+    /// let mut rb1: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb2: RoaringBitmap<u32> = RoaringBitmap::new();
     ///
     /// rb1.insert(1);
     ///
@@ -254,7 +217,6 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb1.is_disjoint(&rb2), false);
     ///
-    /// # }
     /// ```
     #[inline]
     pub fn is_disjoint(&self, other: &Self) -> bool {
@@ -266,13 +228,10 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1 = RoaringBitmap::new();
-    /// let mut rb2 = RoaringBitmap::new();
+    /// let mut rb1: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb2: RoaringBitmap<u32> = RoaringBitmap::new();
     ///
     /// rb1.insert(1);
     ///
@@ -285,7 +244,6 @@ impl RoaringBitmap {
     /// rb1.insert(2);
     ///
     /// assert_eq!(rb1.is_subset(&rb2), false);
-    /// # }
     /// ```
     #[inline]
     pub fn is_subset(&self, other: &Self) -> bool {
@@ -297,13 +255,10 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1 = RoaringBitmap::new();
-    /// let mut rb2 = RoaringBitmap::new();
+    /// let mut rb1: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb2: RoaringBitmap<u32> = RoaringBitmap::new();
     ///
     /// rb1.insert(1);
     ///
@@ -316,7 +271,6 @@ impl RoaringBitmap {
     /// rb1.insert(2);
     ///
     /// assert_eq!(rb2.is_superset(&rb1), false);
-    /// # }
     /// ```
     #[inline]
     pub fn is_superset(&self, other: &Self) -> bool {
@@ -328,13 +282,10 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1 = RoaringBitmap::new();
-    /// let mut rb2 = RoaringBitmap::new();
+    /// let mut rb1: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb2: RoaringBitmap<u32> = RoaringBitmap::new();
     ///
     /// rb1.insert(1);
     /// rb1.insert(2);
@@ -348,10 +299,9 @@ impl RoaringBitmap {
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), Some(3));
     /// assert_eq!(iter.next(), None);
-    /// # }
     /// ```
     #[inline]
-    pub fn union<'a>(&'a self, other: &'a Self) -> UnionIter<'a> {
+    pub fn union<'a>(&'a self, other: &'a Self) -> UnionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
         imp::union(self, other)
     }
 
@@ -360,13 +310,10 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1 = RoaringBitmap::new();
-    /// let mut rb2 = RoaringBitmap::new();
+    /// let mut rb1: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb2: RoaringBitmap<u32> = RoaringBitmap::new();
     ///
     /// rb1.insert(1);
     /// rb1.insert(2);
@@ -381,25 +328,21 @@ impl RoaringBitmap {
     /// assert_eq!(iter.next(), Some(1));
     /// assert_eq!(iter.next(), Some(4));
     /// assert_eq!(iter.next(), None);
-    /// # }
     /// ```
     #[inline]
-    pub fn intersection<'a>(&'a self, other: &'a Self) -> IntersectionIter<'a> {
+    pub fn intersection<'a>(&'a self, other: &'a Self) -> IntersectionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
         imp::intersection(self, other)
     }
 
-    /// Returns an iterator over the set of `u32`s in `this` that are not in `other`.
+    /// Returns an iterator over the set of values in `this` that are not in `other`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1 = RoaringBitmap::new();
-    /// let mut rb2 = RoaringBitmap::new();
+    /// let mut rb1: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb2: RoaringBitmap<u32> = RoaringBitmap::new();
     ///
     /// rb1.insert(1);
     /// rb1.insert(2);
@@ -418,26 +361,22 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(iter2.next(), Some(3));
     /// assert_eq!(iter2.next(), None);
-    /// # }
     /// ```
     #[inline]
-    pub fn difference<'a>(&'a self, other: &'a Self) -> DifferenceIter<'a> {
+    pub fn difference<'a>(&'a self, other: &'a Self) -> DifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
         imp::difference(self, other)
     }
 
-    /// Returns an iterator over the set of `u32`s in `this` that are not in `other` + in `other`
+    /// Returns an iterator over the set of values in `this` that are not in `other` + in `other`
     /// that are not in `this`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1 = RoaringBitmap::new();
-    /// let mut rb2 = RoaringBitmap::new();
+    /// let mut rb1: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb2: RoaringBitmap<u32> = RoaringBitmap::new();
     ///
     /// rb1.insert(1);
     /// rb1.insert(2);
@@ -452,10 +391,9 @@ impl RoaringBitmap {
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), Some(3));
     /// assert_eq!(iter.next(), None);
-    /// # }
     /// ```
     #[inline]
-    pub fn symmetric_difference<'a>(&'a self, other: &'a Self) -> SymmetricDifferenceIter<'a> {
+    pub fn symmetric_difference<'a>(&'a self, other: &'a Self) -> SymmetricDifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
         imp::symmetric_difference(self, other)
     }
 
@@ -464,19 +402,15 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (3..5).collect();
-    /// let rb3: RoaringBitmap = (1..5).collect();
+    /// let mut rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (3..5u32).collect();
+    /// let rb3: RoaringBitmap<u32> = (1..5u32).collect();
     ///
     /// rb1.union_with(&rb2);
     ///
     /// assert_eq!(rb1, rb3);
-    /// # }
     /// ```
     #[inline]
     pub fn union_with(&mut self, other: &Self) {
@@ -488,19 +422,15 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (3..5).collect();
-    /// let rb3: RoaringBitmap = (3..4).collect();
+    /// let mut rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (3..5u32).collect();
+    /// let rb3: RoaringBitmap<u32> = (3..4u32).collect();
     ///
     /// rb1.intersect_with(&rb2);
     ///
     /// assert_eq!(rb1, rb3);
-    /// # }
     /// ```
     #[inline]
     pub fn intersect_with(&mut self, other: &Self) {
@@ -512,19 +442,15 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (3..5).collect();
-    /// let rb3: RoaringBitmap = (1..3).collect();
+    /// let mut rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (3..5u32).collect();
+    /// let rb3: RoaringBitmap<u32> = (1..3u32).collect();
     ///
     /// rb1.difference_with(&rb2);
     ///
     /// assert_eq!(rb1, rb3);
-    /// # }
     /// ```
     #[inline]
     pub fn difference_with(&mut self, other: &Self) {
@@ -536,19 +462,15 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (3..6).collect();
-    /// let rb3: RoaringBitmap = ((1..3).chain(4..6)).collect();
+    /// let mut rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (3..6u32).collect();
+    /// let rb3: RoaringBitmap<u32> = ((1..3u32).chain(4..6u32)).collect();
     ///
     /// rb1.symmetric_difference_with(&rb2);
     ///
     /// assert_eq!(rb1, rb3);
-    /// # }
     /// ```
     #[inline]
     pub fn symmetric_difference_with(&mut self, other: &Self) {
@@ -556,478 +478,418 @@ impl RoaringBitmap {
     }
 }
 
-impl FromIterator<u32> for RoaringBitmap {
+impl<Size: ExtInt + Halveable> FromIterator<Size> for RoaringBitmap<Size> {
     #[inline]
-    fn from_iter<I: Iterator<Item = u32>>(iterator: I) -> RoaringBitmap {
+    fn from_iter<I: Iterator<Item = Size>>(iterator: I) -> Self {
         imp::from_iter(iterator)
     }
 }
 
-impl<'a> FromIterator<&'a u32> for RoaringBitmap {
+impl<'a, Size: ExtInt + Halveable + 'a> FromIterator<&'a Size> for RoaringBitmap<Size> {
     #[inline]
-    fn from_iter<I: Iterator<Item = &'a u32>>(iterator: I) -> RoaringBitmap {
+    fn from_iter<I: Iterator<Item = &'a Size>>(iterator: I) -> Self {
         imp::from_iter_ref(iterator)
     }
 }
 
-impl Extend<u32> for RoaringBitmap {
+impl<Size: ExtInt + Halveable> Extend<Size> for RoaringBitmap<Size> {
     #[inline]
-    fn extend<I: Iterator<Item = u32>>(&mut self, iterator: I) {
+    fn extend<I: Iterator<Item = Size>>(&mut self, iterator: I) {
         imp::extend(self, iterator)
     }
 }
 
-impl<'a> Extend<&'a u32> for RoaringBitmap {
+impl<'a, Size: ExtInt + Halveable + 'a> Extend<&'a Size> for RoaringBitmap<Size> {
     #[inline]
-    fn extend<I: Iterator<Item = &'a u32>>(&mut self, iterator: I) {
+    fn extend<I: Iterator<Item = &'a Size>>(&mut self, iterator: I) {
         imp::extend_ref(self, iterator)
     }
 }
 
-impl BitOr<RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<Size: ExtInt + Halveable> BitOr<Self> for RoaringBitmap<Size> {
+    type Output = Self;
 
     /// Unions the `rhs` into this `RoaringBitmap`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (2..5).collect();
-    /// let rb3: RoaringBitmap = (1..5).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (2..5u32).collect();
+    /// let rb3: RoaringBitmap<u32> = (1..5u32).collect();
     ///
     /// let rb4 = rb1 | rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn bitor(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
+    fn bitor(mut self, rhs: Self) -> Self {
         self.union_with(&rhs);
         self
     }
 }
 
-impl<'a> BitOr<RoaringBitmap> for &'a RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, Size: ExtInt + Halveable> BitOr<RoaringBitmap<Size>> for &'a RoaringBitmap<Size> {
+    type Output = RoaringBitmap<Size>;
 
     /// Unions`rhs` and `self`, writes result in place to `rhs`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (2..5).collect();
-    /// let rb3: RoaringBitmap = (1..5).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (2..5u32).collect();
+    /// let rb3: RoaringBitmap<u32> = (1..5u32).collect();
     ///
     /// let rb4 = &rb1 | rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn bitor(self, mut rhs: RoaringBitmap) -> RoaringBitmap {
+    fn bitor(self, mut rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         rhs.union_with(self);
         rhs
     }
 }
 
-impl<'a, 'b> BitOr<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, 'b, Size: ExtInt + Halveable> BitOr<&'a RoaringBitmap<Size>> for &'b RoaringBitmap<Size> {
+    type Output = RoaringBitmap<Size>;
 
     /// Unions`rhs` and `self`, allocates new bitmap for result.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (2..5).collect();
-    /// let rb3: RoaringBitmap = (1..5).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (2..5u32).collect();
+    /// let rb3: RoaringBitmap<u32> = (1..5u32).collect();
     ///
     /// let rb4 = rb1 | &rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn bitor(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn bitor(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         let mut result = self.clone();
         result.union_with(rhs);
         result
     }
 }
 
-impl<'a> BitOr<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, Size: ExtInt + Halveable> BitOr<&'a Self> for RoaringBitmap<Size> {
+    type Output = Self;
 
     /// Unions the `rhs` into this `RoaringBitmap`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (2..5).collect();
-    /// let rb3: RoaringBitmap = (1..5).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (2..5u32).collect();
+    /// let rb3: RoaringBitmap<u32> = (1..5u32).collect();
     ///
     /// let rb4 = rb1 | &rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn bitor(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn bitor(mut self, rhs: &'a Self) -> Self {
         self.union_with(rhs);
         self
     }
 }
 
-impl BitAnd<RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<Size: ExtInt + Halveable> BitAnd<Self> for RoaringBitmap<Size> {
+    type Output = Self;
 
     /// Intersects the `rhs` into this `RoaringBitmap`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (2..5).collect();
-    /// let rb3: RoaringBitmap = (2..4).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (2..5u32).collect();
+    /// let rb3: RoaringBitmap<u32> = (2..4u32).collect();
     ///
     /// let rb4 = rb1 & rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn bitand(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
+    fn bitand(mut self, rhs: Self) -> Self {
         self.intersect_with(&rhs);
         self
     }
 }
 
-impl<'a> BitAnd<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, Size: ExtInt + Halveable> BitAnd<&'a Self> for RoaringBitmap<Size> {
+    type Output = Self;
 
     /// Intersects the `rhs` into this `RoaringBitmap`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (2..5).collect();
-    /// let rb3: RoaringBitmap = (2..4).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (2..5u32).collect();
+    /// let rb3: RoaringBitmap<u32> = (2..4u32).collect();
     ///
     /// let rb4 = rb1 & &rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn bitand(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn bitand(mut self, rhs: &'a Self) -> Self {
         self.intersect_with(rhs);
         self
     }
 }
 
-impl<'a> BitAnd<RoaringBitmap> for &'a RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, Size: ExtInt + Halveable> BitAnd<RoaringBitmap<Size>> for &'a RoaringBitmap<Size> {
+    type Output = RoaringBitmap<Size>;
 
     /// Intersects `self` into the `rhs` `RoaringBitmap`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (2..5).collect();
-    /// let rb3: RoaringBitmap = (2..4).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (2..5u32).collect();
+    /// let rb3: RoaringBitmap<u32> = (2..4u32).collect();
     ///
     /// let rb4 = &rb1 & rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn bitand(self, mut rhs: RoaringBitmap) -> RoaringBitmap {
+    fn bitand(self, mut rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         rhs.intersect_with(self);
         rhs
     }
 }
 
-impl<'a, 'b> BitAnd<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, 'b, Size: ExtInt + Halveable> BitAnd<&'a RoaringBitmap<Size>> for &'b RoaringBitmap<Size> {
+    type Output = RoaringBitmap<Size>;
 
     /// Intersects `self` and `rhs` into a new `RoaringBitmap`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (2..5).collect();
-    /// let rb3: RoaringBitmap = (2..4).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (2..5u32).collect();
+    /// let rb3: RoaringBitmap<u32> = (2..4u32).collect();
     ///
     /// let rb4 = &rb1 & &rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn bitand(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn bitand(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         let mut result = self.clone();
         result.intersect_with(rhs);
         result
     }
 }
 
-impl Sub<RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<Size: ExtInt + Halveable> Sub<Self> for RoaringBitmap<Size> {
+    type Output = Self;
 
     /// Subtracts the `rhs` into this `RoaringBitmap`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (3..5).collect();
-    /// let rb3: RoaringBitmap = (1..3).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (3..5u32).collect();
+    /// let rb3: RoaringBitmap<u32> = (1..3u32).collect();
     ///
     /// let rb4 = rb1 - rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn sub(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
+    fn sub(mut self, rhs: Self) -> Self {
         self.difference_with(&rhs);
         self
     }
 }
 
-impl<'a> Sub<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, Size: ExtInt + Halveable> Sub<&'a Self> for RoaringBitmap<Size> {
+    type Output = Self;
 
     /// Subtracts the `rhs` into this `RoaringBitmap`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (3..5).collect();
-    /// let rb3: RoaringBitmap = (1..3).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (3..5u32).collect();
+    /// let rb3: RoaringBitmap<u32> = (1..3u32).collect();
     ///
     /// let rb4 = rb1 - &rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn sub(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn sub(mut self, rhs: &'a Self) -> Self {
         self.difference_with(rhs);
         self
     }
 }
 
-impl<'a, 'b> Sub<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, 'b, Size: ExtInt + Halveable> Sub<&'a RoaringBitmap<Size>> for &'b RoaringBitmap<Size> {
+    type Output = RoaringBitmap<Size>;
 
     /// Subtracts `rhs` from `self` and allocates a new `RoaringBitmap`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (3..5).collect();
-    /// let rb3: RoaringBitmap = (1..3).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (3..5u32).collect();
+    /// let rb3: RoaringBitmap<u32> = (1..3u32).collect();
     ///
     /// let rb4 = &rb1 - &rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn sub(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn sub(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         let mut result = self.clone();
         result.difference_with(rhs);
         result
     }
 }
 
-impl BitXor<RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<Size: ExtInt + Halveable> BitXor<Self> for RoaringBitmap<Size> {
+    type Output = Self;
 
     /// Subtracts the `rhs` into this `RoaringBitmap`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (3..6).collect();
-    /// let rb3: RoaringBitmap = ((1..3).chain(4..6)).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (3..6u32).collect();
+    /// let rb3: RoaringBitmap<u32> = ((1..3u32).chain(4..6u32)).collect();
     ///
     /// let rb4 = rb1 ^ rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn bitxor(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
+    fn bitxor(mut self, rhs: Self) -> Self {
         self.symmetric_difference_with(&rhs);
         self
     }
 }
 
-impl<'a> BitXor<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, Size: ExtInt + Halveable> BitXor<&'a Self> for RoaringBitmap<Size> {
+    type Output = RoaringBitmap<Size>;
 
     /// Exclusive ors the `rhs` into this `RoaringBitmap`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (3..6).collect();
-    /// let rb3: RoaringBitmap = ((1..3).chain(4..6)).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (3..6u32).collect();
+    /// let rb3: RoaringBitmap<u32> = ((1..3u32).chain(4..6u32)).collect();
     ///
     /// let rb4 = rb1 ^ &rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn bitxor(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn bitxor(mut self, rhs: &'a Self) -> Self {
         self.symmetric_difference_with(rhs);
         self
     }
 }
 
-impl<'a> BitXor<RoaringBitmap> for &'a RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, Size: ExtInt + Halveable> BitXor<RoaringBitmap<Size>> for &'a RoaringBitmap<Size> {
+    type Output = RoaringBitmap<Size>;
 
     /// Exclusive ors `rhs` and `self`, writes result in place to `rhs`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (3..6).collect();
-    /// let rb3: RoaringBitmap = ((1..3).chain(4..6)).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (3..6u32).collect();
+    /// let rb3: RoaringBitmap<u32> = ((1..3u32).chain(4..6u32)).collect();
     ///
     /// let rb4 = &rb1 ^ rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn bitxor(self, mut rhs: RoaringBitmap) -> RoaringBitmap {
+    fn bitxor(self, mut rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         rhs.symmetric_difference_with(self);
         rhs
     }
 }
 
-impl<'a, 'b> BitXor<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = RoaringBitmap;
+impl<'a, 'b, Size: ExtInt + Halveable> BitXor<&'a RoaringBitmap<Size>> for &'b RoaringBitmap<Size> {
+    type Output = RoaringBitmap<Size>;
 
     /// Exclusive ors `rhs` and `self`, allocates a new bitmap for the result.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(slicing_syntax)]
-    /// # extern crate roaring;
-    /// # fn main() {
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (3..6).collect();
-    /// let rb3: RoaringBitmap = ((1..3).chain(4..6)).collect();
+    /// let rb1: RoaringBitmap<u32> = (1..4u32).collect();
+    /// let rb2: RoaringBitmap<u32> = (3..6u32).collect();
+    /// let rb3: RoaringBitmap<u32> = ((1..3u32).chain(4..6u32)).collect();
     ///
     /// let rb4 = &rb1 ^ &rb2;
     ///
     /// assert_eq!(rb3, rb4);
-    /// # }
     /// ```
     #[inline]
-    fn bitxor(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn bitxor(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         let mut result = self.clone();
         result.symmetric_difference_with(rhs);
         result
     }
 }
 
-impl Debug for RoaringBitmap {
+impl<Size: ExtInt + Halveable + Debug> Debug for RoaringBitmap<Size> {
     #[inline]
     fn fmt(&self, formatter: &mut Formatter) -> Result {
-        if self.len() < 16 {
-            format!("RoaringBitmap<{:?}>", self.iter().collect::<Vec<u32>>()).fmt(formatter)
+        if self.len() < util::cast(16u8) {
+            format!("RoaringBitmap<{:?}>", self.iter().collect::<Vec<Size>>()).fmt(formatter)
         } else {
             format!("RoaringBitmap<{:?} values between {:?} and {:?}>", self.len(), imp::min(self), imp::max(self)).fmt(formatter)
         }

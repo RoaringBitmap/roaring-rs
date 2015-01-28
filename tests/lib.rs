@@ -8,7 +8,7 @@ use roaring::RoaringBitmap;
 
 #[test]
 fn smoke() {
-    let mut bitmap = RoaringBitmap::new();
+    let mut bitmap: RoaringBitmap<u32> = RoaringBitmap::new();
     assert_eq!(bitmap.len(), 0);
     assert_eq!(bitmap.is_empty(), true);
     bitmap.remove(0);
@@ -40,9 +40,9 @@ fn smoke() {
 
 #[test]
 fn to_bitmap() {
-    let bitmap: RoaringBitmap = (0..5000).collect();
+    let bitmap: RoaringBitmap<u32> = (0..5000u32).collect();
     assert_eq!(bitmap.len(), 5000);
-    for i in 1..5000 {
+    for i in 1..5000u32 {
         assert_eq!(bitmap.contains(i), true);
     }
     assert_eq!(bitmap.contains(5001), false);
@@ -50,15 +50,15 @@ fn to_bitmap() {
 
 #[test]
 fn to_array() {
-    let mut bitmap: RoaringBitmap = (0..5000).collect();
-    for i in 3000..5000 {
+    let mut bitmap: RoaringBitmap<u32> = (0..5000u32).collect();
+    for i in 3000..5000u32 {
         bitmap.remove(i);
     }
     assert_eq!(bitmap.len(), 3000);
-    for i in 0..3000 {
+    for i in 0..3000u32 {
         assert_eq!(bitmap.contains(i), true);
     }
-    for i in 3000..5000 {
+    for i in 3000..5000u32 {
         assert_eq!(bitmap.contains(i), false);
     }
 }
