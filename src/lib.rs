@@ -13,7 +13,7 @@
 #![warn(missing_docs)]
 #![warn(variant_size_differences)]
 
-use std::fmt::{ Show, Formatter, Result };
+use std::fmt::{ Debug, Formatter, Result };
 use std::ops::{ BitXor, BitAnd, BitOr, Sub };
 use std::iter::{ FromIterator };
 
@@ -1023,7 +1023,7 @@ impl<'a, 'b> BitXor<&'a RoaringBitmap> for &'b RoaringBitmap {
     }
 }
 
-impl Show for RoaringBitmap {
+impl Debug for RoaringBitmap {
     #[inline]
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         if self.len() < 16 {
