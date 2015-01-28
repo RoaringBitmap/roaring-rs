@@ -1,5 +1,5 @@
 use std::num::Int;
-use std::fmt::{ Show, Formatter, Result };
+use std::fmt::{ Debug, Formatter, Result };
 
 use store::Store::{ self, Array, Bitmap };
 
@@ -126,7 +126,7 @@ impl<Size> Container<Size> where Size: Int {
     }
 }
 
-impl<Size> Show for Container<Size> where Size: Int + Show {
+impl<Size> Debug for Container<Size> where Size: Int + Debug {
     #[inline]
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         format!("Container<{:?} @ {:?}>", self.len(), self.key()).fmt(formatter)
