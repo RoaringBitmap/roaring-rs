@@ -3,8 +3,7 @@ use std::cmp::Ordering::{ Equal, Less, Greater };
 use std::num::Int;
 use std::slice;
 
-use iter;
-use iter::{ Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
+use iter::{ self, Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
 use container::Container;
 use util;
 use util::{ Halveable, ExtInt };

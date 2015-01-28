@@ -3,7 +3,7 @@ use std::slice;
 use util;
 use util::{ Either, ExtInt, bits, Halveable };
 use util::Either::{ Left, Right };
-use container::Container;
+use container::{ Container };
 
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::HalfSize : 'a {

@@ -1,9 +1,8 @@
 use std::num::Int;
-use std::fmt::{ Show, Formatter, Result };
+use std::fmt::{ Debug, Formatter, Result };
 
 use util::ExtInt;
-use store::Store;
-use store::Store::{ Array, Bitmap };
+use store::Store::{ self, Array, Bitmap };
 
 #[derive(PartialEq, Clone)]
 pub struct Container<Size: ExtInt> {
@@ -128,7 +127,7 @@ impl<Size: ExtInt> Container<Size> {
     }
 }
 
-impl<Size: ExtInt + Show> Show for Container<Size> {
+impl<Size: ExtInt + Debug> Debug for Container<Size> {
     #[inline]
     fn fmt(&self, formatter: &mut Formatter) -> Result {
         format!("Container<{:?} @ {:?}>", self.len(), self.key()).fmt(formatter)

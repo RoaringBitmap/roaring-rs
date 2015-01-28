@@ -1,6 +1,6 @@
 use std::{ u64 };
 use std::iter;
-use std::num::Int;
+use std::num::{ self, Int };
 use std::cmp::Ordering::{ Equal, Less, Greater };
 
 use util;
