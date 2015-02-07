@@ -228,11 +228,12 @@ struct Pairs<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::HalfS
 
 impl<'a, Size: ExtInt + Halveable> Pairs<'a, Size> {
     fn new(mut iter1: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>, mut iter2: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>) -> Pairs<'a, Size> {
+        let (current1, current2) = (iter1.next(), iter2.next());
         Pairs {
             iter1: iter1,
             iter2: iter2,
-            current1: iter1.next(),
-            current2: iter2.next(),
+            current1: current1,
+            current2: current2,
         }
     }
 }
