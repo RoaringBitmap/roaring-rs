@@ -1,7 +1,7 @@
 use std::{ u64 };
 use std::iter;
 use std::marker::PhantomData;
-use std::num::{ self, Int };
+use std::num::{ Int };
 use std::cmp::Ordering::{ Equal, Less, Greater };
 
 use util;
@@ -167,7 +167,7 @@ impl<Size: ExtInt> Store<Size> {
     pub fn intersect_with(&mut self, other: &Self) {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
-                let mut i1 = 0us;
+                let mut i1 = 0usize;
                 let mut iter2 = vec2.iter();
                 let mut current2 = iter2.next();
                 while i1 < vec1.len() {
@@ -204,7 +204,7 @@ impl<Size: ExtInt> Store<Size> {
     pub fn difference_with(&mut self, other: &Self) {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
-                let mut i1 = 0us;
+                let mut i1 = 0usize;
                 let mut iter2 = vec2.iter();
                 let mut current2 = iter2.next();
                 while i1 < vec1.len() {
@@ -242,7 +242,7 @@ impl<Size: ExtInt> Store<Size> {
     pub fn symmetric_difference_with(&mut self, other: &Self) {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
-                let mut i1 = 0us;
+                let mut i1 = 0usize;
                 let mut iter2 = vec2.iter();
                 let mut current2 = iter2.next();
                 while i1 < vec1.len() {

@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-use std::cmp::Ordering::{ Equal, Less, Greater };
 use std::iter::{ IntoIterator };
 use std::num::Int;
 use std::slice;
@@ -193,28 +191,28 @@ pub fn from_iter_ref<'a, Size: ExtInt + Halveable + 'a, I: IntoIterator<Item = &
 }
 
 #[inline]
-pub fn extend<Size: ExtInt + Halveable, I: IntoIterator<Item = Size>>(this: &mut RB<Size>, mut iterator: I) {
+pub fn extend<Size: ExtInt + Halveable, I: IntoIterator<Item = Size>>(this: &mut RB<Size>, iterator: I) {
     for value in iterator {
         this.insert(value);
     }
 }
 
 #[inline]
-pub fn extend_ref<'a, Size: ExtInt + Halveable + 'a, I: IntoIterator<Item = &'a Size>>(this: &mut RB<Size>, mut iterator: I) {
+pub fn extend_ref<'a, Size: ExtInt + Halveable + 'a, I: IntoIterator<Item = &'a Size>>(this: &mut RB<Size>, iterator: I) {
     for value in iterator {
         this.insert(*value);
     }
 }
 
 pub fn min<Size: ExtInt + Halveable>(this: &RB<Size>) -> Size {
-    match &this.containers[] {
+    match &this.containers[..] {
         [ref head, ..] => Halveable::join(head.key(), head.min()),
         [] => Int::min_value(),
     }
 }
 
 pub fn max<Size: ExtInt + Halveable>(this: &RB<Size>) -> Size {
-    match &this.containers[] {
+    match &this.containers[..] {
         [.., ref tail] => Halveable::join(tail.key(), tail.max()),
         [] => Int::max_value(),
     }

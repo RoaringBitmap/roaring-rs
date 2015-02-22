@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use std::{ u8, u16, u32 };
 use std::num::Int;
 
@@ -47,10 +49,10 @@ impl From for u32 { #[inline] fn from<T: To64>(n: T) -> Self { n.to64() as u32 }
 impl From for u16 { #[inline] fn from<T: To64>(n: T) -> Self { n.to64() as u16 } }
 impl From for u8 { #[inline] fn from<T: To64>(n: T) -> Self { n.to64() as u8 } }
 
-impl BitLength for u64 { #[inline] fn bits(self) -> usize { 64us } }
-impl BitLength for u32 { #[inline] fn bits(self) -> usize { 32us } }
-impl BitLength for u16 { #[inline] fn bits(self) -> usize { 16us } }
-impl BitLength for u8 { #[inline] fn bits(self) -> usize { 8us } }
+impl BitLength for u64 { #[inline] fn bits(self) -> usize { 64usize } }
+impl BitLength for u32 { #[inline] fn bits(self) -> usize { 32usize } }
+impl BitLength for u16 { #[inline] fn bits(self) -> usize { 16usize } }
+impl BitLength for u8 { #[inline] fn bits(self) -> usize { 8usize } }
 
 impl ExtInt for u64 { }
 impl ExtInt for u32 { }
@@ -60,9 +62,4 @@ impl ExtInt for u8 { }
 
 pub fn cast<T: To64, U: From>(n: T) -> U {
     From::from(n)
-}
-
-pub fn bits<T: BitLength + Int>() -> usize {
-    let zero: T = Int::zero();
-    BitLength::bits(zero)
 }

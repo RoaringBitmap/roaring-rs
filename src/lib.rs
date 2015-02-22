@@ -7,7 +7,8 @@
 //! [roaring-java]: https://github.com/lemire/RoaringBitmap
 //! [roaring-paper]: http://arxiv.org/pdf/1402.6407v4
 
-#![feature(slicing_syntax)]
+#![feature(core)]
+#![feature(collections)]
 #![feature(advanced_slice_patterns)]
 
 #![warn(missing_docs)]

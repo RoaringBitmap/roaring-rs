@@ -1,7 +1,6 @@
 use std::slice;
 
-use util;
-use util::{ Either, ExtInt, bits, Halveable };
+use util::{ Either, ExtInt, Halveable };
 use util::Either::{ Left, Right };
 use container::{ Container };
 
