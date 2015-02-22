@@ -1,0 +1,10 @@
+(function() {var implementors = {};
+implementors['roaring'] = ["<a class='stability Stable' title='Stable'></a>impl&lt;'a, Size: ExtInt + Halveable + 'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html' title='core::iter::Iterator'>Iterator</a> for <a class='struct' href='roaring/struct.Iter.html' title='roaring::Iter'>Iter</a>&lt;'a, Size&gt;","<a class='stability Stable' title='Stable'></a>impl&lt;'a, Size: ExtInt + Halveable + 'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html' title='core::iter::Iterator'>Iterator</a> for <a class='struct' href='roaring/struct.UnionIter.html' title='roaring::UnionIter'>UnionIter</a>&lt;'a, Size&gt;","<a class='stability Stable' title='Stable'></a>impl&lt;'a, Size: ExtInt + Halveable + 'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html' title='core::iter::Iterator'>Iterator</a> for <a class='struct' href='roaring/struct.IntersectionIter.html' title='roaring::IntersectionIter'>IntersectionIter</a>&lt;'a, Size&gt;","<a class='stability Stable' title='Stable'></a>impl&lt;'a, Size: ExtInt + Halveable + 'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html' title='core::iter::Iterator'>Iterator</a> for <a class='struct' href='roaring/struct.DifferenceIter.html' title='roaring::DifferenceIter'>DifferenceIter</a>&lt;'a, Size&gt;","<a class='stability Stable' title='Stable'></a>impl&lt;'a, Size: ExtInt + Halveable + 'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html' title='core::iter::Iterator'>Iterator</a> for <a class='struct' href='roaring/struct.SymmetricDifferenceIter.html' title='roaring::SymmetricDifferenceIter'>SymmetricDifferenceIter</a>&lt;'a, Size&gt;",];
+
+            if (window.register_implementors) {
+                window.register_implementors(implementors);
+            } else {
+                window.pending_implementors = implementors;
+            }
+        
+})()
