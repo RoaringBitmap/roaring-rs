@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::cmp::Ordering::{ Equal, Less, Greater };
+use std::iter::{ IntoIterator };
 use std::num::Int;
 use std::slice;
 
@@ -178,28 +179,28 @@ pub fn symmetric_difference_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, 
 }
 
 #[inline]
-pub fn from_iter<Size: ExtInt + Halveable, I: Iterator<Item = Size>>(iterator: I) -> RB<Size> {
+pub fn from_iter<Size: ExtInt + Halveable, I: IntoIterator<Item = Size>>(iterator: I) -> RB<Size> {
     let mut rb = new();
     rb.extend(iterator);
     rb
 }
 
 #[inline]
-pub fn from_iter_ref<'a, Size: ExtInt + Halveable + 'a, I: Iterator<Item = &'a Size>>(iterator: I) -> RB<Size> {
+pub fn from_iter_ref<'a, Size: ExtInt + Halveable + 'a, I: IntoIterator<Item = &'a Size>>(iterator: I) -> RB<Size> {
     let mut rb = new();
     rb.extend(iterator);
     rb
 }
 
 #[inline]
-pub fn extend<Size: ExtInt + Halveable, I: Iterator<Item = Size>>(this: &mut RB<Size>, mut iterator: I) {
+pub fn extend<Size: ExtInt + Halveable, I: IntoIterator<Item = Size>>(this: &mut RB<Size>, mut iterator: I) {
     for value in iterator {
         this.insert(value);
     }
 }
 
 #[inline]
-pub fn extend_ref<'a, Size: ExtInt + Halveable + 'a, I: Iterator<Item = &'a Size>>(this: &mut RB<Size>, mut iterator: I) {
+pub fn extend_ref<'a, Size: ExtInt + Halveable + 'a, I: IntoIterator<Item = &'a Size>>(this: &mut RB<Size>, mut iterator: I) {
     for value in iterator {
         this.insert(*value);
     }

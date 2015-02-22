@@ -15,7 +15,7 @@
 
 use std::fmt::{ Debug, Formatter, Result };
 use std::ops::{ BitXor, BitAnd, BitOr, Sub };
-use std::iter::{ FromIterator };
+use std::iter::{ IntoIterator, FromIterator };
 
 use util::{ Halveable, ExtInt };
 
@@ -480,28 +480,28 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
 
 impl<Size: ExtInt + Halveable> FromIterator<Size> for RoaringBitmap<Size> {
     #[inline]
-    fn from_iter<I: Iterator<Item = Size>>(iterator: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = Size>>(iterator: I) -> Self {
         imp::from_iter(iterator)
     }
 }
 
 impl<'a, Size: ExtInt + Halveable + 'a> FromIterator<&'a Size> for RoaringBitmap<Size> {
     #[inline]
-    fn from_iter<I: Iterator<Item = &'a Size>>(iterator: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = &'a Size>>(iterator: I) -> Self {
         imp::from_iter_ref(iterator)
     }
 }
 
 impl<Size: ExtInt + Halveable> Extend<Size> for RoaringBitmap<Size> {
     #[inline]
-    fn extend<I: Iterator<Item = Size>>(&mut self, iterator: I) {
+    fn extend<I: IntoIterator<Item = Size>>(&mut self, iterator: I) {
         imp::extend(self, iterator)
     }
 }
 
 impl<'a, Size: ExtInt + Halveable + 'a> Extend<&'a Size> for RoaringBitmap<Size> {
     #[inline]
-    fn extend<I: Iterator<Item = &'a Size>>(&mut self, iterator: I) {
+    fn extend<I: IntoIterator<Item = &'a Size>>(&mut self, iterator: I) {
         imp::extend_ref(self, iterator)
     }
 }
