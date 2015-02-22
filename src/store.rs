@@ -1,5 +1,6 @@
 use std::{ u64 };
 use std::iter;
+use std::marker::PhantomData;
 use std::num::{ self, Int };
 use std::cmp::Ordering::{ Equal, Less, Greater };
 
@@ -362,6 +363,7 @@ struct BitmapIter<'a, Size: ExtInt> {
     key: usize,
     bit: u8,
     bits: &'a Box<[u64]>,
+    marker: PhantomData<Size>,
 }
 
 impl<'a, Size: ExtInt> BitmapIter<'a, Size> {
@@ -370,6 +372,7 @@ impl<'a, Size: ExtInt> BitmapIter<'a, Size> {
             key: 0,
             bit: Int::max_value(),
             bits: bits,
+            marker: PhantomData,
         }
     }
 }
