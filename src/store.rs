@@ -121,7 +121,7 @@ impl<Size: ExtInt> Store<Size> {
                 for (key, val) in bits.iter().map(|v| *v).enumerate().filter(|&(_, v)| v != 0) {
                     for bit in 0..(u64::BITS) {
                         if (val & (1 << bit)) != 0 {
-                            vec.push(util::cast(key * u64::BITS + bit));
+                            vec.push(util::cast(key * (u64::BITS as usize) + (bit as usize)));
                         }
                     }
                 }
@@ -306,7 +306,7 @@ impl<Size: ExtInt> Store<Size> {
             &Bitmap(ref bits) => {
                 bits.iter().enumerate()
                     .filter(|&(_, &bit)| bit != 0)
-                    .next().map(|(index, bit)| util::cast(index * u64::BITS + bit.leading_zeros()))
+                    .next().map(|(index, bit)| util::cast(index * (u64::BITS as usize) + (bit.leading_zeros() as usize)))
                     .unwrap()
             },
         }
@@ -318,7 +318,7 @@ impl<Size: ExtInt> Store<Size> {
             &Bitmap(ref bits) => {
                 bits.iter().enumerate().rev()
                     .filter(|&(_, &bit)| bit != 0)
-                    .next().map(|(index, bit)| util::cast(index * u64::BITS + bit.leading_zeros()))
+                    .next().map(|(index, bit)| util::cast(index * (u64::BITS as usize) + (bit.leading_zeros() as usize)))
                     .unwrap()
             },
         }
@@ -391,7 +391,7 @@ impl<'a, Size: ExtInt> Iterator for BitmapIter<'a, Size> {
                 return None;
             }
             if (self.bits[self.key] & (1u64 << util::cast::<u8, usize>(self.bit))) != 0 {
-                return Some(util::cast(self.key * u64::BITS + util::cast(self.bit)));
+                return Some(util::cast(self.key * (u64::BITS as usize) + util::cast(self.bit)));
             }
         }
     }
