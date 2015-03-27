@@ -1,4 +1,4 @@
-#![feature(slicing_syntax)]
+#![feature(test)]
 
 extern crate test;
 extern crate roaring;

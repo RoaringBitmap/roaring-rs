@@ -1,5 +1,3 @@
-#![feature(slicing_syntax)]
-
 extern crate roaring;
 use roaring::RoaringBitmap;
 

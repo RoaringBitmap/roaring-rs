@@ -60,7 +60,7 @@ impl<Size: ExtInt> Store<Size> {
         }
     }
 
-    pub fn is_disjoint(&self, other: &Self) -> bool {
+    pub fn is_disjoint<'a>(&'a self, other: &'a Self) -> bool {
         match (self, other) {
             (&Array(ref vec1), &Array(ref vec2)) => {
                 let (mut i1, mut i2) = (vec1.iter(), vec2.iter());
@@ -230,7 +230,7 @@ impl<Size: ExtInt> Store<Size> {
                 }
             },
             (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
-                for i in range(0, vec.len()).rev() {
+                for i in (0 .. vec.len()).rev() {
                     if store.contains(vec[i]) {
                         vec.remove(i);
                     }
@@ -328,7 +328,7 @@ impl<Size: ExtInt> Store<Size> {
     pub fn iter<'a>(&'a self) -> Box<Iterator<Item = Size> + 'a> {
         match self {
             &Array(ref vec) => Box::new(vec.iter().map(|x| *x)) as Box<Iterator<Item = Size> + 'a>,
-            &Bitmap(ref bits) => Box::new(BitmapIter::new(bits)) as Box<Iterator<Item = Size> + 'a>,
+            &Bitmap(ref bits) => Box::new(BitmapIter::<Size>::new(bits)) as Box<Iterator<Item = Size> + 'a>,
         }
     }
 
