@@ -7,7 +7,7 @@ use container::Container;
 use util;
 use util::{ Halveable, ExtInt };
 
-type RB<Size> = ::RoaringBitmap<Size>;
+pub type RB<Size> = ::RoaringBitmap<Size>;
 
 #[inline]
 pub fn new<Size: ExtInt + Halveable>() -> RB<Size> {
