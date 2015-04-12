@@ -13,3 +13,6 @@ readme = "README.md"
 keywords = ["roaring", "data-structure", "bitmap"]
 
 license = "MIT"
+
+[dependencies]
+num = "*"

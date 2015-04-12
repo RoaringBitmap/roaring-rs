@@ -1,5 +1,6 @@
-use std::num::Int;
 use std::fmt::{ Debug, Formatter, Result };
+
+use num::traits::{ One, Bounded };
 
 use util::ExtInt;
 use store::Store::{ self, Array, Bitmap };
@@ -15,7 +16,7 @@ impl<Size: ExtInt> Container<Size> {
     pub fn new(key: Size) -> Container<Size> {
         Container {
             key: key,
-            len: Int::max_value(),
+            len: Bounded::max_value(),
             store: Array(Vec::new()),
         }
     }
@@ -26,12 +27,12 @@ impl<Size: ExtInt> Container<Size> {
     pub fn key(&self) -> Size { self.key }
 
     #[inline]
-    pub fn len(&self) -> Size { self.len + Int::one() }
+    pub fn len(&self) -> Size { self.len + One::one() }
 
     #[inline]
     pub fn insert(&mut self, index: Size) -> bool {
         if self.store.insert(index) {
-            self.len = self.len + Int::one();
+            self.len = self.len + One::one();
             self.ensure_correct_store();
             true
         } else {
@@ -42,7 +43,7 @@ impl<Size: ExtInt> Container<Size> {
     #[inline]
     pub fn remove(&mut self, index: Size) -> bool {
         if self.store.remove(index) {
-            self.len = self.len - Int::one();
+            self.len = self.len - One::one();
             self.ensure_correct_store();
             true
         } else {
@@ -77,28 +78,28 @@ impl<Size: ExtInt> Container<Size> {
     #[inline]
     pub fn union_with(&mut self, other: &Self) {
         self.store.union_with(&other.store);
-        self.len = self.store.len() - Int::one();
+        self.len = self.store.len() - One::one();
         self.ensure_correct_store();
     }
 
     #[inline]
     pub fn intersect_with(&mut self, other: &Self) {
         self.store.intersect_with(&other.store);
-        self.len = self.store.len() - Int::one();
+        self.len = self.store.len() - One::one();
         self.ensure_correct_store();
     }
 
     #[inline]
     pub fn difference_with(&mut self, other: &Self) {
         self.store.difference_with(&other.store);
-        self.len = self.store.len() - Int::one();
+        self.len = self.store.len() - One::one();
         self.ensure_correct_store();
     }
 
     #[inline]
     pub fn symmetric_difference_with(&mut self, other: &Self) {
         self.store.symmetric_difference_with(&other.store);
-        self.len = self.store.len() - Int::one();
+        self.len = self.store.len() - One::one();
         self.ensure_correct_store();
     }
 
@@ -114,7 +115,7 @@ impl<Size: ExtInt> Container<Size> {
 
     #[inline]
     fn ensure_correct_store(&mut self) {
-        let one: Size = Int::one();
+        let one: Size = One::one();
         let limit = one.rotate_right(4);
         let new_store = match (&self.store, self.len) {
             (store @ &Bitmap(..), len) if len < limit => Some(store.to_array()),

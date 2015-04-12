@@ -1,13 +1,13 @@
 use std::iter::{ IntoIterator };
-use std::num::Int;
 use std::slice;
 
-use iter::{ self, Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
-use container::Container;
-use util;
-use util::{ Halveable, ExtInt };
+use num::traits::{ Zero, Bounded };
 
-pub type RB<Size> = ::RoaringBitmap<Size>;
+use iter::{ self, Iter, UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
+use container::{ Container };
+use util::{ self, Halveable, ExtInt };
+
+use RoaringBitmap as RB;
 
 #[inline]
 pub fn new<Size: ExtInt + Halveable>() -> RB<Size> {
@@ -31,7 +31,7 @@ pub fn remove<Size: ExtInt + Halveable>(this: &mut RB<Size>, value: Size) -> boo
     match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
         Ok(loc) => {
             if this.containers[loc].remove(index) {
-                if this.containers[loc].len() == Int::zero() {
+                if this.containers[loc].len() == Zero::zero() {
                     this.containers.remove(loc);
                 }
                 true
@@ -65,7 +65,7 @@ pub fn len<Size: ExtInt + Halveable>(this: &RB<Size>) -> Size {
     this.containers
         .iter()
         .map(|container| container.len())
-        .fold(Int::zero(), |sum: Size, len| sum + util::cast(len))
+        .fold(Zero::zero(), |sum: Size, len| sum + util::cast(len))
 }
 
 #[inline]
@@ -151,7 +151,7 @@ pub fn difference_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB
         match other.containers.binary_search_by(|container| container.key().cmp(&key)) {
             Ok(loc) => {
                 this.containers[index].difference_with(&other.containers[loc]);
-                if this.containers[index].len() == Int::zero() {
+                if this.containers[index].len() == Zero::zero() {
                     this.containers.remove(index);
                 }
             },
@@ -168,7 +168,7 @@ pub fn symmetric_difference_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, 
             Err(loc) => this.containers.insert(loc, (*container).clone()),
             Ok(loc) => {
                 this.containers[loc].symmetric_difference_with(container);
-                if this.containers[loc].len() == Int::zero() {
+                if this.containers[loc].len() == Zero::zero() {
                     this.containers.remove(loc);
                 }
             }
@@ -205,16 +205,16 @@ pub fn extend_ref<'a, Size: ExtInt + Halveable + 'a, I: IntoIterator<Item = &'a 
 }
 
 pub fn min<Size: ExtInt + Halveable>(this: &RB<Size>) -> Size {
-    match &this.containers[..] {
-        [ref head, ..] => Halveable::join(head.key(), head.min()),
-        [] => Int::min_value(),
+    match this.containers.first() {
+        Some(ref head) => Halveable::join(head.key(), head.min()),
+        None => Bounded::min_value(),
     }
 }
 
 pub fn max<Size: ExtInt + Halveable>(this: &RB<Size>) -> Size {
-    match &this.containers[..] {
-        [.., ref tail] => Halveable::join(tail.key(), tail.max()),
-        [] => Int::max_value(),
+    match this.containers.last() {
+        Some(ref tail) => Halveable::join(tail.key(), tail.max()),
+        None => Bounded::max_value(),
     }
 }
 

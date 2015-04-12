@@ -7,12 +7,10 @@
 //! [roaring-java]: https://github.com/lemire/RoaringBitmap
 //! [roaring-paper]: http://arxiv.org/pdf/1402.6407v4
 
-#![feature(core)]
-#![feature(collections)]
-#![feature(advanced_slice_patterns)]
-
 #![warn(missing_docs)]
 #![warn(variant_size_differences)]
+
+extern crate num;
 
 use std::fmt::{ Debug, Formatter, Result };
 use std::ops::{ BitXor, BitAnd, BitOr, Sub };
