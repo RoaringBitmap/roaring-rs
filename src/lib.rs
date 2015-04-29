@@ -514,7 +514,7 @@ impl<'a, Size: ExtInt + Halveable + 'a> Extend<&'a Size> for RoaringBitmap<Size>
     }
 }
 
-impl<Size: ExtInt + Halveable> BitOr<Self> for RoaringBitmap<Size> {
+impl<Size: ExtInt + Halveable> BitOr<RoaringBitmap<Size>> for RoaringBitmap<Size> {
     type Output = Self;
 
     /// Unions the `rhs` into this `RoaringBitmap`.
@@ -590,7 +590,7 @@ impl<'a, 'b, Size: ExtInt + Halveable> BitOr<&'a RoaringBitmap<Size>> for &'b Ro
     }
 }
 
-impl<'a, Size: ExtInt + Halveable> BitOr<&'a Self> for RoaringBitmap<Size> {
+impl<'a, Size: ExtInt + Halveable> BitOr<&'a RoaringBitmap<Size>> for RoaringBitmap<Size> {
     type Output = Self;
 
     /// Unions the `rhs` into this `RoaringBitmap`.
@@ -615,7 +615,7 @@ impl<'a, Size: ExtInt + Halveable> BitOr<&'a Self> for RoaringBitmap<Size> {
     }
 }
 
-impl<Size: ExtInt + Halveable> BitAnd<Self> for RoaringBitmap<Size> {
+impl<Size: ExtInt + Halveable> BitAnd<RoaringBitmap<Size>> for RoaringBitmap<Size> {
     type Output = Self;
 
     /// Intersects the `rhs` into this `RoaringBitmap`.
@@ -640,7 +640,7 @@ impl<Size: ExtInt + Halveable> BitAnd<Self> for RoaringBitmap<Size> {
     }
 }
 
-impl<'a, Size: ExtInt + Halveable> BitAnd<&'a Self> for RoaringBitmap<Size> {
+impl<'a, Size: ExtInt + Halveable> BitAnd<&'a RoaringBitmap<Size>> for RoaringBitmap<Size> {
     type Output = Self;
 
     /// Intersects the `rhs` into this `RoaringBitmap`.
@@ -716,7 +716,7 @@ impl<'a, 'b, Size: ExtInt + Halveable> BitAnd<&'a RoaringBitmap<Size>> for &'b R
     }
 }
 
-impl<Size: ExtInt + Halveable> Sub<Self> for RoaringBitmap<Size> {
+impl<Size: ExtInt + Halveable> Sub<RoaringBitmap<Size>> for RoaringBitmap<Size> {
     type Output = Self;
 
     /// Subtracts the `rhs` into this `RoaringBitmap`.
@@ -741,7 +741,7 @@ impl<Size: ExtInt + Halveable> Sub<Self> for RoaringBitmap<Size> {
     }
 }
 
-impl<'a, Size: ExtInt + Halveable> Sub<&'a Self> for RoaringBitmap<Size> {
+impl<'a, Size: ExtInt + Halveable> Sub<&'a RoaringBitmap<Size>> for RoaringBitmap<Size> {
     type Output = Self;
 
     /// Subtracts the `rhs` into this `RoaringBitmap`.
@@ -792,7 +792,7 @@ impl<'a, 'b, Size: ExtInt + Halveable> Sub<&'a RoaringBitmap<Size>> for &'b Roar
     }
 }
 
-impl<Size: ExtInt + Halveable> BitXor<Self> for RoaringBitmap<Size> {
+impl<Size: ExtInt + Halveable> BitXor<RoaringBitmap<Size>> for RoaringBitmap<Size> {
     type Output = Self;
 
     /// Subtracts the `rhs` into this `RoaringBitmap`.
@@ -817,7 +817,7 @@ impl<Size: ExtInt + Halveable> BitXor<Self> for RoaringBitmap<Size> {
     }
 }
 
-impl<'a, Size: ExtInt + Halveable> BitXor<&'a Self> for RoaringBitmap<Size> {
+impl<'a, Size: ExtInt + Halveable> BitXor<&'a RoaringBitmap<Size>> for RoaringBitmap<Size> {
     type Output = RoaringBitmap<Size>;
 
     /// Exclusive ors the `rhs` into this `RoaringBitmap`.
