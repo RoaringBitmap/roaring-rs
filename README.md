@@ -16,7 +16,7 @@ duplicate the [BitvSet][] API.
 [release-badge]: https://img.shields.io/github/release/Nemo157/roaring-rs.svg?style=flat-square
 [cargo]: https://crates.io/crates/roaring
 [docs-badge]: https://img.shields.io/badge/API-docs-blue.svg?style=flat-square
-[docs]: http://nemo157.github.io/roaring-rs/
+[docs]: https://nemo157.com/roaring-rs/
 [license-badge]: https://img.shields.io/badge/license-MIT-lightgray.svg?style=flat-square
 [license]: https://github.com/Nemo157/roaring-rs/blob/master/LICENSE
 [Rust]: https://rust-lang.org
