@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 
+use std::fmt::Debug;
 use std::num::ParseIntError;
 
 use num::traits::{ PrimInt, Num };
@@ -18,7 +19,7 @@ pub trait From { fn from<T: To64>(n: T) -> Self; }
 pub trait BitLength { fn bits(self) -> usize; }
 pub trait ExtInt:
     PrimInt + Num<FromStrRadixErr=ParseIntError>
-    + To64 + From + BitLength { }
+    + To64 + From + BitLength + Debug { }
 
 
 impl Halveable for u64 {

@@ -2,6 +2,17 @@ extern crate roaring;
 use roaring::RoaringBitmap;
 
 #[test]
+fn mini() {
+    let bitmap1: RoaringBitmap<u32> = (0..20u32).collect();
+    let bitmap2: RoaringBitmap<u32> = (10..30u32).collect();
+
+    let expected: RoaringBitmap<u32> = (0..10u32).collect();
+    let actual: RoaringBitmap<u32> = bitmap1.difference(&bitmap2).collect();
+
+    assert_eq!(actual, expected);
+}
+
+#[test]
 fn array() {
     let bitmap1: RoaringBitmap<u32> = (0..2000u32).collect();
     let bitmap2: RoaringBitmap<u32> = (1000..3000u32).collect();
@@ -62,6 +73,17 @@ fn bitmap_and_array_to_array() {
     let bitmap2: RoaringBitmap<u32> = (3000..6000u32).collect();
 
     let expected: RoaringBitmap<u32> = (0..3000u32).collect();
+    let actual: RoaringBitmap<u32> = bitmap1.difference(&bitmap2).collect();
+
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn mini_arrays() {
+    let bitmap1: RoaringBitmap<u32> = (0..20u32).chain(1000000..1000020u32).chain(2000000..2000010u32).collect();
+    let bitmap2: RoaringBitmap<u32> = (10..30u32).chain(1000010..1000030u32).chain(2000000..2000010u32).collect();
+
+    let expected: RoaringBitmap<u32> = (0..10u32).chain(1000000..1000010u32).collect();
     let actual: RoaringBitmap<u32> = bitmap1.difference(&bitmap2).collect();
 
     assert_eq!(actual, expected);

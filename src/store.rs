@@ -1,9 +1,8 @@
 use std::iter;
 use std::marker::PhantomData;
-use std::mem::size_of;
 use std::cmp::Ordering::{ Equal, Less, Greater };
 
-use num::traits::{ One, Bounded };
+use num::traits::{ Zero, Bounded };
 
 use util::{ self, ExtInt };
 use store::Store::{ Array, Bitmap };
@@ -119,9 +118,9 @@ impl<Size: ExtInt> Store<Size> {
             &Bitmap(ref bits) => {
                 let mut vec = Vec::new();
                 for (key, val) in bits.iter().map(|v| *v).enumerate().filter(|&(_, v)| v != 0) {
-                    for bit in 0..(size_of::<u64>()) {
+                    for bit in 0..64 {
                         if (val & (1 << bit)) != 0 {
-                            vec.push(util::cast(key * (size_of::<u64>() as usize) + (bit as usize)));
+                            vec.push(util::cast(key * 64 + (bit as usize)));
                         }
                     }
                 }
@@ -133,9 +132,8 @@ impl<Size: ExtInt> Store<Size> {
     pub fn to_bitmap(&self) -> Self {
         match self {
             &Array(ref vec) => {
-                let one: Size = One::one();
-                let count = one.rotate_right(6);
-                let mut bits = iter::repeat(0).take(util::cast(count)).collect::<Vec<u64>>().into_boxed_slice();
+                let count = util::cast::<Size, usize>(Bounded::max_value()) / 64 + 1;
+                let mut bits = iter::repeat(0).take(count).collect::<Vec<u64>>().into_boxed_slice();
                 for &index in vec.iter() {
                     bits[key(index)] |= 1 << bit(index);
                 }
@@ -287,7 +285,7 @@ impl<Size: ExtInt> Store<Size> {
         }
     }
 
-    pub fn len(&self) -> Size {
+    pub fn len(&self) -> u64 {
         match self {
             &Array(ref vec) => util::cast(vec.len()),
             &Bitmap(ref bits) => {
@@ -302,11 +300,11 @@ impl<Size: ExtInt> Store<Size> {
 
     pub fn min(&self) -> Size {
         match self {
-            &Array(ref vec) => vec[0],
+            &Array(ref vec) => *vec.first().unwrap(),
             &Bitmap(ref bits) => {
                 bits.iter().enumerate()
                     .filter(|&(_, &bit)| bit != 0)
-                    .next().map(|(index, bit)| util::cast(index * (size_of::<u64>() as usize) + (bit.leading_zeros() as usize)))
+                    .next().map(|(index, bit)| util::cast(index * 64 + (bit.trailing_zeros() as usize)))
                     .unwrap()
             },
         }
@@ -314,11 +312,11 @@ impl<Size: ExtInt> Store<Size> {
 
     pub fn max(&self) -> Size {
         match self {
-            &Array(ref vec) => vec[vec.len() - 1],
+            &Array(ref vec) => *vec.last().unwrap(),
             &Bitmap(ref bits) => {
                 bits.iter().enumerate().rev()
                     .filter(|&(_, &bit)| bit != 0)
-                    .next().map(|(index, bit)| util::cast(index * (size_of::<u64>() as usize) + (bit.leading_zeros() as usize)))
+                    .next().map(|(index, bit)| util::cast(index * 64 + (63 - (bit.leading_zeros() as usize))))
                     .unwrap()
             },
         }
@@ -370,11 +368,23 @@ impl<'a, Size: ExtInt> BitmapIter<'a, Size> {
     fn new(bits: &'a Box<[u64]>) -> BitmapIter<'a, Size> {
         BitmapIter {
             key: 0,
-            bit: Bounded::max_value(),
+            bit: Zero::zero(),
             bits: bits,
             marker: PhantomData,
         }
     }
+}
+
+
+impl<'a, Size: ExtInt> BitmapIter<'a, Size> {
+    fn move_next(&mut self) {
+        self.bit += 1;
+        if self.bit == 64 {
+            self.bit = 0;
+            self.key += 1;
+        }
+    }
+
 }
 
 impl<'a, Size: ExtInt> Iterator for BitmapIter<'a, Size> {
@@ -382,16 +392,16 @@ impl<'a, Size: ExtInt> Iterator for BitmapIter<'a, Size> {
 
     fn next(&mut self) -> Option<Size> {
         loop {
-            self.bit += 1;
-            if self.bit == util::cast(size_of::<u64>()) {
-                self.bit = 0;
-                self.key += 1;
-            }
             if self.key == self.bits.len() {
                 return None;
-            }
-            if (self.bits[self.key] & (1u64 << util::cast::<u8, usize>(self.bit))) != 0 {
-                return Some(util::cast::<usize, Size>(self.key * (size_of::<u64>() as usize) + util::cast::<u8, usize>(self.bit)));
+            } else {
+                if (self.bits[self.key] & (1u64 << util::cast::<u8, usize>(self.bit))) != 0 {
+                    let result = Some(util::cast::<usize, Size>(self.key * 64 + util::cast::<u8, usize>(self.bit)));
+                    self.move_next();
+                    return result;
+                } else {
+                    self.move_next();
+                }
             }
         }
     }
@@ -401,7 +411,7 @@ impl<'a, Size: ExtInt> Iterator for BitmapIter<'a, Size> {
 fn bitmap_location<Size: ExtInt>(index: Size) -> (usize, usize) { (key(index), bit(index)) }
 
 #[inline]
-fn key<Size: ExtInt>(index: Size) -> usize { util::cast(index / util::cast(size_of::<u64>())) }
+fn key<Size: ExtInt>(index: Size) -> usize { util::cast(index / util::cast(64u8)) }
 
 #[inline]
-fn bit<Size: ExtInt>(index: Size) -> usize { util::cast(index % util::cast(size_of::<u64>())) }
+fn bit<Size: ExtInt>(index: Size) -> usize { util::cast(index % util::cast(64u8)) }

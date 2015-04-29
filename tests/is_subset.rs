@@ -73,7 +73,7 @@ fn bitmaps_not() {
 
 #[test]
 fn bitmaps() {
-    let sup: RoaringBitmap<u32> = (0..1_000_000u32).chain(2000000..2010000u32).collect();
+    let sup: RoaringBitmap<u32> = (0..1_000_000u32).chain(2_000_000..2_010_000u32).collect();
     let sub: RoaringBitmap<u32> = (0..10_000u32).chain(500_000..510_000u32).collect();
     assert_eq!(sub.is_subset(&sup), true);
 }
