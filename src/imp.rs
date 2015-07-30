@@ -1,5 +1,6 @@
 use std::iter::{ IntoIterator };
 use std::slice;
+use std::cmp::Ordering;
 
 use num::traits::{ Zero, Bounded };
 
@@ -89,6 +90,31 @@ pub fn is_subset<Size: ExtInt + Halveable>(this: &RB<Size>, other: &RB<Size>) ->
         (_, None) => return false,
         (Some(c1), Some(c2)) => c1.is_subset(c2),
     })
+}
+
+pub fn is_subset_opt<Size: ExtInt + Halveable>(this: &RB<Size>, other: &RB<Size>) -> bool {
+	let tv = &this.containers;
+	let ov = &other.containers;
+	let tlen = tv.len();
+	let olen = ov.len();
+	if tlen > olen { return false; }
+	let mut ti = 0;
+	let mut oi = 0;
+	loop {
+		let tc = &tv[ti];
+		let oc = &ov[oi];
+		match tc.key().cmp(&oc.key()) {
+			Ordering::Less => { return false; },
+			Ordering::Equal => { 
+				if !tc.is_subset(&oc) { return false; } 
+				ti += 1;
+				if ti >= tlen { return true; }
+			},
+			Ordering::Greater => (),
+		}
+		oi += 1;
+		if oi >= olen { return false }
+	}
 }
 
 #[inline]
