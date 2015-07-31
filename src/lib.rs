@@ -249,6 +249,12 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
         imp::is_subset(self, other)
     }
 
+    /// Returns `true` if this set is a subset of `other`.
+    #[inline]
+    pub fn is_subset_opt(&self, other: &Self) -> bool {
+        imp::is_subset_opt(self, other)
+    }
+
     /// Returns `true` if this set is a superset of `other`.
     ///
     /// # Examples
