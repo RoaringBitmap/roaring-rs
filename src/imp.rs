@@ -85,11 +85,14 @@ pub fn is_disjoint<Size: ExtInt + Halveable>(this: &RB<Size>, other: &RB<Size>) 
 }
 
 pub fn is_subset<Size: ExtInt + Halveable>(this: &RB<Size>, other: &RB<Size>) -> bool {
-    pairs(this, other).all(|pairs| match pairs {
-        (None, _) => return true,
-        (_, None) => return false,
-        (Some(c1), Some(c2)) => c1.is_subset(c2),
-    })
+    for pair in pairs(this, other) {
+        match pair {
+            (None, _) => { return true; },
+            (_, None) => { return false; },
+            (Some(c1), Some(c2)) => if !c1.is_subset(c2) { return false; },
+        }
+    }
+    true
 }
 
 pub fn is_subset_opt<Size: ExtInt + Halveable>(this: &RB<Size>, other: &RB<Size>) -> bool {
@@ -144,7 +147,7 @@ pub fn symmetric_difference<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, ot
 
 #[inline]
 pub fn union_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB<Size>) {
-    for container in other.containers.iter() {
+    for container in &other.containers {
         let key = container.key();
         match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
             Err(loc) => this.containers.insert(loc, (*container).clone()),
@@ -188,7 +191,7 @@ pub fn difference_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB
 
 #[inline]
 pub fn symmetric_difference_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB<Size>) {
-    for container in other.containers.iter() {
+    for container in &other.containers {
         let key = container.key();
         match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
             Err(loc) => this.containers.insert(loc, (*container).clone()),

@@ -14,13 +14,13 @@ pub enum Store<Size: ExtInt> {
 
 impl<Size: ExtInt> Store<Size> {
     pub fn insert(&mut self, index: Size) -> bool {
-        match self {
-            &mut Array(ref mut vec) => {
+        match *self {
+            Array(ref mut vec) => {
                 vec.binary_search(&index)
                     .map_err(|loc| vec.insert(loc, index))
                     .is_err()
             },
-            &mut Bitmap(ref mut bits) => {
+            Bitmap(ref mut bits) => {
                 let (key, bit) = bitmap_location(index);
                 if bits[key] & (1 << bit) == 0 {
                     bits[key] |= 1 << bit;
@@ -33,13 +33,13 @@ impl<Size: ExtInt> Store<Size> {
     }
 
     pub fn remove(&mut self, index: Size) -> bool {
-        match self {
-            &mut Array(ref mut vec) => {
+        match *self {
+            Array(ref mut vec) => {
                 vec.binary_search(&index)
                     .map(|loc| vec.remove(loc))
                     .is_ok()
             },
-            &mut Bitmap(ref mut bits) => {
+            Bitmap(ref mut bits) => {
                 let (key, bit) = bitmap_location(index);
                 if bits[key] & (1 << bit) != 0 {
                     bits[key] &= !(1 << bit);
@@ -53,9 +53,9 @@ impl<Size: ExtInt> Store<Size> {
 
     #[inline]
     pub fn contains(&self, index: Size) -> bool {
-        match self {
-            &Array(ref vec) => vec.binary_search(&index).is_ok(),
-            &Bitmap(ref bits) => bits[key(index)] & (1 << bit(index)) != 0
+        match *self {
+            Array(ref vec) => vec.binary_search(&index).is_ok(),
+            Bitmap(ref bits) => bits[key(index)] & (1 << bit(index)) != 0
         }
     }
 
@@ -113,9 +113,9 @@ impl<Size: ExtInt> Store<Size> {
     }
 
     pub fn to_array(&self) -> Self {
-        match self {
-            &Array(..) => panic!("Cannot convert array to array"),
-            &Bitmap(ref bits) => {
+        match *self {
+            Array(..) => panic!("Cannot convert array to array"),
+            Bitmap(ref bits) => {
                 let mut vec = Vec::new();
                 for (key, val) in bits.iter().map(|v| *v).enumerate().filter(|&(_, v)| v != 0) {
                     for bit in 0..64 {
@@ -130,8 +130,8 @@ impl<Size: ExtInt> Store<Size> {
     }
 
     pub fn to_bitmap(&self) -> Self {
-        match self {
-            &Array(ref vec) => {
+        match *self {
+            Array(ref vec) => {
                 let count = util::cast::<Size, usize>(Bounded::max_value()) / 64 + 1;
                 let mut bits = iter::repeat(0).take(count).collect::<Vec<u64>>().into_boxed_slice();
                 for &index in vec.iter() {
@@ -139,7 +139,7 @@ impl<Size: ExtInt> Store<Size> {
                 }
                 Bitmap(bits)
             },
-            &Bitmap(..) => panic!("Cannot convert bitmap to bitmap"),
+            Bitmap(..) => panic!("Cannot convert bitmap to bitmap"),
         }
     }
 
@@ -286,9 +286,9 @@ impl<Size: ExtInt> Store<Size> {
     }
 
     pub fn len(&self) -> u64 {
-        match self {
-            &Array(ref vec) => util::cast(vec.len()),
-            &Bitmap(ref bits) => {
+        match *self {
+            Array(ref vec) => util::cast(vec.len()),
+            Bitmap(ref bits) => {
                 let mut len = 0;
                 for bit in bits.iter() {
                     len += bit.count_ones();
@@ -299,9 +299,9 @@ impl<Size: ExtInt> Store<Size> {
     }
 
     pub fn min(&self) -> Size {
-        match self {
-            &Array(ref vec) => *vec.first().unwrap(),
-            &Bitmap(ref bits) => {
+        match *self {
+            Array(ref vec) => *vec.first().unwrap(),
+            Bitmap(ref bits) => {
                 bits.iter().enumerate()
                     .filter(|&(_, &bit)| bit != 0)
                     .next().map(|(index, bit)| util::cast(index * 64 + (bit.trailing_zeros() as usize)))
@@ -311,9 +311,9 @@ impl<Size: ExtInt> Store<Size> {
     }
 
     pub fn max(&self) -> Size {
-        match self {
-            &Array(ref vec) => *vec.last().unwrap(),
-            &Bitmap(ref bits) => {
+        match *self {
+            Array(ref vec) => *vec.last().unwrap(),
+            Bitmap(ref bits) => {
                 bits.iter().enumerate().rev()
                     .filter(|&(_, &bit)| bit != 0)
                     .next().map(|(index, bit)| util::cast(index * 64 + (63 - (bit.leading_zeros() as usize))))
@@ -324,9 +324,9 @@ impl<Size: ExtInt> Store<Size> {
 
     #[inline]
     pub fn iter<'a>(&'a self) -> Box<Iterator<Item = Size> + 'a> {
-        match self {
-            &Array(ref vec) => Box::new(vec.iter().map(|x| *x)),
-            &Bitmap(ref bits) => Box::new(BitmapIter::new(bits)),
+        match *self {
+            Array(ref vec) => Box::new(vec.iter().map(|x| *x)),
+            Bitmap(ref bits) => Box::new(BitmapIter::new(bits)),
         }
     }
 
@@ -348,9 +348,9 @@ impl<Size: ExtInt> PartialEq for Store<Size> {
 
 impl<Size: ExtInt> Clone for Store<Size> {
     fn clone(&self) -> Self {
-        match self {
-            &Array(ref vec) => Array(vec.clone()),
-            &Bitmap(ref bits) => {
+        match *self {
+            Array(ref vec) => Array(vec.clone()),
+            Bitmap(ref bits) => {
                 Bitmap(bits.iter().map(|&i| i).collect::<Vec<u64>>().into_boxed_slice())
             },
         }
