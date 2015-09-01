@@ -87,7 +87,7 @@ pub fn is_disjoint<Size: ExtInt + Halveable>(this: &RB<Size>, other: &RB<Size>) 
 pub fn is_subset<Size: ExtInt + Halveable>(this: &RB<Size>, other: &RB<Size>) -> bool {
     for pair in pairs(this, other) {
         match pair {
-            (None, _) => { return true; },
+            (None, _) => (),
             (_, None) => { return false; },
             (Some(c1), Some(c2)) => if !c1.is_subset(c2) { return false; },
         }
