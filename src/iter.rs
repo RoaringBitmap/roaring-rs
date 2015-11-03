@@ -49,6 +49,16 @@ impl<'a, Size: ExtInt + Halveable + 'a> Iterator for Iter<'a, Size> where <Size 
             },
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let next = self.container_iter.clone().map(|container| container.len() as usize).fold(0, |acc, len| acc + len);
+        match self.inner_iter {
+            Some((_, ref iter)) => match iter.size_hint() {
+                (min, max) => (next + min, max.map(|m| next + m)),
+            },
+            None => (next, Some(next)),
+        }
+    }
 }
 
 /// An iterator for `RoaringBitmap`.
