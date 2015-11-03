@@ -29,6 +29,9 @@ pub fn serialize_into<W: io::Write>(this: &RB<u32>, mut writer: W) -> io::Result
             Store::Bitmap(..) => {
                 offset += 8 * 1024;
             }
+            Store::RunLength(..) => {
+                unimplemented!();
+            }
         }
     }
 
@@ -43,6 +46,9 @@ pub fn serialize_into<W: io::Write>(this: &RB<u32>, mut writer: W) -> io::Result
                 for &value in values.iter() {
                     try!(writer.write_u64::<LittleEndian>(value));
                 }
+            }
+            Store::RunLength(..) => {
+                unimplemented!();
             }
         }
     }

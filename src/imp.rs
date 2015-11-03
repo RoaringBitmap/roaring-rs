@@ -258,6 +258,14 @@ pub fn max<Size: ExtInt + Halveable>(this: &RB<Size>) -> Size {
     }
 }
 
+pub fn run_optimize<Size: ExtInt + Halveable>(this: &mut RB<Size>) -> bool {
+    let mut changed = false;
+    for container in &mut this.containers {
+        changed |= container.run_optimize();
+    }
+    changed
+}
+
 struct Pairs<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::HalfSize : 'a {
     iter1: slice::Iter<'a, HalfContainer<Size>>,
     iter2: slice::Iter<'a, HalfContainer<Size>>,

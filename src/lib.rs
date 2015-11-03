@@ -533,6 +533,10 @@ impl RoaringBitmap<u32> {
     pub fn deserialize_from<R: io::Read>(reader: R) -> io::Result<RoaringBitmap<u32>> {
         serialization::deserialize_from(reader)
     }
+
+    pub fn run_optimize(&mut self) -> bool {
+        imp::run_optimize(self)
+    }
 }
 
 impl<Size: ExtInt + Halveable> IntoIterator for RoaringBitmap<Size> {

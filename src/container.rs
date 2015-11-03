@@ -1,10 +1,8 @@
 use std::fmt::{ Debug, Formatter, Result };
 
-use num::traits::{ One };
-
-use util::{ self, ExtInt };
+use util::ExtInt;
 use store;
-use store::Store::{ self, Array, Bitmap };
+use store::Store;
 
 #[derive(PartialEq, Clone)]
 pub struct Container<Size: ExtInt> {
@@ -23,7 +21,7 @@ impl<Size: ExtInt> Container<Size> {
         Container {
             key: key,
             len: 0,
-            store: Array(Vec::new()),
+            store: Store::new(),
         }
     }
 }
@@ -123,17 +121,13 @@ impl<Size: ExtInt> Container<Size> {
         self.store.max()
     }
 
+    pub fn run_optimize(&mut self) -> bool {
+        self.store.run_optimize()
+    }
+
     #[inline]
     fn ensure_correct_store(&mut self) {
-        let limit = util::cast(<Size as One>::one().rotate_right(4));
-        let new_store = match (&self.store, self.len) {
-            (store @ &Bitmap(..), len) if len <= limit => Some(store.to_array()),
-            (store @ &Array(..), len) if len > limit => Some(store.to_bitmap()),
-            _ => None,
-        };
-        if let Some(new_store) = new_store {
-            self.store = new_store;
-        }
+        self.store.to_array_or_bitmap(Some(self.len));
     }
 }
 

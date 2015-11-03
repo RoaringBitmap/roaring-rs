@@ -3,14 +3,16 @@ use std::slice;
 use std::marker::PhantomData;
 use std::cmp::Ordering::{ Equal, Less, Greater };
 
-use num::traits::{ Zero, Bounded };
+use num::traits::{ One, Zero, Bounded };
 
 use util::{ self, ExtInt };
-use store::Store::{ Array, Bitmap };
+use store::Store::{ Array, Bitmap, RunLength };
 
 pub enum Store<Size: ExtInt> {
     Array(Vec<Size>),
     Bitmap(Box<[u64]>),
+    // Start, then length
+    RunLength(Vec<(Size, Size)>),
 }
 
 pub enum Iter<'a, Size: ExtInt + 'a> {
@@ -19,6 +21,10 @@ pub enum Iter<'a, Size: ExtInt + 'a> {
 }
 
 impl<Size: ExtInt> Store<Size> {
+    pub fn new() -> Store<Size> {
+        Array(Vec::new())
+    }
+
     pub fn insert(&mut self, index: Size) -> bool {
         match *self {
             Array(ref mut vec) => {
@@ -35,6 +41,10 @@ impl<Size: ExtInt> Store<Size> {
                     false
                 }
             },
+            RunLength(..) => {
+                self.to_array_or_bitmap(None);
+                self.insert(index)
+            }
         }
     }
 
@@ -54,6 +64,10 @@ impl<Size: ExtInt> Store<Size> {
                     false
                 }
             },
+            RunLength(..) => {
+                self.to_array_or_bitmap(None);
+                self.remove(index)
+            }
         }
     }
 
@@ -61,7 +75,15 @@ impl<Size: ExtInt> Store<Size> {
     pub fn contains(&self, index: Size) -> bool {
         match *self {
             Array(ref vec) => vec.binary_search(&index).is_ok(),
-            Bitmap(ref bits) => bits[key(index)] & (1 << bit(index)) != 0
+            Bitmap(ref bits) => bits[key(index)] & (1 << bit(index)) != 0,
+            RunLength(ref vec) => {
+                match vec.binary_search_by_key(&index, |&(start, _)| start) {
+                    Ok(_) => true,
+                    Err(i) => {
+                        i > 0 && ((vec[i - 1].0 + vec[i - 1].1) > index)
+                    }
+                }
+            }
         }
     }
 
@@ -85,6 +107,7 @@ impl<Size: ExtInt> Store<Size> {
             (&Array(ref vec), store @ &Bitmap(..)) | (store @ &Bitmap(..), &Array(ref vec)) => {
                 vec.iter().all(|&i| !store.contains(i))
             },
+            (_, _) => unimplemented!(),
         }
     }
 
@@ -115,12 +138,22 @@ impl<Size: ExtInt> Store<Size> {
                 vec.iter().all(|&i| store.contains(i))
             },
             (&Bitmap(..), &Array(..)) => false,
+            (_, _) => unimplemented!(),
         }
     }
 
-    pub fn to_array(&self) -> Self {
-        match *self {
-            Array(..) => panic!("Cannot convert array to array"),
+    pub fn to_array_or_bitmap(&mut self, len: Option<u64>) {
+        let limit = util::cast(<Size as One>::one().rotate_right(4));
+        if len.unwrap_or_else(|| self.len()) <= limit {
+            self.to_array();
+        } else {
+            self.to_bitmap();
+        }
+    }
+
+    fn to_array(&mut self) {
+        let array = match *self {
+            Array(..) => None,
             Bitmap(ref bits) => {
                 let mut vec = Vec::new();
                 for (key, val) in bits.iter().cloned().enumerate().filter(|&(_, v)| v != 0) {
@@ -130,22 +163,64 @@ impl<Size: ExtInt> Store<Size> {
                         }
                     }
                 }
-                Array(vec)
+                Some(Array(vec))
             },
+            RunLength(ref vec) => {
+                Some(Array(vec.iter().flat_map(|&(start, len)| util::cast::<Size, u32>(start)..util::cast::<Size, u32>(start + len)).map(util::cast::<u32, Size>).collect()))
+            }
+        };
+        if let Some(array) = array {
+            *self = array;
         }
     }
 
-    pub fn to_bitmap(&self) -> Self {
-        match *self {
+    fn to_bitmap(&mut self) {
+        let bitmap = match *self {
             Array(ref vec) => {
                 let count = util::cast::<Size, usize>(Bounded::max_value()) / 64 + 1;
                 let mut bits = iter::repeat(0).take(count).collect::<Vec<u64>>().into_boxed_slice();
                 for &index in vec.iter() {
                     bits[key(index)] |= 1 << bit(index);
                 }
-                Bitmap(bits)
+                Some(Bitmap(bits))
             },
-            Bitmap(..) => panic!("Cannot convert bitmap to bitmap"),
+            Bitmap(..) => None,
+            RunLength(..) => unimplemented!(),
+        };
+        if let Some(bitmap) = bitmap {
+            *self = bitmap;
+        }
+    }
+
+    fn to_runlength(&mut self) {
+        let runlength = match *self {
+            Array(ref vec) => {
+                let mut run = Vec::new();
+                let mut start = Zero::zero();
+                let mut len = Zero::zero();
+                let mut last = None;
+                for &index in vec {
+                    if let Some(last) = last {
+                        if last + One::one() == index {
+                            len = len + One::one();
+                        } else {
+                            run.push((start, len));
+                            start = index;
+                            len = One::one();
+                        }
+                    } else {
+                        start = index;
+                        len = One::one();
+                    }
+                    last = Some(index);
+                }
+                Some(RunLength(run))
+            }
+            Bitmap(..) => unimplemented!(),
+            RunLength(..) => None,
+        };
+        if let Some(runlength) = runlength {
+            *self = runlength;
         }
     }
 
@@ -178,9 +253,10 @@ impl<Size: ExtInt> Store<Size> {
                 }
             },
             (this @ &mut Array(..), &Bitmap(..)) => {
-                *this = this.to_bitmap();
+                this.to_bitmap();
                 this.union_with(other);
             },
+            (_, _) => unimplemented!(),
         }
     }
 
@@ -218,6 +294,7 @@ impl<Size: ExtInt> Store<Size> {
                 new.intersect_with(this);
                 *this = new;
             },
+            (_, _) => unimplemented!(),
         }
     }
 
@@ -256,6 +333,7 @@ impl<Size: ExtInt> Store<Size> {
                     }
                 }
             },
+            (_, _) => unimplemented!(),
         }
     }
 
@@ -304,19 +382,18 @@ impl<Size: ExtInt> Store<Size> {
                 new.symmetric_difference_with(this);
                 *this = new;
             },
+            (_, _) => unimplemented!(),
         }
     }
 
     pub fn len(&self) -> u64 {
         match *self {
-            Array(ref vec) => util::cast(vec.len()),
-            Bitmap(ref bits) => {
-                let mut len = 0;
-                for bit in bits.iter() {
-                    len += bit.count_ones();
-                }
-                util::cast(len)
-            },
+            Array(ref vec) =>
+                util::cast(vec.len()),
+            Bitmap(ref bits) =>
+                bits.iter().map(|&bit| bit.count_ones()).sum::<u32>() as u64,
+            RunLength(ref vec) =>
+                util::cast(vec.iter().map(|&(_, len)| util::cast::<Size, u32>(len)).sum::<u32>()),
         }
     }
 
@@ -329,6 +406,7 @@ impl<Size: ExtInt> Store<Size> {
                     .map(|(index, bit)| util::cast(index * 64 + (bit.trailing_zeros() as usize)))
                     .unwrap()
             },
+            RunLength(ref vec) => vec.first().unwrap().0,
         }
     }
 
@@ -341,6 +419,10 @@ impl<Size: ExtInt> Store<Size> {
                     .map(|(index, bit)| util::cast(index * 64 + (63 - (bit.leading_zeros() as usize))))
                     .unwrap()
             },
+            RunLength(ref vec) => {
+                let (start, len) = *vec.last().unwrap();
+                start + len
+            }
         }
     }
 
@@ -350,9 +432,19 @@ impl<Size: ExtInt> Store<Size> {
         match *self {
             Array(ref vec) => Iter::Array(vec.iter()),
             Bitmap(ref bits) => Iter::Bitmap(BitmapIter::new(bits)),
+            RunLength(..) => unimplemented!(),
         }
     }
 
+    /// Will replace self with a RunLength variant if some condition holds
+    pub fn run_optimize(&mut self) -> bool {
+        if unimplemented!() {
+            self.to_runlength();
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl<Size: ExtInt> PartialEq for Store<Size> {
@@ -376,6 +468,7 @@ impl<Size: ExtInt> Clone for Store<Size> {
             Bitmap(ref bits) => {
                 Bitmap(bits.iter().cloned().collect::<Vec<u64>>().into_boxed_slice())
             },
+            RunLength(ref vec) => RunLength(vec.clone()),
         }
     }
 }
