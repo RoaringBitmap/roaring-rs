@@ -405,6 +405,11 @@ impl<'a, Size: ExtInt> Iterator for BitmapIter<'a, Size> {
             }
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+      let min = self.bits.iter().skip(self.key + 1).map(|bits| bits.count_ones()).fold(0, |acc, ones| acc + ones) as usize;
+      (min, Some(min + self.bits[self.key].count_ones() as usize))
+    }
 }
 
 #[inline]
