@@ -90,6 +90,18 @@ impl<Size: ExtInt> Container<Size> {
     }
 
     #[inline]
+    pub fn intersect_with_imm(&self, other: &Self) -> Self {
+        let store = self.store.intersect_with_imm(&other.store);
+        let mut result = Container {
+            key: self.key,
+            len: store.len(),
+            store: store,
+        };
+        result.ensure_correct_store();
+        result
+    }
+
+    #[inline]
     pub fn difference_with(&mut self, other: &Self) {
         self.store.difference_with(&other.store);
         self.len = self.store.len();

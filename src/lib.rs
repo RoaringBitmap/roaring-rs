@@ -716,9 +716,7 @@ impl<'a, 'b, Size: ExtInt + Halveable> BitAnd<&'a RoaringBitmap<Size>> for &'b R
     /// ```
     #[inline]
     fn bitand(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
-        let mut result = self.clone();
-        result.intersect_with(rhs);
-        result
+        imp::bitand(self, rhs)
     }
 }
 

@@ -199,6 +199,49 @@ impl<Size: ExtInt> Store<Size> {
         }
     }
 
+    pub fn intersect_with_imm(&self, other: &Self) -> Self {
+        match (self, other) {
+            (&Array(ref vec1), &Array(ref vec2)) => {
+                let mut i1 = 0usize;
+                let mut iter2 = vec2.iter();
+                let mut current2 = iter2.next();
+                let mut result = Vec::new();
+                while i1 < vec1.len() {
+                    match current2.map(|c2| vec1[i1].cmp(c2)) {
+                        None | Some(Less) => { i1 += 1; },
+                        Some(Greater) => { current2 = iter2.next(); },
+                        Some(Equal) => {
+                            result.push(vec1[i1]);
+                            i1 += 1;
+                            current2 = iter2.next();
+                        },
+                    }
+                }
+                Array(result)
+            },
+            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => {
+                let count = util::cast::<Size, usize>(Bounded::max_value()) / 64 + 1;
+                let mut bits = iter::repeat(0).take(count).collect::<Vec<u64>>().into_boxed_slice();
+                for ((mut bit, index1), index2) in bits.iter_mut().zip(bits1.iter()).zip(bits2.iter()) {
+                    *bit = *index1 & *index2;
+                }
+                Bitmap(bits)
+            },
+            (&Array(ref vec), store @ &Bitmap(..)) => {
+                let mut result = Vec::new();
+                for i in 0..vec.len() {
+                    if store.contains(vec[i]) {
+                      result.push(vec[i]);
+                    }
+                }
+                Array(result)
+            },
+            (this @ &Bitmap(..), &Array(..)) => {
+                other.intersect_with_imm(this)
+            },
+        }
+    }
+
     pub fn difference_with(&mut self, other: &Self) {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {

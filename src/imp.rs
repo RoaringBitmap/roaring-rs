@@ -174,6 +174,23 @@ pub fn intersect_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB<
 }
 
 #[inline]
+pub fn bitand<Size: ExtInt + Halveable>(lhs: &RB<Size>, rhs: &RB<Size>) -> RB<Size>{
+    let mut result = new();
+    let mut index = 0;
+    while index < lhs.containers.len() {
+        let key = lhs.containers[index].key();
+        match rhs.containers.binary_search_by(|container| container.key().cmp(&key)) {
+            Err(_) => { },
+            Ok(loc) => {
+                result.containers.push(lhs.containers[index].intersect_with_imm(&rhs.containers[loc]));
+            },
+        };
+        index += 1;
+    }
+    result
+}
+
+#[inline]
 pub fn difference_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB<Size>) {
     for index in 0..this.containers.len() {
         let key = this.containers[index].key();
