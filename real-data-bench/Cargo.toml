@@ -1,0 +1,14 @@
+[package]
+
+name = "roaring-real-data-bench"
+version = "1.0.0"
+authors = ["Wim Looman <wim@nemo157.com>"]
+
+homepage = "https://nemo157.com/roaring-rs"
+repository = "https://github.com/Nemo157/roaring-rs"
+
+readme = "README.md"
+
+[dependencies]
+roaring = { path = ".." }
+zip = "*"

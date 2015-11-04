@@ -1,0 +1,3 @@
+[submodule "real-data-bench/RoaringBitmap"]
+	path = real-data-bench/RoaringBitmap
+	url = https://github.com/lemire/RoaringBitmap
