@@ -2,7 +2,7 @@
 
 name = "roaring"
 version = "0.3.2"
-authors = ["Wim Looman <!@nemo157.com>"]
+authors = ["Wim Looman <wim@nemo157.com>"]
 description = "http://roaringbitmap.org for http://www.rust-lang.org"
 
 documentation = "https://nemo157.com/roaring-rs"
