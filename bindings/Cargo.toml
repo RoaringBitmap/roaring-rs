@@ -1,0 +1,21 @@
+[package]
+
+name = "roaring-bindings"
+version = "0.3.2"
+authors = ["Wim Looman <wim@nemo157.com>"]
+
+documentation = "https://nemo157.com/roaring-rs"
+homepage = "https://nemo157.com/roaring-rs"
+repository = "https://github.com/Nemo157/roaring-rs"
+
+readme = "README.md"
+keywords = ["roaring", "data-structure", "bitmap"]
+
+license = "MIT"
+
+[lib]
+name = "roaringrs"
+crate-type = ["lib", "dylib", "staticlib"]
+
+[dependencies]
+roaring = { path = ".." }
