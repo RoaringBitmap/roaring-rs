@@ -175,16 +175,21 @@ pub fn intersect_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB<
 
 #[inline]
 pub fn difference_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB<Size>) {
-    for index in 0..this.containers.len() {
+    let mut index = 0;
+    while index < this.containers.len() {
         let key = this.containers[index].key();
         match other.containers.binary_search_by(|container| container.key().cmp(&key)) {
             Ok(loc) => {
                 this.containers[index].difference_with(&other.containers[loc]);
                 if this.containers[index].len() == Zero::zero() {
                     this.containers.remove(index);
+                } else {
+                    index += 1;
                 }
             },
-            _ => (),
+            _ => {
+                index += 1;
+            }
         };
     }
 }
