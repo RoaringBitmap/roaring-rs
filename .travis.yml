@@ -21,6 +21,12 @@ script:
   - bash -c 'if [[ "$TRAVIS_RUST_VERSION" == "nightly" ]]; then
       cargo clippy -- -D warnings;
     fi'
+  - pushd bindings
+  -   cargo test
+  -   bash -c 'if [[ "$TRAVIS_RUST_VERSION" == "nightly" ]]; then
+        cargo clippy -- -D warnings;
+      fi'
+  - popd
 
 before_deploy:
   - cargo doc

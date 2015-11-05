@@ -1,0 +1,18 @@
+[package]
+name = "roaring-bindings"
+version = "0.4.2"
+authors = ["Wim Looman <wim@nemo157.com>"]
+
+[lib]
+name = "roaringrs"
+crate-type = ["lib", "dylib", "staticlib"]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+
+[dependencies]
+roaring = { path = ".." }
+libc = "0.2"
