@@ -79,6 +79,17 @@ fn arrays() {
 }
 
 #[test]
+fn arrays_removing_one_whole_container() {
+    let mut bitmap1: RoaringBitmap<u32> = (0..2000u32).chain(1000000..1002000u32).chain(2000000..2001000u32).collect();
+    let bitmap2: RoaringBitmap<u32> = (0..3000u32).chain(1001000..1003000u32).chain(2000000..2001000u32).collect();
+    let bitmap3: RoaringBitmap<u32> = (1000000..1001000u32).collect();
+
+    bitmap1.difference_with(&bitmap2);
+
+    assert_eq!(bitmap1, bitmap3);
+}
+
+#[test]
 fn bitmaps() {
     let mut bitmap1: RoaringBitmap<u32> = (0..6000u32).chain(1000000..1012000u32).chain(2000000..2010000u32).collect();
     let bitmap2: RoaringBitmap<u32> = (3000..9000u32).chain(1006000..1018000u32).chain(2000000..2010000u32).collect();
