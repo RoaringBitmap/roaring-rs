@@ -18,6 +18,10 @@ env:
 script:
   - cargo build --release --verbose
   - cargo test --verbose
+  - pushd bindings
+  -   cargo build --release --verbose
+  -   cargo test --verbose
+  - popd
 
 before_deploy:
   - cargo doc --verbose
