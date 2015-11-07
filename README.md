@@ -25,3 +25,19 @@ duplicate the [BitSet][] API.
 [roaring-paper]: http://arxiv.org/pdf/1402.6407v4
 [collections-rfc]: https://github.com/rust-lang/rfcs/pull/235
 [BitSet]: http://doc.rust-lang.org/std/collections/struct.BitSet.html
+
+## Benchmarking
+
+The benchmarking for this project is integrated into the Java library's
+benchmarking using JNA. First you must build the bindings lib to allow JNA to
+access the rust code, then ensure you have the RoaringBitmap submodule and
+simply run the benchmarks in `RoaringBitmap/jmh`.
+
+For more info on the benchmarks see the documentation in
+`RoaringBitmap/jmh/README.md`.
+
+```sh
+(cd bindings; cargo build --release)
+git submodule update --init
+./RoaringBitmap/jmh/run.sh
+```
