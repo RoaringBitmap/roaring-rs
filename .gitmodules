@@ -1,0 +1,4 @@
+[submodule "RoaringBitmap"]
+	path = RoaringBitmap
+	url = https://github.com/Nemo157/RoaringBitmap
+	branch = roaring-rs-benchmarks
