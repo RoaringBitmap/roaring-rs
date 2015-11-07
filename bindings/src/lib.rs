@@ -68,3 +68,26 @@ pub extern fn roaring_rs_sub(this_p: *const RoaringBitmap<u32>, other_p: *const 
   let other = unsafe { &*other_p };
   as_ptr(this - other)
 }
+
+#[no_mangle]
+pub extern fn roaring_rs_iter<'a>(this_p: *const RoaringBitmap<u32>) -> *mut roaring::Iter<'a, u32> {
+  let this = unsafe { &*this_p };
+  Box::into_raw(Box::new(this.iter()))
+}
+
+#[no_mangle]
+pub extern fn roaring_rs_iter_delete<'a>(this_p: *mut roaring::Iter<'a, u32>) {
+  unsafe { Box::from_raw(this_p) };
+}
+
+#[no_mangle]
+pub extern fn roaring_rs_iter_last<'a>(this_p: *mut roaring::Iter<'a, u32>) -> u32 {
+  let this = unsafe { Box::from_raw(this_p) };
+  this.last().unwrap_or(0xFFFFFFFF)
+}
+
+#[no_mangle]
+pub extern fn roaring_rs_iter_next<'a>(this_p: *mut roaring::Iter<'a, u32>) -> u32 {
+  let this = unsafe { &mut *this_p };
+  this.next().unwrap_or(0xFFFFFFFF)
+}
