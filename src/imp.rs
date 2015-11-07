@@ -126,22 +126,22 @@ pub fn is_superset<Size: ExtInt + Halveable>(this: &RB<Size>, other: &RB<Size>) 
 }
 
 #[inline]
-pub fn union<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> UnionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
+pub fn union_iter<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> UnionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
     iter::union::new(this.iter(), other.iter())
 }
 
 #[inline]
-pub fn intersection<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> IntersectionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
+pub fn intersection_iter<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> IntersectionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
     iter::intersection::new(this.iter(), other.iter())
 }
 
 #[inline]
-pub fn difference<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> DifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
+pub fn difference_iter<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> DifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
     iter::difference::new(this.iter(), other.iter())
 }
 
 #[inline]
-pub fn symmetric_difference<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> SymmetricDifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
+pub fn symmetric_difference_iter<'a, Size: ExtInt + Halveable>(this: &'a RB<Size>, other: &'a RB<Size>) -> SymmetricDifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
     iter::symmetric_difference::new(this.iter(), other.iter())
 }
 
@@ -192,6 +192,25 @@ pub fn difference_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB
             }
         };
     }
+}
+
+#[inline]
+pub fn symmetric_difference<Size: ExtInt + Halveable>(this: &RB<Size>, other: &RB<Size>) -> RB<Size> {
+    let mut containers = Vec::new();
+    for pair in pairs(this, other) {
+        match pair {
+            (None, None) => (),
+            (None, Some(c2)) => { containers.push(c2.clone()); },
+            (Some(c1), None) => { containers.push(c1.clone()); },
+            (Some(c1), Some(c2)) => {
+                let c = c1.symmetric_difference(c2);
+                if c.len() != Zero::zero() {
+                    containers.push(c);
+                }
+            }
+        }
+    }
+    RB { containers: containers }
 }
 
 #[inline]

@@ -307,7 +307,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```
     #[inline]
     pub fn union<'a>(&'a self, other: &'a Self) -> UnionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
-        imp::union(self, other)
+        imp::union_iter(self, other)
     }
 
     /// Returns an iterator over the intersection of this bitmap with the `other` bitmap.
@@ -336,7 +336,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```
     #[inline]
     pub fn intersection<'a>(&'a self, other: &'a Self) -> IntersectionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
-        imp::intersection(self, other)
+        imp::intersection_iter(self, other)
     }
 
     /// Returns an iterator over the set of values in `this` that are not in `other`.
@@ -369,7 +369,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```
     #[inline]
     pub fn difference<'a>(&'a self, other: &'a Self) -> DifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
-        imp::difference(self, other)
+        imp::difference_iter(self, other)
     }
 
     /// Returns an iterator over the set of values in `this` that are not in `other` + in `other`
@@ -399,7 +399,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```
     #[inline]
     pub fn symmetric_difference<'a>(&'a self, other: &'a Self) -> SymmetricDifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
-        imp::symmetric_difference(self, other)
+        imp::symmetric_difference_iter(self, other)
     }
 
     /// Unions in-place with the specified other bitmap.
@@ -893,9 +893,7 @@ impl<'a, 'b, Size: ExtInt + Halveable> BitXor<&'a RoaringBitmap<Size>> for &'b R
     /// ```
     #[inline]
     fn bitxor(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
-        let mut result = self.clone();
-        result.symmetric_difference_with(rhs);
-        result
+        imp::symmetric_difference(self, rhs)
     }
 }
 

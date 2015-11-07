@@ -237,6 +237,60 @@ impl<Size: ExtInt> Store<Size> {
         }
     }
 
+    pub fn symmetric_difference(&self, other: &Self) -> Self {
+        match (self, other) {
+            (&Array(ref vec1), &Array(ref vec2)) => {
+                let mut result = Vec::new();
+                let mut iter1 = vec1.iter();
+                let mut current1 = iter1.next();
+                let mut iter2 = vec2.iter();
+                let mut current2 = iter2.next();
+                while current1.is_some() && current2.is_some() {
+                    match current1.unwrap().cmp(current2.unwrap()) {
+                        Less => {
+                            result.push(*current1.unwrap());
+                            current1 = iter1.next();
+                        },
+                        Greater => {
+                            result.push(*current2.unwrap());
+                            current2 = iter2.next();
+                        },
+                        Equal => {
+                            current1 = iter1.next();
+                            current2 = iter2.next();
+                        },
+                    }
+                }
+                if current1.is_some() {
+                    result.push(*current1.unwrap());
+                    result.extend(iter1.map(|&x| x));
+                }
+                if current2.is_some() {
+                    result.push(*current2.unwrap());
+                    result.extend(iter2.map(|&x| x));
+                }
+                Array(result)
+            },
+            (ref this @ &Bitmap(..), &Array(ref vec2)) => {
+                let mut result = (*this).clone();
+                for index in vec2.iter() {
+                    if result.contains(*index) {
+                        result.remove(*index);
+                    } else {
+                        result.insert(*index);
+                    }
+                }
+                result
+            },
+            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => {
+                Bitmap(bits1.iter().zip(bits2.iter()).map(|(index1, index2)| *index1 ^ *index2).collect::<Vec<u64>>().into_boxed_slice())
+            },
+            (this @ &Array(..), &Bitmap(..)) => {
+                other.symmetric_difference(this)
+            },
+        }
+    }
+
     pub fn symmetric_difference_with(&mut self, other: &Self) {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {

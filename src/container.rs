@@ -97,6 +97,19 @@ impl<Size: ExtInt> Container<Size> {
     }
 
     #[inline]
+    pub fn symmetric_difference(&self, other: &Self) -> Self {
+        let store = self.store.symmetric_difference(&other.store);
+        let len = store.len();
+        let mut container = Container {
+            key: self.key,
+            store: store,
+            len: len
+        };
+        container.ensure_correct_store();
+        container
+    }
+
+    #[inline]
     pub fn symmetric_difference_with(&mut self, other: &Self) {
         self.store.symmetric_difference_with(&other.store);
         self.len = self.store.len();
