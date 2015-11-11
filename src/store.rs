@@ -377,7 +377,7 @@ impl<Size: ExtInt> Store<Size> {
     }
 
     #[inline]
-    pub fn iter<'a>(&'a self) -> Box<Iterator<Item = Size> + 'a> {
+    pub fn iter<'a>(&'a self) -> Box<DoubleEndedIterator<Item = Size> + 'a> {
         match *self {
             Array(ref vec) => Box::new(vec.iter().map(|x| *x)),
             Bitmap(ref bits) => Box::new(BitmapIter::new(bits)),
@@ -412,8 +412,11 @@ impl<Size: ExtInt> Clone for Store<Size> {
 }
 
 struct BitmapIter<'a, Size: ExtInt> {
-    key: usize,
-    bit: u8,
+    fwd_key: usize,
+    bwd_key: usize,
+    fwd_bit: u8,
+    bwd_bit: u8,
+    overflow: bool,
     bits: &'a Box<[u64]>,
     marker: PhantomData<Size>,
 }
@@ -421,9 +424,12 @@ struct BitmapIter<'a, Size: ExtInt> {
 impl<'a, Size: ExtInt> BitmapIter<'a, Size> {
     fn new(bits: &'a Box<[u64]>) -> BitmapIter<'a, Size> {
         BitmapIter {
-            key: 0,
-            bit: Zero::zero(),
+            fwd_key: 0,
+            bwd_key: bits.len() - 1,
+            fwd_bit: Zero::zero(),
+            bwd_bit: 63,
             bits: bits,
+            overflow: false,
             marker: PhantomData,
         }
     }
@@ -432,25 +438,47 @@ impl<'a, Size: ExtInt> BitmapIter<'a, Size> {
 
 impl<'a, Size: ExtInt> BitmapIter<'a, Size> {
     fn move_next(&mut self) {
-        self.bit += 1;
-        if self.bit == 64 {
-            self.bit = 0;
-            self.key += 1;
+        if self.fwd_bit == 63 {
+            if self.fwd_key == self.bits.len() - 1 {
+                self.overflow = true;
+            } else {
+                self.fwd_bit = 0;
+                self.fwd_key += 1;
+            }
+        } else {
+            self.fwd_bit += 1;
         }
     }
 
+    fn move_next_back(&mut self) {
+        if self.bwd_bit == 0 {
+            if self.bwd_key == 0 {
+                self.overflow = true;
+            } else {
+                self.bwd_bit = 63;
+                self.bwd_key -= 1;
+            }
+        } else {
+            self.bwd_bit -= 1;
+        }
+    }
 }
 
 impl<'a, Size: ExtInt> Iterator for BitmapIter<'a, Size> {
     type Item = Size;
 
+    fn size_hint(&self) -> (usize, Option<usize>) {
+      let min = self.bits.iter().skip(self.fwd_key + 1).take(self.bwd_key.checked_sub(self.fwd_key).and_then(|i| i.checked_sub(2)).unwrap_or(0)).map(|bits| bits.count_ones()).fold(0, |acc, ones| acc + ones) as usize;
+      (min, Some(min + self.bits[self.fwd_key].count_ones() as usize + self.bits[self.bwd_key].count_ones() as usize))
+    }
+
     fn next(&mut self) -> Option<Size> {
         loop {
-            if self.key == self.bits.len() {
+            if self.overflow || self.fwd_key > self.bwd_key || (self.fwd_key == self.bwd_key && self.fwd_bit > self.bwd_bit) {
                 return None;
             } else {
-                if (self.bits[self.key] & (1u64 << util::cast::<u8, usize>(self.bit))) != 0 {
-                    let result = Some(util::cast::<usize, Size>(self.key * 64 + util::cast::<u8, usize>(self.bit)));
+                if (self.bits[self.fwd_key] & (1u64 << util::cast::<u8, usize>(self.fwd_bit))) != 0 {
+                    let result = Some(util::cast::<usize, Size>(self.fwd_key * 64 + util::cast::<u8, usize>(self.fwd_bit)));
                     self.move_next();
                     return result;
                 } else {
@@ -459,10 +487,23 @@ impl<'a, Size: ExtInt> Iterator for BitmapIter<'a, Size> {
             }
         }
     }
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-      let min = self.bits.iter().skip(self.key + 1).map(|bits| bits.count_ones()).fold(0, |acc, ones| acc + ones) as usize;
-      (min, Some(min + self.bits[self.key].count_ones() as usize))
+impl<'a, Size: ExtInt> DoubleEndedIterator for BitmapIter<'a, Size> {
+    fn next_back(&mut self) -> Option<Size> {
+        loop {
+            if self.overflow || self.fwd_key > self.bwd_key || (self.fwd_key == self.bwd_key && self.fwd_bit > self.bwd_bit) {
+                return None;
+            } else {
+                if (self.bits[self.bwd_key] & (1u64 << util::cast::<u8, usize>(self.bwd_bit))) != 0 {
+                    let result = Some(util::cast::<usize, Size>(self.bwd_key * 64 + util::cast::<u8, usize>(self.bwd_bit)));
+                    self.move_next_back();
+                    return result;
+                } else {
+                    self.move_next_back();
+                }
+            }
+        }
     }
 }
 

@@ -57,7 +57,7 @@ impl<Size: ExtInt> Container<Size> {
     }
 
     #[inline]
-    pub fn iter<'a>(&'a self) -> Box<Iterator<Item = Size> + 'a> {
+    pub fn iter<'a>(&'a self) -> Box<DoubleEndedIterator<Item = Size> + 'a> {
         self.store.iter()
     }
 

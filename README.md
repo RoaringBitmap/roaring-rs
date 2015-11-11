@@ -39,5 +39,5 @@ For more info on the benchmarks see the documentation in
 ```sh
 (cd bindings; cargo build --release)
 git submodule update --init
-./RoaringBitmap/jmh/run.sh
+(cd RoaringBitmap/jmh; ./run.sh)
 ```
