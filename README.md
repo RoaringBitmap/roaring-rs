@@ -11,6 +11,19 @@ performance with Roaring bitmaps_][roaring-paper].
 Take note of the [Collections reform RFC][collections-rfc] for the API.  Mostly aiming to
 duplicate the [BitSet][] API.
 
+## License
+
+Licensed under either of
+ * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+at your option.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you shall be dual licensed as above, without any
+additional terms or conditions.
+
 [travis-badge]: https://img.shields.io/travis/Nemo157/roaring-rs/master.svg?style=flat-square
 [travis]: https://travis-ci.org/Nemo157/roaring-rs
 [release-badge]: https://img.shields.io/github/release/Nemo157/roaring-rs.svg?style=flat-square
