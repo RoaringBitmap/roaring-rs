@@ -8,7 +8,7 @@ sudo: false
 matrix:
   fast_finish: true
   allow_failures:
-    - nightly
+    - rust: nightly
 
 env:
   global:
