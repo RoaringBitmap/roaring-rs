@@ -5,8 +5,6 @@ use std::num::ParseIntError;
 
 use num::traits::{ PrimInt, Num };
 
-pub enum Either<Left, Right> { Left(Left), Right(Right) }
-
 pub trait Halveable {
     type HalfSize: ExtInt;
 
