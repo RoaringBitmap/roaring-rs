@@ -10,6 +10,8 @@ use util::{ self, Halveable, ExtInt };
 
 use RoaringBitmap as RB;
 
+type HalfContainer<Size> = Container<<Size as Halveable>::HalfSize>;
+
 #[inline]
 pub fn new<Size: ExtInt + Halveable>() -> RB<Size> {
     RB { containers: Vec::new() }
@@ -109,7 +111,7 @@ pub fn is_subset_opt<Size: ExtInt + Halveable>(this: &RB<Size>, other: &RB<Size>
         match tc.key().cmp(&oc.key()) {
             Ordering::Less => { return false; },
             Ordering::Equal => {
-                if !tc.is_subset(&oc) { return false; }
+                if !tc.is_subset(oc) { return false; }
                 ti += 1;
                 if ti >= tlen { return true; }
             },
@@ -244,27 +246,27 @@ pub fn extend_ref<'a, Size: ExtInt + Halveable + 'a, I: IntoIterator<Item = &'a 
 
 pub fn min<Size: ExtInt + Halveable>(this: &RB<Size>) -> Size {
     match this.containers.first() {
-        Some(ref head) => Halveable::join(head.key(), head.min()),
+        Some(head) => Halveable::join(head.key(), head.min()),
         None => Bounded::min_value(),
     }
 }
 
 pub fn max<Size: ExtInt + Halveable>(this: &RB<Size>) -> Size {
     match this.containers.last() {
-        Some(ref tail) => Halveable::join(tail.key(), tail.max()),
+        Some(tail) => Halveable::join(tail.key(), tail.max()),
         None => Bounded::max_value(),
     }
 }
 
 struct Pairs<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::HalfSize : 'a {
-    iter1: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>,
-    iter2: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>,
-    current1: Option<&'a Container<<Size as Halveable>::HalfSize>>,
-    current2: Option<&'a Container<<Size as Halveable>::HalfSize>>,
+    iter1: slice::Iter<'a, HalfContainer<Size>>,
+    iter2: slice::Iter<'a, HalfContainer<Size>>,
+    current1: Option<&'a HalfContainer<Size>>,
+    current2: Option<&'a HalfContainer<Size>>,
 }
 
 impl<'a, Size: ExtInt + Halveable> Pairs<'a, Size> {
-    fn new(mut iter1: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>, mut iter2: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>) -> Pairs<'a, Size> {
+    fn new(mut iter1: slice::Iter<'a, HalfContainer<Size>>, mut iter2: slice::Iter<'a, HalfContainer<Size>>) -> Pairs<'a, Size> {
         let (current1, current2) = (iter1.next(), iter2.next());
         Pairs {
             iter1: iter1,
@@ -276,9 +278,9 @@ impl<'a, Size: ExtInt + Halveable> Pairs<'a, Size> {
 }
 
 impl<'a, Size: ExtInt + Halveable> Iterator for Pairs<'a, Size> {
-    type Item = (Option<&'a Container<<Size as Halveable>::HalfSize>>, Option<&'a Container<<Size as Halveable>::HalfSize>>);
+    type Item = (Option<&'a HalfContainer<Size>>, Option<&'a HalfContainer<Size>>);
 
-    fn next(&mut self) -> Option<(Option<&'a Container<<Size as Halveable>::HalfSize>>, Option<&'a Container<<Size as Halveable>::HalfSize>>)> {
+    fn next(&mut self) -> Option<Self::Item> {
         match (self.current1, self.current2) {
             (None, None) => None,
             (Some(c1), None) => {

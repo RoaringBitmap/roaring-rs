@@ -32,7 +32,7 @@ impl<Size: ExtInt> Container<Size> {
     #[inline]
     pub fn insert(&mut self, index: Size) -> bool {
         if self.store.insert(index) {
-            self.len = self.len + 1;
+            self.len += 1;
             self.ensure_correct_store();
             true
         } else {
@@ -43,7 +43,7 @@ impl<Size: ExtInt> Container<Size> {
     #[inline]
     pub fn remove(&mut self, index: Size) -> bool {
         if self.store.remove(index) {
-            self.len = self.len - 1;
+            self.len -= 1;
             self.ensure_correct_store();
             true
         } else {

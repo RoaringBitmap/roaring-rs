@@ -497,7 +497,7 @@ impl<'a, Size: ExtInt + Halveable> IntoIterator for &'a RoaringBitmap<Size> {
     type IntoIter = Iter<'a, Size>;
     #[inline]
     fn into_iter(self) -> <Self as IntoIterator>::IntoIter {
-        imp::iter(&self)
+        imp::iter(self)
     }
 }
 

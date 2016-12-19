@@ -10,8 +10,7 @@ use roaring::RoaringBitmap;
 #[bench]
 fn create(b: &mut Bencher) {
     b.iter(|| {
-        let bitmap: RoaringBitmap<u32> = RoaringBitmap::new();
-        bitmap
+        RoaringBitmap::<u32>::new();
     })
 }
 
