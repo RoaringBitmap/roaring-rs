@@ -1,12 +1,13 @@
 extern crate roaring;
-
 use roaring::RoaringBitmap;
+
+use std::iter::FromIterator;
 
 #[test]
 fn or() {
-    let rb1: RoaringBitmap<u32> = (1..4u32).collect();
-    let rb2: RoaringBitmap<u32> = (3..6u32).collect();
-    let rb3: RoaringBitmap<u32> = (1..6u32).collect();
+    let rb1 = RoaringBitmap::from_iter(1..4u32);
+    let rb2 = RoaringBitmap::from_iter(3..6u32);
+    let rb3 = RoaringBitmap::from_iter(1..6u32);
 
     assert_eq!(rb3, &rb1 | &rb2);
     assert_eq!(rb3, rb1 | rb2 | &rb3);
@@ -14,9 +15,9 @@ fn or() {
 
 #[test]
 fn and() {
-    let rb1: RoaringBitmap<u32> = (1..4u32).collect();
-    let rb2: RoaringBitmap<u32> = (3..6u32).collect();
-    let rb3: RoaringBitmap<u32> = (3..4u32).collect();
+    let rb1 = RoaringBitmap::from_iter(1..4u32);
+    let rb2 = RoaringBitmap::from_iter(3..6u32);
+    let rb3 = RoaringBitmap::from_iter(3..4u32);
 
     assert_eq!(rb3, &rb1 & &rb2);
     assert_eq!(rb3, rb1 & rb2 & &rb3);
@@ -24,10 +25,10 @@ fn and() {
 
 #[test]
 fn sub() {
-    let rb1: RoaringBitmap<u32> = (1..4u32).collect();
-    let rb2: RoaringBitmap<u32> = (3..6u32).collect();
-    let rb3: RoaringBitmap<u32> = (1..3u32).collect();
-    let rb4: RoaringBitmap<u32> = (0..0u32).collect();
+    let rb1 = RoaringBitmap::from_iter(1..4u32);
+    let rb2 = RoaringBitmap::from_iter(3..6u32);
+    let rb3 = RoaringBitmap::from_iter(1..3u32);
+    let rb4 = RoaringBitmap::from_iter(0..0u32);
 
     assert_eq!(rb3, &rb1 - &rb2);
     assert_eq!(rb4, rb1 - rb2 - rb3);
@@ -35,10 +36,10 @@ fn sub() {
 
 #[test]
 fn xor() {
-    let rb1: RoaringBitmap<u32> = (1..4u32).collect();
-    let rb2: RoaringBitmap<u32> = (3..6u32).collect();
-    let rb3: RoaringBitmap<u32> = (1..3u32).chain(4..6u32).collect();
-    let rb4: RoaringBitmap<u32> = (0..0u32).collect();
+    let rb1 = RoaringBitmap::from_iter(1..4u32);
+    let rb2 = RoaringBitmap::from_iter(3..6u32);
+    let rb3 = RoaringBitmap::from_iter((1..3u32).chain(4..6));
+    let rb4 = RoaringBitmap::from_iter(0..0u32);
 
     assert_eq!(rb3, &rb1 ^ &rb2);
     assert_eq!(rb4, rb1 ^ rb2 ^ rb3);

@@ -1,11 +1,13 @@
 extern crate roaring;
 use roaring::RoaringBitmap;
 
+use std::iter::FromIterator;
+
 #[test]
 fn array_to_array() {
-    let mut bitmap1: RoaringBitmap<u32> = (0..2000u32).collect();
-    let bitmap2: RoaringBitmap<u32> = (1000..3000u32).collect();
-    let bitmap3: RoaringBitmap<u32> = (0..3000u32).collect();
+    let mut bitmap1 = RoaringBitmap::from_iter(0..2000u32);
+    let bitmap2 = RoaringBitmap::from_iter(1000..3000u32);
+    let bitmap3 = RoaringBitmap::from_iter(0..3000u32);
 
     bitmap1.union_with(&bitmap2);
 
@@ -14,9 +16,9 @@ fn array_to_array() {
 
 #[test]
 fn array_to_bitmap() {
-    let mut bitmap1: RoaringBitmap<u32> = (0..4000u32).collect();
-    let bitmap2: RoaringBitmap<u32> = (4000..8000u32).collect();
-    let bitmap3: RoaringBitmap<u32> = (0..8000u32).collect();
+    let mut bitmap1 = RoaringBitmap::from_iter(0..4000u32);
+    let bitmap2 = RoaringBitmap::from_iter(4000..8000u32);
+    let bitmap3 = RoaringBitmap::from_iter(0..8000u32);
 
     bitmap1.union_with(&bitmap2);
 
@@ -25,9 +27,9 @@ fn array_to_bitmap() {
 
 #[test]
 fn array_and_bitmap() {
-    let mut bitmap1: RoaringBitmap<u32> = (0..2000u32).collect();
-    let bitmap2: RoaringBitmap<u32> = (1000..8000u32).collect();
-    let bitmap3: RoaringBitmap<u32> = (0..8000u32).collect();
+    let mut bitmap1 = RoaringBitmap::from_iter(0..2000u32);
+    let bitmap2 = RoaringBitmap::from_iter(1000..8000u32);
+    let bitmap3 = RoaringBitmap::from_iter(0..8000u32);
 
     bitmap1.union_with(&bitmap2);
 
@@ -36,9 +38,9 @@ fn array_and_bitmap() {
 
 #[test]
 fn bitmap() {
-    let mut bitmap1: RoaringBitmap<u32> = (0..12000u32).collect();
-    let bitmap2: RoaringBitmap<u32> = (6000..18000u32).collect();
-    let bitmap3: RoaringBitmap<u32> = (0..18000u32).collect();
+    let mut bitmap1 = RoaringBitmap::from_iter(0..12000u32);
+    let bitmap2 = RoaringBitmap::from_iter(6000..18000u32);
+    let bitmap3 = RoaringBitmap::from_iter(0..18000u32);
 
     bitmap1.union_with(&bitmap2);
 
@@ -47,9 +49,9 @@ fn bitmap() {
 
 #[test]
 fn bitmap_and_array() {
-    let mut bitmap1: RoaringBitmap<u32> = (0..12000u32).collect();
-    let bitmap2: RoaringBitmap<u32> = (10000..13000u32).collect();
-    let bitmap3: RoaringBitmap<u32> = (0..13000u32).collect();
+    let mut bitmap1 = RoaringBitmap::from_iter(0..12000u32);
+    let bitmap2 = RoaringBitmap::from_iter(10000..13000u32);
+    let bitmap3 = RoaringBitmap::from_iter(0..13000u32);
 
     bitmap1.union_with(&bitmap2);
 
@@ -58,9 +60,9 @@ fn bitmap_and_array() {
 
 #[test]
 fn arrays() {
-    let mut bitmap1: RoaringBitmap<u32> = (0..2000u32).chain(1000000..1002000u32).chain(3000000..3001000u32).collect();
-    let bitmap2: RoaringBitmap<u32> = (1000..3000u32).chain(1001000..1003000u32).chain(2000000..2001000u32).collect();
-    let bitmap3: RoaringBitmap<u32> = (0..3000u32).chain(1000000..1003000u32).chain(2000000..2001000u32).chain(3000000..3001000u32).collect();
+    let mut bitmap1 = RoaringBitmap::from_iter((0..2000u32).chain(1000000..1002000).chain(3000000..3001000));
+    let bitmap2 = RoaringBitmap::from_iter((1000..3000u32).chain(1001000..1003000).chain(2000000..2001000));
+    let bitmap3 = RoaringBitmap::from_iter((0..3000u32).chain(1000000..1003000).chain(2000000..2001000).chain(3000000..3001000));
 
     bitmap1.union_with(&bitmap2);
 
@@ -69,9 +71,9 @@ fn arrays() {
 
 #[test]
 fn bitmaps() {
-    let mut bitmap1: RoaringBitmap<u32> = (0..6000u32).chain(1000000..1012000u32).chain(3000000..3010000u32).collect();
-    let bitmap2: RoaringBitmap<u32> = (3000..9000u32).chain(1006000..1018000u32).chain(2000000..2010000u32).collect();
-    let bitmap3: RoaringBitmap<u32> = (0..9000u32).chain(1000000..1018000u32).chain(2000000..2010000u32).chain(3000000..3010000u32).collect();
+    let mut bitmap1 = RoaringBitmap::from_iter((0..6000u32).chain(1000000..1012000).chain(3000000..3010000));
+    let bitmap2 = RoaringBitmap::from_iter((3000..9000u32).chain(1006000..1018000).chain(2000000..2010000));
+    let bitmap3 = RoaringBitmap::from_iter((0..9000u32).chain(1000000..1018000).chain(2000000..2010000).chain(3000000..3010000));
 
     bitmap1.union_with(&bitmap2);
 
