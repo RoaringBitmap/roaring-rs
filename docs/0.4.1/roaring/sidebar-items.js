@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["DifferenceIter","An iterator for `RoaringBitmap`."],["IntersectionIter","An iterator for `RoaringBitmap`."],["Iter","An iterator for `RoaringBitmap`."],["RoaringBitmap","A compressed bitmap using the Roaring bitmap compression scheme."],["SymmetricDifferenceIter","An iterator for `RoaringBitmap`."],["UnionIter","An iterator for `RoaringBitmap`."]]});
