@@ -15,4 +15,4 @@ keywords = ["roaring", "data-structure", "bitmap"]
 license = "MIT/Apache-2.0"
 
 [dependencies]
-num = "*"
+num = "0.1.36"
