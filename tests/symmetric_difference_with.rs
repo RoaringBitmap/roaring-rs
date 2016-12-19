@@ -14,6 +14,16 @@ fn array() {
 }
 
 #[test]
+fn no_symmetric_difference() {
+    let mut bitmap1: RoaringBitmap<u32> = (0..2u32).collect();
+    let bitmap2: RoaringBitmap<u32> = (0..2u32).collect();
+
+    bitmap1.symmetric_difference_with(&bitmap2);
+
+    assert_eq!(bitmap1, RoaringBitmap::new());
+}
+
+#[test]
 fn array_and_bitmap() {
     let mut bitmap1: RoaringBitmap<u32> = (0..2000u32).collect();
     let bitmap2: RoaringBitmap<u32> = (1000..8000u32).collect();
