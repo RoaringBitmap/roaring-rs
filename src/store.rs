@@ -322,6 +322,7 @@ impl<Size: ExtInt> Store<Size> {
         }
     }
 
+    #[allow(needless_lifetimes)] // TODO: https://github.com/Manishearth/rust-clippy/issues/740
     #[inline]
     pub fn iter<'a>(&'a self) -> Box<Iterator<Item = Size> + 'a> {
         match *self {

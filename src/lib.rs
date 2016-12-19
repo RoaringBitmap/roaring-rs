@@ -10,6 +10,8 @@
 #![warn(missing_docs)]
 #![warn(variant_size_differences)]
 
+#![allow(unknown_lints)] // For clippy
+
 extern crate num;
 
 use std::fmt::{ Debug, Formatter, Result };
