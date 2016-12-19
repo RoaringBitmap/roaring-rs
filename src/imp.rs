@@ -167,7 +167,11 @@ pub fn intersect_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB<
             },
             Ok(loc) => {
                 this.containers[index].intersect_with(&other.containers[loc]);
-                index += 1;
+                if this.containers[index].len() == Zero::zero() {
+                    this.containers.remove(index);
+                } else {
+                    index += 1;
+                }
             },
         };
     }
