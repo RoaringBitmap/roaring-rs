@@ -1,16 +1,18 @@
 extern crate roaring;
 use roaring::RoaringBitmap;
 
+use std::iter::FromIterator;
+
 #[test]
 fn array() {
-    let bitmap: RoaringBitmap<u32> = (0..2000u32).collect();
+    let bitmap = RoaringBitmap::from_iter(0..2000u32);
     assert_eq!((2000, Some(2000)), bitmap.iter().size_hint());
     assert_eq!((0, Some(0)), bitmap.iter().skip(2000).size_hint());
 }
 
 #[test]
 fn bitmap() {
-    let bitmap: RoaringBitmap<u32> = (0..6000u32).collect();
+    let bitmap = RoaringBitmap::from_iter(0..6000u32);
     assert!(bitmap.iter().size_hint().0 > 5000);
     assert_eq!(Some(6000), bitmap.iter().size_hint().1);
     assert_eq!((0, Some(0)), bitmap.iter().skip(6000).size_hint());
@@ -18,14 +20,14 @@ fn bitmap() {
 
 #[test]
 fn arrays() {
-    let bitmap: RoaringBitmap<u32> = (0..2000u32).chain(1000000..1002000u32).chain(2000000..2001000u32).collect();
+    let bitmap = RoaringBitmap::from_iter((0..2000u32).chain(1000000..1002000).chain(2000000..2001000));
     assert_eq!((5000, Some(5000)), bitmap.iter().size_hint());
     assert_eq!((0, Some(0)), bitmap.iter().skip(5000).size_hint());
 }
 
 #[test]
 fn bitmaps() {
-    let bitmap: RoaringBitmap<u32> = (0..6000u32).chain(1000000..1012000u32).chain(2000000..2010000u32).collect();
+    let bitmap = RoaringBitmap::from_iter((0..6000u32).chain(1000000..1012000).chain(2000000..2010000));
 
     assert!(bitmap.iter().size_hint().0 > 27000);
     assert_eq!(Some(28000), bitmap.iter().size_hint().1);

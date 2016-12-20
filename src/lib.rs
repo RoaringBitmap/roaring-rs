@@ -492,6 +492,15 @@ impl<Size: ExtInt + Halveable> IntoIterator for RoaringBitmap<Size> {
     }
 }
 
+impl<'a, Size: ExtInt + Halveable> IntoIterator for &'a RoaringBitmap<Size> {
+    type Item = Size;
+    type IntoIter = Iter<'a, Size>;
+    #[inline]
+    fn into_iter(self) -> <Self as IntoIterator>::IntoIter {
+        imp::iter(self)
+    }
+}
+
 impl<Size: ExtInt + Halveable> FromIterator<Size> for RoaringBitmap<Size> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = Size>>(iterator: I) -> Self {

@@ -1,37 +1,54 @@
 use std::slice;
 
-use util::{ Either, ExtInt, Halveable };
-use util::Either::{ Left, Right };
+use util::{ ExtInt, Halveable };
 use container::{ Container };
+
+type HalfContainer<Size> = Container<<Size as Halveable>::HalfSize>;
+
+struct SubIterator<'a, Size: ExtInt + Halveable + 'a> {
+    key: <Size as Halveable>::HalfSize,
+    iter: Box<Iterator<Item = <Size as Halveable>::HalfSize> + 'a>,
+}
+
+enum Next<'a, Size: ExtInt + Halveable + 'a> {
+    Done,
+    Value(Size),
+    NewIter(Option<SubIterator<'a, Size>>),
+}
 
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::HalfSize : 'a {
-    inner_iter: Option<(<Size as Halveable>::HalfSize, Box<Iterator<Item = <Size as Halveable>::HalfSize> + 'a>)>,
-    container_iter: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>,
+    inner_iter: Option<SubIterator<'a, Size>>,
+    container_iter: slice::Iter<'a, HalfContainer<Size>>,
 }
 
 #[inline]
-fn next_iter<'a, Size: ExtInt + Halveable + 'a>(container_iter: &mut slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>) -> Option<(<Size as Halveable>::HalfSize, Box<Iterator<Item = <Size as Halveable>::HalfSize> + 'a>)> {
-    container_iter.next().map(|container| (container.key(), container.iter()))
+fn next_iter<'a, Size: ExtInt + Halveable + 'a>(container_iter: &mut slice::Iter<'a, HalfContainer<Size>>) -> Option<SubIterator<'a, Size>> {
+    container_iter
+        .next()
+        .map(|container| SubIterator {
+            key: container.key(),
+            iter: container.iter()
+        })
 }
 
 #[inline]
-pub fn new<'a, Size: ExtInt + Halveable + 'a>(mut container_iter: slice::Iter<'a, Container<<Size as Halveable>::HalfSize>>) -> Iter<'a, Size> {
+pub fn new<Size: ExtInt + Halveable>(mut container_iter: slice::Iter<HalfContainer<Size>>) -> Iter<Size> {
     Iter {
-        inner_iter: next_iter::<'a, Size>(&mut container_iter),
+        inner_iter: next_iter(&mut container_iter),
         container_iter: container_iter
     }
 }
 
 impl<'a, Size: ExtInt + Halveable + 'a> Iter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
     #[inline]
-    fn choose_next(&mut self) -> Option<Either<Size, Option<(<Size as Halveable>::HalfSize, Box<Iterator<Item = <Size as Halveable>::HalfSize> + 'a>)>>> {
+    fn choose_next(&mut self) -> Next<'a, Size> {
         match self.inner_iter {
-            Some((key, ref mut iter)) => Some(match iter.next() {
-                Some(value) => Left(Halveable::join(key, value)),
-                None => Right(next_iter::<'a, Size>(&mut self.container_iter)),
-            }),
-            None => None,
+            Some(SubIterator { key, ref mut iter }) => match iter.next() {
+                Some(value) => Next::Value(Halveable::join(key, value)),
+                None => Next::NewIter(next_iter(&mut self.container_iter)),
+            },
+            None => Next::Done,
         }
     }
 }
@@ -41,9 +58,9 @@ impl<'a, Size: ExtInt + Halveable + 'a> Iterator for Iter<'a, Size> where <Size 
 
     fn next(&mut self) -> Option<Size> {
         match self.choose_next() {
-            None => None,
-            Some(Left(val)) => Some(val),
-            Some(Right(new_iter)) => {
+            Next::Done => None,
+            Next::Value(val) => Some(val),
+            Next::NewIter(new_iter) => {
                 self.inner_iter = new_iter;
                 self.next()
             },
@@ -53,7 +70,7 @@ impl<'a, Size: ExtInt + Halveable + 'a> Iterator for Iter<'a, Size> where <Size 
     fn size_hint(&self) -> (usize, Option<usize>) {
         let next = self.container_iter.clone().map(|container| container.len() as usize).fold(0, |acc, len| acc + len);
         match self.inner_iter {
-            Some((_, ref iter)) => match iter.size_hint() {
+            Some(SubIterator { ref iter, .. }) => match iter.size_hint() {
                 (min, max) => (next + min, max.map(|m| next + m)),
             },
             None => (next, Some(next)),

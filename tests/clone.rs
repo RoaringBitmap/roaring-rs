@@ -1,9 +1,11 @@
 extern crate roaring;
 use roaring::RoaringBitmap;
 
+use std::iter::FromIterator;
+
 #[test]
 fn array() {
-    let original: RoaringBitmap<u32> = (0..2000u32).collect();
+    let original = RoaringBitmap::from_iter(0..2000u32);
     let clone = original.clone();
 
     assert_eq!(clone, original);
@@ -11,7 +13,7 @@ fn array() {
 
 #[test]
 fn bitmap() {
-    let original: RoaringBitmap<u32> = (0..6000u32).collect();
+    let original = RoaringBitmap::from_iter(0..6000u32);
     let clone = original.clone();
 
     assert_eq!(clone, original);
@@ -19,7 +21,7 @@ fn bitmap() {
 
 #[test]
 fn arrays() {
-    let original: RoaringBitmap<u32> = (0..2000u32).chain(1000000..1002000u32).chain(2000000..2001000u32).collect();
+    let original = RoaringBitmap::from_iter((0..2000u32).chain(1000000..1002000).chain(2000000..2001000));
     let clone = original.clone();
 
     assert_eq!(clone, original);
@@ -27,7 +29,7 @@ fn arrays() {
 
 #[test]
 fn bitmaps() {
-    let original: RoaringBitmap<u32> = (0..6000u32).chain(1000000..1012000u32).chain(2000000..2010000u32).collect();
+    let original = RoaringBitmap::from_iter((0..6000u32).chain(1000000..1012000).chain(2000000..2010000));
     let clone = original.clone();
 
     assert_eq!(clone, original);
