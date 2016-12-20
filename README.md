@@ -8,6 +8,11 @@ performance with Roaring bitmaps_][roaring-paper].
 
 ## Developing
 
+This project uses [clippy][] and denies warnings in CI builds. To ensure your
+changes will be accepted please check them with `cargo clippy` (available via
+`cargo install clippy` on nightly rust) before submitting a pull request (along
+with `cargo test` as usual).
+
 Take note of the [Collections reform RFC][collections-rfc] for the API.  Mostly aiming to
 duplicate the [BitSet][] API.
 

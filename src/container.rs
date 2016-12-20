@@ -56,6 +56,7 @@ impl<Size: ExtInt> Container<Size> {
         self.store.contains(index)
     }
 
+    #[allow(needless_lifetimes)] // TODO: https://github.com/Manishearth/rust-clippy/issues/740
     #[inline]
     pub fn iter<'a>(&'a self) -> Box<Iterator<Item = Size> + 'a> {
         self.store.iter()
