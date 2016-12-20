@@ -151,8 +151,24 @@ impl<Size: ExtInt> Store<Size> {
 
     pub fn union_with(&mut self, other: &Self) {
         match (self, other) {
-            (ref mut this, &Array(ref vec)) => {
-                for &index in vec.iter() {
+            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
+                let mut i1 = 0;
+                let mut iter2 = vec2.iter();
+                'outer: for &index2 in &mut iter2 {
+                    while i1 < vec1.len() {
+                        match vec1[i1].cmp(&index2) {
+                            Less => i1 += 1,
+                            Greater => vec1.insert(i1, index2),
+                            Equal => continue 'outer,
+                        }
+                    }
+                    vec1.push(index2);
+                    break
+                }
+                vec1.extend(iter2);
+            },
+            (ref mut this @ &mut Bitmap(..), &Array(ref vec)) => {
+                for &index in vec {
                     this.insert(index);
                 }
             },
