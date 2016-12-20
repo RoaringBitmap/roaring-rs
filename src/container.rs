@@ -3,6 +3,7 @@ use std::fmt::{ Debug, Formatter, Result };
 use num::traits::{ One };
 
 use util::{ self, ExtInt };
+use store;
 use store::Store::{ self, Array, Bitmap };
 
 #[derive(PartialEq, Clone)]
@@ -10,6 +11,11 @@ pub struct Container<Size: ExtInt> {
     key: Size,
     len: u64,
     store: Store<Size>,
+}
+
+pub struct Iter<'a, Size: ExtInt + 'a> {
+    pub key: Size,
+    inner: store::Iter<'a, Size>,
 }
 
 impl<Size: ExtInt> Container<Size> {
@@ -58,8 +64,11 @@ impl<Size: ExtInt> Container<Size> {
 
     #[allow(needless_lifetimes)] // TODO: https://github.com/Manishearth/rust-clippy/issues/740
     #[inline]
-    pub fn iter<'a>(&'a self) -> Box<Iterator<Item = Size> + 'a> {
-        self.store.iter()
+    pub fn iter<'a>(&'a self) -> Iter<Size> {
+        Iter {
+            key: self.key,
+            inner: self.store.iter()
+        }
     }
 
     #[inline]
@@ -125,6 +134,16 @@ impl<Size: ExtInt> Container<Size> {
         if let Some(new_store) = new_store {
             self.store = new_store;
         }
+    }
+}
+
+impl<'a, Size: ExtInt> Iterator for Iter<'a, Size> {
+    type Item = Size;
+    fn next(&mut self) -> Option<Size> {
+        self.inner.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
     }
 }
 

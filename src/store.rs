@@ -1,4 +1,5 @@
 use std::iter;
+use std::slice;
 use std::marker::PhantomData;
 use std::cmp::Ordering::{ Equal, Less, Greater };
 
@@ -10,6 +11,11 @@ use store::Store::{ Array, Bitmap };
 pub enum Store<Size: ExtInt> {
     Array(Vec<Size>),
     Bitmap(Box<[u64]>),
+}
+
+pub enum Iter<'a, Size: ExtInt + 'a> {
+    Array(slice::Iter<'a, Size>),
+    Bitmap(BitmapIter<'a, Size>),
 }
 
 impl<Size: ExtInt> Store<Size> {
@@ -324,10 +330,10 @@ impl<Size: ExtInt> Store<Size> {
 
     #[allow(needless_lifetimes)] // TODO: https://github.com/Manishearth/rust-clippy/issues/740
     #[inline]
-    pub fn iter<'a>(&'a self) -> Box<Iterator<Item = Size> + 'a> {
+    pub fn iter(&self) -> Iter<Size> {
         match *self {
-            Array(ref vec) => Box::new(vec.iter().cloned()),
-            Bitmap(ref bits) => Box::new(BitmapIter::new(bits)),
+            Array(ref vec) => Iter::Array(vec.iter()),
+            Bitmap(ref bits) => Iter::Bitmap(BitmapIter::new(bits)),
         }
     }
 
@@ -358,7 +364,7 @@ impl<Size: ExtInt> Clone for Store<Size> {
     }
 }
 
-struct BitmapIter<'a, Size: ExtInt> {
+pub struct BitmapIter<'a, Size: ExtInt> {
     key: usize,
     bit: u8,
     bits: &'a Box<[u64]>,
@@ -374,10 +380,7 @@ impl<'a, Size: ExtInt> BitmapIter<'a, Size> {
             marker: PhantomData,
         }
     }
-}
 
-
-impl<'a, Size: ExtInt> BitmapIter<'a, Size> {
     fn move_next(&mut self) {
         self.bit += 1;
         if self.bit == 64 {
@@ -385,7 +388,6 @@ impl<'a, Size: ExtInt> BitmapIter<'a, Size> {
             self.key += 1;
         }
     }
-
 }
 
 impl<'a, Size: ExtInt> Iterator for BitmapIter<'a, Size> {
@@ -408,6 +410,24 @@ impl<'a, Size: ExtInt> Iterator for BitmapIter<'a, Size> {
     fn size_hint(&self) -> (usize, Option<usize>) {
       let min = self.bits.iter().skip(self.key + 1).map(|bits| bits.count_ones()).fold(0, |acc, ones| acc + ones) as usize;
       (min, Some(min + self.bits[self.key].count_ones() as usize))
+    }
+}
+
+impl<'a, Size: ExtInt> Iterator for Iter<'a, Size> {
+    type Item = Size;
+
+    fn next(&mut self) -> Option<Size> {
+        match *self {
+            Iter::Array(ref mut inner) => inner.next().cloned(),
+            Iter::Bitmap(ref mut inner) => inner.next(),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match *self {
+            Iter::Array(ref inner) => inner.size_hint(),
+            Iter::Bitmap(ref inner) => inner.size_hint(),
+        }
     }
 }
 
