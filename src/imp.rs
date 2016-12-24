@@ -152,7 +152,7 @@ pub fn union_with<Size: ExtInt + Halveable>(this: &mut RB<Size>, other: &RB<Size
     for container in &other.containers {
         let key = container.key();
         match this.containers.binary_search_by(|container| container.key().cmp(&key)) {
-            Err(loc) => this.containers.insert(loc, (*container).clone()),
+            Err(loc) => this.containers.insert(loc, container.clone()),
             Ok(loc) => this.containers[loc].union_with(container),
         };
     }
