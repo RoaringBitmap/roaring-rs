@@ -7,7 +7,8 @@ use container::Container;
 
 const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
 const SERIAL_COOKIE: u16 = 12347;
-const NO_OFFSET_THRESHOLD: u8 = 4;
+// TODO: Need this once run containers are supported
+// const NO_OFFSET_THRESHOLD: u8 = 4;
 
 pub fn serialize_into<W: io::Write>(this: &RB<u32>, mut writer: W) -> io::Result<()> {
     try!(writer.write_u32::<LittleEndian>(SERIAL_COOKIE_NO_RUNCONTAINER));
@@ -50,22 +51,20 @@ pub fn serialize_into<W: io::Write>(this: &RB<u32>, mut writer: W) -> io::Result
 }
 
 pub fn deserialize_from<R: io::Read>(mut reader: R) -> io::Result<RB<u32>> {
-    let size;
-    let has_offsets;
-
-    let cookie = try!(reader.read_u32::<LittleEndian>());
-    if cookie == SERIAL_COOKIE_NO_RUNCONTAINER {
-        size = try!(reader.read_u32::<LittleEndian>()) as usize;
-        has_offsets = true;
-    } else if (cookie as u16) == SERIAL_COOKIE {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            "run containers are unsupported"));
-    } else {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            "unknown cookie value"));
-    }
+    let (size, has_offsets) = {
+        let cookie = try!(reader.read_u32::<LittleEndian>());
+        if cookie == SERIAL_COOKIE_NO_RUNCONTAINER {
+            (try!(reader.read_u32::<LittleEndian>()) as usize, true)
+        } else if (cookie as u16) == SERIAL_COOKIE {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "run containers are unsupported"));
+        } else {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "unknown cookie value"));
+        }
+    };
 
     if size > u16::max_value() as usize {
         return Err(io::Error::new(
@@ -89,20 +88,19 @@ pub fn deserialize_from<R: io::Read>(mut reader: R) -> io::Result<RB<u32>> {
         let key = try!(description_bytes.read_u16::<LittleEndian>());
         let len = try!(description_bytes.read_u16::<LittleEndian>()) as usize + 1;
 
-        let store;
-        if len < 4096 {
+        let store = if len < 4096 {
             let mut values = Vec::with_capacity(len);
             for _ in 0..len {
                 values.push(try!(reader.read_u16::<LittleEndian>()));
             }
-            store = Store::Array(values);
+            Store::Array(values)
         } else {
             let mut values = Box::new([0; 1024]);
             for value in values.iter_mut() {
                 *value = try!(reader.read_u64::<LittleEndian>());
             }
-            store = Store::Bitmap(values);
-        }
+            Store::Bitmap(values)
+        };
 
         containers.push(Container { key: key, len: len as u64, store: store });
     }

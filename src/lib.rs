@@ -489,10 +489,47 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
 }
 
 impl RoaringBitmap<u32> {
+    /// Serialize this bitmap into [the standard Roaring on-disk format][format].
+    /// This is compatible with the official C/C++, Java and Go implementations.
+    ///
+    /// [format]: https://github.com/RoaringBitmap/RoaringFormatSpec
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    /// use std::iter::FromIterator;
+    ///
+    /// let rb1 = RoaringBitmap::from_iter(1..4u32);
+    /// let mut bytes = vec![];
+    /// rb1.serialize_into(&mut bytes).unwrap();
+    /// let rb2 = RoaringBitmap::deserialize_from(&mut &bytes[..]).unwrap();
+    ///
+    /// assert_eq!(rb1, rb2);
+    /// ```
     pub fn serialize_into<W: io::Write>(&self, writer: W) -> io::Result<()> {
         serialization::serialize_into(self, writer)
     }
 
+    /// Deserialize a bitmap into memory from [the standard Roaring on-disk
+    /// format][format].  This is compatible with the official C/C++, Java and
+    /// Go implementations.
+    ///
+    /// [format]: https://github.com/RoaringBitmap/RoaringFormatSpec
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    /// use std::iter::FromIterator;
+    ///
+    /// let rb1 = RoaringBitmap::from_iter(1..4u32);
+    /// let mut bytes = vec![];
+    /// rb1.serialize_into(&mut bytes).unwrap();
+    /// let rb2 = RoaringBitmap::deserialize_from(&mut &bytes[..]).unwrap();
+    ///
+    /// assert_eq!(rb1, rb2);
+    /// ```
     pub fn deserialize_from<R: io::Read>(reader: R) -> io::Result<RoaringBitmap<u32>> {
         serialization::deserialize_from(reader)
     }
