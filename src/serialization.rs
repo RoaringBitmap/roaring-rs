@@ -1,5 +1,5 @@
 use std::io;
-use byteorder::{ LittleEndian, ReadBytesExt };
+use byteorder::{ LittleEndian, ReadBytesExt, WriteBytesExt };
 
 use RoaringBitmap as RB;
 use store::Store;
@@ -9,8 +9,44 @@ const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
 const SERIAL_COOKIE: u16 = 12347;
 const NO_OFFSET_THRESHOLD: u8 = 4;
 
-pub fn serialize_into<W: io::Write>(this: &RB<u32>, writer: W) -> io::Result<()> {
-    unimplemented!();
+pub fn serialize_into<W: io::Write>(this: &RB<u32>, mut writer: W) -> io::Result<()> {
+    try!(writer.write_u32::<LittleEndian>(SERIAL_COOKIE_NO_RUNCONTAINER));
+    try!(writer.write_u32::<LittleEndian>(this.containers.len() as u32));
+
+    for container in &this.containers {
+        try!(writer.write_u16::<LittleEndian>(container.key()));
+        try!(writer.write_u16::<LittleEndian>((container.len() - 1) as u16));
+    }
+
+    let mut offset = 8 + 8 * this.containers.len() as u32;
+    for container in &this.containers {
+        try!(writer.write_u32::<LittleEndian>(offset));
+        match container.store {
+            Store::Array(ref values) => {
+                offset += values.len() as u32 * 2;
+            }
+            Store::Bitmap(..) => {
+                offset += 8 * 1024;
+            }
+        }
+    }
+
+    for container in &this.containers {
+        match container.store {
+            Store::Array(ref values) => {
+                for &value in values {
+                    try!(writer.write_u16::<LittleEndian>(value));
+                }
+            }
+            Store::Bitmap(ref values) => {
+                for &value in values.iter() {
+                    try!(writer.write_u64::<LittleEndian>(value));
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 pub fn deserialize_from<R: io::Read>(mut reader: R) -> io::Result<RB<u32>> {

@@ -32,7 +32,7 @@ fn test_serialize_into_provided_data() {
     let bitmap = test_data_bitmap();
     let mut buffer = vec![];
     bitmap.serialize_into(&mut buffer).unwrap();
-    assert_eq!(BITMAP_WITHOUT_RUNS, &buffer[..]);
+    assert!(BITMAP_WITHOUT_RUNS == &buffer[..]);
 }
 
 #[test]
