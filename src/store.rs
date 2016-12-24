@@ -413,7 +413,7 @@ impl<'a, Size: ExtInt> Iterator for BitmapIter<'a, Size> {
         loop {
             if self.key == self.bits.len() {
                 return None;
-            } else if (self.bits[self.key] & (1u64 << util::cast::<u8, usize>(self.bit))) != 0 {
+            } else if (unsafe { self.bits.get_unchecked(self.key) } & (1u64 << util::cast::<u8, usize>(self.bit))) != 0 {
                 let result = Some(util::cast::<usize, Size>(self.key * 64 + util::cast::<u8, usize>(self.bit)));
                 self.move_next();
                 return result;
