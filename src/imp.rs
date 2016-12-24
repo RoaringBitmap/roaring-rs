@@ -1,3 +1,4 @@
+use std::io;
 use std::iter::{ IntoIterator };
 use std::slice;
 use std::cmp::Ordering;
@@ -256,6 +257,14 @@ pub fn max<Size: ExtInt + Halveable>(this: &RB<Size>) -> Size {
         Some(tail) => Halveable::join(tail.key(), tail.max()),
         None => Bounded::max_value(),
     }
+}
+
+pub fn serialize_into<W: io::Write>(this: &RB<u32>, writer: W) -> io::Result<()> {
+    unimplemented!();
+}
+
+pub fn deserialize_from<R: io::Read>(reader: R) -> io::Result<RB<u32>> {
+    unimplemented!();
 }
 
 struct Pairs<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::HalfSize : 'a {

@@ -14,6 +14,7 @@
 
 extern crate num;
 
+use std::io;
 use std::fmt::{ Debug, Formatter, Result };
 use std::ops::{ BitXor, BitAnd, BitOr, Sub };
 use std::iter::{ IntoIterator, FromIterator };
@@ -482,6 +483,16 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     #[inline]
     pub fn symmetric_difference_with(&mut self, other: &Self) {
         imp::symmetric_difference_with(self, other)
+    }
+}
+
+impl RoaringBitmap<u32> {
+    pub fn serialize_into<W: io::Write>(&self, writer: W) -> io::Result<()> {
+        imp::serialize_into(self, writer)
+    }
+
+    pub fn deserialize_from<R: io::Read>(reader: R) -> io::Result<RoaringBitmap<u32>> {
+        imp::deserialize_from(reader)
     }
 }
 
