@@ -16,3 +16,4 @@ license = "MIT/Apache-2.0"
 
 [dependencies]
 num = "0.1.36"
+byteorder = "0.5.3"
