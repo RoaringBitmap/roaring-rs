@@ -13,6 +13,7 @@
 #![allow(unknown_lints)] // For clippy
 
 extern crate num;
+extern crate byteorder;
 
 use std::io;
 use std::fmt::{ Debug, Formatter, Result };
@@ -28,6 +29,7 @@ mod util;
 mod iter;
 mod store;
 mod container;
+mod serialization;
 
 /// A compressed bitmap using the [Roaring bitmap compression scheme](http://roaringbitmap.org).
 ///
@@ -488,11 +490,11 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
 
 impl RoaringBitmap<u32> {
     pub fn serialize_into<W: io::Write>(&self, writer: W) -> io::Result<()> {
-        imp::serialize_into(self, writer)
+        serialization::serialize_into(self, writer)
     }
 
     pub fn deserialize_from<R: io::Read>(reader: R) -> io::Result<RoaringBitmap<u32>> {
-        imp::deserialize_from(reader)
+        serialization::deserialize_from(reader)
     }
 }
 

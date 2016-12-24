@@ -8,9 +8,9 @@ use store::Store::{ self, Array, Bitmap };
 
 #[derive(PartialEq, Clone)]
 pub struct Container<Size: ExtInt> {
-    key: Size,
-    len: u64,
-    store: Store<Size>,
+    pub key: Size,
+    pub len: u64,
+    pub store: Store<Size>,
 }
 
 pub struct Iter<'a, Size: ExtInt + 'a> {
