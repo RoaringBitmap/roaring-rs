@@ -20,8 +20,7 @@ pub struct Iter<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::Ha
 }
 
 impl<'a, Size: ExtInt + Halveable> Iter<'a, Size> {
-    #[doc(hidden)] // TODO: pub(crate)
-    pub fn new(mut container_iters: slice::Iter<HalfContainer<Size>>) -> Iter<Size> {
+    fn new(mut container_iters: slice::Iter<HalfContainer<Size>>) -> Iter<Size> {
         Iter {
             inner_iter: container_iters.next().map(|i| i.iter()),
             container_iters: container_iters,
