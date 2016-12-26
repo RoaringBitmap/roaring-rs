@@ -1,5 +1,4 @@
 use std::slice;
-use std::cmp::Ordering;
 use std::iter::Peekable;
 
 use RoaringBitmap;
@@ -73,32 +72,6 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
             }
         }
         true
-    }
-
-    /// Returns `true` if this set is a subset of `other`.
-    pub fn is_subset_opt(&self, other: &Self) -> bool {
-        let tv = &self.containers;
-        let ov = &other.containers;
-        let tlen = tv.len();
-        let olen = ov.len();
-        if tlen > olen { return false; }
-        let mut ti = 0;
-        let mut oi = 0;
-        loop {
-            let tc = &tv[ti];
-            let oc = &ov[oi];
-            match tc.key.cmp(&oc.key) {
-                Ordering::Less => { return false; },
-                Ordering::Equal => {
-                    if !tc.is_subset(oc) { return false; }
-                    ti += 1;
-                    if ti >= tlen { return true; }
-                },
-                Ordering::Greater => (),
-            }
-            oi += 1;
-            if oi >= olen { return false }
-        }
     }
 
     /// Returns `true` if this set is a superset of `other`.
