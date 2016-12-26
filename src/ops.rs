@@ -21,7 +21,6 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
-    #[inline]
     pub fn union_with(&mut self, other: &Self) {
         for container in &other.containers {
             let key = container.key;
@@ -47,7 +46,6 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
-    #[inline]
     pub fn intersect_with(&mut self, other: &Self) {
         let mut index = 0;
         while index < self.containers.len() {
@@ -83,7 +81,6 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
-    #[inline]
     pub fn difference_with(&mut self, other: &Self) {
         let mut index = 0;
         while index < self.containers.len() {
@@ -119,7 +116,6 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
-    #[inline]
     pub fn symmetric_difference_with(&mut self, other: &Self) {
         for container in &other.containers {
             let key = container.key;
@@ -154,7 +150,6 @@ impl<Size: ExtInt + Halveable> BitOr<RoaringBitmap<Size>> for RoaringBitmap<Size
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn bitor(mut self, rhs: Self) -> Self {
         self.union_with(&rhs);
         self
@@ -179,7 +174,6 @@ impl<'a, Size: ExtInt + Halveable> BitOr<RoaringBitmap<Size>> for &'a RoaringBit
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn bitor(self, mut rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         rhs.union_with(self);
         rhs
@@ -204,7 +198,6 @@ impl<'a, 'b, Size: ExtInt + Halveable> BitOr<&'a RoaringBitmap<Size>> for &'b Ro
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn bitor(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         let mut result = self.clone();
         result.union_with(rhs);
@@ -230,7 +223,6 @@ impl<'a, Size: ExtInt + Halveable> BitOr<&'a RoaringBitmap<Size>> for RoaringBit
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn bitor(mut self, rhs: &'a Self) -> Self {
         self.union_with(rhs);
         self
@@ -255,7 +247,6 @@ impl<Size: ExtInt + Halveable> BitAnd<RoaringBitmap<Size>> for RoaringBitmap<Siz
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn bitand(mut self, rhs: Self) -> Self {
         self.intersect_with(&rhs);
         self
@@ -280,7 +271,6 @@ impl<'a, Size: ExtInt + Halveable> BitAnd<&'a RoaringBitmap<Size>> for RoaringBi
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn bitand(mut self, rhs: &'a Self) -> Self {
         self.intersect_with(rhs);
         self
@@ -305,7 +295,6 @@ impl<'a, Size: ExtInt + Halveable> BitAnd<RoaringBitmap<Size>> for &'a RoaringBi
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn bitand(self, mut rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         rhs.intersect_with(self);
         rhs
@@ -330,7 +319,6 @@ impl<'a, 'b, Size: ExtInt + Halveable> BitAnd<&'a RoaringBitmap<Size>> for &'b R
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn bitand(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         let mut result = self.clone();
         result.intersect_with(rhs);
@@ -356,7 +344,6 @@ impl<Size: ExtInt + Halveable> Sub<RoaringBitmap<Size>> for RoaringBitmap<Size> 
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn sub(mut self, rhs: Self) -> Self {
         self.difference_with(&rhs);
         self
@@ -381,7 +368,6 @@ impl<'a, Size: ExtInt + Halveable> Sub<&'a RoaringBitmap<Size>> for RoaringBitma
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn sub(mut self, rhs: &'a Self) -> Self {
         self.difference_with(rhs);
         self
@@ -406,7 +392,6 @@ impl<'a, 'b, Size: ExtInt + Halveable> Sub<&'a RoaringBitmap<Size>> for &'b Roar
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn sub(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         let mut result = self.clone();
         result.difference_with(rhs);
@@ -432,7 +417,6 @@ impl<Size: ExtInt + Halveable> BitXor<RoaringBitmap<Size>> for RoaringBitmap<Siz
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn bitxor(mut self, rhs: Self) -> Self {
         self.symmetric_difference_with(&rhs);
         self
@@ -457,7 +441,6 @@ impl<'a, Size: ExtInt + Halveable> BitXor<&'a RoaringBitmap<Size>> for RoaringBi
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn bitxor(mut self, rhs: &'a Self) -> Self {
         self.symmetric_difference_with(rhs);
         self
@@ -482,7 +465,6 @@ impl<'a, Size: ExtInt + Halveable> BitXor<RoaringBitmap<Size>> for &'a RoaringBi
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn bitxor(self, mut rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         rhs.symmetric_difference_with(self);
         rhs
@@ -507,7 +489,6 @@ impl<'a, 'b, Size: ExtInt + Halveable> BitXor<&'a RoaringBitmap<Size>> for &'b R
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    #[inline]
     fn bitxor(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         let mut result = self.clone();
         result.symmetric_difference_with(rhs);

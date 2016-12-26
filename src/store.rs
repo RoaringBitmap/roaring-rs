@@ -57,7 +57,6 @@ impl<Size: ExtInt> Store<Size> {
         }
     }
 
-    #[inline]
     pub fn contains(&self, index: Size) -> bool {
         match *self {
             Array(ref vec) => vec.binary_search(&index).is_ok(),
@@ -341,7 +340,6 @@ impl<Size: ExtInt> Store<Size> {
     }
 
     #[allow(needless_lifetimes)] // TODO: https://github.com/Manishearth/rust-clippy/issues/740
-    #[inline]
     pub fn iter(&self) -> Iter<Size> {
         match *self {
             Array(ref vec) => Iter::Array(vec.iter()),

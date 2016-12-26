@@ -36,7 +36,6 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// assert_eq!(rb1.is_disjoint(&rb2), false);
     ///
     /// ```
-    #[inline]
     pub fn is_disjoint(&self, other: &Self) -> bool {
         self.pairs(other)
             .filter(|&(c1, c2)| c1.is_some() && c2.is_some())
@@ -65,7 +64,6 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     ///
     /// assert_eq!(rb1.is_subset(&rb2), false);
     /// ```
-    #[inline]
     pub fn is_subset(&self, other: &Self) -> bool {
         for pair in self.pairs(other) {
             match pair {
@@ -78,7 +76,6 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     }
 
     /// Returns `true` if this set is a subset of `other`.
-    #[inline]
     pub fn is_subset_opt(&self, other: &Self) -> bool {
         let tv = &self.containers;
         let ov = &other.containers;
@@ -126,7 +123,6 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     ///
     /// assert_eq!(rb2.is_superset(&rb1), false);
     /// ```
-    #[inline]
     pub fn is_superset(&self, other: &Self) -> bool {
         other.is_subset(self)
     }

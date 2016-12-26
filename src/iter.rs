@@ -20,7 +20,6 @@ pub struct Iter<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::Ha
 }
 
 impl<'a, Size: ExtInt + Halveable> Iter<'a, Size> {
-    #[inline]
     #[doc(hidden)] // TODO: pub(crate)
     pub fn new(mut container_iters: slice::Iter<HalfContainer<Size>>) -> Iter<Size> {
         Iter {
@@ -31,7 +30,6 @@ impl<'a, Size: ExtInt + Halveable> Iter<'a, Size> {
 }
 
 impl<'a, Size: ExtInt + Halveable + 'a> Iter<'a, Size> where <Size as Halveable>::HalfSize: 'a {
-    #[inline]
     fn choose_next(&mut self) -> Next<'a, Size> {
         match self.inner_iter {
             Some(ref mut inner_iter) => match inner_iter.next() {
@@ -89,7 +87,6 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// assert_eq!(iter.next(), Some(6));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[inline]
     pub fn iter<'a>(&'a self) -> Iter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
         self.into_iter()
     }
@@ -98,14 +95,13 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
 impl<'a, Size: ExtInt + Halveable> IntoIterator for &'a RoaringBitmap<Size> {
     type Item = Size;
     type IntoIter = Iter<'a, Size>;
-    #[inline]
+
     fn into_iter(self) -> <Self as IntoIterator>::IntoIter {
         Iter::new(self.containers.iter())
     }
 }
 
 impl<Size: ExtInt + Halveable> FromIterator<Size> for RoaringBitmap<Size> {
-    #[inline]
     fn from_iter<I: IntoIterator<Item = Size>>(iterator: I) -> Self {
         let mut rb = RoaringBitmap::new();
         rb.extend(iterator);
@@ -114,7 +110,6 @@ impl<Size: ExtInt + Halveable> FromIterator<Size> for RoaringBitmap<Size> {
 }
 
 impl<'a, Size: ExtInt + Halveable + 'a> FromIterator<&'a Size> for RoaringBitmap<Size> {
-    #[inline]
     fn from_iter<I: IntoIterator<Item = &'a Size>>(iterator: I) -> Self {
         let mut rb = RoaringBitmap::new();
         rb.extend(iterator);
@@ -123,7 +118,6 @@ impl<'a, Size: ExtInt + Halveable + 'a> FromIterator<&'a Size> for RoaringBitmap
 }
 
 impl<Size: ExtInt + Halveable> Extend<Size> for RoaringBitmap<Size> {
-    #[inline]
     fn extend<I: IntoIterator<Item = Size>>(&mut self, iterator: I) {
         for value in iterator {
             self.insert(value);
@@ -132,7 +126,6 @@ impl<Size: ExtInt + Halveable> Extend<Size> for RoaringBitmap<Size> {
 }
 
 impl<'a, Size: ExtInt + Halveable + 'a> Extend<&'a Size> for RoaringBitmap<Size> {
-    #[inline]
     fn extend<I: IntoIterator<Item = &'a Size>>(&mut self, iterator: I) {
         for &value in iterator {
             self.insert(value);

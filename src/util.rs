@@ -9,9 +9,7 @@ use num::traits::{ PrimInt, Num };
 pub trait Halveable {
     type HalfSize: ExtInt;
 
-    #[inline]
     fn split(self) -> (Self::HalfSize, Self::HalfSize);
-    #[inline]
     fn join(h1: Self::HalfSize, h2: Self::HalfSize) -> Self;
 }
 
@@ -26,45 +24,35 @@ pub trait ExtInt:
 impl Halveable for usize {
     type HalfSize = u16;
 
-    #[inline]
-    fn split(self) -> (u16, u16) { ((self / 0x1_00_00usize) as u16, self as u16) }
-    #[inline]
-    fn join(h1: u16, h2: u16) -> usize { ((h1 as usize) * 0x1_00_00usize) + (h2 as usize) }
+    #[inline] fn split(self) -> (u16, u16) { ((self / 0x1_00_00usize) as u16, self as u16) }
+    #[inline] fn join(h1: u16, h2: u16) -> usize { ((h1 as usize) * 0x1_00_00usize) + (h2 as usize) }
 }
 
 #[cfg(target_pointer_width = "64")]
 impl Halveable for usize {
     type HalfSize = u32;
 
-    #[inline]
-    fn split(self) -> (u32, u32) { ((self / 0x1_00_00_00_00usize) as u32, self as u32) }
-    #[inline]
-    fn join(h1: u32, h2: u32) -> usize { ((h1 as usize) * 0x1_00_00_00_00usize) + (h2 as usize) }
+    #[inline] fn split(self) -> (u32, u32) { ((self / 0x1_00_00_00_00usize) as u32, self as u32) }
+    #[inline] fn join(h1: u32, h2: u32) -> usize { ((h1 as usize) * 0x1_00_00_00_00usize) + (h2 as usize) }
 }
 
 impl Halveable for u64 {
     type HalfSize = u32;
 
-    #[inline]
-    fn split(self) -> (u32, u32) { ((self / 0x1_00_00_00_00u64) as u32, self as u32) }
-    #[inline]
-    fn join(h1: u32, h2: u32) -> u64 { ((h1 as u64) * 0x1_00_00_00_00u64) + (h2 as u64) }
+    #[inline] fn split(self) -> (u32, u32) { ((self / 0x1_00_00_00_00u64) as u32, self as u32) }
+    #[inline] fn join(h1: u32, h2: u32) -> u64 { ((h1 as u64) * 0x1_00_00_00_00u64) + (h2 as u64) }
 }
 impl Halveable for u32 {
     type HalfSize = u16;
 
-    #[inline]
-    fn split(self) -> (u16, u16) { ((self / 0x1_00_00u32) as u16, self as u16) }
-    #[inline]
-    fn join(h1: u16, h2: u16) -> u32 { ((h1 as u32) * 0x1_00_00u32) + (h2 as u32) }
+    #[inline] fn split(self) -> (u16, u16) { ((self / 0x1_00_00u32) as u16, self as u16) }
+    #[inline] fn join(h1: u16, h2: u16) -> u32 { ((h1 as u32) * 0x1_00_00u32) + (h2 as u32) }
 }
 impl Halveable for u16 {
     type HalfSize = u8;
 
-    #[inline]
-    fn split(self) -> (u8, u8) { ((self / 0x1_00u16) as u8, self as u8) }
-    #[inline]
-    fn join(h1: u8, h2: u8) -> u16 { ((h1 as u16) * 0x1_00u16) + (h2 as u16) }
+    #[inline] fn split(self) -> (u8, u8) { ((self / 0x1_00u16) as u8, self as u8) }
+    #[inline] fn join(h1: u8, h2: u8) -> u16 { ((h1 as u16) * 0x1_00u16) + (h2 as u16) }
 }
 
 impl To64 for usize { #[inline] fn to64(self) -> u64 { self as u64 } }
