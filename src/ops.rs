@@ -193,6 +193,15 @@ impl<Size: ExtInt + Halveable> BitOr<RoaringBitmap<Size>> for RoaringBitmap<Size
     }
 }
 
+impl<'a, Size: ExtInt + Halveable> BitOr<&'a RoaringBitmap<Size>> for RoaringBitmap<Size> {
+    type Output = Self;
+
+    fn bitor(mut self, rhs: &'a Self) -> Self {
+        self.union_with(rhs);
+        self
+    }
+}
+
 impl<'a, Size: ExtInt + Halveable> BitOr<RoaringBitmap<Size>> for &'a RoaringBitmap<Size> {
     type Output = RoaringBitmap<Size>;
 
@@ -206,15 +215,6 @@ impl<'a, 'b, Size: ExtInt + Halveable> BitOr<&'a RoaringBitmap<Size>> for &'b Ro
 
     fn bitor(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
         self.clone() | rhs
-    }
-}
-
-impl<'a, Size: ExtInt + Halveable> BitOr<&'a RoaringBitmap<Size>> for RoaringBitmap<Size> {
-    type Output = Self;
-
-    fn bitor(mut self, rhs: &'a Self) -> Self {
-        self.union_with(rhs);
-        self
     }
 }
 
@@ -267,6 +267,14 @@ impl<'a, Size: ExtInt + Halveable> Sub<&'a RoaringBitmap<Size>> for RoaringBitma
     fn sub(mut self, rhs: &'a Self) -> Self {
         self.difference_with(rhs);
         self
+    }
+}
+
+impl<'a, Size: ExtInt + Halveable> Sub<RoaringBitmap<Size>> for &'a RoaringBitmap<Size> {
+    type Output = Self;
+
+    fn sub(mut self, rhs: Self) -> Self {
+        self.clone() - rhs
     }
 }
 
