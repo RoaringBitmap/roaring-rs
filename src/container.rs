@@ -1,6 +1,6 @@
 use std::fmt::{ Debug, Formatter, Result };
 
-use num::traits::{ One };
+use num::traits::One;
 
 use util::{ self, ExtInt };
 use store;

@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 
+use std::iter::Sum;
 use std::fmt::Debug;
 use std::num::ParseIntError;
 
@@ -19,7 +20,7 @@ pub trait From { fn from<T: To64>(n: T) -> Self; }
 pub trait BitLength { fn bits(self) -> usize; }
 pub trait ExtInt:
     PrimInt + Num<FromStrRadixErr=ParseIntError>
-    + To64 + From + BitLength + Debug { }
+    + To64 + From + BitLength + Debug + Sum<Self> { }
 
 #[cfg(target_pointer_width = "32")]
 impl Halveable for usize {

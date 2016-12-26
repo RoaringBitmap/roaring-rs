@@ -311,11 +311,7 @@ impl<Size: ExtInt> Store<Size> {
         match *self {
             Array(ref vec) => util::cast(vec.len()),
             Bitmap(ref bits) => {
-                let mut len = 0;
-                for bit in bits.iter() {
-                    len += bit.count_ones();
-                }
-                util::cast(len)
+                bits.iter().map(|bit| bit.count_ones() as u64).sum()
             },
         }
     }
