@@ -57,7 +57,6 @@ impl<Size: ExtInt> Store<Size> {
         }
     }
 
-    #[inline]
     pub fn contains(&self, index: Size) -> bool {
         match *self {
             Array(ref vec) => vec.binary_search(&index).is_ok(),
@@ -311,11 +310,7 @@ impl<Size: ExtInt> Store<Size> {
         match *self {
             Array(ref vec) => util::cast(vec.len()),
             Bitmap(ref bits) => {
-                let mut len = 0;
-                for bit in bits.iter() {
-                    len += bit.count_ones();
-                }
-                util::cast(len)
+                bits.iter().map(|bit| bit.count_ones() as u64).sum()
             },
         }
     }
@@ -345,7 +340,6 @@ impl<Size: ExtInt> Store<Size> {
     }
 
     #[allow(needless_lifetimes)] // TODO: https://github.com/Manishearth/rust-clippy/issues/740
-    #[inline]
     pub fn iter(&self) -> Iter<Size> {
         match *self {
             Array(ref vec) => Iter::Array(vec.iter()),

@@ -1,6 +1,8 @@
 use std::slice;
+use std::iter::FromIterator;
 
-use util::{ ExtInt, Halveable };
+use RoaringBitmap;
+use util::{ self, Halveable, ExtInt };
 use container::{ self, Container };
 
 type HalfContainer<Size> = Container<<Size as Halveable>::HalfSize>;
@@ -17,16 +19,16 @@ pub struct Iter<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::Ha
     container_iters: slice::Iter<'a, HalfContainer<Size>>,
 }
 
-#[inline]
-pub fn new<Size: ExtInt + Halveable>(mut container_iters: slice::Iter<HalfContainer<Size>>) -> Iter<Size> {
-    Iter {
-        inner_iter: container_iters.next().map(|i| i.iter()),
-        container_iters: container_iters,
+impl<'a, Size: ExtInt + Halveable> Iter<'a, Size> {
+    fn new(mut container_iters: slice::Iter<HalfContainer<Size>>) -> Iter<Size> {
+        Iter {
+            inner_iter: container_iters.next().map(|i| i.iter()),
+            container_iters: container_iters,
+        }
     }
 }
 
 impl<'a, Size: ExtInt + Halveable + 'a> Iter<'a, Size> where <Size as Halveable>::HalfSize: 'a {
-    #[inline]
     fn choose_next(&mut self) -> Next<'a, Size> {
         match self.inner_iter {
             Some(ref mut inner_iter) => match inner_iter.next() {
@@ -53,7 +55,7 @@ impl<'a, Size: ExtInt + Halveable + 'a> Iterator for Iter<'a, Size> where <Size 
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let next = self.container_iters.clone().map(|container| container.len() as usize).fold(0, |acc, len| acc + len);
+        let next = self.container_iters.clone().map(|container| util::cast::<_, usize>(container.len)).sum();
         match self.inner_iter {
             Some(ref inner_iter) => match inner_iter.size_hint() {
                 (min, max) => (next + min, max.map(|m| next + m)),
@@ -63,169 +65,69 @@ impl<'a, Size: ExtInt + Halveable + 'a> Iterator for Iter<'a, Size> where <Size 
     }
 }
 
-/// An iterator for `RoaringBitmap`.
-pub struct UnionIter<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::HalfSize : 'a {
-    current1: Option<Size>,
-    current2: Option<Size>,
-    iter1: Iter<'a, Size>,
-    iter2: Iter<'a, Size>,
-}
-
-pub mod union {
-    use util::{ ExtInt, Halveable };
-    use super::{ Iter, UnionIter };
-
-    #[inline]
-    pub fn new<'a, Size: ExtInt + Halveable + 'a>(mut iter1: Iter<'a, Size>, mut iter2: Iter<'a, Size>) -> UnionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
-        UnionIter {
-            current1: iter1.next(),
-            current2: iter2.next(),
-            iter1: iter1,
-            iter2: iter2,
-        }
+impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
+    /// Iterator over each value stored in the RoaringBitmap, guarantees values are ordered by value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
+    ///
+    /// rb.insert(1);
+    /// rb.insert(6);
+    /// rb.insert(4);
+    ///
+    /// let mut iter = rb.iter();
+    ///
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(4));
+    /// assert_eq!(iter.next(), Some(6));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    pub fn iter<'a>(&'a self) -> Iter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
+        self.into_iter()
     }
 }
 
-impl<'a, Size: ExtInt + Halveable + 'a> Iterator for UnionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
+impl<'a, Size: ExtInt + Halveable> IntoIterator for &'a RoaringBitmap<Size> {
     type Item = Size;
+    type IntoIter = Iter<'a, Size>;
 
-    fn next(&mut self) -> Option<Size> {
-        match (self.current1, self.current2) {
-            (None, None) => None,
-            (val, None) => { self.current1 = self.iter1.next(); val },
-            (None, val) => { self.current2 = self.iter2.next(); val },
-            (val1, val2) if val1 < val2 => { self.current1 = self.iter1.next(); val1 },
-            (val1, val2) if val1 > val2 => { self.current2 = self.iter2.next(); val2 },
-            (val1, val2) if val1 == val2 => {
-                self.current1 = self.iter1.next();
-                self.current2 = self.iter2.next();
-                val1
-            },
-            _ => panic!("Should not be possible to get here"),
+    fn into_iter(self) -> <Self as IntoIterator>::IntoIter {
+        Iter::new(self.containers.iter())
+    }
+}
+
+impl<Size: ExtInt + Halveable> FromIterator<Size> for RoaringBitmap<Size> {
+    fn from_iter<I: IntoIterator<Item = Size>>(iterator: I) -> Self {
+        let mut rb = RoaringBitmap::new();
+        rb.extend(iterator);
+        rb
+    }
+}
+
+impl<'a, Size: ExtInt + Halveable + 'a> FromIterator<&'a Size> for RoaringBitmap<Size> {
+    fn from_iter<I: IntoIterator<Item = &'a Size>>(iterator: I) -> Self {
+        let mut rb = RoaringBitmap::new();
+        rb.extend(iterator);
+        rb
+    }
+}
+
+impl<Size: ExtInt + Halveable> Extend<Size> for RoaringBitmap<Size> {
+    fn extend<I: IntoIterator<Item = Size>>(&mut self, iterator: I) {
+        for value in iterator {
+            self.insert(value);
         }
     }
 }
 
-/// An iterator for `RoaringBitmap`.
-pub struct IntersectionIter<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::HalfSize : 'a {
-    current1: Option<Size>,
-    current2: Option<Size>,
-    iter1: Iter<'a, Size>,
-    iter2: Iter<'a, Size>,
-}
-
-pub mod intersection {
-    use util::{ ExtInt, Halveable };
-    use super::{ Iter, IntersectionIter };
-
-    #[inline]
-    pub fn new<'a, Size: ExtInt + Halveable + 'a>(mut iter1: Iter<'a, Size>, mut iter2: Iter<'a, Size>) -> IntersectionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
-        IntersectionIter {
-            current1: iter1.next(),
-            current2: iter2.next(),
-            iter1: iter1,
-            iter2: iter2,
-        }
-    }
-}
-
-impl<'a, Size: ExtInt + Halveable + 'a> Iterator for IntersectionIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
-    type Item = Size;
-
-    fn next(&mut self) -> Option<Size> {
-        match (self.current1, self.current2) {
-            (None, _) | (_, None) => None,
-            (val1, val2) if val1 < val2 => { self.current1 = self.iter1.next(); self.next() },
-            (val1, val2) if val1 > val2 => { self.current2 = self.iter2.next(); self.next() },
-            (val1, val2) if val1 == val2 => {
-                self.current1 = self.iter1.next();
-                self.current2 = self.iter2.next();
-                val1
-            },
-            _ => panic!("Should not be possible to get here"),
-        }
-    }
-}
-
-/// An iterator for `RoaringBitmap`.
-pub struct DifferenceIter<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::HalfSize : 'a {
-    current1: Option<Size>,
-    current2: Option<Size>,
-    iter1: Iter<'a, Size>,
-    iter2: Iter<'a, Size>,
-}
-
-pub mod difference {
-    use util::{ ExtInt, Halveable };
-    use super::{ Iter, DifferenceIter };
-
-    #[inline]
-    pub fn new<'a, Size: ExtInt + Halveable + 'a>(mut iter1: Iter<'a, Size>, mut iter2: Iter<'a, Size>) -> DifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
-        DifferenceIter {
-            current1: iter1.next(),
-            current2: iter2.next(),
-            iter1: iter1,
-            iter2: iter2,
-        }
-    }
-}
-
-impl<'a, Size: ExtInt + Halveable + 'a> Iterator for DifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
-    type Item = Size;
-
-    fn next(&mut self) -> Option<Size> {
-        loop {
-            match (self.current1, self.current2) {
-                (None, _) | (_, None) => return None,
-                (val1, val2) if val1 < val2 => { self.current1 = self.iter1.next(); return val1; },
-                (val1, val2) if val1 > val2 => self.current2 = self.iter2.next(),
-                (val1, val2) if val1 == val2 => {
-                    self.current1 = self.iter1.next();
-                    self.current2 = self.iter2.next();
-                },
-                _ => panic!("Should not be possible to get here"),
-            }
-        }
-    }
-}
-
-/// An iterator for `RoaringBitmap`.
-pub struct SymmetricDifferenceIter<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::HalfSize : 'a {
-    current1: Option<Size>,
-    current2: Option<Size>,
-    iter1: Iter<'a, Size>,
-    iter2: Iter<'a, Size>,
-}
-
-pub mod symmetric_difference {
-    use util::{ ExtInt, Halveable };
-    use super::{ Iter, SymmetricDifferenceIter };
-
-    #[inline]
-    pub fn new<'a, Size: ExtInt + Halveable + 'a>(mut iter1: Iter<'a, Size>, mut iter2: Iter<'a, Size>) -> SymmetricDifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
-        SymmetricDifferenceIter {
-            current1: iter1.next(),
-            current2: iter2.next(),
-            iter1: iter1,
-            iter2: iter2,
-        }
-    }
-}
-
-impl<'a, Size: ExtInt + Halveable + 'a> Iterator for SymmetricDifferenceIter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
-    type Item = Size;
-
-    fn next(&mut self) -> Option<Size> {
-        match (self.current1, self.current2) {
-            (None, _) | (_, None) => None,
-            (val1, val2) if val1 < val2 => { self.current1 = self.iter1.next(); val1 },
-            (val1, val2) if val1 > val2 => { self.current2 = self.iter2.next(); val2 },
-            (val1, val2) if val1 == val2 => {
-                self.current1 = self.iter1.next();
-                self.current2 = self.iter2.next();
-                self.next()
-            },
-            _ => panic!("Should not be possible to get here"),
+impl<'a, Size: ExtInt + Halveable + 'a> Extend<&'a Size> for RoaringBitmap<Size> {
+    fn extend<I: IntoIterator<Item = &'a Size>>(&mut self, iterator: I) {
+        for &value in iterator {
+            self.insert(value);
         }
     }
 }
