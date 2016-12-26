@@ -1,22 +1,19 @@
 use std::slice;
 use std::cmp::Ordering;
+use std::iter::Peekable;
 
 use RoaringBitmap;
 use util::{ ExtInt, Halveable };
 use container::Container;
 
 type HalfContainer<Size> = Container<<Size as Halveable>::HalfSize>;
+type PeekableContainerIter<'a, Size> = Peekable<slice::Iter<'a, HalfContainer<Size>>>;
 
-struct Pairs<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::HalfSize : 'a {
-    iter1: slice::Iter<'a, HalfContainer<Size>>,
-    iter2: slice::Iter<'a, HalfContainer<Size>>,
-    current1: Option<&'a HalfContainer<Size>>,
-    current2: Option<&'a HalfContainer<Size>>,
-}
+struct Pairs<'a, Size: ExtInt + Halveable + 'a>(PeekableContainerIter<'a, Size>, PeekableContainerIter<'a, Size>) where <Size as Halveable>::HalfSize: 'a;
 
 impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     fn pairs<'a>(&'a self, other: &'a RoaringBitmap<Size>) -> Pairs<'a, Size> where <Size as Halveable>::HalfSize: 'a {
-        Pairs::new(self.containers.iter(), other.containers.iter())
+        Pairs(self.containers.iter().peekable(), other.containers.iter().peekable())
     }
 
     /// Returns true if the set has no elements in common with other. This is equivalent to
@@ -135,48 +132,27 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     }
 }
 
-impl<'a, Size: ExtInt + Halveable> Pairs<'a, Size> {
-    fn new(mut iter1: slice::Iter<'a, HalfContainer<Size>>, mut iter2: slice::Iter<'a, HalfContainer<Size>>) -> Pairs<'a, Size> {
-        let (current1, current2) = (iter1.next(), iter2.next());
-        Pairs {
-            iter1: iter1,
-            iter2: iter2,
-            current1: current1,
-            current2: current2,
-        }
-    }
-}
-
 impl<'a, Size: ExtInt + Halveable> Iterator for Pairs<'a, Size> {
     type Item = (Option<&'a HalfContainer<Size>>, Option<&'a HalfContainer<Size>>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        match (self.current1, self.current2) {
-            (None, None) => None,
-            (Some(c1), None) => {
-                self.current1 = self.iter1.next();
-                Some((Some(c1), None))
-            },
-            (None, Some(c2)) => {
-                self.current2 = self.iter2.next();
-                Some((None, Some(c2)))
-            },
+        enum Which { Left, Right, Both, None };
+        let which = match (self.0.peek(), self.1.peek()) {
+            (None, None) => Which::None,
+            (Some(_), None) => Which::Left,
+            (None, Some(_)) => Which::Right,
             (Some(c1), Some(c2)) => match (c1.key(), c2.key()) {
-                (key1, key2) if key1 == key2 => {
-                    self.current1 = self.iter1.next();
-                    self.current2 = self.iter2.next();
-                    Some((Some(c1), Some(c2)))
-                },
-                (key1, key2) if key1 < key2 => {
-                    self.current1 = self.iter1.next();
-                    Some((Some(c1), None))
-                },
-                (key1, key2) if key1 > key2 => {
-                    self.current2 = self.iter2.next();
-                    Some((None, Some(c2)))
-                },
-                (_, _) => panic!(),
+                (key1, key2) if key1 == key2 => Which::Both,
+                (key1, key2) if key1 < key2 => Which::Left,
+                (key1, key2) if key1 > key2 => Which::Right,
+                (_, _) => unreachable!(),
             }
+        };
+        match which {
+            Which::Left => Some((self.0.next(), None)),
+            Which::Right => Some((None, self.1.next())),
+            Which::Both => Some((self.0.next(), self.1.next())),
+            Which::None => None,
         }
     }
 }
