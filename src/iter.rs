@@ -95,15 +95,6 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     }
 }
 
-impl<Size: ExtInt + Halveable> IntoIterator for RoaringBitmap<Size> {
-    type Item = Size;
-    type IntoIter = <Vec<Size> as IntoIterator>::IntoIter;
-    #[inline]
-    fn into_iter(self) -> <Self as IntoIterator>::IntoIter {
-        Vec::from_iter(Iter::new(self.containers.iter())).into_iter()
-    }
-}
-
 impl<'a, Size: ExtInt + Halveable> IntoIterator for &'a RoaringBitmap<Size> {
     type Item = Size;
     type IntoIter = Iter<'a, Size>;
