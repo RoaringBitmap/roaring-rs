@@ -24,10 +24,10 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     pub fn union_with(&mut self, other: &Self) {
         for container in &other.containers {
             let key = container.key;
-            match self.containers.binary_search_by(|container| container.key.cmp(&key)) {
+            match self.containers.binary_search_by_key(&key, |c| c.key) {
                 Err(loc) => self.containers.insert(loc, container.clone()),
                 Ok(loc) => self.containers[loc].union_with(container),
-            };
+            }
         }
     }
 
@@ -50,10 +50,8 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
         let mut index = 0;
         while index < self.containers.len() {
             let key = self.containers[index].key;
-            match other.containers.binary_search_by(|container| container.key.cmp(&key)) {
-                Err(_) => {
-                    self.containers.remove(index);
-                },
+            match other.containers.binary_search_by_key(&key, |c| c.key) {
+                Err(_) => { self.containers.remove(index); }
                 Ok(loc) => {
                     self.containers[index].intersect_with(&other.containers[loc]);
                     if self.containers[index].len == Zero::zero() {
@@ -61,8 +59,8 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
                     } else {
                         index += 1;
                     }
-                },
-            };
+                }
+            }
         }
     }
 
@@ -85,7 +83,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
         let mut index = 0;
         while index < self.containers.len() {
             let key = self.containers[index].key;
-            match other.containers.binary_search_by(|container| container.key.cmp(&key)) {
+            match other.containers.binary_search_by_key(&key, |c| c.key) {
                 Ok(loc) => {
                     self.containers[index].difference_with(&other.containers[loc]);
                     if self.containers[index].len == Zero::zero() {
@@ -94,10 +92,8 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
                         index += 1;
                     }
                 },
-                _ => {
-                    index += 1;
-                }
-            };
+                _ => { index += 1; }
+            }
         }
     }
 
@@ -119,15 +115,15 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     pub fn symmetric_difference_with(&mut self, other: &Self) {
         for container in &other.containers {
             let key = container.key;
-            match self.containers.binary_search_by(|container| container.key.cmp(&key)) {
-                Err(loc) => self.containers.insert(loc, (*container).clone()),
+            match self.containers.binary_search_by_key(&key, |c| c.key) {
+                Err(loc) => self.containers.insert(loc, container.clone()),
                 Ok(loc) => {
                     self.containers[loc].symmetric_difference_with(container);
                     if self.containers[loc].len == Zero::zero() {
                         self.containers.remove(loc);
                     }
                 }
-            };
+            }
         }
     }
 }
@@ -174,9 +170,8 @@ impl<'a, Size: ExtInt + Halveable> BitOr<RoaringBitmap<Size>> for &'a RoaringBit
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    fn bitor(self, mut rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
-        rhs.union_with(self);
-        rhs
+    fn bitor(self, rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
+        rhs | self
     }
 }
 
@@ -199,9 +194,7 @@ impl<'a, 'b, Size: ExtInt + Halveable> BitOr<&'a RoaringBitmap<Size>> for &'b Ro
     /// assert_eq!(rb3, rb4);
     /// ```
     fn bitor(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
-        let mut result = self.clone();
-        result.union_with(rhs);
-        result
+        self.clone() | rhs
     }
 }
 
@@ -295,9 +288,8 @@ impl<'a, Size: ExtInt + Halveable> BitAnd<RoaringBitmap<Size>> for &'a RoaringBi
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    fn bitand(self, mut rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
-        rhs.intersect_with(self);
-        rhs
+    fn bitand(self, rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
+        rhs & self
     }
 }
 
@@ -320,9 +312,7 @@ impl<'a, 'b, Size: ExtInt + Halveable> BitAnd<&'a RoaringBitmap<Size>> for &'b R
     /// assert_eq!(rb3, rb4);
     /// ```
     fn bitand(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
-        let mut result = self.clone();
-        result.intersect_with(rhs);
-        result
+        self.clone() & rhs
     }
 }
 
@@ -393,9 +383,7 @@ impl<'a, 'b, Size: ExtInt + Halveable> Sub<&'a RoaringBitmap<Size>> for &'b Roar
     /// assert_eq!(rb3, rb4);
     /// ```
     fn sub(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
-        let mut result = self.clone();
-        result.difference_with(rhs);
-        result
+        self.clone() - rhs
     }
 }
 
@@ -465,9 +453,8 @@ impl<'a, Size: ExtInt + Halveable> BitXor<RoaringBitmap<Size>> for &'a RoaringBi
     ///
     /// assert_eq!(rb3, rb4);
     /// ```
-    fn bitxor(self, mut rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
-        rhs.symmetric_difference_with(self);
-        rhs
+    fn bitxor(self, rhs: RoaringBitmap<Size>) -> RoaringBitmap<Size> {
+        rhs ^ self
     }
 }
 
@@ -490,9 +477,6 @@ impl<'a, 'b, Size: ExtInt + Halveable> BitXor<&'a RoaringBitmap<Size>> for &'b R
     /// assert_eq!(rb3, rb4);
     /// ```
     fn bitxor(self, rhs: &'a RoaringBitmap<Size>) -> RoaringBitmap<Size> {
-        let mut result = self.clone();
-        result.symmetric_difference_with(rhs);
-        result
+        self.clone() ^ rhs
     }
 }
-

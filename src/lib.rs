@@ -79,7 +79,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```
     pub fn insert(&mut self, value: Size) -> bool {
         let (key, index) = value.split();
-        let container = match self.containers.binary_search_by(|container| container.key.cmp(&key)) {
+        let container = match self.containers.binary_search_by_key(&key, |c| c.key) {
             Ok(loc) => &mut self.containers[loc],
             Err(loc) => {
                 self.containers.insert(loc, Container::new(key));
@@ -104,7 +104,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```
     pub fn remove(&mut self, value: Size) -> bool {
         let (key, index) = value.split();
-        match self.containers.binary_search_by(|container| container.key.cmp(&key)) {
+        match self.containers.binary_search_by_key(&key, |c| c.key) {
             Ok(loc) => {
                 if self.containers[loc].remove(index) {
                     if self.containers[loc].len == Zero::zero() {
@@ -134,7 +134,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```
     pub fn contains(&self, value: Size) -> bool {
         let (key, index) = value.split();
-        match self.containers.binary_search_by(|container| container.key.cmp(&key)) {
+        match self.containers.binary_search_by_key(&key, |c| c.key) {
             Ok(loc) => self.containers[loc].contains(index),
             Err(_) => false,
         }
