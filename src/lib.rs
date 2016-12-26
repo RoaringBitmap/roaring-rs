@@ -20,7 +20,6 @@ mod iter;
 mod store;
 mod container;
 mod util;
-mod other_iter;
 mod serialization;
 mod fmt;
 mod cmp;
@@ -31,7 +30,6 @@ use util::{ Halveable, ExtInt };
 use container::Container;
 
 pub use iter::Iter;
-pub use other_iter::{ UnionIter, IntersectionIter, DifferenceIter, SymmetricDifferenceIter };
 
 /// A compressed bitmap using the [Roaring bitmap compression scheme](http://roaringbitmap.org).
 ///
