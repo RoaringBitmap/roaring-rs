@@ -35,8 +35,8 @@ impl RoaringBitmap<u32> {
         try!(writer.write_u32::<LittleEndian>(self.containers.len() as u32));
 
         for container in &self.containers {
-            try!(writer.write_u16::<LittleEndian>(container.key()));
-            try!(writer.write_u16::<LittleEndian>((container.len() - 1) as u16));
+            try!(writer.write_u16::<LittleEndian>(container.key));
+            try!(writer.write_u16::<LittleEndian>((container.len - 1) as u16));
         }
 
         let mut offset = 8 + 8 * self.containers.len() as u32;

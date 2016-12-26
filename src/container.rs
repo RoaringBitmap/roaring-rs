@@ -30,12 +30,6 @@ impl<Size: ExtInt> Container<Size> {
 
 impl<Size: ExtInt> Container<Size> {
     #[inline]
-    pub fn key(&self) -> Size { self.key }
-
-    #[inline]
-    pub fn len(&self) -> u64 { self.len }
-
-    #[inline]
     pub fn insert(&mut self, index: Size) -> bool {
         if self.store.insert(index) {
             self.len += 1;
@@ -78,11 +72,7 @@ impl<Size: ExtInt> Container<Size> {
 
     #[inline]
     pub fn is_subset(&self, other: &Self) -> bool {
-        if self.len > other.len {
-            false
-        } else {
-            self.store.is_subset(&other.store)
-        }
+        self.len <= other.len && self.store.is_subset(&other.store)
     }
 
     #[inline]
@@ -150,6 +140,6 @@ impl<'a, Size: ExtInt> Iterator for Iter<'a, Size> {
 impl<Size: ExtInt + Debug> Debug for Container<Size> {
     #[inline]
     fn fmt(&self, formatter: &mut Formatter) -> Result {
-        format!("Container<{:?} @ {:?}>", self.len(), self.key()).fmt(formatter)
+        format!("Container<{:?} @ {:?}>", self.len, self.key).fmt(formatter)
     }
 }

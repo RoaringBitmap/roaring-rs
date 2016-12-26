@@ -79,7 +79,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```
     pub fn insert(&mut self, value: Size) -> bool {
         let (key, index) = value.split();
-        let container = match self.containers.binary_search_by(|container| container.key().cmp(&key)) {
+        let container = match self.containers.binary_search_by(|container| container.key.cmp(&key)) {
             Ok(loc) => &mut self.containers[loc],
             Err(loc) => {
                 self.containers.insert(loc, Container::new(key));
@@ -104,10 +104,10 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```
     pub fn remove(&mut self, value: Size) -> bool {
         let (key, index) = value.split();
-        match self.containers.binary_search_by(|container| container.key().cmp(&key)) {
+        match self.containers.binary_search_by(|container| container.key.cmp(&key)) {
             Ok(loc) => {
                 if self.containers[loc].remove(index) {
-                    if self.containers[loc].len() == Zero::zero() {
+                    if self.containers[loc].len == Zero::zero() {
                         self.containers.remove(loc);
                     }
                     true
@@ -134,7 +134,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```
     pub fn contains(&self, value: Size) -> bool {
         let (key, index) = value.split();
-        match self.containers.binary_search_by(|container| container.key().cmp(&key)) {
+        match self.containers.binary_search_by(|container| container.key.cmp(&key)) {
             Ok(loc) => self.containers[loc].contains(index),
             Err(_) => false,
         }
@@ -198,17 +198,17 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     pub fn len(&self) -> Size {
         self.containers
             .iter()
-            .map(|container| util::cast(container.len()))
+            .map(|container| util::cast(container.len))
             .sum()
     }
 
     fn min(&self) -> Option<Size> {
         self.containers.first()
-            .map(|head| Halveable::join(head.key(), head.min()))
+            .map(|head| Halveable::join(head.key, head.min()))
     }
 
     fn max(&self) -> Option<Size> {
         self.containers.last()
-            .map(|tail| Halveable::join(tail.key(), tail.max()))
+            .map(|tail| Halveable::join(tail.key, tail.max()))
     }
 }

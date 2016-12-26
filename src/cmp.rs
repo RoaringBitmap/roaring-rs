@@ -90,7 +90,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
         loop {
             let tc = &tv[ti];
             let oc = &ov[oi];
-            match tc.key().cmp(&oc.key()) {
+            match tc.key.cmp(&oc.key) {
                 Ordering::Less => { return false; },
                 Ordering::Equal => {
                     if !tc.is_subset(oc) { return false; }
@@ -141,7 +141,7 @@ impl<'a, Size: ExtInt + Halveable> Iterator for Pairs<'a, Size> {
             (None, None) => Which::None,
             (Some(_), None) => Which::Left,
             (None, Some(_)) => Which::Right,
-            (Some(c1), Some(c2)) => match (c1.key(), c2.key()) {
+            (Some(c1), Some(c2)) => match (c1.key, c2.key) {
                 (key1, key2) if key1 == key2 => Which::Both,
                 (key1, key2) if key1 < key2 => Which::Left,
                 (key1, key2) if key1 > key2 => Which::Right,

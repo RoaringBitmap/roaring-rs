@@ -58,7 +58,7 @@ impl<'a, Size: ExtInt + Halveable + 'a> Iterator for Iter<'a, Size> where <Size 
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let next = self.container_iters.clone().map(|container| util::cast::<_, usize>(container.len())).sum();
+        let next = self.container_iters.clone().map(|container| util::cast::<_, usize>(container.len)).sum();
         match self.inner_iter {
             Some(ref inner_iter) => match inner_iter.size_hint() {
                 (min, max) => (next + min, max.map(|m| next + m)),

@@ -24,8 +24,8 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     #[inline]
     pub fn union_with(&mut self, other: &Self) {
         for container in &other.containers {
-            let key = container.key();
-            match self.containers.binary_search_by(|container| container.key().cmp(&key)) {
+            let key = container.key;
+            match self.containers.binary_search_by(|container| container.key.cmp(&key)) {
                 Err(loc) => self.containers.insert(loc, container.clone()),
                 Ok(loc) => self.containers[loc].union_with(container),
             };
@@ -51,14 +51,14 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     pub fn intersect_with(&mut self, other: &Self) {
         let mut index = 0;
         while index < self.containers.len() {
-            let key = self.containers[index].key();
-            match other.containers.binary_search_by(|container| container.key().cmp(&key)) {
+            let key = self.containers[index].key;
+            match other.containers.binary_search_by(|container| container.key.cmp(&key)) {
                 Err(_) => {
                     self.containers.remove(index);
                 },
                 Ok(loc) => {
                     self.containers[index].intersect_with(&other.containers[loc]);
-                    if self.containers[index].len() == Zero::zero() {
+                    if self.containers[index].len == Zero::zero() {
                         self.containers.remove(index);
                     } else {
                         index += 1;
@@ -87,11 +87,11 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     pub fn difference_with(&mut self, other: &Self) {
         let mut index = 0;
         while index < self.containers.len() {
-            let key = self.containers[index].key();
-            match other.containers.binary_search_by(|container| container.key().cmp(&key)) {
+            let key = self.containers[index].key;
+            match other.containers.binary_search_by(|container| container.key.cmp(&key)) {
                 Ok(loc) => {
                     self.containers[index].difference_with(&other.containers[loc]);
-                    if self.containers[index].len() == Zero::zero() {
+                    if self.containers[index].len == Zero::zero() {
                         self.containers.remove(index);
                     } else {
                         index += 1;
@@ -122,12 +122,12 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     #[inline]
     pub fn symmetric_difference_with(&mut self, other: &Self) {
         for container in &other.containers {
-            let key = container.key();
-            match self.containers.binary_search_by(|container| container.key().cmp(&key)) {
+            let key = container.key;
+            match self.containers.binary_search_by(|container| container.key.cmp(&key)) {
                 Err(loc) => self.containers.insert(loc, (*container).clone()),
                 Ok(loc) => {
                     self.containers[loc].symmetric_difference_with(container);
-                    if self.containers[loc].len() == Zero::zero() {
+                    if self.containers[loc].len == Zero::zero() {
                         self.containers.remove(loc);
                     }
                 }
