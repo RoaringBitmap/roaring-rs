@@ -12,7 +12,6 @@
 
 #![allow(unknown_lints)] // For clippy
 
-extern crate num;
 extern crate byteorder;
 
 mod ops;
@@ -24,9 +23,6 @@ mod serialization;
 mod fmt;
 mod cmp;
 
-use num::Zero;
-
-use util::{ Halveable, ExtInt };
 use container::Container;
 
 pub use iter::Iter;
@@ -38,7 +34,7 @@ pub use iter::Iter;
 /// ```rust
 /// use roaring::RoaringBitmap;
 ///
-/// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
+/// let mut rb: RoaringBitmap = RoaringBitmap::new();
 ///
 /// // insert all primes less than 10
 /// rb.insert(2);
@@ -48,18 +44,18 @@ pub use iter::Iter;
 /// println!("total bits set to true: {}", rb.len());
 /// ```
 #[derive(PartialEq, Clone)]
-pub struct RoaringBitmap<Size: ExtInt + Halveable> where <Size as Halveable>::HalfSize: ExtInt {
-    containers: Vec<Container<<Size as Halveable>::HalfSize>>,
+pub struct RoaringBitmap {
+    containers: Vec<Container>,
 }
 
-impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
+impl RoaringBitmap {
     /// Creates an empty `RoaringBitmap`.
     ///
     /// # Examples
     ///
     /// ```rust
     /// use roaring::RoaringBitmap;
-    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb: RoaringBitmap = RoaringBitmap::new();
     /// ```
     pub fn new() -> Self {
         RoaringBitmap { containers: Vec::new() }
@@ -72,13 +68,13 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb: RoaringBitmap = RoaringBitmap::new();
     /// assert_eq!(rb.insert(3), true);
     /// assert_eq!(rb.insert(3), false);
     /// assert_eq!(rb.contains(3), true);
     /// ```
-    pub fn insert(&mut self, value: Size) -> bool {
-        let (key, index) = value.split();
+    pub fn insert(&mut self, value: u32) -> bool {
+        let (key, index) = util::split(value);
         let container = match self.containers.binary_search_by_key(&key, |c| c.key) {
             Ok(loc) => &mut self.containers[loc],
             Err(loc) => {
@@ -96,18 +92,18 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb: RoaringBitmap = RoaringBitmap::new();
     /// rb.insert(3);
     /// assert_eq!(rb.remove(3), true);
     /// assert_eq!(rb.remove(3), false);
     /// assert_eq!(rb.contains(3), false);
     /// ```
-    pub fn remove(&mut self, value: Size) -> bool {
-        let (key, index) = value.split();
+    pub fn remove(&mut self, value: u32) -> bool {
+        let (key, index) = util::split(value);
         match self.containers.binary_search_by_key(&key, |c| c.key) {
             Ok(loc) => {
                 if self.containers[loc].remove(index) {
-                    if self.containers[loc].len == Zero::zero() {
+                    if self.containers[loc].len == 0 {
                         self.containers.remove(loc);
                     }
                     true
@@ -126,14 +122,14 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb = RoaringBitmap::new();
     /// rb.insert(1);
     /// assert_eq!(rb.contains(0), false);
     /// assert_eq!(rb.contains(1), true);
     /// assert_eq!(rb.contains(100), false);
     /// ```
-    pub fn contains(&self, value: Size) -> bool {
-        let (key, index) = value.split();
+    pub fn contains(&self, value: u32) -> bool {
+        let (key, index) = util::split(value);
         match self.containers.binary_search_by_key(&key, |c| c.key) {
             Ok(loc) => self.containers[loc].contains(index),
             Err(_) => false,
@@ -147,7 +143,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb: RoaringBitmap = RoaringBitmap::new();
     /// rb.insert(1);
     /// assert_eq!(rb.contains(1), true);
     /// rb.clear();
@@ -164,7 +160,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb: RoaringBitmap = RoaringBitmap::new();
     /// assert_eq!(rb.is_empty(), true);
     ///
     /// rb.insert(3);
@@ -176,16 +172,12 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
 
     /// Returns the number of distinct integers added to the set.
     ///
-    /// ## Warning
-    ///
-    /// Will overflow (panic in debug mode) if the set is 100% full.
-    ///
     /// # Examples
     ///
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb: RoaringBitmap = RoaringBitmap::new();
     /// assert_eq!(rb.len(), 0);
     ///
     /// rb.insert(3);
@@ -195,20 +187,26 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// rb.insert(4);
     /// assert_eq!(rb.len(), 2);
     /// ```
-    pub fn len(&self) -> Size {
+    pub fn len(&self) -> u64 {
         self.containers
             .iter()
-            .map(|container| util::cast(container.len))
+            .map(|container| container.len)
             .sum()
     }
 
-    fn min(&self) -> Option<Size> {
+    fn min(&self) -> Option<u32> {
         self.containers.first()
-            .map(|head| Halveable::join(head.key, head.min()))
+            .map(|head| util::join(head.key, head.min()))
     }
 
-    fn max(&self) -> Option<Size> {
+    fn max(&self) -> Option<u32> {
         self.containers.last()
-            .map(|tail| Halveable::join(tail.key, tail.max()))
+            .map(|tail| util::join(tail.key, tail.max()))
+    }
+}
+
+impl Default for RoaringBitmap {
+    fn default() -> RoaringBitmap {
+        RoaringBitmap::new()
     }
 }

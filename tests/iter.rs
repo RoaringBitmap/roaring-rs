@@ -5,7 +5,7 @@ use std::iter::FromIterator;
 
 #[test]
 fn array() {
-    let original = RoaringBitmap::from_iter(0..2000u32);
+    let original = RoaringBitmap::from_iter(0..2000);
     let clone = RoaringBitmap::from_iter(&original);
 
     assert_eq!(clone, original);
@@ -13,7 +13,7 @@ fn array() {
 
 #[test]
 fn bitmap() {
-    let original = RoaringBitmap::from_iter(0..6000u32);
+    let original = RoaringBitmap::from_iter(0..6000);
     let clone = RoaringBitmap::from_iter(&original);
 
     assert_eq!(clone, original);
@@ -21,7 +21,7 @@ fn bitmap() {
 
 #[test]
 fn arrays() {
-    let original = RoaringBitmap::from_iter((0..2000u32).chain(1000000..1002000).chain(2000000..2001000));
+    let original = RoaringBitmap::from_iter((0..2000).chain(1000000..1002000).chain(2000000..2001000));
     let clone = RoaringBitmap::from_iter(&original);
 
     assert_eq!(clone, original);
@@ -29,7 +29,7 @@ fn arrays() {
 
 #[test]
 fn bitmaps() {
-    let original = RoaringBitmap::from_iter((0..6000u32).chain(1000000..1012000).chain(2000000..2010000));
+    let original = RoaringBitmap::from_iter((0..6000).chain(1000000..1012000).chain(2000000..2010000));
     let clone = RoaringBitmap::from_iter(&original);
 
     assert_eq!(clone, original);
