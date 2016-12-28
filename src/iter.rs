@@ -75,7 +75,7 @@ impl RoaringBitmap {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb: RoaringBitmap = RoaringBitmap::new();
+    /// let mut rb = RoaringBitmap::new();
     ///
     /// rb.insert(1);
     /// rb.insert(6);

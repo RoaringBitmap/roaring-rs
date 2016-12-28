@@ -34,7 +34,7 @@ pub use iter::Iter;
 /// ```rust
 /// use roaring::RoaringBitmap;
 ///
-/// let mut rb: RoaringBitmap = RoaringBitmap::new();
+/// let mut rb = RoaringBitmap::new();
 ///
 /// // insert all primes less than 10
 /// rb.insert(2);
@@ -55,7 +55,7 @@ impl RoaringBitmap {
     ///
     /// ```rust
     /// use roaring::RoaringBitmap;
-    /// let mut rb: RoaringBitmap = RoaringBitmap::new();
+    /// let mut rb = RoaringBitmap::new();
     /// ```
     pub fn new() -> Self {
         RoaringBitmap { containers: Vec::new() }
@@ -68,7 +68,7 @@ impl RoaringBitmap {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb: RoaringBitmap = RoaringBitmap::new();
+    /// let mut rb = RoaringBitmap::new();
     /// assert_eq!(rb.insert(3), true);
     /// assert_eq!(rb.insert(3), false);
     /// assert_eq!(rb.contains(3), true);
@@ -92,7 +92,7 @@ impl RoaringBitmap {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb: RoaringBitmap = RoaringBitmap::new();
+    /// let mut rb = RoaringBitmap::new();
     /// rb.insert(3);
     /// assert_eq!(rb.remove(3), true);
     /// assert_eq!(rb.remove(3), false);
@@ -143,7 +143,7 @@ impl RoaringBitmap {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb: RoaringBitmap = RoaringBitmap::new();
+    /// let mut rb = RoaringBitmap::new();
     /// rb.insert(1);
     /// assert_eq!(rb.contains(1), true);
     /// rb.clear();
@@ -160,7 +160,7 @@ impl RoaringBitmap {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb: RoaringBitmap = RoaringBitmap::new();
+    /// let mut rb = RoaringBitmap::new();
     /// assert_eq!(rb.is_empty(), true);
     ///
     /// rb.insert(3);
@@ -177,7 +177,7 @@ impl RoaringBitmap {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb: RoaringBitmap = RoaringBitmap::new();
+    /// let mut rb = RoaringBitmap::new();
     /// assert_eq!(rb.len(), 0);
     ///
     /// rb.insert(3);

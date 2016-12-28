@@ -19,8 +19,8 @@ impl RoaringBitmap {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1: RoaringBitmap = RoaringBitmap::new();
-    /// let mut rb2: RoaringBitmap = RoaringBitmap::new();
+    /// let mut rb1 = RoaringBitmap::new();
+    /// let mut rb2 = RoaringBitmap::new();
     ///
     /// rb1.insert(1);
     ///
@@ -44,8 +44,8 @@ impl RoaringBitmap {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1: RoaringBitmap = RoaringBitmap::new();
-    /// let mut rb2: RoaringBitmap = RoaringBitmap::new();
+    /// let mut rb1 = RoaringBitmap::new();
+    /// let mut rb2 = RoaringBitmap::new();
     ///
     /// rb1.insert(1);
     ///
@@ -77,8 +77,8 @@ impl RoaringBitmap {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1: RoaringBitmap = RoaringBitmap::new();
-    /// let mut rb2: RoaringBitmap = RoaringBitmap::new();
+    /// let mut rb1 = RoaringBitmap::new();
+    /// let mut rb2 = RoaringBitmap::new();
     ///
     /// rb1.insert(1);
     ///
