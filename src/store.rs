@@ -4,12 +4,18 @@ use std::cmp::Ordering::{ Equal, Less, Greater };
 use self::Store::{ Array, Bitmap };
 pub enum Store {
     Array(Vec<u16>),
-    Bitmap(Box<[u64]>),
+    Bitmap(Box<[u64; 1024]>),
 }
 
 pub enum Iter<'a> {
     Array(slice::Iter<'a, u16>),
     Bitmap(BitmapIter<'a>),
+}
+
+pub struct BitmapIter<'a> {
+    key: usize,
+    bit: usize,
+    bits: &'a [u64; 1024],
 }
 
 impl Store {
@@ -131,8 +137,7 @@ impl Store {
     pub fn to_bitmap(&self) -> Self {
         match *self {
             Array(ref vec) => {
-                let count = u16::max_value() as usize / 64 + 1;
-                let mut bits = vec![0; count].into_boxed_slice();
+                let mut bits = Box::new([0; 1024]);
                 for &index in vec {
                     bits[key(index)] |= 1 << bit(index);
                 }
@@ -336,7 +341,7 @@ impl Store {
     pub fn iter(&self) -> Iter {
         match *self {
             Array(ref vec) => Iter::Array(vec.iter()),
-            Bitmap(ref bits) => Iter::Bitmap(BitmapIter::new(bits)),
+            Bitmap(ref bits) => Iter::Bitmap(BitmapIter::new(&**bits)),
         }
     }
 
@@ -361,20 +366,14 @@ impl Clone for Store {
         match *self {
             Array(ref vec) => Array(vec.clone()),
             Bitmap(ref bits) => {
-                Bitmap(bits.iter().cloned().collect::<Vec<u64>>().into_boxed_slice())
+                Bitmap(Box::new(**bits))
             },
         }
     }
 }
 
-pub struct BitmapIter<'a> {
-    key: usize,
-    bit: usize,
-    bits: &'a Box<[u64]>,
-}
-
 impl<'a> BitmapIter<'a> {
-    fn new(bits: &'a Box<[u64]>) -> BitmapIter<'a> {
+    fn new(bits: &'a [u64; 1024]) -> BitmapIter<'a> {
         BitmapIter {
             key: 0,
             bit: 0,
