@@ -1,35 +1,33 @@
-use std::fmt::{ Debug, Formatter, Result };
+use std::fmt;
 
-use num::traits::One;
+use store::{ self, Store };
 
-use util::{ self, ExtInt };
-use store;
-use store::Store::{ self, Array, Bitmap };
+const ARRAY_LIMIT: u64 = 4096;
 
 #[derive(PartialEq, Clone)]
-pub struct Container<Size: ExtInt> {
-    pub key: Size,
+pub struct Container {
+    pub key: u16,
     pub len: u64,
-    pub store: Store<Size>,
+    pub store: Store,
 }
 
-pub struct Iter<'a, Size: ExtInt + 'a> {
-    pub key: Size,
-    inner: store::Iter<'a, Size>,
+pub struct Iter<'a> {
+    pub key: u16,
+    inner: store::Iter<'a>,
 }
 
-impl<Size: ExtInt> Container<Size> {
-    pub fn new(key: Size) -> Container<Size> {
+impl Container {
+    pub fn new(key: u16) -> Container {
         Container {
             key: key,
             len: 0,
-            store: Array(Vec::new()),
+            store: Store::Array(Vec::new()),
         }
     }
 }
 
-impl<Size: ExtInt> Container<Size> {
-    pub fn insert(&mut self, index: Size) -> bool {
+impl Container {
+    pub fn insert(&mut self, index: u16) -> bool {
         if self.store.insert(index) {
             self.len += 1;
             self.ensure_correct_store();
@@ -39,7 +37,7 @@ impl<Size: ExtInt> Container<Size> {
         }
     }
 
-    pub fn remove(&mut self, index: Size) -> bool {
+    pub fn remove(&mut self, index: u16) -> bool {
         if self.store.remove(index) {
             self.len -= 1;
             self.ensure_correct_store();
@@ -49,12 +47,11 @@ impl<Size: ExtInt> Container<Size> {
         }
     }
 
-    pub fn contains(&self, index: Size) -> bool {
+    pub fn contains(&self, index: u16) -> bool {
         self.store.contains(index)
     }
 
-    #[allow(needless_lifetimes)] // TODO: https://github.com/Manishearth/rust-clippy/issues/740
-    pub fn iter<'a>(&'a self) -> Iter<Size> {
+    pub fn iter(&self) -> Iter {
         Iter {
             key: self.key,
             inner: self.store.iter()
@@ -93,19 +90,18 @@ impl<Size: ExtInt> Container<Size> {
         self.ensure_correct_store();
     }
 
-    pub fn min(&self) -> Size {
+    pub fn min(&self) -> u16 {
         self.store.min()
     }
 
-    pub fn max(&self) -> Size {
+    pub fn max(&self) -> u16 {
         self.store.max()
     }
 
     fn ensure_correct_store(&mut self) {
-        let limit = util::cast(<Size as One>::one().rotate_right(4));
         let new_store = match (&self.store, self.len) {
-            (store @ &Bitmap(..), len) if len <= limit => Some(store.to_array()),
-            (store @ &Array(..), len) if len > limit => Some(store.to_bitmap()),
+            (store @ &Store::Bitmap(..), len) if len <= ARRAY_LIMIT => Some(store.to_array()),
+            (store @ &Store::Array(..), len) if len > ARRAY_LIMIT => Some(store.to_bitmap()),
             _ => None,
         };
         if let Some(new_store) = new_store {
@@ -114,9 +110,9 @@ impl<Size: ExtInt> Container<Size> {
     }
 }
 
-impl<'a, Size: ExtInt> Iterator for Iter<'a, Size> {
-    type Item = Size;
-    fn next(&mut self) -> Option<Size> {
+impl<'a> Iterator for Iter<'a> {
+    type Item = u16;
+    fn next(&mut self) -> Option<u16> {
         self.inner.next()
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -124,8 +120,8 @@ impl<'a, Size: ExtInt> Iterator for Iter<'a, Size> {
     }
 }
 
-impl<Size: ExtInt + Debug> Debug for Container<Size> {
-    fn fmt(&self, formatter: &mut Formatter) -> Result {
+impl fmt::Debug for Container {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         format!("Container<{:?} @ {:?}>", self.len, self.key).fmt(formatter)
     }
 }

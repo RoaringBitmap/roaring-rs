@@ -2,16 +2,12 @@ use std::slice;
 use std::iter::Peekable;
 
 use RoaringBitmap;
-use util::{ ExtInt, Halveable };
 use container::Container;
 
-type HalfContainer<Size> = Container<<Size as Halveable>::HalfSize>;
-type PeekableContainerIter<'a, Size> = Peekable<slice::Iter<'a, HalfContainer<Size>>>;
+struct Pairs<'a>(Peekable<slice::Iter<'a, Container>>, Peekable<slice::Iter<'a, Container>>);
 
-struct Pairs<'a, Size: ExtInt + Halveable + 'a>(PeekableContainerIter<'a, Size>, PeekableContainerIter<'a, Size>) where <Size as Halveable>::HalfSize: 'a;
-
-impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
-    fn pairs<'a>(&'a self, other: &'a RoaringBitmap<Size>) -> Pairs<'a, Size> where <Size as Halveable>::HalfSize: 'a {
+impl RoaringBitmap {
+    fn pairs<'a>(&'a self, other: &'a RoaringBitmap) -> Pairs<'a> {
         Pairs(self.containers.iter().peekable(), other.containers.iter().peekable())
     }
 
@@ -23,8 +19,8 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1: RoaringBitmap<u32> = RoaringBitmap::new();
-    /// let mut rb2: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb1 = RoaringBitmap::new();
+    /// let mut rb2 = RoaringBitmap::new();
     ///
     /// rb1.insert(1);
     ///
@@ -48,8 +44,8 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1: RoaringBitmap<u32> = RoaringBitmap::new();
-    /// let mut rb2: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb1 = RoaringBitmap::new();
+    /// let mut rb2 = RoaringBitmap::new();
     ///
     /// rb1.insert(1);
     ///
@@ -81,8 +77,8 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1: RoaringBitmap<u32> = RoaringBitmap::new();
-    /// let mut rb2: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb1 = RoaringBitmap::new();
+    /// let mut rb2 = RoaringBitmap::new();
     ///
     /// rb1.insert(1);
     ///
@@ -101,8 +97,8 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     }
 }
 
-impl<'a, Size: ExtInt + Halveable> Iterator for Pairs<'a, Size> {
-    type Item = (Option<&'a HalfContainer<Size>>, Option<&'a HalfContainer<Size>>);
+impl<'a> Iterator for Pairs<'a> {
+    type Item = (Option<&'a Container>, Option<&'a Container>);
 
     fn next(&mut self) -> Option<Self::Item> {
         enum Which { Left, Right, Both, None };

@@ -2,7 +2,6 @@ extern crate roaring;
 use roaring::RoaringBitmap;
 
 use std::iter::FromIterator;
-use std::u32;
 
 #[test]
 fn smoke() {
@@ -16,11 +15,11 @@ fn smoke() {
     assert_eq!(bitmap.contains(1), true);
     assert_eq!(bitmap.len(), 1);
     assert_eq!(bitmap.is_empty(), false);
-    bitmap.insert(u32::MAX - 2);
-    assert_eq!(bitmap.contains(u32::MAX - 2), true);
+    bitmap.insert(u32::max_value() - 2);
+    assert_eq!(bitmap.contains(u32::max_value() - 2), true);
     assert_eq!(bitmap.len(), 2);
-    bitmap.insert(u32::MAX);
-    assert_eq!(bitmap.contains(u32::MAX), true);
+    bitmap.insert(u32::max_value());
+    assert_eq!(bitmap.contains(u32::max_value()), true);
     assert_eq!(bitmap.len(), 3);
     bitmap.insert(2);
     assert_eq!(bitmap.contains(2), true);
@@ -31,16 +30,16 @@ fn smoke() {
     assert_eq!(bitmap.contains(0), false);
     assert_eq!(bitmap.contains(1), true);
     assert_eq!(bitmap.contains(100), false);
-    assert_eq!(bitmap.contains(u32::MAX - 2), true);
-    assert_eq!(bitmap.contains(u32::MAX - 1), false);
-    assert_eq!(bitmap.contains(u32::MAX), true);
+    assert_eq!(bitmap.contains(u32::max_value() - 2), true);
+    assert_eq!(bitmap.contains(u32::max_value() - 1), false);
+    assert_eq!(bitmap.contains(u32::max_value()), true);
 }
 
 #[test]
 fn to_bitmap() {
-    let bitmap = RoaringBitmap::from_iter(0..5000u32);
+    let bitmap = RoaringBitmap::from_iter(0..5000);
     assert_eq!(bitmap.len(), 5000);
-    for i in 1..5000u32 {
+    for i in 1..5000{
         assert_eq!(bitmap.contains(i), true);
     }
     assert_eq!(bitmap.contains(5001), false);
@@ -48,15 +47,15 @@ fn to_bitmap() {
 
 #[test]
 fn to_array() {
-    let mut bitmap = RoaringBitmap::from_iter(0..5000u32);
-    for i in 3000..5000u32 {
+    let mut bitmap = RoaringBitmap::from_iter(0..5000);
+    for i in 3000..5000 {
         bitmap.remove(i);
     }
     assert_eq!(bitmap.len(), 3000);
-    for i in 0..3000u32 {
+    for i in 0..3000 {
         assert_eq!(bitmap.contains(i), true);
     }
-    for i in 3000..5000u32 {
+    for i in 3000..5000 {
         assert_eq!(bitmap.contains(i), false);
     }
 }

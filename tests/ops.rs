@@ -5,9 +5,9 @@ use std::iter::FromIterator;
 
 #[test]
 fn or() {
-    let mut rb1 = RoaringBitmap::from_iter(1..4u32);
-    let rb2 = RoaringBitmap::from_iter(3..6u32);
-    let rb3 = RoaringBitmap::from_iter(1..6u32);
+    let mut rb1 = RoaringBitmap::from_iter(1..4);
+    let rb2 = RoaringBitmap::from_iter(3..6);
+    let rb3 = RoaringBitmap::from_iter(1..6);
 
     assert_eq!(rb3, &rb1 | &rb2);
     assert_eq!(rb3, &rb1 | rb2.clone());
@@ -22,9 +22,9 @@ fn or() {
 
 #[test]
 fn and() {
-    let mut rb1 = RoaringBitmap::from_iter(1..4u32);
-    let rb2 = RoaringBitmap::from_iter(3..6u32);
-    let rb3 = RoaringBitmap::from_iter(3..4u32);
+    let mut rb1 = RoaringBitmap::from_iter(1..4);
+    let rb2 = RoaringBitmap::from_iter(3..6);
+    let rb3 = RoaringBitmap::from_iter(3..4);
 
     assert_eq!(rb3, &rb1 & &rb2);
     assert_eq!(rb3, &rb1 & rb2.clone());
@@ -39,9 +39,9 @@ fn and() {
 
 #[test]
 fn sub() {
-    let mut rb1 = RoaringBitmap::from_iter(1..4u32);
-    let rb2 = RoaringBitmap::from_iter(3..6u32);
-    let rb3 = RoaringBitmap::from_iter(1..3u32);
+    let mut rb1 = RoaringBitmap::from_iter(1..4);
+    let rb2 = RoaringBitmap::from_iter(3..6);
+    let rb3 = RoaringBitmap::from_iter(1..3);
 
     assert_eq!(rb3, &rb1 - &rb2);
     assert_eq!(rb3, &rb1 - rb2.clone());
@@ -56,10 +56,10 @@ fn sub() {
 
 #[test]
 fn xor() {
-    let mut rb1 = RoaringBitmap::from_iter(1..4u32);
-    let rb2 = RoaringBitmap::from_iter(3..6u32);
-    let rb3 = RoaringBitmap::from_iter((1..3u32).chain(4..6));
-    let rb4 = RoaringBitmap::from_iter(0..0u32);
+    let mut rb1 = RoaringBitmap::from_iter(1..4);
+    let rb2 = RoaringBitmap::from_iter(3..6);
+    let rb3 = RoaringBitmap::from_iter((1..3).chain(4..6));
+    let rb4 = RoaringBitmap::from_iter(0..0);
 
     assert_eq!(rb3, &rb1 ^ &rb2);
     assert_eq!(rb3, &rb1 ^ rb2.clone());

@@ -7,14 +7,14 @@ use roaring::RoaringBitmap;
 // Test data from https://github.com/RoaringBitmap/RoaringFormatSpec/tree/master/testdata
 static BITMAP_WITHOUT_RUNS: &'static [u8] = include_bytes!("bitmapwithoutruns.bin");
 
-fn test_data_bitmap() -> RoaringBitmap<u32> {
+fn test_data_bitmap() -> RoaringBitmap {
     RoaringBitmap::from_iter(
         (0..100).map(|i| i * 1000)
             .chain((100000..200000).map(|i| i * 3))
             .chain(700000..800000))
 }
 
-fn serialize_and_deserialize(bitmap: &RoaringBitmap<u32>) -> RoaringBitmap<u32> {
+fn serialize_and_deserialize(bitmap: &RoaringBitmap) -> RoaringBitmap {
     let mut buffer = vec![];
     bitmap.serialize_into(&mut buffer).unwrap();
     RoaringBitmap::deserialize_from(&mut &buffer[..]).unwrap()

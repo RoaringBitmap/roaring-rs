@@ -2,25 +2,27 @@ use std::slice;
 use std::iter::FromIterator;
 
 use RoaringBitmap;
-use util::{ self, Halveable, ExtInt };
+use util;
 use container::{ self, Container };
 
-type HalfContainer<Size> = Container<<Size as Halveable>::HalfSize>;
-
-enum Next<'a, Size: ExtInt + Halveable + 'a> {
+// NewIter case is 55 bytes, 's okay
+// (would be nice to be able to allow this
+// difference but warn if it gets even larger....)
+#[allow(variant_size_differences)]
+enum Next<'a> {
     Done,
-    Value(Size),
-    NewIter(Option<container::Iter<'a, <Size as Halveable>::HalfSize>>),
+    Value(u32),
+    NewIter(Option<container::Iter<'a>>),
 }
 
 /// An iterator for `RoaringBitmap`.
-pub struct Iter<'a, Size: ExtInt + Halveable + 'a> where <Size as Halveable>::HalfSize: 'a {
-    inner_iter: Option<container::Iter<'a, <Size as Halveable>::HalfSize>>,
-    container_iters: slice::Iter<'a, HalfContainer<Size>>,
+pub struct Iter<'a> {
+    inner_iter: Option<container::Iter<'a>>,
+    container_iters: slice::Iter<'a, Container>,
 }
 
-impl<'a, Size: ExtInt + Halveable> Iter<'a, Size> {
-    fn new(mut container_iters: slice::Iter<HalfContainer<Size>>) -> Iter<Size> {
+impl<'a> Iter<'a> {
+    fn new(mut container_iters: slice::Iter<Container>) -> Iter {
         Iter {
             inner_iter: container_iters.next().map(|i| i.iter()),
             container_iters: container_iters,
@@ -28,11 +30,11 @@ impl<'a, Size: ExtInt + Halveable> Iter<'a, Size> {
     }
 }
 
-impl<'a, Size: ExtInt + Halveable + 'a> Iter<'a, Size> where <Size as Halveable>::HalfSize: 'a {
-    fn choose_next(&mut self) -> Next<'a, Size> {
+impl<'a> Iter<'a> {
+    fn choose_next(&mut self) -> Next<'a> {
         match self.inner_iter {
             Some(ref mut inner_iter) => match inner_iter.next() {
-                Some(value) => Next::Value(Halveable::join(inner_iter.key, value)),
+                Some(value) => Next::Value(util::join(inner_iter.key, value)),
                 None => Next::NewIter(self.container_iters.next().map(|i| i.iter())),
             },
             None => Next::Done,
@@ -40,10 +42,10 @@ impl<'a, Size: ExtInt + Halveable + 'a> Iter<'a, Size> where <Size as Halveable>
     }
 }
 
-impl<'a, Size: ExtInt + Halveable + 'a> Iterator for Iter<'a, Size> where <Size as Halveable>::HalfSize: 'a {
-    type Item = Size;
+impl<'a> Iterator for Iter<'a> {
+    type Item = u32;
 
-    fn next(&mut self) -> Option<Size> {
+    fn next(&mut self) -> Option<u32> {
         match self.choose_next() {
             Next::Done => None,
             Next::Value(val) => Some(val),
@@ -55,7 +57,7 @@ impl<'a, Size: ExtInt + Halveable + 'a> Iterator for Iter<'a, Size> where <Size 
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let next = self.container_iters.clone().map(|container| util::cast::<_, usize>(container.len)).sum();
+        let next = self.container_iters.clone().map(|container| container.len as usize).sum();
         match self.inner_iter {
             Some(ref inner_iter) => match inner_iter.size_hint() {
                 (min, max) => (next + min, max.map(|m| next + m)),
@@ -65,7 +67,7 @@ impl<'a, Size: ExtInt + Halveable + 'a> Iterator for Iter<'a, Size> where <Size 
     }
 }
 
-impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
+impl RoaringBitmap {
     /// Iterator over each value stored in the RoaringBitmap, guarantees values are ordered by value.
     ///
     /// # Examples
@@ -73,7 +75,7 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb: RoaringBitmap<u32> = RoaringBitmap::new();
+    /// let mut rb = RoaringBitmap::new();
     ///
     /// rb.insert(1);
     /// rb.insert(6);
@@ -86,46 +88,46 @@ impl<Size: ExtInt + Halveable> RoaringBitmap<Size> {
     /// assert_eq!(iter.next(), Some(6));
     /// assert_eq!(iter.next(), None);
     /// ```
-    pub fn iter<'a>(&'a self) -> Iter<'a, Size> where <Size as Halveable>::HalfSize : 'a {
+    pub fn iter(&self) -> Iter {
         self.into_iter()
     }
 }
 
-impl<'a, Size: ExtInt + Halveable> IntoIterator for &'a RoaringBitmap<Size> {
-    type Item = Size;
-    type IntoIter = Iter<'a, Size>;
+impl<'a> IntoIterator for &'a RoaringBitmap {
+    type Item = u32;
+    type IntoIter = Iter<'a>;
 
-    fn into_iter(self) -> <Self as IntoIterator>::IntoIter {
+    fn into_iter(self) -> Iter<'a> {
         Iter::new(self.containers.iter())
     }
 }
 
-impl<Size: ExtInt + Halveable> FromIterator<Size> for RoaringBitmap<Size> {
-    fn from_iter<I: IntoIterator<Item = Size>>(iterator: I) -> Self {
+impl FromIterator<u32> for RoaringBitmap {
+    fn from_iter<I: IntoIterator<Item = u32>>(iterator: I) -> Self {
         let mut rb = RoaringBitmap::new();
         rb.extend(iterator);
         rb
     }
 }
 
-impl<'a, Size: ExtInt + Halveable + 'a> FromIterator<&'a Size> for RoaringBitmap<Size> {
-    fn from_iter<I: IntoIterator<Item = &'a Size>>(iterator: I) -> Self {
+impl<'a> FromIterator<&'a u32> for RoaringBitmap {
+    fn from_iter<I: IntoIterator<Item = &'a u32>>(iterator: I) -> Self {
         let mut rb = RoaringBitmap::new();
         rb.extend(iterator);
         rb
     }
 }
 
-impl<Size: ExtInt + Halveable> Extend<Size> for RoaringBitmap<Size> {
-    fn extend<I: IntoIterator<Item = Size>>(&mut self, iterator: I) {
+impl Extend<u32> for RoaringBitmap {
+    fn extend<I: IntoIterator<Item = u32>>(&mut self, iterator: I) {
         for value in iterator {
             self.insert(value);
         }
     }
 }
 
-impl<'a, Size: ExtInt + Halveable + 'a> Extend<&'a Size> for RoaringBitmap<Size> {
-    fn extend<I: IntoIterator<Item = &'a Size>>(&mut self, iterator: I) {
+impl<'a> Extend<&'a u32> for RoaringBitmap {
+    fn extend<I: IntoIterator<Item = &'a u32>>(&mut self, iterator: I) {
         for &value in iterator {
             self.insert(value);
         }

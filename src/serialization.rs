@@ -2,7 +2,6 @@ use std::io;
 use byteorder::{ LittleEndian, ReadBytesExt, WriteBytesExt };
 
 use RoaringBitmap;
-use util;
 use store::Store;
 use container::Container;
 
@@ -11,7 +10,7 @@ const SERIAL_COOKIE: u16 = 12347;
 // TODO: Need this once run containers are supported
 // const NO_OFFSET_THRESHOLD: u8 = 4;
 
-impl RoaringBitmap<u32> {
+impl RoaringBitmap {
     /// Serialize this bitmap into [the standard Roaring on-disk format][format].
     /// This is compatible with the official C/C++, Java and Go implementations.
     ///
@@ -21,9 +20,8 @@ impl RoaringBitmap<u32> {
     ///
     /// ```rust
     /// use roaring::RoaringBitmap;
-    /// use std::iter::FromIterator;
     ///
-    /// let rb1 = RoaringBitmap::from_iter(1..4u32);
+    /// let rb1: RoaringBitmap = (1..4).collect();
     /// let mut bytes = vec![];
     /// rb1.serialize_into(&mut bytes).unwrap();
     /// let rb2 = RoaringBitmap::deserialize_from(&mut &bytes[..]).unwrap();
@@ -80,16 +78,15 @@ impl RoaringBitmap<u32> {
     ///
     /// ```rust
     /// use roaring::RoaringBitmap;
-    /// use std::iter::FromIterator;
     ///
-    /// let rb1 = RoaringBitmap::from_iter(1..4u32);
+    /// let rb1: RoaringBitmap = (1..4).collect();
     /// let mut bytes = vec![];
     /// rb1.serialize_into(&mut bytes).unwrap();
     /// let rb2 = RoaringBitmap::deserialize_from(&mut &bytes[..]).unwrap();
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
-    pub fn deserialize_from<R: io::Read>(mut reader: R) -> io::Result<RoaringBitmap<u32>> {
+    pub fn deserialize_from<R: io::Read>(mut reader: R) -> io::Result<RoaringBitmap> {
         let (size, has_offsets) = {
             let cookie = try!(reader.read_u32::<LittleEndian>());
             if cookie == SERIAL_COOKIE_NO_RUNCONTAINER {
@@ -125,10 +122,10 @@ impl RoaringBitmap<u32> {
 
         for _ in 0..size {
             let key = try!(description_bytes.read_u16::<LittleEndian>());
-            let len = try!(description_bytes.read_u16::<LittleEndian>()) as usize + 1;
+            let len = try!(description_bytes.read_u16::<LittleEndian>()) as u64 + 1;
 
             let store = if len < 4096 {
-                let mut values = Vec::with_capacity(len);
+                let mut values = Vec::with_capacity(len as usize);
                 for _ in 0..len {
                     values.push(try!(reader.read_u16::<LittleEndian>()));
                 }
@@ -141,7 +138,7 @@ impl RoaringBitmap<u32> {
                 Store::Bitmap(values)
             };
 
-            containers.push(Container { key: key, len: util::cast(len), store: store });
+            containers.push(Container { key: key, len: len, store: store });
         }
 
         Ok(RoaringBitmap { containers: containers })
