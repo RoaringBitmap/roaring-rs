@@ -1,4 +1,4 @@
-# RoaringBitmap [![travis-badge][]][travis] [![release-badge][]][cargo] [![docs-badge][]][docs] [![license-badge][]][license]
+# RoaringBitmap [![travis-badge][]][travis] [![release-badge][]][cargo] [![docs-badge][]][docs]
 
 > This is not yet production ready. The API should be mostly complete now.
 
@@ -12,9 +12,6 @@ This project uses [clippy][] and denies warnings in CI builds. To ensure your
 changes will be accepted please check them with `cargo clippy` (available via
 `cargo install clippy` on nightly rust) before submitting a pull request (along
 with `cargo test` as usual).
-
-Take note of the [Collections reform RFC][collections-rfc] for the API.  Mostly aiming to
-duplicate the [BitSet][] API.
 
 ## License
 
@@ -37,11 +34,9 @@ additional terms or conditions.
 [cargo]: https://crates.io/crates/roaring
 [docs-badge]: https://img.shields.io/badge/API-docs-blue.svg?style=flat-square
 [docs]: https://nemo157.com/roaring-rs/
-[license-badge]: https://img.shields.io/badge/license-MIT-lightgray.svg?style=flat-square
-[license]: https://github.com/Nemo157/roaring-rs/blob/master/LICENSE
+
 [Rust]: https://rust-lang.org
 [Roaring bitmap]: http://roaringbitmap.org
 [roaring-java]: https://github.com/lemire/RoaringBitmap
-[roaring-paper]: http://arxiv.org/pdf/1402.6407v4
-[collections-rfc]: https://github.com/rust-lang/rfcs/pull/235
-[BitSet]: http://doc.rust-lang.org/std/collections/struct.BitSet.html
+[roaring-paper]: https://arxiv.org/pdf/1402.6407v4
+[clippy]: https://github.com/Manishearth/rust-clippy
