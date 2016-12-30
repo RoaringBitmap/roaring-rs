@@ -1,12 +1,10 @@
 [package]
-
 name = "roaring"
 version = "0.4.2"
 authors = ["Wim Looman <wim@nemo157.com>"]
-description = "http://roaringbitmap.org for http://www.rust-lang.org"
+description = "http://roaringbitmap.org : A better compressed bitset - pure Rust implementation "
 
 documentation = "https://nemo157.com/roaring-rs"
-homepage = "https://nemo157.com/roaring-rs"
 repository = "https://github.com/Nemo157/roaring-rs"
 
 readme = "README.md"
