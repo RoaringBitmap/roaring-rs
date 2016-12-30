@@ -1,5 +1,6 @@
 use std::fmt;
 
+use util;
 use store::{ self, Store };
 
 const ARRAY_LIMIT: u64 = 4096;
@@ -110,10 +111,19 @@ impl Container {
     }
 }
 
+impl<'a> IntoIterator for &'a Container {
+    type Item = u32;
+    type IntoIter = Iter<'a>;
+
+    fn into_iter(self) -> Iter<'a> {
+        self.iter()
+    }
+}
+
 impl<'a> Iterator for Iter<'a> {
-    type Item = u16;
-    fn next(&mut self) -> Option<u16> {
-        self.inner.next()
+    type Item = u32;
+    fn next(&mut self) -> Option<u32> {
+        self.inner.next().map(|i| util::join(self.key, i))
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()

@@ -1,43 +1,22 @@
 use std::slice;
-use std::iter::FromIterator;
+use std::iter::{ self, FromIterator };
 
 use RoaringBitmap;
-use util;
-use container::{ self, Container };
-
-// NewIter case is 55 bytes, 's okay
-// (would be nice to be able to allow this
-// difference but warn if it gets even larger....)
-#[allow(variant_size_differences)]
-enum Next<'a> {
-    Done,
-    Value(u32),
-    NewIter(Option<container::Iter<'a>>),
-}
+use container::Container;
 
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a> {
-    inner_iter: Option<container::Iter<'a>>,
-    container_iters: slice::Iter<'a, Container>,
+    inner: iter::FlatMap<slice::Iter<'a, Container>, &'a Container, fn(&'a Container) -> &'a Container>,
+    size_hint: usize,
 }
 
 impl<'a> Iter<'a> {
-    fn new(mut container_iters: slice::Iter<Container>) -> Iter {
+    fn new(containers: slice::Iter<Container>) -> Iter {
+        fn identity<T>(t: T) -> T { t }
+        let size_hint = containers.clone().map(|c| c.len as usize).sum();
         Iter {
-            inner_iter: container_iters.next().map(|i| i.iter()),
-            container_iters: container_iters,
-        }
-    }
-}
-
-impl<'a> Iter<'a> {
-    fn choose_next(&mut self) -> Next<'a> {
-        match self.inner_iter {
-            Some(ref mut inner_iter) => match inner_iter.next() {
-                Some(value) => Next::Value(util::join(inner_iter.key, value)),
-                None => Next::NewIter(self.container_iters.next().map(|i| i.iter())),
-            },
-            None => Next::Done,
+            inner: containers.flat_map(identity as _),
+            size_hint: size_hint,
         }
     }
 }
@@ -46,24 +25,12 @@ impl<'a> Iterator for Iter<'a> {
     type Item = u32;
 
     fn next(&mut self) -> Option<u32> {
-        match self.choose_next() {
-            Next::Done => None,
-            Next::Value(val) => Some(val),
-            Next::NewIter(new_iter) => {
-                self.inner_iter = new_iter;
-                self.next()
-            },
-        }
+        self.size_hint.saturating_sub(1);
+        self.inner.next()
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let next = self.container_iters.clone().map(|container| container.len as usize).sum();
-        match self.inner_iter {
-            Some(ref inner_iter) => match inner_iter.size_hint() {
-                (min, max) => (next + min, max.map(|m| next + m)),
-            },
-            None => (next, Some(next)),
-        }
+        (self.size_hint, Some(self.size_hint))
     }
 }
 
