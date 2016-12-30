@@ -1,5 +1,6 @@
 use std::fmt;
 
+use util;
 use store::{ self, Store };
 
 const ARRAY_LIMIT: u64 = 4096;
@@ -49,13 +50,6 @@ impl Container {
 
     pub fn contains(&self, index: u16) -> bool {
         self.store.contains(index)
-    }
-
-    pub fn iter(&self) -> Iter {
-        Iter {
-            key: self.key,
-            inner: self.store.iter()
-        }
     }
 
     pub fn is_disjoint(&self, other: &Self) -> bool {
@@ -110,13 +104,37 @@ impl Container {
     }
 }
 
+impl<'a> IntoIterator for &'a Container {
+    type Item = u32;
+    type IntoIter = Iter<'a>;
+
+    fn into_iter(self) -> Iter<'a> {
+        Iter {
+            key: self.key,
+            inner: (&self.store).into_iter()
+        }
+    }
+}
+
+impl IntoIterator for Container {
+    type Item = u32;
+    type IntoIter = Iter<'static>;
+
+    fn into_iter(self) -> Iter<'static> {
+        Iter {
+            key: self.key,
+            inner: self.store.into_iter()
+        }
+    }
+}
+
 impl<'a> Iterator for Iter<'a> {
-    type Item = u16;
-    fn next(&mut self) -> Option<u16> {
-        self.inner.next()
+    type Item = u32;
+    fn next(&mut self) -> Option<u32> {
+        self.inner.next().map(|i| util::join(self.key, i))
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
+        panic!("Should never be called (roaring::Iter caches the size_hint itself)")
     }
 }
 
