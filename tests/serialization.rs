@@ -23,7 +23,7 @@ fn serialize_and_deserialize(bitmap: &RoaringBitmap) -> RoaringBitmap {
 #[test]
 fn test_deserialize_from_provided_data() {
     assert_eq!(
-        RoaringBitmap::deserialize_from(&mut &*BITMAP_WITHOUT_RUNS).unwrap(),
+        RoaringBitmap::deserialize_from(&mut &BITMAP_WITHOUT_RUNS[..]).unwrap(),
         test_data_bitmap());
 }
 
