@@ -12,7 +12,7 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     /// let mut rb = RoaringBitmap::new();
     /// ```
-    pub fn new() -> Self {
+    pub fn new() -> RoaringBitmap {
         RoaringBitmap { containers: Vec::new() }
     }
 

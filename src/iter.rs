@@ -103,7 +103,7 @@ impl<'a> IntoIterator for &'a RoaringBitmap {
 }
 
 impl FromIterator<u32> for RoaringBitmap {
-    fn from_iter<I: IntoIterator<Item = u32>>(iterator: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = u32>>(iterator: I) -> RoaringBitmap {
         let mut rb = RoaringBitmap::new();
         rb.extend(iterator);
         rb
@@ -111,7 +111,7 @@ impl FromIterator<u32> for RoaringBitmap {
 }
 
 impl<'a> FromIterator<&'a u32> for RoaringBitmap {
-    fn from_iter<I: IntoIterator<Item = &'a u32>>(iterator: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = &'a u32>>(iterator: I) -> RoaringBitmap {
         let mut rb = RoaringBitmap::new();
         rb.extend(iterator);
         rb
