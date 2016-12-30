@@ -1,21 +1,29 @@
 use std::slice;
+use std::vec;
+use std::borrow::Borrow;
 use std::cmp::Ordering::{ Equal, Less, Greater };
+use std::marker::PhantomData;
+
+const BITMAP_LENGTH: usize = 1024;
 
 use self::Store::{ Array, Bitmap };
 pub enum Store {
     Array(Vec<u16>),
-    Bitmap(Box<[u64; 1024]>),
+    Bitmap(Box<[u64; BITMAP_LENGTH]>),
 }
 
 pub enum Iter<'a> {
     Array(slice::Iter<'a, u16>),
-    Bitmap(BitmapIter<'a>),
+    Vec(vec::IntoIter<u16>),
+    BitmapBorrowed(BitmapIter<'a, &'a [u64; BITMAP_LENGTH]>),
+    BitmapOwned(BitmapIter<'a, Box<[u64; BITMAP_LENGTH]>>),
 }
 
-pub struct BitmapIter<'a> {
+pub struct BitmapIter<'a, B: Borrow<[u64; BITMAP_LENGTH]> + 'a> {
     key: usize,
     bit: usize,
-    bits: &'a [u64; 1024],
+    bits: B,
+    marker: PhantomData<&'a B>,
 }
 
 impl Store {
@@ -137,7 +145,7 @@ impl Store {
     pub fn to_bitmap(&self) -> Self {
         match *self {
             Array(ref vec) => {
-                let mut bits = Box::new([0; 1024]);
+                let mut bits = Box::new([0; BITMAP_LENGTH]);
                 for &index in vec {
                     bits[key(index)] |= 1 << bit(index);
                 }
@@ -337,14 +345,28 @@ impl Store {
             },
         }
     }
+}
 
-    pub fn iter(&self) -> Iter {
+impl<'a> IntoIterator for &'a Store {
+    type Item = u16;
+    type IntoIter = Iter<'a>;
+    fn into_iter(self) -> Iter<'a> {
         match *self {
             Array(ref vec) => Iter::Array(vec.iter()),
-            Bitmap(ref bits) => Iter::Bitmap(BitmapIter::new(&**bits)),
+            Bitmap(ref bits) => Iter::BitmapBorrowed(BitmapIter::new(&**bits)),
         }
     }
+}
 
+impl IntoIterator for Store {
+    type Item = u16;
+    type IntoIter = Iter<'static>;
+    fn into_iter(self) -> Iter<'static> {
+        match self {
+            Array(vec) => Iter::Vec(vec.into_iter()),
+            Bitmap(bits) => Iter::BitmapOwned(BitmapIter::new(bits)),
+        }
+    }
 }
 
 impl PartialEq for Store {
@@ -372,12 +394,13 @@ impl Clone for Store {
     }
 }
 
-impl<'a> BitmapIter<'a> {
-    fn new(bits: &'a [u64; 1024]) -> BitmapIter<'a> {
+impl<'a, B: Borrow<[u64; BITMAP_LENGTH]> + 'a> BitmapIter<'a, B> {
+    fn new(bits: B) -> BitmapIter<'a, B> {
         BitmapIter {
             key: 0,
             bit: 0,
             bits: bits,
+            marker: PhantomData,
         }
     }
 
@@ -390,14 +413,14 @@ impl<'a> BitmapIter<'a> {
     }
 }
 
-impl<'a> Iterator for BitmapIter<'a> {
+impl<'a, B: Borrow<[u64; BITMAP_LENGTH]> + 'a> Iterator for BitmapIter<'a, B> {
     type Item = u16;
 
     fn next(&mut self) -> Option<u16> {
         loop {
-            if self.key == self.bits.len() {
+            if self.key == BITMAP_LENGTH {
                 return None;
-            } else if (unsafe { self.bits.get_unchecked(self.key) } & (1u64 << self.bit)) != 0 {
+            } else if (unsafe { self.bits.borrow().get_unchecked(self.key) } & (1u64 << self.bit)) != 0 {
                 let result = Some((self.key * 64 + self.bit) as u16);
                 self.move_next();
                 return result;
@@ -408,8 +431,7 @@ impl<'a> Iterator for BitmapIter<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-      let min = self.bits.iter().skip(self.key + 1).map(|bits| bits.count_ones()).fold(0, |acc, ones| acc + ones) as usize;
-      (min, Some(min + self.bits[self.key].count_ones() as usize))
+        panic!("Should never be called (roaring::Iter caches the size_hint itself)")
     }
 }
 
@@ -419,15 +441,14 @@ impl<'a> Iterator for Iter<'a> {
     fn next(&mut self) -> Option<u16> {
         match *self {
             Iter::Array(ref mut inner) => inner.next().cloned(),
-            Iter::Bitmap(ref mut inner) => inner.next(),
+            Iter::Vec(ref mut inner) => inner.next(),
+            Iter::BitmapBorrowed(ref mut inner) => inner.next(),
+            Iter::BitmapOwned(ref mut inner) => inner.next(),
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match *self {
-            Iter::Array(ref inner) => inner.size_hint(),
-            Iter::Bitmap(ref inner) => inner.size_hint(),
-        }
+        panic!("Should never be called (roaring::Iter caches the size_hint itself)")
     }
 }
 

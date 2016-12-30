@@ -1,5 +1,6 @@
-use std::slice;
 use std::iter::{ self, FromIterator };
+use std::slice;
+use std::vec;
 
 use RoaringBitmap;
 use container::Container;
@@ -7,15 +8,32 @@ use container::Container;
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a> {
     inner: iter::FlatMap<slice::Iter<'a, Container>, &'a Container, fn(&'a Container) -> &'a Container>,
-    size_hint: usize,
+    size_hint: u64,
+}
+
+/// An iterator for `RoaringBitmap`.
+pub struct IntoIter {
+    inner: iter::FlatMap<vec::IntoIter<Container>, Container, fn(Container) -> Container>,
+    size_hint: u64,
 }
 
 impl<'a> Iter<'a> {
-    fn new(containers: slice::Iter<Container>) -> Iter {
+    fn new(containers: &[Container]) -> Iter {
         fn identity<T>(t: T) -> T { t }
-        let size_hint = containers.clone().map(|c| c.len as usize).sum();
+        let size_hint = containers.iter().map(|c| c.len).sum();
         Iter {
-            inner: containers.flat_map(identity as _),
+            inner: containers.iter().flat_map(identity as _),
+            size_hint: size_hint,
+        }
+    }
+}
+
+impl IntoIter {
+    fn new(containers: Vec<Container>) -> IntoIter {
+        fn identity<T>(t: T) -> T { t }
+        let size_hint = containers.iter().map(|c| c.len).sum();
+        IntoIter {
+            inner: containers.into_iter().flat_map(identity as _),
             size_hint: size_hint,
         }
     }
@@ -30,7 +48,28 @@ impl<'a> Iterator for Iter<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.size_hint, Some(self.size_hint))
+        if self.size_hint < usize::max_value() as u64 {
+            (self.size_hint as usize, Some(self.size_hint as usize))
+        } else {
+            (usize::max_value(), None)
+        }
+    }
+}
+
+impl Iterator for IntoIter {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<u32> {
+        self.size_hint.saturating_sub(1);
+        self.inner.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.size_hint < usize::max_value() as u64 {
+            (self.size_hint as usize, Some(self.size_hint as usize))
+        } else {
+            (usize::max_value(), None)
+        }
     }
 }
 
@@ -41,22 +80,17 @@ impl RoaringBitmap {
     ///
     /// ```rust
     /// use roaring::RoaringBitmap;
+    /// use std::iter::FromIterator;
     ///
-    /// let mut rb = RoaringBitmap::new();
-    ///
-    /// rb.insert(1);
-    /// rb.insert(6);
-    /// rb.insert(4);
-    ///
-    /// let mut iter = rb.iter();
+    /// let bitmap = RoaringBitmap::from_iter(1..3);
+    /// let mut iter = bitmap.iter();
     ///
     /// assert_eq!(iter.next(), Some(1));
-    /// assert_eq!(iter.next(), Some(4));
-    /// assert_eq!(iter.next(), Some(6));
+    /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), None);
     /// ```
     pub fn iter(&self) -> Iter {
-        self.into_iter()
+        Iter::new(&self.containers)
     }
 }
 
@@ -65,7 +99,16 @@ impl<'a> IntoIterator for &'a RoaringBitmap {
     type IntoIter = Iter<'a>;
 
     fn into_iter(self) -> Iter<'a> {
-        Iter::new(self.containers.iter())
+        self.iter()
+    }
+}
+
+impl IntoIterator for RoaringBitmap {
+    type Item = u32;
+    type IntoIter = IntoIter;
+
+    fn into_iter(self) -> IntoIter {
+        IntoIter::new(self.containers)
     }
 }
 

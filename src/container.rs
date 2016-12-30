@@ -52,13 +52,6 @@ impl Container {
         self.store.contains(index)
     }
 
-    pub fn iter(&self) -> Iter {
-        Iter {
-            key: self.key,
-            inner: self.store.iter()
-        }
-    }
-
     pub fn is_disjoint(&self, other: &Self) -> bool {
         self.store.is_disjoint(&other.store)
     }
@@ -116,7 +109,22 @@ impl<'a> IntoIterator for &'a Container {
     type IntoIter = Iter<'a>;
 
     fn into_iter(self) -> Iter<'a> {
-        self.iter()
+        Iter {
+            key: self.key,
+            inner: (&self.store).into_iter()
+        }
+    }
+}
+
+impl IntoIterator for Container {
+    type Item = u32;
+    type IntoIter = Iter<'static>;
+
+    fn into_iter(self) -> Iter<'static> {
+        Iter {
+            key: self.key,
+            inner: self.store.into_iter()
+        }
     }
 }
 
@@ -126,7 +134,7 @@ impl<'a> Iterator for Iter<'a> {
         self.inner.next().map(|i| util::join(self.key, i))
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
+        panic!("Should never be called (roaring::Iter caches the size_hint itself)")
     }
 }
 
