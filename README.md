@@ -1,4 +1,4 @@
-# RoaringBitmap [![travis-badge][]][travis] [![release-badge][]][cargo] [![docs-badge][]][docs]
+# RoaringBitmap [![travis-badge][]][travis] [![release-badge][]][cargo] [![docs-badge][]][docs] [![rust-version-badge][]][rust-version]
 
 > This is not yet production ready. The API should be mostly complete now.
 
@@ -34,6 +34,8 @@ additional terms or conditions.
 [cargo]: https://crates.io/crates/roaring
 [docs-badge]: https://img.shields.io/badge/API-docs-blue.svg?style=flat-square
 [docs]: https://nemo157.com/roaring-rs/
+[rust-version-badge]: https://img.shields.io/badge/rust-1.11+-blue.svg?style=flat-square
+[rust-version]: .travis.yml#L5
 
 [Rust]: https://rust-lang.org
 [Roaring bitmap]: http://roaringbitmap.org

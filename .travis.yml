@@ -2,9 +2,10 @@ language: rust
 sudo: false
 cache: cargo
 rust:
-  - nightly-2016-12-19
-  - beta
+  - 1.11.0
   - stable
+  - beta
+  - nightly-2016-12-19
 
 env:
   global:
