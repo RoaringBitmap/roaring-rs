@@ -10,7 +10,7 @@
 #![warn(missing_docs)]
 #![warn(variant_size_differences)]
 
-// For clippy
+#![allow(unknown_lints)] // For clippy
 
 extern crate byteorder;
 
@@ -26,7 +26,7 @@ mod iter;
 mod ops;
 mod cmp;
 mod serialization;
-mod roaring64;
+mod roaring_treemap;
 
 pub use iter::Iter;
 
@@ -51,4 +51,4 @@ pub struct RoaringBitmap {
     containers: Vec<container::Container>,
 }
 
-pub use roaring64::RoaringBitmap64;
+pub use roaring_treemap::RoaringTreemap;

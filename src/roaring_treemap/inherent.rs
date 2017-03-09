@@ -1,21 +1,21 @@
-use RoaringBitmap64;
+use RoaringTreemap;
 use RoaringBitmap;
 
 use super::util;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 
-impl RoaringBitmap64 {
-    /// Creates an empty `RoaringBitmap64`.
+impl RoaringTreemap {
+    /// Creates an empty `RoaringTreemap`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap64;
-    /// let mut rb = RoaringBitmap64::new();
+    /// use roaring::RoaringTreemap;
+    /// let mut rb = RoaringTreemap::new();
     /// ```
-    pub fn new() -> RoaringBitmap64 {
-        RoaringBitmap64 { map: BTreeMap::new() }
+    pub fn new() -> RoaringTreemap {
+        RoaringTreemap { map: BTreeMap::new() }
     }
 
     /// Adds a value to the set. Returns `true` if the value was not already present in the set.
@@ -23,9 +23,9 @@ impl RoaringBitmap64 {
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap64;
+    /// use roaring::RoaringTreemap;
     ///
-    /// let mut rb = RoaringBitmap64::new();
+    /// let mut rb = RoaringTreemap::new();
     /// assert_eq!(rb.insert(3), true);
     /// assert_eq!(rb.insert(3), false);
     /// assert_eq!(rb.contains(3), true);
@@ -40,9 +40,9 @@ impl RoaringBitmap64 {
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap64;
+    /// use roaring::RoaringTreemap;
     ///
-    /// let mut rb = RoaringBitmap64::new();
+    /// let mut rb = RoaringTreemap::new();
     /// rb.insert(3);
     /// assert_eq!(rb.remove(3), true);
     /// assert_eq!(rb.remove(3), false);
@@ -61,9 +61,9 @@ impl RoaringBitmap64 {
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap64;
+    /// use roaring::RoaringTreemap;
     ///
-    /// let mut rb = RoaringBitmap64::new();
+    /// let mut rb = RoaringTreemap::new();
     /// rb.insert(1);
     /// assert_eq!(rb.contains(0), false);
     /// assert_eq!(rb.contains(1), true);
@@ -82,9 +82,9 @@ impl RoaringBitmap64 {
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap64;
+    /// use roaring::RoaringTreemap;
     ///
-    /// let mut rb = RoaringBitmap64::new();
+    /// let mut rb = RoaringTreemap::new();
     /// rb.insert(1);
     /// assert_eq!(rb.contains(1), true);
     /// rb.clear();
@@ -99,9 +99,9 @@ impl RoaringBitmap64 {
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap64;
+    /// use roaring::RoaringTreemap;
     ///
-    /// let mut rb = RoaringBitmap64::new();
+    /// let mut rb = RoaringTreemap::new();
     /// assert_eq!(rb.is_empty(), true);
     ///
     /// rb.insert(3);
@@ -110,7 +110,7 @@ impl RoaringBitmap64 {
     pub fn is_empty(&self) -> bool {
         self.map
             .values()
-            .all(|r| r.is_empty())
+            .all(|rb| rb.is_empty())
     }
 
     /// Returns the number of distinct integers added to the set.
@@ -118,9 +118,9 @@ impl RoaringBitmap64 {
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap64;
+    /// use roaring::RoaringTreemap;
     ///
-    /// let mut rb = RoaringBitmap64::new();
+    /// let mut rb = RoaringTreemap::new();
     /// assert_eq!(rb.len(), 0);
     ///
     /// rb.insert(3);
@@ -133,7 +133,7 @@ impl RoaringBitmap64 {
     pub fn len(&self) -> u64 {
         self.map
             .values()
-            .map(|r| r.len())
+            .map(|rb| rb.len())
             .sum()
     }
 
@@ -142,9 +142,9 @@ impl RoaringBitmap64 {
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap64;
+    /// use roaring::RoaringTreemap;
     ///
-    /// let mut rb = RoaringBitmap64::new();
+    /// let mut rb = RoaringTreemap::new();
     /// assert_eq!(rb.min(), None);
     ///
     /// rb.insert(3);
@@ -154,9 +154,9 @@ impl RoaringBitmap64 {
     pub fn min(&self) -> Option<u64> {
         self.map
             .iter()
-            .filter(|&(_, r)| r.min().is_some())
+            .filter(|&(_, rb)| rb.min().is_some())
             .nth(0)
-            .map(|(k, r)| util::join(*k, r.min().unwrap()))
+            .map(|(k, rb)| util::join(*k, rb.min().unwrap()))
     }
 
 
@@ -165,9 +165,9 @@ impl RoaringBitmap64 {
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap64;
+    /// use roaring::RoaringTreemap;
     ///
-    /// let mut rb = RoaringBitmap64::new();
+    /// let mut rb = RoaringTreemap::new();
     /// assert_eq!(rb.max(), None);
     ///
     /// rb.insert(3);
@@ -178,17 +178,14 @@ impl RoaringBitmap64 {
         self.map
             .iter()
             .rev()
-            .filter(|&(_, r)| r.max().is_some())
+            .filter(|&(_, rb)| rb.max().is_some())
             .last()
-            .map(|(k, r)| util::join(*k, r.max().unwrap()))
-        // self.containers
-        //     .last()
-        //     .map(|tail| util::join(tail.key, tail.max()))
+            .map(|(k, rb)| util::join(*k, rb.max().unwrap()))
     }
 }
 
-impl Default for RoaringBitmap64 {
-    fn default() -> RoaringBitmap64 {
-        RoaringBitmap64::new()
+impl Default for RoaringTreemap {
+    fn default() -> RoaringTreemap {
+        RoaringTreemap::new()
     }
 }

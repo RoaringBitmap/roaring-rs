@@ -1,13 +1,12 @@
 use std::collections::BTreeMap;
 use std::collections::btree_map;
 use std::iter::{self, FromIterator};
-use std::slice;
-use std::vec;
 
 use iter::Iter as Iter32;
+use iter::IntoIter as IntoIter32;
 use super::util;
 use RoaringBitmap;
-use RoaringBitmap64;
+use RoaringTreemap;
 
 struct To64Iter<'a> {
     hi: u32,
@@ -17,25 +16,8 @@ struct To64Iter<'a> {
 impl<'a> Iterator for To64Iter<'a> {
     type Item = u64;
     fn next(&mut self) -> Option<u64> {
-        //self.size_hint.saturating_sub(1);
         self.inner.next().map(|n| util::join(self.hi, n))
     }
-}
-
-/// An iterator for `RoaringBitmap64`.
-pub struct Iter<'a> {
-    inner: iter::FlatMap<btree_map::Iter<'a, u32, RoaringBitmap>,
-                         To64Iter<'a>,
-                         fn((&'a u32, &'a RoaringBitmap)) -> To64Iter<'a>>,
-    size_hint: u64,
-}
-
-/// An iterator for `RoaringBitmap64`.
-pub struct IntoIter {
-    inner: iter::FlatMap<btree_map::IntoIter<u32, RoaringBitmap>,
-                         RoaringBitmap,
-                         fn(RoaringBitmap) -> RoaringBitmap>,
-    size_hint: u64,
 }
 
 fn to64iter<'a>(t: (&'a u32, &'a RoaringBitmap)) -> To64Iter<'a> {
@@ -45,43 +27,73 @@ fn to64iter<'a>(t: (&'a u32, &'a RoaringBitmap)) -> To64Iter<'a> {
     }
 }
 
+struct To64IntoIter {
+    hi: u32,
+    inner: IntoIter32,
+}
+
+impl Iterator for To64IntoIter {
+    type Item = u64;
+    fn next(&mut self) -> Option<u64> {
+        self.inner.next().map(|n| util::join(self.hi, n))
+    }
+}
+
+fn to64intoiter(t: (u32, RoaringBitmap)) -> To64IntoIter {
+    To64IntoIter {
+        hi: t.0,
+        inner: t.1.into_iter(),
+    }
+}
+
+type InnerIter<'a> = iter::FlatMap<btree_map::Iter<'a, u32, RoaringBitmap>,
+                                   To64Iter<'a>,
+                                   fn((&'a u32, &'a RoaringBitmap)) -> To64Iter<'a>>;
+type InnerIntoIter = iter::FlatMap<btree_map::IntoIter<u32, RoaringBitmap>,
+                                   To64IntoIter,
+                                   fn((u32, RoaringBitmap)) -> To64IntoIter>;
+
+/// An iterator for `RoaringTreemap`.
+pub struct Iter<'a> {
+    inner: InnerIter<'a>,
+    size_hint: u64,
+}
+
+/// An iterator for `RoaringTreemap`.
+pub struct IntoIter {
+    inner: InnerIntoIter,
+    size_hint: u64,
+}
+
 impl<'a> Iter<'a> {
     fn new(map: &BTreeMap<u32, RoaringBitmap>) -> Iter {
-
-        fn identity<T>(t: T) -> T {
-            t
-        };
-        let size_hint: u64 = map.iter().map(|(&hi, &r)| r.len()).sum();
-
-
-
+        let size_hint: u64 = map.iter().map(|(_, r)| r.len()).sum();
         let i = map.iter()
             .flat_map(to64iter as _);
         Iter {
             inner: i,
-            size_hint: 0,
+            size_hint: size_hint,
         }
 
     }
 }
 
 impl IntoIter {
-    fn new(containers: Vec<RoaringBitmap>) -> IntoIter {
-        fn identity<T>(t: T) -> T {
-            t
-        }
-        let size_hint = containers.iter().map(|c| c.len).sum();
+    fn new(map: BTreeMap<u32, RoaringBitmap>) -> IntoIter {
+        let size_hint = map.iter().map(|(_, r)| r.len()).sum();
+        let i = map.into_iter()
+            .flat_map(to64intoiter as _);
         IntoIter {
-            inner: containers.into_iter().flat_map(identity as _),
+            inner: i,
             size_hint: size_hint,
         }
     }
 }
 
 impl<'a> Iterator for Iter<'a> {
-    type Item = u32;
+    type Item = u64;
 
-    fn next(&mut self) -> Option<u32> {
+    fn next(&mut self) -> Option<u64> {
         self.size_hint.saturating_sub(1);
         self.inner.next()
     }
@@ -96,9 +108,9 @@ impl<'a> Iterator for Iter<'a> {
 }
 
 impl Iterator for IntoIter {
-    type Item = u32;
+    type Item = u64;
 
-    fn next(&mut self) -> Option<u32> {
+    fn next(&mut self) -> Option<u64> {
         self.size_hint.saturating_sub(1);
         self.inner.next()
     }
@@ -112,7 +124,7 @@ impl Iterator for IntoIter {
     }
 }
 
-impl RoaringBitmap64 {
+impl RoaringTreemap {
     /// Iterator over each value stored in the RoaringBitmap, guarantees values are ordered by
     /// value.
     ///
@@ -134,8 +146,8 @@ impl RoaringBitmap64 {
     }
 }
 
-impl<'a> IntoIterator for &'a RoaringBitmap64 {
-    type Item = u32;
+impl<'a> IntoIterator for &'a RoaringTreemap {
+    type Item = u64;
     type IntoIter = Iter<'a>;
 
     fn into_iter(self) -> Iter<'a> {
@@ -143,25 +155,25 @@ impl<'a> IntoIterator for &'a RoaringBitmap64 {
     }
 }
 
-impl IntoIterator for RoaringBitmap64 {
-    type Item = u32;
+impl IntoIterator for RoaringTreemap {
+    type Item = u64;
     type IntoIter = IntoIter;
 
     fn into_iter(self) -> IntoIter {
-        IntoIter::new(self.containers)
+        IntoIter::new(self.map)
     }
 }
 
-impl FromIterator<u32> for RoaringBitmap64 {
-    fn from_iter<I: IntoIterator<Item = u32>>(iterator: I) -> RoaringBitmap64 {
-        let mut rb = RoaringBitmap64::new();
+impl FromIterator<u64> for RoaringTreemap {
+    fn from_iter<I: IntoIterator<Item = u64>>(iterator: I) -> RoaringTreemap {
+        let mut rb = RoaringTreemap::new();
         rb.extend(iterator);
         rb
     }
 }
 
-impl Extend<u32> for RoaringBitmap64 {
-    fn extend<I: IntoIterator<Item = u32>>(&mut self, iterator: I) {
+impl Extend<u64> for RoaringTreemap {
+    fn extend<I: IntoIterator<Item = u64>>(&mut self, iterator: I) {
         for value in iterator {
             self.insert(value);
         }

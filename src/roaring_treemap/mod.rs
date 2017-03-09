@@ -4,25 +4,25 @@ use std::collections::BTreeMap;
 //mod store;
 //mod container;
 mod util;
-//mod fmt;
+mod fmt;
 
 // Order of these modules matters as it determines the `impl` blocks order in
 // the docs
 mod inherent;
-//mod iter;
-//mod ops;
-//mod cmp;
+mod iter;
+mod ops;
+mod cmp;
 //mod serialization;
 
-/// A compressed bitmap with u64 keys.
+/// A compressed bitmap with u64 values.
 /// Implemented as a `BTreeMap` of `RoaringBitmap`s.
 ///
 /// # Examples
 ///
 /// ```rust
-/// use roaring::RoaringBitmap64;
+/// use roaring::RoaringTreemap;
 ///
-/// let mut rb = RoaringBitmap64::new();
+/// let mut rb = RoaringTreemap::new();
 ///
 /// // insert all primes less than 10
 /// rb.insert(2);
@@ -32,6 +32,6 @@ mod inherent;
 /// println!("total bits set to true: {}", rb.len());
 /// ```
 #[derive(PartialEq, Clone)]
-pub struct RoaringBitmap64 {
+pub struct RoaringTreemap {
     map: BTreeMap<u32, RoaringBitmap>,
 }
