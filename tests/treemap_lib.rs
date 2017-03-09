@@ -36,6 +36,30 @@ fn smoke() {
 }
 
 #[test]
+fn test_max() {
+    let mut bitmap = RoaringTreemap::new();
+    assert_eq!(bitmap.max(), None);
+    bitmap.insert(0);
+    assert_eq!(bitmap.max(), Some(0));
+    bitmap.insert(1);
+    assert_eq!(bitmap.max(), Some(1));
+    bitmap.insert(u64::max_value());
+    assert_eq!(bitmap.max(), Some(u64::max_value()));
+}
+
+#[test]
+fn test_min() {
+    let mut bitmap = RoaringTreemap::new();
+    assert_eq!(bitmap.min(), None);
+    bitmap.insert(u64::max_value());
+    assert_eq!(bitmap.min(), Some(u64::max_value()));
+    bitmap.insert(1);
+    assert_eq!(bitmap.min(), Some(1));
+    bitmap.insert(0);
+    assert_eq!(bitmap.min(), Some(0));
+}
+
+#[test]
 fn to_bitmap() {
     let bitmap = RoaringTreemap::from_iter(0..5000);
     assert_eq!(bitmap.len(), 5000);

@@ -179,7 +179,7 @@ impl RoaringTreemap {
             .iter()
             .rev()
             .filter(|&(_, rb)| rb.max().is_some())
-            .last()
+            .nth(0)
             .map(|(k, rb)| util::join(*k, rb.max().unwrap()))
     }
 }
