@@ -29,6 +29,9 @@ mod serialization;
 
 pub use iter::Iter;
 
+/// A compressed bitmap with u64 values.  Implemented as a `BTreeMap` of `RoaringBitmap`s.
+pub mod roaring_treemap;
+
 /// A compressed bitmap using the [Roaring bitmap compression scheme](http://roaringbitmap.org).
 ///
 /// # Examples
@@ -49,3 +52,5 @@ pub use iter::Iter;
 pub struct RoaringBitmap {
     containers: Vec<container::Container>,
 }
+
+pub use roaring_treemap::RoaringTreemap;
