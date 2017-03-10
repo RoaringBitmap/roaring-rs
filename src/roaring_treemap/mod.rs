@@ -1,8 +1,6 @@
 use RoaringBitmap;
 use std::collections::BTreeMap;
 
-//mod store;
-//mod container;
 mod util;
 mod fmt;
 
@@ -12,8 +10,8 @@ mod inherent;
 mod iter;
 mod ops;
 mod cmp;
-//mod serialization;
 
+pub use iter::{Iter, IntoIter};
 /// A compressed bitmap with u64 values.
 /// Implemented as a `BTreeMap` of `RoaringBitmap`s.
 ///

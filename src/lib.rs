@@ -26,9 +26,11 @@ mod iter;
 mod ops;
 mod cmp;
 mod serialization;
-mod roaring_treemap;
 
 pub use iter::Iter;
+
+/// A compressed bitmap with u64 values.  Implemented as a `BTreeMap` of `RoaringBitmap`s.
+pub mod roaring_treemap;
 
 /// A compressed bitmap using the [Roaring bitmap compression scheme](http://roaringbitmap.org).
 ///
