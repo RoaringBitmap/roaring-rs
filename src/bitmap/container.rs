@@ -1,7 +1,7 @@
 use std::fmt;
 
-use util;
-use store::{ self, Store };
+use super::util;
+use super::store::{ self, Store };
 
 const ARRAY_LIMIT: u64 = 4096;
 

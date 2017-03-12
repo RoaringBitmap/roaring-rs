@@ -3,7 +3,7 @@ use std::slice;
 use std::vec;
 
 use RoaringBitmap;
-use container::Container;
+use super::container::Container;
 
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a> {

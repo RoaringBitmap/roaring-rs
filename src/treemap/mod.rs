@@ -11,7 +11,8 @@ mod iter;
 mod ops;
 mod cmp;
 
-pub use iter::{Iter, IntoIter};
+pub use self::iter::{Iter, IntoIter};
+
 /// A compressed bitmap with u64 values.
 /// Implemented as a `BTreeMap` of `RoaringBitmap`s.
 ///

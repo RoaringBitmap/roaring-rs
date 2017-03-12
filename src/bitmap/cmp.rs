@@ -2,7 +2,7 @@ use std::slice;
 use std::iter::Peekable;
 
 use RoaringBitmap;
-use container::Container;
+use super::container::Container;
 
 struct Pairs<'a>(Peekable<slice::Iter<'a, Container>>, Peekable<slice::Iter<'a, Container>>);
 

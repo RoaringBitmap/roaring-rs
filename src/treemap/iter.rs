@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 use std::collections::btree_map;
 use std::iter::{self, FromIterator};
 
-use iter::Iter as Iter32;
-use iter::IntoIter as IntoIter32;
+use bitmap::Iter as Iter32;
+use bitmap::IntoIter as IntoIter32;
 use super::util;
 use RoaringBitmap;
 use RoaringTreemap;

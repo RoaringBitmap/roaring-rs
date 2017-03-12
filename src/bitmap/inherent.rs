@@ -1,7 +1,7 @@
 use RoaringBitmap;
 
-use util;
-use container::Container;
+use super::util;
+use super::container::Container;
 
 impl RoaringBitmap {
     /// Creates an empty `RoaringBitmap`.
