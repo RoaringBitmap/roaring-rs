@@ -2,8 +2,8 @@ use std::io;
 use byteorder::{ LittleEndian, ReadBytesExt, WriteBytesExt };
 
 use RoaringBitmap;
-use store::Store;
-use container::Container;
+use super::store::Store;
+use super::container::Container;
 
 const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
 const SERIAL_COOKIE: u16 = 12347;
