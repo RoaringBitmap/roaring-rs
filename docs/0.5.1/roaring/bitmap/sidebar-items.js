@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["IntoIter","An iterator for `RoaringBitmap`."],["Iter","An iterator for `RoaringBitmap`."],["RoaringBitmap","A compressed bitmap using the Roaring bitmap compression scheme."]]});

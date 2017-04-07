@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `RoaringBitmap` struct in crate `roaring`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, RoaringBitmap">
+
+    <title>roaring::bitmap::RoaringBitmap - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../index.html'>roaring</a>::<wbr><a href='index.html'>bitmap</a></p><script>window.sidebarCurrent = {name: 'RoaringBitmap', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>roaring</a>::<wbr><a href='index.html'>bitmap</a>::<wbr><a class='struct' href=''>RoaringBitmap</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../src/roaring/bitmap/mod.rs.html#34-36' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct RoaringBitmap { /* fields omitted */ }</pre><div class='docblock'><p>A compressed bitmap using the <a href="http://roaringbitmap.org">Roaring bitmap compression scheme</a>.</p>
+
+<h1 id='examples' class='section-header'><a href='#examples'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+
+<span class='comment'>// insert all primes less than 10</span>
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>2</span>);
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>);
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>5</span>);
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>7</span>);
+<span class='macro'>println</span><span class='macro'>!</span>(<span class='string'>&quot;total bits set to true: {}&quot;</span>, <span class='ident'>rb</span>.<span class='ident'>len</span>());</pre>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/inherent.rs.html#6-190' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.new' class='method'><span id='new.v' class='invisible'><code>fn <a href='#method.new' class='fnname'>new</a>() -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>Creates an empty <code>RoaringBitmap</code>.</p>
+
+<h1 id='examples-1' class='section-header'><a href='#examples-1'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();</pre>
+</div><h4 id='method.insert' class='method'><span id='insert.v' class='invisible'><code>fn <a href='#method.insert' class='fnname'>insert</a>(&amp;mut self, value: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<div class='docblock'><p>Adds a value to the set. Returns <code>true</code> if the value was not already present in the set.</p>
+
+<h1 id='examples-2' class='section-header'><a href='#examples-2'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>), <span class='bool-val'>true</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>), <span class='bool-val'>false</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>contains</span>(<span class='number'>3</span>), <span class='bool-val'>true</span>);</pre>
+</div><h4 id='method.remove' class='method'><span id='remove.v' class='invisible'><code>fn <a href='#method.remove' class='fnname'>remove</a>(&amp;mut self, value: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<div class='docblock'><p>Removes a value from the set. Returns <code>true</code> if the value was present in the set.</p>
+
+<h1 id='examples-3' class='section-header'><a href='#examples-3'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>remove</span>(<span class='number'>3</span>), <span class='bool-val'>true</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>remove</span>(<span class='number'>3</span>), <span class='bool-val'>false</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>contains</span>(<span class='number'>3</span>), <span class='bool-val'>false</span>);</pre>
+</div><h4 id='method.contains' class='method'><span id='contains.v' class='invisible'><code>fn <a href='#method.contains' class='fnname'>contains</a>(&amp;self, value: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<div class='docblock'><p>Returns <code>true</code> if this set contains the specified integer.</p>
+
+<h1 id='examples-4' class='section-header'><a href='#examples-4'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>contains</span>(<span class='number'>0</span>), <span class='bool-val'>false</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>contains</span>(<span class='number'>1</span>), <span class='bool-val'>true</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>contains</span>(<span class='number'>100</span>), <span class='bool-val'>false</span>);</pre>
+</div><h4 id='method.clear' class='method'><span id='clear.v' class='invisible'><code>fn <a href='#method.clear' class='fnname'>clear</a>(&amp;mut self)</code></span></h4>
+<div class='docblock'><p>Clears all integers in this set.</p>
+
+<h1 id='examples-5' class='section-header'><a href='#examples-5'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>contains</span>(<span class='number'>1</span>), <span class='bool-val'>true</span>);
+<span class='ident'>rb</span>.<span class='ident'>clear</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>contains</span>(<span class='number'>1</span>), <span class='bool-val'>false</span>);</pre>
+</div><h4 id='method.is_empty' class='method'><span id='is_empty.v' class='invisible'><code>fn <a href='#method.is_empty' class='fnname'>is_empty</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<div class='docblock'><p>Returns <code>true</code> if there are no integers in this set.</p>
+
+<h1 id='examples-6' class='section-header'><a href='#examples-6'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>is_empty</span>(), <span class='bool-val'>true</span>);
+
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>is_empty</span>(), <span class='bool-val'>false</span>);</pre>
+</div><h4 id='method.len' class='method'><span id='len.v' class='invisible'><code>fn <a href='#method.len' class='fnname'>len</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u64.html'>u64</a></code></span></h4>
+<div class='docblock'><p>Returns the number of distinct integers added to the set.</p>
+
+<h1 id='examples-7' class='section-header'><a href='#examples-7'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>len</span>(), <span class='number'>0</span>);
+
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>len</span>(), <span class='number'>1</span>);
+
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>);
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>4</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>len</span>(), <span class='number'>2</span>);</pre>
+</div><h4 id='method.min' class='method'><span id='min.v' class='invisible'><code>fn <a href='#method.min' class='fnname'>min</a>(&amp;self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>&gt;</code></span></h4>
+<div class='docblock'><p>Returns the minimum value in the set (if the set is non-empty).</p>
+
+<h1 id='examples-8' class='section-header'><a href='#examples-8'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>min</span>(), <span class='prelude-val'>None</span>);
+
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>);
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>4</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>min</span>(), <span class='prelude-val'>Some</span>(<span class='number'>3</span>));</pre>
+</div><h4 id='method.max' class='method'><span id='max.v' class='invisible'><code>fn <a href='#method.max' class='fnname'>max</a>(&amp;self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>&gt;</code></span></h4>
+<div class='docblock'><p>Returns the maximum value in the set (if the set is non-empty).</p>
+
+<h1 id='examples-9' class='section-header'><a href='#examples-9'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>max</span>(), <span class='prelude-val'>None</span>);
+
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>3</span>);
+<span class='ident'>rb</span>.<span class='ident'>insert</span>(<span class='number'>4</span>);
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb</span>.<span class='ident'>max</span>(), <span class='prelude-val'>Some</span>(<span class='number'>4</span>));</pre>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/iter.rs.html#76-95' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.iter' class='method'><span id='iter.v' class='invisible'><code>fn <a href='#method.iter' class='fnname'>iter</a>(&amp;self) -&gt; <a class='struct' href='../../roaring/bitmap/struct.Iter.html' title='roaring::bitmap::Iter'>Iter</a></code></span></h4>
+<div class='docblock'><p>Iterator over each value stored in the RoaringBitmap, guarantees values are ordered by value.</p>
+
+<h1 id='examples-10' class='section-header'><a href='#examples-10'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>iter</span>::<span class='ident'>FromIterator</span>;
+
+<span class='kw'>let</span> <span class='ident'>bitmap</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>from_iter</span>(<span class='number'>1</span>..<span class='number'>3</span>);
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>iter</span> <span class='op'>=</span> <span class='ident'>bitmap</span>.<span class='ident'>iter</span>();
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>iter</span>.<span class='ident'>next</span>(), <span class='prelude-val'>Some</span>(<span class='number'>1</span>));
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>iter</span>.<span class='ident'>next</span>(), <span class='prelude-val'>Some</span>(<span class='number'>2</span>));
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>iter</span>.<span class='ident'>next</span>(), <span class='prelude-val'>None</span>);</pre>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#10-187' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.union_with' class='method'><span id='union_with.v' class='invisible'><code>fn <a href='#method.union_with' class='fnname'>union_with</a>(&amp;mut self, other: &amp;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>)</code></span></h4>
+<div class='docblock'><p>Unions in-place with the specified other bitmap.</p>
+
+<h1 id='examples-11' class='section-header'><a href='#examples-11'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb1</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>4</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb2</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>3</span>..<span class='number'>5</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb3</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>5</span>).<span class='ident'>collect</span>();
+
+<span class='ident'>rb1</span>.<span class='ident'>union_with</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb2</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>, <span class='ident'>rb3</span>);</pre>
+
+<p>Can also be done via the <code>BitOr</code> operator.</p>
+
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb1</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>4</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb2</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>3</span>..<span class='number'>5</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb3</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>5</span>).<span class='ident'>collect</span>();
+
+<span class='kw'>let</span> <span class='ident'>rb1</span> <span class='op'>=</span> <span class='ident'>rb1</span> <span class='op'>|</span> <span class='ident'>rb2</span>;
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>, <span class='ident'>rb3</span>);</pre>
+</div><h4 id='method.intersect_with' class='method'><span id='intersect_with.v' class='invisible'><code>fn <a href='#method.intersect_with' class='fnname'>intersect_with</a>(&amp;mut self, other: &amp;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>)</code></span></h4>
+<div class='docblock'><p>Intersects in-place with the specified other bitmap.</p>
+
+<h1 id='examples-12' class='section-header'><a href='#examples-12'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb1</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>4</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb2</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>3</span>..<span class='number'>5</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb3</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>3</span>..<span class='number'>4</span>).<span class='ident'>collect</span>();
+
+<span class='ident'>rb1</span>.<span class='ident'>intersect_with</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb2</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>, <span class='ident'>rb3</span>);</pre>
+
+<p>Can also be done via the <code>BitAnd</code> operator.</p>
+
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb1</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>4</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb2</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>3</span>..<span class='number'>5</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb3</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>3</span>..<span class='number'>4</span>).<span class='ident'>collect</span>();
+
+<span class='kw'>let</span> <span class='ident'>rb1</span> <span class='op'>=</span> <span class='ident'>rb1</span> <span class='op'>&amp;</span> <span class='ident'>rb2</span>;
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>, <span class='ident'>rb3</span>);</pre>
+</div><h4 id='method.difference_with' class='method'><span id='difference_with.v' class='invisible'><code>fn <a href='#method.difference_with' class='fnname'>difference_with</a>(&amp;mut self, other: &amp;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>)</code></span></h4>
+<div class='docblock'><p>Removes all values in the specified other bitmap from self, in-place.</p>
+
+<h1 id='examples-13' class='section-header'><a href='#examples-13'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb1</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>4</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb2</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>3</span>..<span class='number'>5</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb3</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>3</span>).<span class='ident'>collect</span>();
+
+<span class='ident'>rb1</span>.<span class='ident'>difference_with</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb2</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>, <span class='ident'>rb3</span>);</pre>
+
+<p>Can also be done via the <code>Sub</code> operator.</p>
+
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb1</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>4</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb2</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>3</span>..<span class='number'>5</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb3</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>3</span>).<span class='ident'>collect</span>();
+
+<span class='kw'>let</span> <span class='ident'>rb1</span> <span class='op'>=</span> <span class='ident'>rb1</span> <span class='op'>-</span> <span class='ident'>rb2</span>;
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>, <span class='ident'>rb3</span>);</pre>
+</div><h4 id='method.symmetric_difference_with' class='method'><span id='symmetric_difference_with.v' class='invisible'><code>fn <a href='#method.symmetric_difference_with' class='fnname'>symmetric_difference_with</a>(&amp;mut self, other: &amp;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>)</code></span></h4>
+<div class='docblock'><p>Replaces this bitmap with one that is equivalent to <code>self XOR other</code>.</p>
+
+<h1 id='examples-14' class='section-header'><a href='#examples-14'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb1</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>4</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb2</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>3</span>..<span class='number'>6</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb3</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>3</span>).<span class='ident'>chain</span>(<span class='number'>4</span>..<span class='number'>6</span>).<span class='ident'>collect</span>();
+
+<span class='ident'>rb1</span>.<span class='ident'>symmetric_difference_with</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb2</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>, <span class='ident'>rb3</span>);</pre>
+
+<p>Can also be done via the <code>BitXor</code> operator.</p>
+
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb1</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>4</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb2</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>3</span>..<span class='number'>6</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='ident'>rb3</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>3</span>).<span class='ident'>chain</span>(<span class='number'>4</span>..<span class='number'>6</span>).<span class='ident'>collect</span>();
+
+<span class='kw'>let</span> <span class='ident'>rb1</span> <span class='op'>=</span> <span class='ident'>rb1</span> <span class='op'>^</span> <span class='ident'>rb2</span>;
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>, <span class='ident'>rb3</span>);</pre>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/cmp.rs.html#9-98' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.is_disjoint' class='method'><span id='is_disjoint.v' class='invisible'><code>fn <a href='#method.is_disjoint' class='fnname'>is_disjoint</a>(&amp;self, other: &amp;Self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<div class='docblock'><p>Returns true if the set has no elements in common with other. This is equivalent to
+checking for an empty intersection.</p>
+
+<h1 id='examples-15' class='section-header'><a href='#examples-15'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb1</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb2</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+
+<span class='ident'>rb1</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>.<span class='ident'>is_disjoint</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb2</span>), <span class='bool-val'>true</span>);
+
+<span class='ident'>rb2</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>.<span class='ident'>is_disjoint</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb2</span>), <span class='bool-val'>false</span>);
+</pre>
+</div><h4 id='method.is_subset' class='method'><span id='is_subset.v' class='invisible'><code>fn <a href='#method.is_subset' class='fnname'>is_subset</a>(&amp;self, other: &amp;Self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<div class='docblock'><p>Returns <code>true</code> if this set is a subset of <code>other</code>.</p>
+
+<h1 id='examples-16' class='section-header'><a href='#examples-16'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb1</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb2</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+
+<span class='ident'>rb1</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>.<span class='ident'>is_subset</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb2</span>), <span class='bool-val'>false</span>);
+
+<span class='ident'>rb2</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>.<span class='ident'>is_subset</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb2</span>), <span class='bool-val'>true</span>);
+
+<span class='ident'>rb1</span>.<span class='ident'>insert</span>(<span class='number'>2</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>.<span class='ident'>is_subset</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb2</span>), <span class='bool-val'>false</span>);</pre>
+</div><h4 id='method.is_superset' class='method'><span id='is_superset.v' class='invisible'><code>fn <a href='#method.is_superset' class='fnname'>is_superset</a>(&amp;self, other: &amp;Self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<div class='docblock'><p>Returns <code>true</code> if this set is a superset of <code>other</code>.</p>
+
+<h1 id='examples-17' class='section-header'><a href='#examples-17'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb1</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rb2</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>new</span>();
+
+<span class='ident'>rb1</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb2</span>.<span class='ident'>is_superset</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb1</span>), <span class='bool-val'>false</span>);
+
+<span class='ident'>rb2</span>.<span class='ident'>insert</span>(<span class='number'>1</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb2</span>.<span class='ident'>is_superset</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb1</span>), <span class='bool-val'>true</span>);
+
+<span class='ident'>rb1</span>.<span class='ident'>insert</span>(<span class='number'>2</span>);
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb2</span>.<span class='ident'>is_superset</span>(<span class='kw-2'>&amp;</span><span class='ident'>rb1</span>), <span class='bool-val'>false</span>);</pre>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/serialization.rs.html#13-177' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.serialized_size' class='method'><span id='serialized_size.v' class='invisible'><code>fn <a href='#method.serialized_size' class='fnname'>serialized_size</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a></code></span></h4>
+<div class='docblock'><p>Return the size in bytes of the serialized output.
+This is compatible with the official C/C++, Java and Go implementations.</p>
+
+<h1 id='examples-18' class='section-header'><a href='#examples-18'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='ident'>rb1</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>4</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>bytes</span> <span class='op'>=</span> <span class='ident'>Vec</span>::<span class='ident'>with_capacity</span>(<span class='ident'>rb1</span>.<span class='ident'>serialized_size</span>());
+<span class='ident'>rb1</span>.<span class='ident'>serialize_into</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>bytes</span>).<span class='ident'>unwrap</span>();
+<span class='kw'>let</span> <span class='ident'>rb2</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>deserialize_from</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='kw-2'>&amp;</span><span class='ident'>bytes</span>[..]).<span class='ident'>unwrap</span>();
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>, <span class='ident'>rb2</span>);</pre>
+</div><h4 id='method.serialize_into' class='method'><span id='serialize_into.v' class='invisible'><code>fn <a href='#method.serialize_into' class='fnname'>serialize_into</a>&lt;W:&nbsp;<a class='trait' href='https://doc.rust-lang.org/nightly/std/io/trait.Write.html' title='std::io::Write'>Write</a>&gt;(&amp;self, writer: W) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/std/io/error/type.Result.html' title='std::io::error::Result'>Result</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></span></h4>
+<div class='docblock'><p>Serialize this bitmap into <a href="https://github.com/RoaringBitmap/RoaringFormatSpec">the standard Roaring on-disk format</a>.
+This is compatible with the official C/C++, Java and Go implementations.</p>
+
+<h1 id='examples-19' class='section-header'><a href='#examples-19'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='ident'>rb1</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>4</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>bytes</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[];
+<span class='ident'>rb1</span>.<span class='ident'>serialize_into</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>bytes</span>).<span class='ident'>unwrap</span>();
+<span class='kw'>let</span> <span class='ident'>rb2</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>deserialize_from</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='kw-2'>&amp;</span><span class='ident'>bytes</span>[..]).<span class='ident'>unwrap</span>();
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>, <span class='ident'>rb2</span>);</pre>
+</div><h4 id='method.deserialize_from' class='method'><span id='deserialize_from.v' class='invisible'><code>fn <a href='#method.deserialize_from' class='fnname'>deserialize_from</a>&lt;R:&nbsp;<a class='trait' href='https://doc.rust-lang.org/nightly/std/io/trait.Read.html' title='std::io::Read'>Read</a>&gt;(reader: R) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/std/io/error/type.Result.html' title='std::io::error::Result'>Result</a>&lt;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt;</code></span></h4>
+<div class='docblock'><p>Deserialize a bitmap into memory from <a href="https://github.com/RoaringBitmap/RoaringFormatSpec">the standard Roaring on-disk
+format</a>.  This is compatible with the official C/C++, Java and
+Go implementations.</p>
+
+<h1 id='examples-20' class='section-header'><a href='#examples-20'>Examples</a></h1>
+<pre class='rust rust-example-rendered'>
+<span class='kw'>use</span> <span class='ident'>roaring</span>::<span class='ident'>RoaringBitmap</span>;
+
+<span class='kw'>let</span> <span class='ident'>rb1</span>: <span class='ident'>RoaringBitmap</span> <span class='op'>=</span> (<span class='number'>1</span>..<span class='number'>4</span>).<span class='ident'>collect</span>();
+<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>bytes</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[];
+<span class='ident'>rb1</span>.<span class='ident'>serialize_into</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>bytes</span>).<span class='ident'>unwrap</span>();
+<span class='kw'>let</span> <span class='ident'>rb2</span> <span class='op'>=</span> <span class='ident'>RoaringBitmap</span>::<span class='ident'>deserialize_from</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='kw-2'>&amp;</span><span class='ident'>bytes</span>[..]).<span class='ident'>unwrap</span>();
+
+<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>rb1</span>, <span class='ident'>rb2</span>);</pre>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a> for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/fmt.rs.html#5-13' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.fmt' class='method'><span id='fmt.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt' class='fnname'>fmt</a>(&amp;self, f: &amp;mut <a class='struct' href='https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></span></h4>
+<div class='docblock'><p>Formats the value using the given formatter.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/default/trait.Default.html' title='core::default::Default'>Default</a> for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/inherent.rs.html#192-196' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.default' class='method'><span id='default.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/default/trait.Default.html#tymethod.default' class='fnname'>default</a>() -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>Returns the &quot;default value&quot; for a type. <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html#tymethod.default">Read more</a></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.IntoIterator.html' title='core::iter::traits::IntoIterator'>IntoIterator</a> for &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/iter.rs.html#97-104' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Item' class='type'><span id='Item.t' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.IntoIterator.html#associatedtype.Item' class='type'>Item</a> = <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a></code></span></h4>
+<div class='docblock'><p>The type of the elements being iterated over.</p>
+</div><h4 id='associatedtype.IntoIter' class='type'><span id='IntoIter.t' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.IntoIterator.html#associatedtype.IntoIter' class='type'>IntoIter</a> = <a class='struct' href='../../roaring/bitmap/struct.Iter.html' title='roaring::bitmap::Iter'>Iter</a>&lt;'a&gt;</code></span></h4>
+<div class='docblock'><p>Which kind of iterator are we turning this into?</p>
+</div><h4 id='method.into_iter' class='method'><span id='into_iter.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.IntoIterator.html#tymethod.into_iter' class='fnname'>into_iter</a>(self) -&gt; <a class='struct' href='../../roaring/bitmap/struct.Iter.html' title='roaring::bitmap::Iter'>Iter</a>&lt;'a&gt;</code></span></h4>
+<div class='docblock'><p>Creates an iterator from a value. <a href="https://doc.rust-lang.org/nightly/core/iter/traits/trait.IntoIterator.html#tymethod.into_iter">Read more</a></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.IntoIterator.html' title='core::iter::traits::IntoIterator'>IntoIterator</a> for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/iter.rs.html#106-113' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Item-1' class='type'><span id='Item.t-1' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.IntoIterator.html#associatedtype.Item' class='type'>Item</a> = <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a></code></span></h4>
+<div class='docblock'><p>The type of the elements being iterated over.</p>
+</div><h4 id='associatedtype.IntoIter-1' class='type'><span id='IntoIter.t-1' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.IntoIterator.html#associatedtype.IntoIter' class='type'>IntoIter</a> = <a class='struct' href='../../roaring/bitmap/struct.IntoIter.html' title='roaring::bitmap::IntoIter'>IntoIter</a></code></span></h4>
+<div class='docblock'><p>Which kind of iterator are we turning this into?</p>
+</div><h4 id='method.into_iter-1' class='method'><span id='into_iter.v-1' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.IntoIterator.html#tymethod.into_iter' class='fnname'>into_iter</a>(self) -&gt; <a class='struct' href='../../roaring/bitmap/struct.IntoIter.html' title='roaring::bitmap::IntoIter'>IntoIter</a></code></span></h4>
+<div class='docblock'><p>Creates an iterator from a value. <a href="https://doc.rust-lang.org/nightly/core/iter/traits/trait.IntoIterator.html#tymethod.into_iter">Read more</a></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.FromIterator.html' title='core::iter::traits::FromIterator'>FromIterator</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/iter.rs.html#115-121' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.from_iter' class='method'><span id='from_iter.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.FromIterator.html#tymethod.from_iter' class='fnname'>from_iter</a>&lt;I:&nbsp;<a class='trait' href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.IntoIterator.html' title='core::iter::traits::IntoIterator'>IntoIterator</a>&lt;Item=<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>&gt;&gt;(iterator: I) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>Creates a value from an iterator. <a href="https://doc.rust-lang.org/nightly/core/iter/traits/trait.FromIterator.html#tymethod.from_iter">Read more</a></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.Extend.html' title='core::iter::traits::Extend'>Extend</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/iter.rs.html#123-129' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.extend' class='method'><span id='extend.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.Extend.html#tymethod.extend' class='fnname'>extend</a>&lt;I:&nbsp;<a class='trait' href='https://doc.rust-lang.org/nightly/core/iter/traits/trait.IntoIterator.html' title='core::iter::traits::IntoIterator'>IntoIterator</a>&lt;Item=<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>&gt;&gt;(&amp;mut self, iterator: I)</code></span></h4>
+<div class='docblock'><p>Extends a collection with the contents of an iterator. <a href="https://doc.rust-lang.org/nightly/core/iter/traits/trait.Extend.html#tymethod.extend">Read more</a></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOr.html' title='core::ops::BitOr'>BitOr</a>&lt;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#189-196' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output' class='type'><span id='Output.t' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOr.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>|</code> operator</p>
+</div><h4 id='method.bitor' class='method'><span id='bitor.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOr.html#tymethod.bitor' class='fnname'>bitor</a>(self, rhs: <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>|</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOr.html' title='core::ops::BitOr'>BitOr</a>&lt;&amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#198-205' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-1' class='type'><span id='Output.t-1' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOr.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>|</code> operator</p>
+</div><h4 id='method.bitor-1' class='method'><span id='bitor.v-1' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOr.html#tymethod.bitor' class='fnname'>bitor</a>(self, rhs: &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>|</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOr.html' title='core::ops::BitOr'>BitOr</a>&lt;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#207-213' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-2' class='type'><span id='Output.t-2' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOr.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>|</code> operator</p>
+</div><h4 id='method.bitor-2' class='method'><span id='bitor.v-2' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOr.html#tymethod.bitor' class='fnname'>bitor</a>(self, rhs: <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>|</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a, 'b&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOr.html' title='core::ops::BitOr'>BitOr</a>&lt;&amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for &amp;'b <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#215-221' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-3' class='type'><span id='Output.t-3' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOr.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>|</code> operator</p>
+</div><h4 id='method.bitor-3' class='method'><span id='bitor.v-3' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOr.html#tymethod.bitor' class='fnname'>bitor</a>(self, rhs: &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>|</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOrAssign.html' title='core::ops::BitOrAssign'>BitOrAssign</a>&lt;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#223-227' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.bitor_assign' class='method'><span id='bitor_assign.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOrAssign.html#tymethod.bitor_assign' class='fnname'>bitor_assign</a>(&amp;mut self, rhs: <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>)</code></span></h4>
+<div class='docblock'><p>The method for the <code>|=</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOrAssign.html' title='core::ops::BitOrAssign'>BitOrAssign</a>&lt;&amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#229-233' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.bitor_assign-1' class='method'><span id='bitor_assign.v-1' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitOrAssign.html#tymethod.bitor_assign' class='fnname'>bitor_assign</a>(&amp;mut self, rhs: &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>)</code></span></h4>
+<div class='docblock'><p>The method for the <code>|=</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAnd.html' title='core::ops::BitAnd'>BitAnd</a>&lt;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#235-242' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-4' class='type'><span id='Output.t-4' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAnd.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>&amp;</code> operator</p>
+</div><h4 id='method.bitand' class='method'><span id='bitand.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAnd.html#tymethod.bitand' class='fnname'>bitand</a>(self, rhs: <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>&amp;</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAnd.html' title='core::ops::BitAnd'>BitAnd</a>&lt;&amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#244-251' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-5' class='type'><span id='Output.t-5' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAnd.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>&amp;</code> operator</p>
+</div><h4 id='method.bitand-1' class='method'><span id='bitand.v-1' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAnd.html#tymethod.bitand' class='fnname'>bitand</a>(self, rhs: &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>&amp;</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAnd.html' title='core::ops::BitAnd'>BitAnd</a>&lt;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#253-259' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-6' class='type'><span id='Output.t-6' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAnd.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>&amp;</code> operator</p>
+</div><h4 id='method.bitand-2' class='method'><span id='bitand.v-2' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAnd.html#tymethod.bitand' class='fnname'>bitand</a>(self, rhs: <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>&amp;</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a, 'b&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAnd.html' title='core::ops::BitAnd'>BitAnd</a>&lt;&amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for &amp;'b <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#261-267' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-7' class='type'><span id='Output.t-7' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAnd.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>&amp;</code> operator</p>
+</div><h4 id='method.bitand-3' class='method'><span id='bitand.v-3' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAnd.html#tymethod.bitand' class='fnname'>bitand</a>(self, rhs: &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>&amp;</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAndAssign.html' title='core::ops::BitAndAssign'>BitAndAssign</a>&lt;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#269-273' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.bitand_assign' class='method'><span id='bitand_assign.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAndAssign.html#tymethod.bitand_assign' class='fnname'>bitand_assign</a>(&amp;mut self, rhs: <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>)</code></span></h4>
+<div class='docblock'><p>The method for the <code>&amp;=</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAndAssign.html' title='core::ops::BitAndAssign'>BitAndAssign</a>&lt;&amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#275-279' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.bitand_assign-1' class='method'><span id='bitand_assign.v-1' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitAndAssign.html#tymethod.bitand_assign' class='fnname'>bitand_assign</a>(&amp;mut self, rhs: &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>)</code></span></h4>
+<div class='docblock'><p>The method for the <code>&amp;=</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Sub.html' title='core::ops::Sub'>Sub</a>&lt;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#281-288' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-8' class='type'><span id='Output.t-8' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Sub.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>-</code> operator</p>
+</div><h4 id='method.sub' class='method'><span id='sub.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Sub.html#tymethod.sub' class='fnname'>sub</a>(self, rhs: <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>-</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Sub.html' title='core::ops::Sub'>Sub</a>&lt;&amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#290-297' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-9' class='type'><span id='Output.t-9' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Sub.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>-</code> operator</p>
+</div><h4 id='method.sub-1' class='method'><span id='sub.v-1' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Sub.html#tymethod.sub' class='fnname'>sub</a>(self, rhs: &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>-</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Sub.html' title='core::ops::Sub'>Sub</a>&lt;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#299-305' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-10' class='type'><span id='Output.t-10' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Sub.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>-</code> operator</p>
+</div><h4 id='method.sub-2' class='method'><span id='sub.v-2' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Sub.html#tymethod.sub' class='fnname'>sub</a>(self, rhs: <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>-</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a, 'b&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Sub.html' title='core::ops::Sub'>Sub</a>&lt;&amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for &amp;'b <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#307-313' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-11' class='type'><span id='Output.t-11' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Sub.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>-</code> operator</p>
+</div><h4 id='method.sub-3' class='method'><span id='sub.v-3' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Sub.html#tymethod.sub' class='fnname'>sub</a>(self, rhs: &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>-</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.SubAssign.html' title='core::ops::SubAssign'>SubAssign</a>&lt;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#315-319' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.sub_assign' class='method'><span id='sub_assign.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.SubAssign.html#tymethod.sub_assign' class='fnname'>sub_assign</a>(&amp;mut self, rhs: <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>)</code></span></h4>
+<div class='docblock'><p>The method for the <code>-=</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.SubAssign.html' title='core::ops::SubAssign'>SubAssign</a>&lt;&amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#321-325' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.sub_assign-1' class='method'><span id='sub_assign.v-1' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.SubAssign.html#tymethod.sub_assign' class='fnname'>sub_assign</a>(&amp;mut self, rhs: &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>)</code></span></h4>
+<div class='docblock'><p>The method for the <code>-=</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXor.html' title='core::ops::BitXor'>BitXor</a>&lt;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#327-334' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-12' class='type'><span id='Output.t-12' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXor.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>^</code> operator</p>
+</div><h4 id='method.bitxor' class='method'><span id='bitxor.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXor.html#tymethod.bitxor' class='fnname'>bitxor</a>(self, rhs: <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>^</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXor.html' title='core::ops::BitXor'>BitXor</a>&lt;&amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#336-343' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-13' class='type'><span id='Output.t-13' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXor.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>^</code> operator</p>
+</div><h4 id='method.bitxor-1' class='method'><span id='bitxor.v-1' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXor.html#tymethod.bitxor' class='fnname'>bitxor</a>(self, rhs: &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>^</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXor.html' title='core::ops::BitXor'>BitXor</a>&lt;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#345-351' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-14' class='type'><span id='Output.t-14' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXor.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>^</code> operator</p>
+</div><h4 id='method.bitxor-2' class='method'><span id='bitxor.v-2' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXor.html#tymethod.bitxor' class='fnname'>bitxor</a>(self, rhs: <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>^</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a, 'b&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXor.html' title='core::ops::BitXor'>BitXor</a>&lt;&amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for &amp;'b <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#353-359' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.Output-15' class='type'><span id='Output.t-15' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXor.html#associatedtype.Output' class='type'>Output</a> = <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The resulting type after applying the <code>^</code> operator</p>
+</div><h4 id='method.bitxor-3' class='method'><span id='bitxor.v-3' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXor.html#tymethod.bitxor' class='fnname'>bitxor</a>(self, rhs: &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>The method for the <code>^</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXorAssign.html' title='core::ops::BitXorAssign'>BitXorAssign</a>&lt;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#361-365' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.bitxor_assign' class='method'><span id='bitxor_assign.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXorAssign.html#tymethod.bitxor_assign' class='fnname'>bitxor_assign</a>(&amp;mut self, rhs: <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>)</code></span></h4>
+<div class='docblock'><p>The method for the <code>^=</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXorAssign.html' title='core::ops::BitXorAssign'>BitXorAssign</a>&lt;&amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>&gt; for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/ops.rs.html#367-371' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.bitxor_assign-1' class='method'><span id='bitxor_assign.v-1' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.BitXorAssign.html#tymethod.bitxor_assign' class='fnname'>bitxor_assign</a>(&amp;mut self, rhs: &amp;'a <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>)</code></span></h4>
+<div class='docblock'><p>The method for the <code>^=</code> operator</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a> for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/mod.rs.html#33' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.eq' class='method'><span id='eq.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#tymethod.eq' class='fnname'>eq</a>(&amp;self, __arg_0: &amp;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<div class='docblock'><p>This method tests for <code>self</code> and <code>other</code> values to be equal, and is used by <code>==</code>. <a href="https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#tymethod.eq">Read more</a></p>
+</div><h4 id='method.ne' class='method'><span id='ne.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html#method.ne' class='fnname'>ne</a>(&amp;self, __arg_0: &amp;<a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<div class='docblock'><p>This method tests for <code>!=</code>.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/roaring/bitmap/mod.rs.html#33' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.clone' class='method'><span id='clone.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class='struct' href='../../roaring/bitmap/struct.RoaringBitmap.html' title='roaring::bitmap::RoaringBitmap'>RoaringBitmap</a></code></span></h4>
+<div class='docblock'><p>Returns a copy of the value. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone">Read more</a></p>
+</div><h4 id='method.clone_from' class='method'><span id='clone_from.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: &amp;Self)</code><div class='since' title='Stable since Rust version 1.0.0'>1.0.0</div></span></h4>
+<div class='docblock'><p>Performs copy-assignment from <code>source</code>. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from">Read more</a></p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "roaring";
+    </script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>
