@@ -13,6 +13,19 @@ const SERIAL_COOKIE: u16 = 12347;
 impl RoaringBitmap {
     /// Return the size in bytes of the serialized output.
     /// This is compatible with the official C/C++, Java and Go implementations.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = (1..4).collect();
+    /// let mut bytes = Vec::with_capacity(rb1.serialized_size());
+    /// rb1.serialize_into(&mut bytes).unwrap();
+    /// let rb2 = RoaringBitmap::deserialize_from(&mut &bytes[..]).unwrap();
+    ///
+    /// assert_eq!(rb1, rb2);
+    /// ```
     pub fn serialized_size(&self) -> usize {
         let container_sizes: usize = self.containers.iter().map(|container| {
             match container.store {
