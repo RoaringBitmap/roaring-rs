@@ -9,8 +9,12 @@ repository = "https://github.com/Nemo157/roaring-rs"
 
 readme = "README.md"
 keywords = ["roaring", "data-structure", "bitmap"]
+categories = ["data-structures"]
 
 license = "MIT/Apache-2.0"
+
+[badges]
+travis-ci = { repository = "Nemo157/roaring-rs" }
 
 [dependencies]
 byteorder = "0.5.3"
