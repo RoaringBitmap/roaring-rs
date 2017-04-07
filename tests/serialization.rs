@@ -17,6 +17,7 @@ fn test_data_bitmap() -> RoaringBitmap {
 fn serialize_and_deserialize(bitmap: &RoaringBitmap) -> RoaringBitmap {
     let mut buffer = vec![];
     bitmap.serialize_into(&mut buffer).unwrap();
+    assert_eq!(buffer.len(), bitmap.serialized_size());
     RoaringBitmap::deserialize_from(&mut &buffer[..]).unwrap()
 }
 

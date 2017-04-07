@@ -144,6 +144,46 @@ impl RoaringTreemap {
     pub fn iter(&self) -> Iter {
         Iter::new(&self.map)
     }
+
+    /// Iterator over pairs of partition number and the corresponding RoaringBitmap.
+    /// The partition number is defined by the 32 most significant bits of the bit index.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::{RoaringBitmap, RoaringTreemap};
+    /// use std::iter::FromIterator;
+    ///
+    /// let original = RoaringTreemap::from_iter(0..6000);
+    /// let mut bitmaps = original.bitmaps();
+    ///
+    /// assert_eq!(bitmaps.next(), Some((0, &RoaringBitmap::from_iter(0..6000))));
+    /// assert_eq!(bitmaps.next(), None);
+    /// ```
+    pub fn bitmaps(&self) -> BitmapIter {
+        BitmapIter(self.map.iter())
+    }
+
+    /// Construct a RoaringTreemap from an iterator of partition number and RoaringBitmap pairs.
+    /// The partition number is defined by the 32 most significant bits of the bit index.
+    /// Note that repeated partitions, if present, will replace previously set partitions.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    /// use std::iter::FromIterator;
+    ///
+    /// let original = RoaringTreemap::from_iter(0..6000);
+    /// let clone = RoaringTreemap::from_bitmaps(original.bitmaps().map(|(p, b)| (p, b.clone())));
+    ///
+    /// assert_eq!(clone, original);
+    /// ```
+    pub fn from_bitmaps<I: IntoIterator<Item = (u32, RoaringBitmap)>>(iterator: I) -> Self {
+        RoaringTreemap {
+            map: iterator.into_iter().collect(),
+        }
+    }
 }
 
 impl<'a> IntoIterator for &'a RoaringTreemap {
@@ -177,5 +217,25 @@ impl Extend<u64> for RoaringTreemap {
         for value in iterator {
             self.insert(value);
         }
+    }
+}
+
+pub struct BitmapIter<'a>(btree_map::Iter<'a, u32, RoaringBitmap>);
+
+impl<'a> Iterator for BitmapIter<'a> {
+    type Item = (u32, &'a RoaringBitmap);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|(&p, b)| (p, b))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl FromIterator<(u32, RoaringBitmap)> for RoaringTreemap {
+    fn from_iter<I: IntoIterator<Item = (u32, RoaringBitmap)>>(iterator: I) -> RoaringTreemap {
+        Self::from_bitmaps(iterator)
     }
 }

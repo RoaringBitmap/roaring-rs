@@ -11,6 +11,24 @@ const SERIAL_COOKIE: u16 = 12347;
 // const NO_OFFSET_THRESHOLD: u8 = 4;
 
 impl RoaringBitmap {
+    /// Return the size in bytes of the serialized output.
+    /// This is compatible with the official C/C++, Java and Go implementations.
+    pub fn serialized_size(&self) -> usize {
+        let container_sizes: usize = self.containers.iter().map(|container| {
+            match container.store {
+                Store::Array(ref values) => {
+                    8 + values.len() * 2
+                }
+                Store::Bitmap(..) => {
+                    8 + 8 * 1024
+                }
+            }
+        }).sum();
+
+        // header + container sizes
+        8 + container_sizes
+    }
+
     /// Serialize this bitmap into [the standard Roaring on-disk format][format].
     /// This is compatible with the official C/C++, Java and Go implementations.
     ///
