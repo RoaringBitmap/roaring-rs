@@ -125,7 +125,7 @@ impl Iterator for IntoIter {
 }
 
 impl RoaringTreemap {
-    /// Iterator over each value stored in the RoaringBitmap, guarantees values are ordered by
+    /// Iterator over each value stored in the RoaringTreemap, guarantees values are ordered by
     /// value.
     ///
     /// # Examples
