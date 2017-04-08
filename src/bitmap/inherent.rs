@@ -2,6 +2,7 @@ use RoaringBitmap;
 
 use super::util;
 use super::container::Container;
+use std::ops::Range;
 
 impl RoaringBitmap {
     /// Creates an empty `RoaringBitmap`.
@@ -68,6 +69,63 @@ impl RoaringBitmap {
             }
             _ => false,
         }
+    }
+    /// Removes a range of values from the set specific as [start..end).
+    /// Returns the number of removed values.
+    ///
+    /// Note that due to the exclusive end this functions take indexes as u64
+    /// but you still can't index past 2**32 (u32::MAX + 1).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// rb.insert(2);
+    /// rb.insert(3);
+    /// assert_eq!(rb.remove_range(2..4), 2);
+    /// ```
+    pub fn remove_range(&mut self, range: Range<u64>) -> u64 {
+        assert!(range.end <= u32::max_value() as u64 + 1, "can't index past 2**32");
+        if range.start == range.end {
+            return 0;
+        }
+        // inclusive bounds for start and end
+        let (start_hi, start_lo) = util::split(range.start as u32);
+        let (end_hi, end_lo) = util::split((range.end - 1) as u32);
+        let mut index = 0;
+        let mut result = 0;
+        while index < self.containers.len() {
+            let key = self.containers[index].key;
+            if key >= start_hi && key <= end_hi {
+                let a = if key == start_hi {
+                    start_lo as u32
+                } else {
+                    0
+                };
+                let b = if key == end_hi {
+                    end_lo as u32 + 1 // make it exclusive
+                } else {
+                    u16::max_value() as u32 + 1
+                };
+                // remove container?
+                if a == 0 && b == u16::max_value() as u32 + 1 {
+                    result += self.containers[index].len;
+                    self.containers.remove(index);
+                    continue;
+                }
+                else {
+                    result += self.containers[index].remove_range(a, b);
+                    if self.containers[index].len == 0 {
+                        self.containers.remove(index);
+                        continue;
+                    }
+                }
+            }
+            index += 1;
+        }
+        result
     }
 
     /// Returns `true` if this set contains the specified integer.

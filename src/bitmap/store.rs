@@ -65,6 +65,56 @@ impl Store {
         }
     }
 
+    pub fn remove_range(&mut self, start: u32, end: u32) -> u64 {
+        debug_assert!(start < end, "caller must ensure start < end");
+        match *self {
+            Array(ref mut vec) => {
+                let a = vec.binary_search(&(start as u16)).unwrap_or_else(|e| e);
+                let b = if end > u16::max_value() as u32 {
+                    vec.len()
+                } else {
+                    vec.binary_search(&(end as u16)).unwrap_or_else(|e| e)
+                };
+                vec.drain(a..b);
+                (b - a) as u64
+            },
+            Bitmap(ref mut bits) => {
+                let start_key = key(start as u16) as usize;
+                let start_bit =  bit(start as u16) as u32;
+                // end_key is inclusive
+                let end_key = key((end - 1) as u16) as usize;
+                let end_bit = bit(end as u16) as u32;
+
+                if start_key == end_key {
+                    let mask = (!0u64 << start_bit) & (!0u64).wrapping_shr(64 - end_bit);
+                    let removed = (bits[start_key] & mask).count_ones();
+                    bits[start_key] &= !mask;
+                    return removed as u64;
+                }
+
+                let mut removed = 0;
+                // start key bits
+                removed += (bits[start_key] & (!0u64 << start_bit)).count_ones();
+                bits[start_key] &= !(!0u64 << start_bit);
+                // counts bits in between
+                for word in &bits[start_key + 1..end_key] {
+                    removed += word.count_ones();
+                    // When popcnt is available zeroing in this loop is faster,
+                    // but we opt to perform reasonably on most cpus by zeroing after.
+                    // By doing that the compiler uses simd to count ones.
+                }
+                // do zeroing outside the loop
+                for word in &mut bits[start_key + 1..end_key] {
+                    *word = 0;
+                }
+                // end key bits
+                removed += (bits[end_key] & (!0u64).wrapping_shr(64 - end_bit)).count_ones();
+                bits[end_key] &= !(!0u64).wrapping_shr(64 - end_bit);
+                removed as u64
+            },
+        }
+    }
+
     pub fn contains(&self, index: u16) -> bool {
         match *self {
             Array(ref vec) => vec.binary_search(&index).is_ok(),

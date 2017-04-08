@@ -48,6 +48,17 @@ impl Container {
         }
     }
 
+    pub fn remove_range(&mut self, start: u32, end: u32) -> u64 {
+        debug_assert!(start <= end);
+        if start == end {
+            return 0;
+        }
+        let result = self.store.remove_range(start, end);
+        self.len -= result;
+        self.ensure_correct_store();
+        result
+    }
+
     pub fn contains(&self, index: u16) -> bool {
         self.store.contains(index)
     }
