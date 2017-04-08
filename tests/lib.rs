@@ -36,10 +36,72 @@ fn smoke() {
 }
 
 #[test]
+fn remove_range() {
+    let ranges = [0u32, 1, 63, 64, 65, 100, 4096 - 1, 4096, 4096 + 1, 65536 - 1, 65536, 65536 + 1];
+    for (i, &a) in ranges.iter().enumerate() {
+        for &b in &ranges[i..] {
+            let mut bitmap = RoaringBitmap::from_iter(0..65536 + 1);
+            assert_eq!(bitmap.remove_range(a as u64..b as u64), (b - a) as u64);
+            assert_eq!(bitmap, RoaringBitmap::from_iter((0..a).chain(b..65536 + 1)));
+        }
+    }
+}
+
+#[test]
+fn remove_range_array() {
+    let mut bitmap = RoaringBitmap::from_iter(0..1000);
+    for i in 0..1000 {
+        assert_eq!(bitmap.remove_range(i..i), 0);
+        assert_eq!(bitmap.remove_range(i..i + 1), 1);
+    }
+
+    // insert 0, 2, 4, ..
+    // remove [0, 2), [2, 4), ..
+    let mut bitmap = RoaringBitmap::from_iter((0..1000).map(|x| x * 2));
+    for i in 0..1000 {
+        assert_eq!(bitmap.remove_range(i * 2..(i + 1) * 2), 1);
+    }
+
+    // remove [0, 2), [2, 4), ..
+    let mut bitmap = RoaringBitmap::from_iter(0..1000);
+    for i in 0..1000 / 2 {
+        assert_eq!(bitmap.remove_range(i * 2..(i + 1) * 2), 2);
+    }
+}
+
+#[test]
+fn remove_range_bitmap() {
+    let mut bitmap = RoaringBitmap::from_iter(0..4096 + 1000);
+    for i in 0..1000 {
+        assert_eq!(bitmap.remove_range(i..i), 0);
+        assert_eq!(bitmap.remove_range(i..i + 1), 1);
+    }
+
+    // insert 0, 2, 4, ..
+    // remove [0, 2), [2, 4), ..
+    let mut bitmap = RoaringBitmap::from_iter((0..4096 + 1000).map(|x| x * 2));
+    for i in 0..1000 {
+        assert_eq!(bitmap.remove_range(i * 2..(i + 1) * 2), 1);
+    }
+
+    // remove [0, 2), [2, 4), ..
+    let mut bitmap = RoaringBitmap::from_iter(0..4096 + 1000);
+    for i in 0..1000 / 2 {
+        assert_eq!(bitmap.remove_range(i * 2..(i + 1) * 2), 2);
+    }
+
+    // remove [1, 3), [3, 5), ..
+    let mut bitmap = RoaringBitmap::from_iter(0..4096 + 1000);
+    for i in 0..1000 / 2 {
+        assert_eq!(bitmap.remove_range(i * 2 + 1..(i + 1) * 2 + 1), 2);
+    }
+}
+
+#[test]
 fn to_bitmap() {
     let bitmap = RoaringBitmap::from_iter(0..5000);
     assert_eq!(bitmap.len(), 5000);
-    for i in 1..5000{
+    for i in 1..5000 {
         assert_eq!(bitmap.contains(i), true);
     }
     assert_eq!(bitmap.contains(5001), false);

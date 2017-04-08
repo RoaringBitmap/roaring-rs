@@ -2,6 +2,7 @@ use RoaringTreemap;
 use RoaringBitmap;
 
 use super::util;
+use std::ops::Range;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 
@@ -52,8 +53,73 @@ impl RoaringTreemap {
         let (hi, lo) = util::split(value);
         match self.map.entry(hi) {
             Entry::Vacant(_) => false,
-            Entry::Occupied(mut ent) => ent.get_mut().remove(lo),
+            Entry::Occupied(mut ent) => {
+                if ent.get_mut().remove(lo) {
+                    if ent.get().is_empty() {
+                        ent.remove();
+                    }
+                    true
+                } else {
+                    false
+                }
+            },
         }
+    }
+
+    /// Removes a range of values from the set specific as [start..end).
+    /// Returns the number of removed values.
+    ///
+    /// Note that due to the exclusive end you can't remove the item at the
+    /// last index (u64::MAX) using this function!
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let mut rb = RoaringTreemap::new();
+    /// rb.insert(2);
+    /// rb.insert(3);
+    /// assert_eq!(rb.remove_range(2..4), 2);
+    /// ```
+    pub fn remove_range(&mut self, range: Range<u64>) -> u64 {
+        if range.start == range.end {
+            return 0;
+        }
+        let mut keys_to_remove = Vec::new();
+        let mut removed = 0;
+        // inclusive bounds for start and end
+        let (start_hi, start_lo) = util::split(range.start);
+        let (end_hi, end_lo) = util::split(range.end - 1);
+        for (&key, rb) in &mut self.map {
+            if key >= start_hi && key <= end_hi {
+                let a = if key == start_hi {
+                    start_lo as u64
+                } else {
+                    0
+                };
+                let b = if key == end_hi {
+                    end_lo as u64 + 1 // make it exclusive
+                } else {
+                    u32::max_value() as u64 + 1
+                };
+                if a == 0 && b == u32::max_value() as u64 + 1 {
+                    removed += rb.len();
+                    keys_to_remove.push(key);
+                } else {
+                    removed += rb.remove_range(a..b);
+                    if rb.is_empty() {
+                        keys_to_remove.push(key);
+                    }
+                }
+            }
+        }
+
+        for key in keys_to_remove {
+            self.map.remove(&key);
+        }
+
+        removed
     }
 
     /// Returns `true` if this set contains the specified integer.
@@ -154,8 +220,7 @@ impl RoaringTreemap {
     pub fn min(&self) -> Option<u64> {
         self.map
             .iter()
-            .filter(|&(_, rb)| rb.min().is_some())
-            .nth(0)
+            .find(|&(_, rb)| rb.min().is_some())
             .map(|(k, rb)| util::join(*k, rb.min().unwrap()))
     }
 
@@ -178,8 +243,7 @@ impl RoaringTreemap {
         self.map
             .iter()
             .rev()
-            .filter(|&(_, rb)| rb.max().is_some())
-            .nth(0)
+            .find(|&(_, rb)| rb.max().is_some())
             .map(|(k, rb)| util::join(*k, rb.max().unwrap()))
     }
 }

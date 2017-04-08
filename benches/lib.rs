@@ -59,3 +59,15 @@ fn is_subset_4(b: &mut Bencher) {
     let sup: RoaringBitmap = (0..65536).collect();
     b.iter(|| test::black_box(sub.is_subset(&sup)))
 }
+
+#[bench]
+fn remove_range_bitmap(b: &mut Bencher) {
+    let mut sub: RoaringBitmap = (0..65536).collect();
+    b.iter(|| {
+        // carefully delete part of the bitmap
+        // only the first iteration will actually change something
+        // but the runtime remains identical afterwards
+        test::black_box(sub.remove_range(4096 + 1..65536));
+        assert_eq!(sub.len(), 4096 + 1);
+    });
+}
