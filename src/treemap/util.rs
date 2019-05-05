@@ -5,7 +5,7 @@ pub fn split(value: u64) -> (u32, u32) {
 
 #[inline]
 pub fn join(high: u32, low: u32) -> u64 {
-    ((high as u64) << 32) | (low as u64)
+    (u64::from(high) << 32) | u64::from(low)
 }
 
 #[cfg(test)]
