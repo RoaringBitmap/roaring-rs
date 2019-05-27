@@ -87,7 +87,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.remove_range(2..4), 2);
     /// ```
     pub fn remove_range(&mut self, range: Range<u64>) -> u64 {
-        assert!(range.end <= u32::max_value() as u64 + 1, "can't index past 2**32");
+        assert!(range.end <= u64::from(u32::max_value()) + 1, "can't index past 2**32");
         if range.start == range.end {
             return 0;
         }
@@ -100,17 +100,17 @@ impl RoaringBitmap {
             let key = self.containers[index].key;
             if key >= start_hi && key <= end_hi {
                 let a = if key == start_hi {
-                    start_lo as u32
+                    u32::from(start_lo)
                 } else {
                     0
                 };
                 let b = if key == end_hi {
-                    end_lo as u32 + 1 // make it exclusive
+                    u32::from(end_lo) + 1 // make it exclusive
                 } else {
-                    u16::max_value() as u32 + 1
+                    u32::from(u16::max_value()) + 1
                 };
                 // remove container?
-                if a == 0 && b == u16::max_value() as u32 + 1 {
+                if a == 0 && b == u32::from(u16::max_value()) + 1 {
                     result += self.containers[index].len;
                     self.containers.remove(index);
                     continue;

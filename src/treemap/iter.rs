@@ -72,7 +72,7 @@ impl<'a> Iter<'a> {
             .flat_map(to64iter as _);
         Iter {
             inner: i,
-            size_hint: size_hint,
+            size_hint,
         }
 
     }
@@ -85,7 +85,7 @@ impl IntoIter {
             .flat_map(to64intoiter as _);
         IntoIter {
             inner: i,
-            size_hint: size_hint,
+            size_hint,
         }
     }
 }

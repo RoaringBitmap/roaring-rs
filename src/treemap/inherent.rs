@@ -94,16 +94,16 @@ impl RoaringTreemap {
         for (&key, rb) in &mut self.map {
             if key >= start_hi && key <= end_hi {
                 let a = if key == start_hi {
-                    start_lo as u64
+                    u64::from(start_lo)
                 } else {
                     0
                 };
                 let b = if key == end_hi {
-                    end_lo as u64 + 1 // make it exclusive
+                    u64::from(end_lo) + 1 // make it exclusive
                 } else {
-                    u32::max_value() as u64 + 1
+                    u64::from(u32::max_value()) + 1
                 };
-                if a == 0 && b == u32::max_value() as u64 + 1 {
+                if a == 0 && b == u64::from(u32::max_value()) + 1 {
                     removed += rb.len();
                     keys_to_remove.push(key);
                 } else {
@@ -176,7 +176,7 @@ impl RoaringTreemap {
     pub fn is_empty(&self) -> bool {
         self.map
             .values()
-            .all(|rb| rb.is_empty())
+            .all(RoaringBitmap::is_empty)
     }
 
     /// Returns the number of distinct integers added to the set.
@@ -199,7 +199,7 @@ impl RoaringTreemap {
     pub fn len(&self) -> u64 {
         self.map
             .values()
-            .map(|rb| rb.len())
+            .map(RoaringBitmap::len)
             .sum()
     }
 

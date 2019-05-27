@@ -2,25 +2,24 @@ language: rust
 sudo: false
 cache: cargo
 rust:
-  - 1.11.0
+  - 1.17.0
   - stable
   - beta
-  - nightly-2016-12-19
+  - nightly
 
 env:
   global:
-    - CLIPPY_VERSION=0.0.104
     - secure: aOiqRRhbGw+r7P1PleSNKk5JTkItW/tQBYBhxGdJ7gN9KvlBHEmBHNd5Yl8AuE5R9W27Eo/BgtXIu09EMuND8cLr92b1P1ru1ebQMM+2FburF1y4psZakecSWAMDlF+km/cdES/AzIJ7dI1Fc4dGE/zNMuLLYEKmSDtVMHXucaI=
     - secure: "LWHxu0+RrnYebD3H+lRzky0ZBcBrX2t5U/NOcpePGegtscvSjHVHfg0NIAfv+JyC48Q3vym2gBsqj//AsrzkU9dq1ErgGHR2N6TurCYoEMKa0fpWdRFhBmh2kPjM/h2l3guoxqdtYAQmeKaSSBc3UZAJyKyyzmtVoiWoQowbSQM="
 
 before_script:
-  - bash -c 'if [[ "$TRAVIS_RUST_VERSION" == "nightly-2016-12-19" ]]; then
-      cargo install clippy --vers $CLIPPY_VERSION --force;
+  - bash -c 'if [[ "$TRAVIS_RUST_VERSION" == "stable" ]]; then
+      rustup component add clippy;
     fi'
 
 script:
   - cargo test
-  - bash -c 'if [[ "$TRAVIS_RUST_VERSION" == "nightly-2016-12-19" ]]; then
+  - bash -c 'if [[ "$TRAVIS_RUST_VERSION" == "stable" ]]; then
       cargo clippy -- -D warnings;
     fi'
 

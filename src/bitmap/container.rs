@@ -20,7 +20,7 @@ pub struct Iter<'a> {
 impl Container {
     pub fn new(key: u16) -> Container {
         Container {
-            key: key,
+            key,
             len: 0,
             store: Store::Array(Vec::new()),
         }

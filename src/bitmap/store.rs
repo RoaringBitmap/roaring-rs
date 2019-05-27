@@ -70,7 +70,7 @@ impl Store {
         match *self {
             Array(ref mut vec) => {
                 let a = vec.binary_search(&(start as u16)).unwrap_or_else(|e| e);
-                let b = if end > u16::max_value() as u32 {
+                let b = if end > u32::from(u16::max_value()) {
                     vec.len()
                 } else {
                     vec.binary_search(&(end as u16)).unwrap_or_else(|e| e)
@@ -89,7 +89,7 @@ impl Store {
                     let mask = (!0u64 << start_bit) & (!0u64).wrapping_shr(64 - end_bit);
                     let removed = (bits[start_key] & mask).count_ones();
                     bits[start_key] &= !mask;
-                    return removed as u64;
+                    return u64::from(removed);
                 }
 
                 let mut removed = 0;
@@ -110,7 +110,7 @@ impl Store {
                 // end key bits
                 removed += (bits[end_key] & (!0u64).wrapping_shr(64 - end_bit)).count_ones();
                 bits[end_key] &= !(!0u64).wrapping_shr(64 - end_bit);
-                removed as u64
+                u64::from(removed)
             },
         }
     }
@@ -367,7 +367,7 @@ impl Store {
         match *self {
             Array(ref vec) => vec.len() as u64,
             Bitmap(ref bits) => {
-                bits.iter().map(|bit| bit.count_ones() as u64).sum()
+                bits.iter().map(|bit| u64::from(bit.count_ones())).sum()
             },
         }
     }
@@ -449,7 +449,7 @@ impl<'a, B: Borrow<[u64; BITMAP_LENGTH]> + 'a> BitmapIter<'a, B> {
         BitmapIter {
             key: 0,
             bit: 0,
-            bits: bits,
+            bits,
             marker: PhantomData,
         }
     }
