@@ -40,9 +40,9 @@ fn remove_range() {
     let ranges = [0u64, 1, 63, 64, 65, 100, 4096 - 1, 4096, 4096 + 1, 65536 - 1];
     for (i, &a) in ranges.iter().enumerate() {
         for &b in &ranges[i..] {
-            let mut bitmap = RoaringTreemap::from_iter(0..65536 + 1);
+            let mut bitmap = RoaringTreemap::from_iter(0..=65536);
             assert_eq!(bitmap.remove_range(a..b), (b - a));
-            assert_eq!(bitmap, RoaringTreemap::from_iter((0..a).chain(b..65536 + 1)));
+            assert_eq!(bitmap, RoaringTreemap::from_iter((0..a).chain(b..=65536)));
         }
     }
 }

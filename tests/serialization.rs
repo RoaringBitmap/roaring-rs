@@ -5,13 +5,13 @@ use std::iter::FromIterator;
 use roaring::RoaringBitmap;
 
 // Test data from https://github.com/RoaringBitmap/RoaringFormatSpec/tree/master/testdata
-static BITMAP_WITHOUT_RUNS: &'static [u8] = include_bytes!("bitmapwithoutruns.bin");
+static BITMAP_WITHOUT_RUNS: &[u8] = include_bytes!("bitmapwithoutruns.bin");
 
 fn test_data_bitmap() -> RoaringBitmap {
     RoaringBitmap::from_iter(
         (0..100).map(|i| i * 1000)
-            .chain((100000..200000).map(|i| i * 3))
-            .chain(700000..800000))
+            .chain((100_000..200_000).map(|i| i * 3))
+            .chain(700_000..800_000))
 }
 
 fn serialize_and_deserialize(bitmap: &RoaringBitmap) -> RoaringBitmap {

@@ -61,15 +61,15 @@ fn arrays_not() {
 
 #[test]
 fn arrays() {
-    let sup = RoaringTreemap::from_iter((0..3000).chain(100000..103000));
-    let sub = RoaringTreemap::from_iter((0..2000).chain(100000..102000));
+    let sup = RoaringTreemap::from_iter((0..3000).chain(100_000..103_000));
+    let sub = RoaringTreemap::from_iter((0..2000).chain(100_000..102_000));
     assert_eq!(sub.is_subset(&sup), true);
 }
 
 #[test]
 fn bitmaps_not() {
-    let sup = RoaringTreemap::from_iter((0..6000).chain(1000000..1006000).chain(2000000..2010000));
-    let sub = RoaringTreemap::from_iter((100000..106000).chain(1100000..1106000));
+    let sup = RoaringTreemap::from_iter((0..6000).chain(1_000_000..1_006_000).chain(2_000_000..2_010_000));
+    let sub = RoaringTreemap::from_iter((100_000..106_000).chain(1_100_000..1_106_000));
     assert_eq!(sub.is_subset(&sup), false);
 }
 

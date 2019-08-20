@@ -40,14 +40,15 @@ fn remove_range() {
     let ranges = [0u32, 1, 63, 64, 65, 100, 4096 - 1, 4096, 4096 + 1, 65536 - 1, 65536, 65536 + 1];
     for (i, &a) in ranges.iter().enumerate() {
         for &b in &ranges[i..] {
-            let mut bitmap = RoaringBitmap::from_iter(0..65536 + 1);
-            assert_eq!(bitmap.remove_range(a as u64..b as u64), (b - a) as u64);
-            assert_eq!(bitmap, RoaringBitmap::from_iter((0..a).chain(b..65536 + 1)));
+            let mut bitmap = RoaringBitmap::from_iter(0..=65536);
+            assert_eq!(bitmap.remove_range(u64::from(a)..u64::from(b)), u64::from(b - a));
+            assert_eq!(bitmap, RoaringBitmap::from_iter((0..a).chain(b..=65536)));
         }
     }
 }
 
 #[test]
+#[allow(clippy::range_plus_one)] // remove_range needs an exclusive range
 fn remove_range_array() {
     let mut bitmap = RoaringBitmap::from_iter(0..1000);
     for i in 0..1000 {
@@ -70,6 +71,7 @@ fn remove_range_array() {
 }
 
 #[test]
+#[allow(clippy::range_plus_one)] // remove_range needs an exclusive range
 fn remove_range_bitmap() {
     let mut bitmap = RoaringBitmap::from_iter(0..4096 + 1000);
     for i in 0..1000 {

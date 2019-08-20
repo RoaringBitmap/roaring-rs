@@ -33,8 +33,8 @@ fn bitmap_not() {
 
 #[test]
 fn arrays() {
-    let bitmap1 = RoaringTreemap::from_iter((0..2000).chain(1000000..1002000).chain(2000000..2002000));
-    let bitmap2 = RoaringTreemap::from_iter((100000..102000).chain(1100000..1102000));
+    let bitmap1 = RoaringTreemap::from_iter((0..2000).chain(1_000_000..1_002_000).chain(2_000_000..2_002_000));
+    let bitmap2 = RoaringTreemap::from_iter((100_000..102_000).chain(1_100_000..1_102_000));
     assert_eq!(bitmap1.is_disjoint(&bitmap2), true);
 }
 
@@ -47,8 +47,8 @@ fn arrays_not() {
 
 #[test]
 fn bitmaps() {
-    let bitmap1 = RoaringTreemap::from_iter((0..6000).chain(1000000..1006000).chain(2000000..2006000));
-    let bitmap2 = RoaringTreemap::from_iter((100000..106000).chain(1100000..1106000));
+    let bitmap1 = RoaringTreemap::from_iter((0..6000).chain(1_000_000..1_006_000).chain(2_000_000..2_006_000));
+    let bitmap2 = RoaringTreemap::from_iter((100_000..106_000).chain(1_100_000..1_106_000));
     assert_eq!(bitmap1.is_disjoint(&bitmap2), true);
 }
 
