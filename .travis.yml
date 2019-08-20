@@ -1,44 +1,21 @@
 language: rust
-sudo: false
-cache: cargo
+
 rust:
-  - 1.17.0
-  - stable
-  - beta
-  - nightly
-
-env:
-  global:
-    - secure: aOiqRRhbGw+r7P1PleSNKk5JTkItW/tQBYBhxGdJ7gN9KvlBHEmBHNd5Yl8AuE5R9W27Eo/BgtXIu09EMuND8cLr92b1P1ru1ebQMM+2FburF1y4psZakecSWAMDlF+km/cdES/AzIJ7dI1Fc4dGE/zNMuLLYEKmSDtVMHXucaI=
-    - secure: "LWHxu0+RrnYebD3H+lRzky0ZBcBrX2t5U/NOcpePGegtscvSjHVHfg0NIAfv+JyC48Q3vym2gBsqj//AsrzkU9dq1ErgGHR2N6TurCYoEMKa0fpWdRFhBmh2kPjM/h2l3guoxqdtYAQmeKaSSBc3UZAJyKyyzmtVoiWoQowbSQM="
-
-before_script:
-  - bash -c 'if [[ "$TRAVIS_RUST_VERSION" == "stable" ]]; then
-      rustup component add clippy;
-    fi'
+- stable
+- beta
+- nightly
 
 script:
-  - cargo test
-  - bash -c 'if [[ "$TRAVIS_RUST_VERSION" == "stable" ]]; then
-      cargo clippy -- -D warnings;
-    fi'
+- cargo test
 
-before_deploy:
-  - cargo doc
-  - cargo package
+matrix:
+  include:
+  - name: clippy
+    rust: stable
+    install:
+    - rustup component add clippy-preview
+    script:
+    - cargo clippy --lib --tests -- -D warnings
 
-deploy:
-  provider: releases
-  api-key:
-    secure: YUXdO4SZv3+Cm550DGc9WLYRWHaBC4LWYkJK2sbR+GjSkNSvKHfxOe0+pDzJGHNY+QOWKal37H6bCGmk43xHgwWExb0nZ+Vp1nJG/nUeTcglF4tYSX+GJQEOioj1YmaOai0NuJ1peDS8TZXYmbghMc4vnLUnYg7t4gQ3m8M/fVY=
-  file: target/package/roaring-$TRAVIS_TAG.crate
-  skip_cleanup: true
-  on:
-    tags: true
-    all_branches: true
-    condition: "$TRAVIS_RUST_VERSION = stable"
-
-after_deploy:
-  - cargo publish --token "$CRATES_IO_TOKEN"
-  - ./ci/save_credentials.sh "$GITHUB_TOKEN" "$TRAVIS_REPO_SLUG"
-  - ./ci/publish_docs.sh "$TRAVIS_TAG"
+branches:
+  only: [staging, trying, master]

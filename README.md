@@ -6,6 +6,11 @@ This is a [Rust][] port of the [Roaring bitmap][] data structure, initially
 defined as a [Java library][roaring-java] and described in [_Better bitmap
 performance with Roaring bitmaps_][roaring-paper].
 
+## Rust version policy
+
+This crate only supports the current stable version of Rust, patch releases may
+use new features at any time.
+
 ## Developing
 
 This project uses [clippy][] and denies warnings in CI builds. To ensure your
@@ -34,7 +39,7 @@ additional terms or conditions.
 [cargo]: https://crates.io/crates/roaring
 [docs-badge]: https://img.shields.io/badge/API-docs-blue.svg?style=flat-square
 [docs]: https://nemo157.com/roaring-rs/
-[rust-version-badge]: https://img.shields.io/badge/rust-1.11+-blue.svg?style=flat-square
+[rust-version-badge]: https://img.shields.io/badge/rust-latest%20stable-blue.svg?style=flat-square
 [rust-version]: .travis.yml#L5
 
 [Rust]: https://rust-lang.org

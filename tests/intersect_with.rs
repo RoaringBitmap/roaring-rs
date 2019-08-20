@@ -70,9 +70,9 @@ fn bitmap_and_array() {
 
 #[test]
 fn arrays() {
-    let mut bitmap1 = RoaringBitmap::from_iter((0..2000).chain(1000000..1002000).chain(3000000..3001000));
-    let bitmap2 = RoaringBitmap::from_iter((1000..3000).chain(1001000..1003000).chain(2000000..2001000));
-    let bitmap3 = RoaringBitmap::from_iter((1000..2000).chain(1001000..1002000));
+    let mut bitmap1 = RoaringBitmap::from_iter((0..2000).chain(1_000_000..1_002_000).chain(3_000_000..3_001_000));
+    let bitmap2 = RoaringBitmap::from_iter((1000..3000).chain(1_001_000..1_003_000).chain(2_000_000..2_001_000));
+    let bitmap3 = RoaringBitmap::from_iter((1000..2000).chain(1_001_000..1_002_000));
 
     bitmap1.intersect_with(&bitmap2);
 
@@ -81,9 +81,9 @@ fn arrays() {
 
 #[test]
 fn bitmaps() {
-    let mut bitmap1 = RoaringBitmap::from_iter((0..6000).chain(1000000..1012000).chain(3000000..3010000));
-    let bitmap2 = RoaringBitmap::from_iter((3000..9000).chain(1006000..1018000).chain(2000000..2010000));
-    let bitmap3 = RoaringBitmap::from_iter((3000..6000).chain(1006000..1012000));
+    let mut bitmap1 = RoaringBitmap::from_iter((0..6000).chain(1_000_000..1_012_000).chain(3_000_000..3_010_000));
+    let bitmap2 = RoaringBitmap::from_iter((3000..9000).chain(1_006_000..1_018_000).chain(2_000_000..2_010_000));
+    let bitmap3 = RoaringBitmap::from_iter((3000..6000).chain(1_006_000..1_012_000));
 
     bitmap1.intersect_with(&bitmap2);
 

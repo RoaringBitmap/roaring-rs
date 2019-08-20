@@ -14,25 +14,25 @@ mod test {
 
     #[test]
     fn test_split_u32() {
-        assert_eq!((0x0000u16, 0x0000u16), split(0x00000000u32));
-        assert_eq!((0x0000u16, 0x0001u16), split(0x00000001u32));
-        assert_eq!((0x0000u16, 0xFFFEu16), split(0x0000FFFEu32));
-        assert_eq!((0x0000u16, 0xFFFFu16), split(0x0000FFFFu32));
-        assert_eq!((0x0001u16, 0x0000u16), split(0x00010000u32));
-        assert_eq!((0x0001u16, 0x0001u16), split(0x00010001u32));
-        assert_eq!((0xFFFFu16, 0xFFFEu16), split(0xFFFFFFFEu32));
-        assert_eq!((0xFFFFu16, 0xFFFFu16), split(0xFFFFFFFFu32));
+        assert_eq!((0x0000u16, 0x0000u16), split(0x0000_0000u32));
+        assert_eq!((0x0000u16, 0x0001u16), split(0x0000_0001u32));
+        assert_eq!((0x0000u16, 0xFFFEu16), split(0x0000_FFFEu32));
+        assert_eq!((0x0000u16, 0xFFFFu16), split(0x0000_FFFFu32));
+        assert_eq!((0x0001u16, 0x0000u16), split(0x0001_0000u32));
+        assert_eq!((0x0001u16, 0x0001u16), split(0x0001_0001u32));
+        assert_eq!((0xFFFFu16, 0xFFFEu16), split(0xFFFF_FFFEu32));
+        assert_eq!((0xFFFFu16, 0xFFFFu16), split(0xFFFF_FFFFu32));
     }
 
     #[test]
     fn test_join_u32() {
-        assert_eq!(0x00000000u32, join(0x0000u16, 0x0000u16));
-        assert_eq!(0x00000001u32, join(0x0000u16, 0x0001u16));
-        assert_eq!(0x0000FFFEu32, join(0x0000u16, 0xFFFEu16));
-        assert_eq!(0x0000FFFFu32, join(0x0000u16, 0xFFFFu16));
-        assert_eq!(0x00010000u32, join(0x0001u16, 0x0000u16));
-        assert_eq!(0x00010001u32, join(0x0001u16, 0x0001u16));
-        assert_eq!(0xFFFFFFFEu32, join(0xFFFFu16, 0xFFFEu16));
-        assert_eq!(0xFFFFFFFFu32, join(0xFFFFu16, 0xFFFFu16));
+        assert_eq!(0x0000_0000u32, join(0x0000u16, 0x0000u16));
+        assert_eq!(0x0000_0001u32, join(0x0000u16, 0x0001u16));
+        assert_eq!(0x0000_FFFEu32, join(0x0000u16, 0xFFFEu16));
+        assert_eq!(0x0000_FFFFu32, join(0x0000u16, 0xFFFFu16));
+        assert_eq!(0x0001_0000u32, join(0x0001u16, 0x0000u16));
+        assert_eq!(0x0001_0001u32, join(0x0001u16, 0x0001u16));
+        assert_eq!(0xFFFF_FFFEu32, join(0xFFFFu16, 0xFFFEu16));
+        assert_eq!(0xFFFF_FFFFu32, join(0xFFFFu16, 0xFFFFu16));
     }
 }

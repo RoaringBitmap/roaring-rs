@@ -94,7 +94,7 @@ impl<'a> Iterator for Iter<'a> {
     type Item = u64;
 
     fn next(&mut self) -> Option<u64> {
-        self.size_hint.saturating_sub(1);
+        self.size_hint = self.size_hint.saturating_sub(1);
         self.inner.next()
     }
 
@@ -111,7 +111,7 @@ impl Iterator for IntoIter {
     type Item = u64;
 
     fn next(&mut self) -> Option<u64> {
-        self.size_hint.saturating_sub(1);
+        self.size_hint = self.size_hint.saturating_sub(1);
         self.inner.next()
     }
 
