@@ -2,7 +2,6 @@ use std::slice;
 use std::vec;
 use std::borrow::Borrow;
 use std::cmp::Ordering::{ Equal, Less, Greater };
-use std::marker::PhantomData;
 
 const BITMAP_LENGTH: usize = 1024;
 
@@ -15,15 +14,14 @@ pub enum Store {
 pub enum Iter<'a> {
     Array(slice::Iter<'a, u16>),
     Vec(vec::IntoIter<u16>),
-    BitmapBorrowed(BitmapIter<'a, &'a [u64; BITMAP_LENGTH]>),
-    BitmapOwned(BitmapIter<'a, Box<[u64; BITMAP_LENGTH]>>),
+    BitmapBorrowed(BitmapIter<&'a [u64; BITMAP_LENGTH]>),
+    BitmapOwned(BitmapIter<Box<[u64; BITMAP_LENGTH]>>),
 }
 
-pub struct BitmapIter<'a, B: Borrow<[u64; BITMAP_LENGTH]> + 'a> {
+pub struct BitmapIter<B: Borrow<[u64; BITMAP_LENGTH]>> {
     key: usize,
     bit: usize,
     bits: B,
-    marker: PhantomData<&'a B>,
 }
 
 impl Store {
@@ -444,13 +442,12 @@ impl Clone for Store {
     }
 }
 
-impl<'a, B: Borrow<[u64; BITMAP_LENGTH]> + 'a> BitmapIter<'a, B> {
-    fn new(bits: B) -> BitmapIter<'a, B> {
+impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
+    fn new(bits: B) -> BitmapIter<B> {
         BitmapIter {
             key: 0,
             bit: 0,
             bits,
-            marker: PhantomData,
         }
     }
 
@@ -463,7 +460,7 @@ impl<'a, B: Borrow<[u64; BITMAP_LENGTH]> + 'a> BitmapIter<'a, B> {
     }
 }
 
-impl<'a, B: Borrow<[u64; BITMAP_LENGTH]> + 'a> Iterator for BitmapIter<'a, B> {
+impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
     type Item = u16;
 
     fn next(&mut self) -> Option<u16> {
