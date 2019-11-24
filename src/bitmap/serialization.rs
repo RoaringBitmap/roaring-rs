@@ -1,7 +1,7 @@
 use std::io;
 use byteorder::{ LittleEndian, ReadBytesExt, WriteBytesExt };
 
-use RoaringBitmap;
+use crate::RoaringBitmap;
 use super::store::Store;
 use super::container::Container;
 

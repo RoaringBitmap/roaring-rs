@@ -1,8 +1,8 @@
 use std::collections::btree_map;
 use std::iter::Peekable;
 
-use RoaringBitmap;
-use RoaringTreemap;
+use crate::RoaringBitmap;
+use crate::RoaringTreemap;
 
 struct Pairs<'a>(Peekable<btree_map::Iter<'a, u32, RoaringBitmap>>,
                  Peekable<btree_map::Iter<'a, u32, RoaringBitmap>>);

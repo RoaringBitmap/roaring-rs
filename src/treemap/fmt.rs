@@ -1,6 +1,6 @@
 use std::fmt;
 
-use RoaringTreemap;
+use crate::RoaringTreemap;
 
 impl fmt::Debug for RoaringTreemap {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

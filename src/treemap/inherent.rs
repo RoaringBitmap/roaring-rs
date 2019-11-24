@@ -1,5 +1,5 @@
-use RoaringTreemap;
-use RoaringBitmap;
+use crate::RoaringTreemap;
+use crate::RoaringBitmap;
 
 use super::util;
 use std::ops::Range;

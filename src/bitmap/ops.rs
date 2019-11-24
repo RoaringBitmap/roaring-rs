@@ -5,7 +5,7 @@ use std::ops::{
     Sub, SubAssign
 };
 
-use RoaringBitmap;
+use crate::RoaringBitmap;
 
 impl RoaringBitmap {
     /// Unions in-place with the specified other bitmap.
@@ -187,7 +187,7 @@ impl RoaringBitmap {
 }
 
 impl BitOr<RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn bitor(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
         self.union_with(&rhs);
@@ -196,7 +196,7 @@ impl BitOr<RoaringBitmap> for RoaringBitmap {
 }
 
 impl<'a> BitOr<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn bitor(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
         self.union_with(rhs);
@@ -205,7 +205,7 @@ impl<'a> BitOr<&'a RoaringBitmap> for RoaringBitmap {
 }
 
 impl<'a> BitOr<RoaringBitmap> for &'a RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn bitor(self, rhs: RoaringBitmap) -> RoaringBitmap {
         rhs | self
@@ -213,7 +213,7 @@ impl<'a> BitOr<RoaringBitmap> for &'a RoaringBitmap {
 }
 
 impl<'a, 'b> BitOr<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn bitor(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
         self.clone() | rhs
@@ -233,7 +233,7 @@ impl<'a> BitOrAssign<&'a RoaringBitmap> for RoaringBitmap {
 }
 
 impl BitAnd<RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn bitand(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
         self.intersect_with(&rhs);
@@ -242,7 +242,7 @@ impl BitAnd<RoaringBitmap> for RoaringBitmap {
 }
 
 impl<'a> BitAnd<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn bitand(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
         self.intersect_with(rhs);
@@ -251,7 +251,7 @@ impl<'a> BitAnd<&'a RoaringBitmap> for RoaringBitmap {
 }
 
 impl<'a> BitAnd<RoaringBitmap> for &'a RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn bitand(self, rhs: RoaringBitmap) -> RoaringBitmap {
         rhs & self
@@ -259,7 +259,7 @@ impl<'a> BitAnd<RoaringBitmap> for &'a RoaringBitmap {
 }
 
 impl<'a, 'b> BitAnd<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn bitand(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
         self.clone() & rhs
@@ -279,7 +279,7 @@ impl<'a> BitAndAssign<&'a RoaringBitmap> for RoaringBitmap {
 }
 
 impl Sub<RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn sub(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
         self.difference_with(&rhs);
@@ -288,7 +288,7 @@ impl Sub<RoaringBitmap> for RoaringBitmap {
 }
 
 impl<'a> Sub<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn sub(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
         self.difference_with(rhs);
@@ -297,7 +297,7 @@ impl<'a> Sub<&'a RoaringBitmap> for RoaringBitmap {
 }
 
 impl<'a> Sub<RoaringBitmap> for &'a RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn sub(self, rhs: RoaringBitmap) -> RoaringBitmap {
         self.clone() - rhs
@@ -305,7 +305,7 @@ impl<'a> Sub<RoaringBitmap> for &'a RoaringBitmap {
 }
 
 impl<'a, 'b> Sub<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn sub(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
         self.clone() - rhs
@@ -325,7 +325,7 @@ impl<'a> SubAssign<&'a RoaringBitmap> for RoaringBitmap {
 }
 
 impl BitXor<RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn bitxor(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
         self.symmetric_difference_with(&rhs);
@@ -334,7 +334,7 @@ impl BitXor<RoaringBitmap> for RoaringBitmap {
 }
 
 impl<'a> BitXor<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn bitxor(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
         self.symmetric_difference_with(rhs);
@@ -343,7 +343,7 @@ impl<'a> BitXor<&'a RoaringBitmap> for RoaringBitmap {
 }
 
 impl<'a> BitXor<RoaringBitmap> for &'a RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn bitxor(self, rhs: RoaringBitmap) -> RoaringBitmap {
         rhs ^ self
@@ -351,7 +351,7 @@ impl<'a> BitXor<RoaringBitmap> for &'a RoaringBitmap {
 }
 
 impl<'a, 'b> BitXor<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = RoaringBitmap;
+    type Output = crate::RoaringBitmap;
 
     fn bitxor(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
         self.clone() ^ rhs

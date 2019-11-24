@@ -2,7 +2,7 @@ use std::iter::{ self, FromIterator };
 use std::slice;
 use std::vec;
 
-use RoaringBitmap;
+use crate::RoaringBitmap;
 use super::container::Container;
 
 /// An iterator for `RoaringBitmap`.
