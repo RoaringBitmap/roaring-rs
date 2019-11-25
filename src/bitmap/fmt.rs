@@ -1,6 +1,6 @@
 use std::fmt;
 
-use RoaringBitmap;
+use crate::RoaringBitmap;
 
 impl fmt::Debug for RoaringBitmap {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

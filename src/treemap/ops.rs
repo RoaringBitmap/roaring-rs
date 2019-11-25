@@ -1,7 +1,7 @@
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 use std::collections::btree_map::Entry;
 
-use RoaringTreemap;
+use crate::RoaringTreemap;
 
 impl RoaringTreemap {
     /// Unions in-place with the specified other bitmap.

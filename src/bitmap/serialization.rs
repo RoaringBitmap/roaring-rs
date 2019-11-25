@@ -1,7 +1,7 @@
 use std::io;
 use byteorder::{ LittleEndian, ReadBytesExt, WriteBytesExt };
 
-use RoaringBitmap;
+use crate::RoaringBitmap;
 use super::store::Store;
 use super::container::Container;
 
@@ -60,17 +60,17 @@ impl RoaringBitmap {
     /// assert_eq!(rb1, rb2);
     /// ```
     pub fn serialize_into<W: io::Write>(&self, mut writer: W) -> io::Result<()> {
-        try!(writer.write_u32::<LittleEndian>(SERIAL_COOKIE_NO_RUNCONTAINER));
-        try!(writer.write_u32::<LittleEndian>(self.containers.len() as u32));
+        writer.write_u32::<LittleEndian>(SERIAL_COOKIE_NO_RUNCONTAINER)?;
+        writer.write_u32::<LittleEndian>(self.containers.len() as u32)?;
 
         for container in &self.containers {
-            try!(writer.write_u16::<LittleEndian>(container.key));
-            try!(writer.write_u16::<LittleEndian>((container.len - 1) as u16));
+            writer.write_u16::<LittleEndian>(container.key)?;
+            writer.write_u16::<LittleEndian>((container.len - 1) as u16)?;
         }
 
         let mut offset = 8 + 8 * self.containers.len() as u32;
         for container in &self.containers {
-            try!(writer.write_u32::<LittleEndian>(offset));
+            writer.write_u32::<LittleEndian>(offset)?;
             match container.store {
                 Store::Array(ref values) => {
                     offset += values.len() as u32 * 2;
@@ -85,12 +85,12 @@ impl RoaringBitmap {
             match container.store {
                 Store::Array(ref values) => {
                     for &value in values {
-                        try!(writer.write_u16::<LittleEndian>(value));
+                        writer.write_u16::<LittleEndian>(value)?;
                     }
                 }
                 Store::Bitmap(ref values) => {
                     for &value in values.iter() {
-                        try!(writer.write_u64::<LittleEndian>(value));
+                        writer.write_u64::<LittleEndian>(value)?;
                     }
                 }
             }
@@ -119,9 +119,9 @@ impl RoaringBitmap {
     /// ```
     pub fn deserialize_from<R: io::Read>(mut reader: R) -> io::Result<RoaringBitmap> {
         let (size, has_offsets) = {
-            let cookie = try!(reader.read_u32::<LittleEndian>());
+            let cookie = reader.read_u32::<LittleEndian>()?;
             if cookie == SERIAL_COOKIE_NO_RUNCONTAINER {
-                (try!(reader.read_u32::<LittleEndian>()) as usize, true)
+                (reader.read_u32::<LittleEndian>()? as usize, true)
             } else if (cookie as u16) == SERIAL_COOKIE {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
@@ -140,31 +140,31 @@ impl RoaringBitmap {
         }
 
         let mut description_bytes = vec![0u8; size * 4];
-        try!(reader.read_exact(&mut description_bytes));
+        reader.read_exact(&mut description_bytes)?;
         let description_bytes = &mut &description_bytes[..];
 
         if has_offsets {
             let mut offsets = vec![0u8; size * 4];
-            try!(reader.read_exact(&mut offsets));
+            reader.read_exact(&mut offsets)?;
             drop(offsets); // Not useful when deserializing into memory
         }
 
         let mut containers = Vec::with_capacity(size);
 
         for _ in 0..size {
-            let key = try!(description_bytes.read_u16::<LittleEndian>());
-            let len = u64::from(try!(description_bytes.read_u16::<LittleEndian>())) + 1;
+            let key = description_bytes.read_u16::<LittleEndian>()?;
+            let len = u64::from(description_bytes.read_u16::<LittleEndian>()?) + 1;
 
             let store = if len < 4096 {
                 let mut values = Vec::with_capacity(len as usize);
                 for _ in 0..len {
-                    values.push(try!(reader.read_u16::<LittleEndian>()));
+                    values.push(reader.read_u16::<LittleEndian>()?);
                 }
                 Store::Array(values)
             } else {
                 let mut values = Box::new([0; 1024]);
                 for value in values.iter_mut() {
-                    *value = try!(reader.read_u64::<LittleEndian>());
+                    *value = reader.read_u64::<LittleEndian>()?;
                 }
                 Store::Bitmap(values)
             };

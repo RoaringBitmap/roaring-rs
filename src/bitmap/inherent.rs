@@ -1,4 +1,4 @@
-use RoaringBitmap;
+use crate::RoaringBitmap;
 
 use super::util;
 use super::container::Container;

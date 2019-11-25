@@ -2,11 +2,11 @@ use std::collections::BTreeMap;
 use std::collections::btree_map;
 use std::iter::{self, FromIterator};
 
-use bitmap::Iter as Iter32;
-use bitmap::IntoIter as IntoIter32;
+use crate::bitmap::Iter as Iter32;
+use crate::bitmap::IntoIter as IntoIter32;
 use super::util;
-use RoaringBitmap;
-use RoaringTreemap;
+use crate::RoaringBitmap;
+use crate::RoaringTreemap;
 
 struct To64Iter<'a> {
     hi: u32,

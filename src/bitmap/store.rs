@@ -334,8 +334,8 @@ impl Store {
                         },
                     }
                 }
-                if current2.is_some() {
-                    vec1.push(*current2.unwrap());
+                if let Some(current) = current2 {
+                    vec1.push(*current);
                     vec1.extend(iter2.cloned());
                 }
             },

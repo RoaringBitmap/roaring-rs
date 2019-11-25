@@ -1,4 +1,4 @@
-use RoaringBitmap;
+use crate::RoaringBitmap;
 use std::collections::BTreeMap;
 
 mod util;
