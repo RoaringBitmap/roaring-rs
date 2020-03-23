@@ -4,8 +4,10 @@ use std::iter::Peekable;
 use crate::RoaringBitmap;
 use crate::RoaringTreemap;
 
-struct Pairs<'a>(Peekable<btree_map::Iter<'a, u32, RoaringBitmap>>,
-                 Peekable<btree_map::Iter<'a, u32, RoaringBitmap>>);
+struct Pairs<'a>(
+    Peekable<btree_map::Iter<'a, u32, RoaringBitmap>>,
+    Peekable<btree_map::Iter<'a, u32, RoaringBitmap>>,
+);
 
 impl RoaringTreemap {
     fn pairs<'a>(&'a self, other: &'a RoaringTreemap) -> Pairs<'a> {
@@ -118,14 +120,12 @@ impl<'a> Iterator for Pairs<'a> {
             (None, None) => Which::None,
             (Some(_), None) => Which::Left,
             (None, Some(_)) => Which::Right,
-            (Some(c1), Some(c2)) => {
-                match (c1.0, c2.0) {
-                    (key1, key2) if key1 == key2 => Which::Both,
-                    (key1, key2) if key1 < key2 => Which::Left,
-                    (key1, key2) if key1 > key2 => Which::Right,
-                    (_, _) => unreachable!(),
-                }
-            }
+            (Some(c1), Some(c2)) => match (c1.0, c2.0) {
+                (key1, key2) if key1 == key2 => Which::Both,
+                (key1, key2) if key1 < key2 => Which::Left,
+                (key1, key2) if key1 > key2 => Which::Right,
+                (_, _) => unreachable!(),
+            },
         };
         match which {
             Which::Left => Some((self.0.next().map(|e| e.1), None)),

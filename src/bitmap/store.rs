@@ -1,11 +1,11 @@
+use std::borrow::Borrow;
+use std::cmp::Ordering::{Equal, Greater, Less};
 use std::slice;
 use std::vec;
-use std::borrow::Borrow;
-use std::cmp::Ordering::{ Equal, Less, Greater };
 
 const BITMAP_LENGTH: usize = 1024;
 
-use self::Store::{ Array, Bitmap };
+use self::Store::{Array, Bitmap};
 pub enum Store {
     Array(Vec<u16>),
     Bitmap(Box<[u64; BITMAP_LENGTH]>),
@@ -27,11 +27,10 @@ pub struct BitmapIter<B: Borrow<[u64; BITMAP_LENGTH]>> {
 impl Store {
     pub fn insert(&mut self, index: u16) -> bool {
         match *self {
-            Array(ref mut vec) => {
-                vec.binary_search(&index)
-                    .map_err(|loc| vec.insert(loc, index))
-                    .is_err()
-            },
+            Array(ref mut vec) => vec
+                .binary_search(&index)
+                .map_err(|loc| vec.insert(loc, index))
+                .is_err(),
             Bitmap(ref mut bits) => {
                 let (key, bit) = (key(index), bit(index));
                 if bits[key] & (1 << bit) == 0 {
@@ -40,17 +39,13 @@ impl Store {
                 } else {
                     false
                 }
-            },
+            }
         }
     }
 
     pub fn remove(&mut self, index: u16) -> bool {
         match *self {
-            Array(ref mut vec) => {
-                vec.binary_search(&index)
-                    .map(|loc| vec.remove(loc))
-                    .is_ok()
-            },
+            Array(ref mut vec) => vec.binary_search(&index).map(|loc| vec.remove(loc)).is_ok(),
             Bitmap(ref mut bits) => {
                 let (key, bit) = (key(index), bit(index));
                 if bits[key] & (1 << bit) != 0 {
@@ -59,7 +54,7 @@ impl Store {
                 } else {
                     false
                 }
-            },
+            }
         }
     }
 
@@ -75,10 +70,10 @@ impl Store {
                 };
                 vec.drain(a..b);
                 (b - a) as u64
-            },
+            }
             Bitmap(ref mut bits) => {
                 let start_key = key(start as u16) as usize;
-                let start_bit =  bit(start as u16) as u32;
+                let start_bit = bit(start as u16) as u32;
                 // end_key is inclusive
                 let end_key = key((end - 1) as u16) as usize;
                 let end_bit = bit(end as u16) as u32;
@@ -109,14 +104,14 @@ impl Store {
                 removed += (bits[end_key] & (!0u64).wrapping_shr(64 - end_bit)).count_ones();
                 bits[end_key] &= !(!0u64).wrapping_shr(64 - end_bit);
                 u64::from(removed)
-            },
+            }
         }
     }
 
     pub fn contains(&self, index: u16) -> bool {
         match *self {
             Array(ref vec) => vec.binary_search(&index).is_ok(),
-            Bitmap(ref bits) => bits[key(index)] & (1 << bit(index)) != 0
+            Bitmap(ref bits) => bits[key(index)] & (1 << bit(index)) != 0,
         }
     }
 
@@ -133,13 +128,14 @@ impl Store {
                         Some(Greater) => value2 = i2.next(),
                     }
                 }
-            },
-            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => {
-                bits1.iter().zip(bits2.iter()).all(|(&i1, &i2)| (i1 & i2) == 0)
-            },
+            }
+            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => bits1
+                .iter()
+                .zip(bits2.iter())
+                .all(|(&i1, &i2)| (i1 & i2) == 0),
             (&Array(ref vec), store @ &Bitmap(..)) | (store @ &Bitmap(..), &Array(ref vec)) => {
                 vec.iter().all(|&i| !store.contains(i))
-            },
+            }
         }
     }
 
@@ -156,19 +152,18 @@ impl Store {
                             Equal => {
                                 value1 = i1.next();
                                 value2 = i2.next();
-                            },
+                            }
                             Less => return false,
                             Greater => value2 = i2.next(),
                         },
                     }
                 }
-            },
-            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => {
-                bits1.iter().zip(bits2.iter()).all(|(&i1, &i2)| (i1 & i2) == i1)
-            },
-            (&Array(ref vec), store @ &Bitmap(..)) => {
-                vec.iter().all(|&i| store.contains(i))
-            },
+            }
+            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => bits1
+                .iter()
+                .zip(bits2.iter())
+                .all(|(&i1, &i2)| (i1 & i2) == i1),
+            (&Array(ref vec), store @ &Bitmap(..)) => vec.iter().all(|&i| store.contains(i)),
             (&Bitmap(..), &Array(..)) => false,
         }
     }
@@ -186,7 +181,7 @@ impl Store {
                     }
                 }
                 Array(vec)
-            },
+            }
         }
     }
 
@@ -198,7 +193,7 @@ impl Store {
                     bits[key(index)] |= 1 << bit(index);
                 }
                 Bitmap(bits)
-            },
+            }
             Bitmap(..) => panic!("Cannot convert bitmap to bitmap"),
         }
     }
@@ -217,24 +212,24 @@ impl Store {
                         }
                     }
                     vec1.push(index2);
-                    break
+                    break;
                 }
                 vec1.extend(iter2);
-            },
+            }
             (ref mut this @ &mut Bitmap(..), &Array(ref vec)) => {
                 for &index in vec {
                     this.insert(index);
                 }
-            },
+            }
             (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
                 for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
                     *index1 |= index2;
                 }
-            },
+            }
             (this @ &mut Array(..), &Bitmap(..)) => {
                 *this = this.to_bitmap();
                 this.union_with(other);
-            },
+            }
         }
     }
 
@@ -246,32 +241,36 @@ impl Store {
                 let mut current2 = iter2.next();
                 while i1 < vec1.len() {
                     match current2.map(|c2| vec1[i1].cmp(c2)) {
-                        None | Some(Less) => { vec1.remove(i1); },
-                        Some(Greater) => { current2 = iter2.next(); },
+                        None | Some(Less) => {
+                            vec1.remove(i1);
+                        }
+                        Some(Greater) => {
+                            current2 = iter2.next();
+                        }
                         Some(Equal) => {
                             i1 += 1;
                             current2 = iter2.next();
-                        },
+                        }
                     }
                 }
-            },
+            }
             (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
                 for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
                     *index1 &= index2;
                 }
-            },
+            }
             (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
                 for i in (0..(vec.len())).rev() {
                     if !store.contains(vec[i]) {
                         vec.remove(i);
                     }
                 }
-            },
+            }
             (this @ &mut Bitmap(..), &Array(..)) => {
                 let mut new = other.clone();
                 new.intersect_with(this);
                 *this = new;
-            },
+            }
         }
     }
 
@@ -284,32 +283,36 @@ impl Store {
                 while i1 < vec1.len() {
                     match current2.map(|c2| vec1[i1].cmp(c2)) {
                         None => break,
-                        Some(Less) => { i1 += 1; },
-                        Some(Greater) => { current2 = iter2.next(); },
+                        Some(Less) => {
+                            i1 += 1;
+                        }
+                        Some(Greater) => {
+                            current2 = iter2.next();
+                        }
                         Some(Equal) => {
                             vec1.remove(i1);
                             current2 = iter2.next();
-                        },
+                        }
                     }
                 }
-            },
+            }
             (ref mut this @ &mut Bitmap(..), &Array(ref vec2)) => {
                 for index in vec2.iter() {
                     this.remove(*index);
                 }
-            },
+            }
             (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
                 for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
                     *index1 &= !*index2;
                 }
-            },
+            }
             (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
-                for i in (0 .. vec.len()).rev() {
+                for i in (0..vec.len()).rev() {
                     if store.contains(vec[i]) {
                         vec.remove(i);
                     }
                 }
-            },
+            }
         }
     }
 
@@ -322,23 +325,25 @@ impl Store {
                 while i1 < vec1.len() {
                     match current2.map(|c2| vec1[i1].cmp(c2)) {
                         None => break,
-                        Some(Less) => { i1 += 1; },
+                        Some(Less) => {
+                            i1 += 1;
+                        }
                         Some(Greater) => {
                             vec1.insert(i1, *current2.unwrap());
                             i1 += 1;
                             current2 = iter2.next();
-                        },
+                        }
                         Some(Equal) => {
                             vec1.remove(i1);
                             current2 = iter2.next();
-                        },
+                        }
                     }
                 }
                 if let Some(current) = current2 {
                     vec1.push(*current);
                     vec1.extend(iter2.cloned());
                 }
-            },
+            }
             (ref mut this @ &mut Bitmap(..), &Array(ref vec2)) => {
                 for index in vec2.iter() {
                     if this.contains(*index) {
@@ -347,50 +352,49 @@ impl Store {
                         this.insert(*index);
                     }
                 }
-            },
+            }
             (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
                 for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
                     *index1 ^= index2;
                 }
-            },
+            }
             (this @ &mut Array(..), &Bitmap(..)) => {
                 let mut new = other.clone();
                 new.symmetric_difference_with(this);
                 *this = new;
-            },
+            }
         }
     }
 
     pub fn len(&self) -> u64 {
         match *self {
             Array(ref vec) => vec.len() as u64,
-            Bitmap(ref bits) => {
-                bits.iter().map(|bit| u64::from(bit.count_ones())).sum()
-            },
+            Bitmap(ref bits) => bits.iter().map(|bit| u64::from(bit.count_ones())).sum(),
         }
     }
 
     pub fn min(&self) -> u16 {
         match *self {
             Array(ref vec) => *vec.first().unwrap(),
-            Bitmap(ref bits) => {
-                bits.iter().enumerate()
-                    .find(|&(_, &bit)| bit != 0)
-                    .map(|(index, bit)| index * 64 + (bit.trailing_zeros() as usize))
-                    .unwrap() as u16
-            },
+            Bitmap(ref bits) => bits
+                .iter()
+                .enumerate()
+                .find(|&(_, &bit)| bit != 0)
+                .map(|(index, bit)| index * 64 + (bit.trailing_zeros() as usize))
+                .unwrap() as u16,
         }
     }
 
     pub fn max(&self) -> u16 {
         match *self {
             Array(ref vec) => *vec.last().unwrap(),
-            Bitmap(ref bits) => {
-                bits.iter().enumerate().rev()
-                    .find(|&(_, &bit)| bit != 0)
-                    .map(|(index, bit)| index * 64 + (63 - bit.leading_zeros() as usize))
-                    .unwrap() as u16
-            },
+            Bitmap(ref bits) => bits
+                .iter()
+                .enumerate()
+                .rev()
+                .find(|&(_, &bit)| bit != 0)
+                .map(|(index, bit)| index * 64 + (63 - bit.leading_zeros() as usize))
+                .unwrap() as u16,
         }
     }
 }
@@ -420,12 +424,10 @@ impl IntoIterator for Store {
 impl PartialEq for Store {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (&Array(ref vec1), &Array(ref vec2)) => {
-                vec1 == vec2
-            },
+            (&Array(ref vec1), &Array(ref vec2)) => vec1 == vec2,
             (&Bitmap(ref bits1), &Bitmap(ref bits2)) => {
                 bits1.iter().zip(bits2.iter()).all(|(i1, i2)| i1 == i2)
-            },
+            }
             _ => false,
         }
     }
@@ -435,9 +437,7 @@ impl Clone for Store {
     fn clone(&self) -> Self {
         match *self {
             Array(ref vec) => Array(vec.clone()),
-            Bitmap(ref bits) => {
-                Bitmap(Box::new(**bits))
-            },
+            Bitmap(ref bits) => Bitmap(Box::new(**bits)),
         }
     }
 }
@@ -467,7 +467,9 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
         loop {
             if self.key == BITMAP_LENGTH {
                 return None;
-            } else if (unsafe { self.bits.borrow().get_unchecked(self.key) } & (1u64 << self.bit)) != 0 {
+            } else if (unsafe { self.bits.borrow().get_unchecked(self.key) } & (1u64 << self.bit))
+                != 0
+            {
                 let result = Some((self.key * 64 + self.bit) as u16);
                 self.move_next();
                 return result;
@@ -500,7 +502,11 @@ impl<'a> Iterator for Iter<'a> {
 }
 
 #[inline]
-fn key(index: u16) -> usize { index as usize / 64 }
+fn key(index: u16) -> usize {
+    index as usize / 64
+}
 
 #[inline]
-fn bit(index: u16) -> usize { index as usize % 64 }
+fn bit(index: u16) -> usize {
+    index as usize % 64
+}

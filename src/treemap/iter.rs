@@ -1,10 +1,10 @@
-use std::collections::BTreeMap;
 use std::collections::btree_map;
+use std::collections::BTreeMap;
 use std::iter::{self, FromIterator};
 
-use crate::bitmap::Iter as Iter32;
-use crate::bitmap::IntoIter as IntoIter32;
 use super::util;
+use crate::bitmap::IntoIter as IntoIter32;
+use crate::bitmap::Iter as Iter32;
 use crate::RoaringBitmap;
 use crate::RoaringTreemap;
 
@@ -46,12 +46,16 @@ fn to64intoiter(t: (u32, RoaringBitmap)) -> To64IntoIter {
     }
 }
 
-type InnerIter<'a> = iter::FlatMap<btree_map::Iter<'a, u32, RoaringBitmap>,
-                                   To64Iter<'a>,
-                                   fn((&'a u32, &'a RoaringBitmap)) -> To64Iter<'a>>;
-type InnerIntoIter = iter::FlatMap<btree_map::IntoIter<u32, RoaringBitmap>,
-                                   To64IntoIter,
-                                   fn((u32, RoaringBitmap)) -> To64IntoIter>;
+type InnerIter<'a> = iter::FlatMap<
+    btree_map::Iter<'a, u32, RoaringBitmap>,
+    To64Iter<'a>,
+    fn((&'a u32, &'a RoaringBitmap)) -> To64Iter<'a>,
+>;
+type InnerIntoIter = iter::FlatMap<
+    btree_map::IntoIter<u32, RoaringBitmap>,
+    To64IntoIter,
+    fn((u32, RoaringBitmap)) -> To64IntoIter,
+>;
 
 /// An iterator for `RoaringTreemap`.
 pub struct Iter<'a> {
@@ -68,21 +72,18 @@ pub struct IntoIter {
 impl<'a> Iter<'a> {
     fn new(map: &BTreeMap<u32, RoaringBitmap>) -> Iter {
         let size_hint: u64 = map.iter().map(|(_, r)| r.len()).sum();
-        let i = map.iter()
-            .flat_map(to64iter as _);
+        let i = map.iter().flat_map(to64iter as _);
         Iter {
             inner: i,
             size_hint,
         }
-
     }
 }
 
 impl IntoIter {
     fn new(map: BTreeMap<u32, RoaringBitmap>) -> IntoIter {
         let size_hint = map.iter().map(|(_, r)| r.len()).sum();
-        let i = map.into_iter()
-            .flat_map(to64intoiter as _);
+        let i = map.into_iter().flat_map(to64intoiter as _);
         IntoIter {
             inner: i,
             size_hint,

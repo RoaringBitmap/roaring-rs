@@ -1,10 +1,10 @@
-use crate::RoaringTreemap;
 use crate::RoaringBitmap;
+use crate::RoaringTreemap;
 
 use super::util;
-use std::ops::Range;
-use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
+use std::collections::BTreeMap;
+use std::ops::Range;
 
 impl RoaringTreemap {
     /// Creates an empty `RoaringTreemap`.
@@ -16,7 +16,9 @@ impl RoaringTreemap {
     /// let mut rb = RoaringTreemap::new();
     /// ```
     pub fn new() -> RoaringTreemap {
-        RoaringTreemap { map: BTreeMap::new() }
+        RoaringTreemap {
+            map: BTreeMap::new(),
+        }
     }
 
     /// Adds a value to the set. Returns `true` if the value was not already present in the set.
@@ -33,7 +35,10 @@ impl RoaringTreemap {
     /// ```
     pub fn insert(&mut self, value: u64) -> bool {
         let (hi, lo) = util::split(value);
-        self.map.entry(hi).or_insert_with(RoaringBitmap::new).insert(lo)
+        self.map
+            .entry(hi)
+            .or_insert_with(RoaringBitmap::new)
+            .insert(lo)
     }
 
     /// Removes a value from the set. Returns `true` if the value was present in the set.
@@ -62,7 +67,7 @@ impl RoaringTreemap {
                 } else {
                     false
                 }
-            },
+            }
         }
     }
 
@@ -174,9 +179,7 @@ impl RoaringTreemap {
     /// assert_eq!(rb.is_empty(), false);
     /// ```
     pub fn is_empty(&self) -> bool {
-        self.map
-            .values()
-            .all(RoaringBitmap::is_empty)
+        self.map.values().all(RoaringBitmap::is_empty)
     }
 
     /// Returns the number of distinct integers added to the set.
@@ -197,10 +200,7 @@ impl RoaringTreemap {
     /// assert_eq!(rb.len(), 2);
     /// ```
     pub fn len(&self) -> u64 {
-        self.map
-            .values()
-            .map(RoaringBitmap::len)
-            .sum()
+        self.map.values().map(RoaringBitmap::len).sum()
     }
 
     /// Returns the minimum value in the set (if the set is non-empty).
@@ -223,7 +223,6 @@ impl RoaringTreemap {
             .find(|&(_, rb)| rb.min().is_some())
             .map(|(k, rb)| util::join(*k, rb.min().unwrap()))
     }
-
 
     /// Returns the maximum value in the set (if the set is non-empty).
     ///

@@ -1,9 +1,9 @@
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
-use byteorder::{ LittleEndian, ReadBytesExt, WriteBytesExt };
 
-use crate::RoaringBitmap;
-use super::store::Store;
 use super::container::Container;
+use super::store::Store;
+use crate::RoaringBitmap;
 
 const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
 const SERIAL_COOKIE: u16 = 12347;
@@ -27,16 +27,14 @@ impl RoaringBitmap {
     /// assert_eq!(rb1, rb2);
     /// ```
     pub fn serialized_size(&self) -> usize {
-        let container_sizes: usize = self.containers.iter().map(|container| {
-            match container.store {
-                Store::Array(ref values) => {
-                    8 + values.len() * 2
-                }
-                Store::Bitmap(..) => {
-                    8 + 8 * 1024
-                }
-            }
-        }).sum();
+        let container_sizes: usize = self
+            .containers
+            .iter()
+            .map(|container| match container.store {
+                Store::Array(ref values) => 8 + values.len() * 2,
+                Store::Bitmap(..) => 8 + 8 * 1024,
+            })
+            .sum();
 
         // header + container sizes
         8 + container_sizes
@@ -125,18 +123,18 @@ impl RoaringBitmap {
             } else if (cookie as u16) == SERIAL_COOKIE {
                 return Err(io::Error::new(
                     io::ErrorKind::Other,
-                    "run containers are unsupported"));
+                    "run containers are unsupported",
+                ));
             } else {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "unknown cookie value"));
+                return Err(io::Error::new(io::ErrorKind::Other, "unknown cookie value"));
             }
         };
 
         if size > u16::max_value() as usize {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
-                "size is greater than supported"));
+                "size is greater than supported",
+            ));
         }
 
         let mut description_bytes = vec![0u8; size * 4];

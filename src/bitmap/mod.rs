@@ -1,18 +1,18 @@
-mod store;
 mod container;
-mod util;
 mod fmt;
+mod store;
+mod util;
 
 // Order of these modules matters as it determines the `impl` blocks order in
 // the docs
+mod cmp;
 mod inherent;
 mod iter;
 mod ops;
-mod cmp;
 mod serialization;
 
-pub use self::iter::Iter;
 pub use self::iter::IntoIter;
+pub use self::iter::Iter;
 
 /// A compressed bitmap using the [Roaring bitmap compression scheme](http://roaringbitmap.org).
 ///

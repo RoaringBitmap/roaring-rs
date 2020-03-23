@@ -1,7 +1,7 @@
 use std::fmt;
 
+use super::store::{self, Store};
 use super::util;
-use super::store::{ self, Store };
 
 const ARRAY_LIMIT: u64 = 4096;
 
@@ -122,7 +122,7 @@ impl<'a> IntoIterator for &'a Container {
     fn into_iter(self) -> Iter<'a> {
         Iter {
             key: self.key,
-            inner: (&self.store).into_iter()
+            inner: (&self.store).into_iter(),
         }
     }
 }
@@ -134,7 +134,7 @@ impl IntoIterator for Container {
     fn into_iter(self) -> Iter<'static> {
         Iter {
             key: self.key,
-            inner: self.store.into_iter()
+            inner: self.store.into_iter(),
         }
     }
 }

@@ -25,7 +25,11 @@ fn bitmap() {
 
 #[test]
 fn arrays() {
-    let original = RoaringTreemap::from_iter((0..2000).chain(1_000_000..1_002_000).chain(2_000_000..2_001_000));
+    let original = RoaringTreemap::from_iter(
+        (0..2000)
+            .chain(1_000_000..1_002_000)
+            .chain(2_000_000..2_001_000),
+    );
     let clone = RoaringTreemap::from_iter(&original);
     let clone2 = RoaringTreemap::from_iter(original.clone());
 
@@ -35,7 +39,11 @@ fn arrays() {
 
 #[test]
 fn bitmaps() {
-    let original = RoaringTreemap::from_iter((0..6000).chain(1_000_000..1_012_000).chain(2_000_000..2_010_000));
+    let original = RoaringTreemap::from_iter(
+        (0..6000)
+            .chain(1_000_000..1_012_000)
+            .chain(2_000_000..2_010_000),
+    );
     let clone = RoaringTreemap::from_iter(&original);
     let clone2 = RoaringTreemap::from_iter(original.clone());
 
@@ -45,7 +53,11 @@ fn bitmaps() {
 
 #[test]
 fn bitmaps_iterator() {
-    let original = RoaringTreemap::from_iter((0..6000).chain(1_000_000..1_012_000).chain(2_000_000..2_010_000));
+    let original = RoaringTreemap::from_iter(
+        (0..6000)
+            .chain(1_000_000..1_012_000)
+            .chain(2_000_000..2_010_000),
+    );
     let clone = RoaringTreemap::from_bitmaps(original.bitmaps().map(|(p, b)| (p, b.clone())));
     let clone2 = RoaringTreemap::from_iter(original.bitmaps().map(|(p, b)| (p, b.clone())));
 
