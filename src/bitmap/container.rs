@@ -3,7 +3,8 @@ use std::fmt;
 use super::store::{self, Store};
 use super::util;
 
-const ARRAY_LIMIT: u64 = 4096;
+pub const ARRAY_LIMIT: u64 = 4096;
+pub const RUN_MAX_SIZE: u64 = 2048;
 
 #[derive(PartialEq, Clone)]
 pub struct Container {
@@ -103,7 +104,7 @@ impl Container {
         self.store.max()
     }
 
-    fn ensure_correct_store(&mut self) {
+    fn ensure_correct_store(&mut self) -> bool {
         let new_store = match (&self.store, self.len) {
             (store @ &Store::Bitmap(..), len) if len <= ARRAY_LIMIT => Some(store.to_array()),
             (store @ &Store::Array(..), len) if len > ARRAY_LIMIT => Some(store.to_bitmap()),
@@ -111,6 +112,25 @@ impl Container {
         };
         if let Some(new_store) = new_store {
             self.store = new_store;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn optimize(&mut self) -> bool {
+        match self.store {
+            Store::Array(..) | Store::Bitmap(..) => {
+                let num_runs = self.store.count_runs();
+                if num_runs <= RUN_MAX_SIZE && num_runs <= self.len / 2 {
+                    // convert to run container
+                    self.store = self.store.to_run();
+                    true
+                } else {
+                    self.ensure_correct_store()
+                }
+            }
+            Store::Run(..) => self.ensure_correct_store(),
         }
     }
 }

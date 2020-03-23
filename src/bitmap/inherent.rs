@@ -247,6 +247,24 @@ impl RoaringBitmap {
             .last()
             .map(|tail| util::join(tail.key, tail.max()))
     }
+
+    // TODO(jpg) actually come up with example that illustrates creation of run containers
+    /// Optimizes the container storage for this bitmap.
+    /// Returns true if the container storage was modified, false if not.
+    ///
+    /// # Examples
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::from_iter(1000..100000)
+    /// rb.optimize()
+    /// ```
+    pub fn optimize(&mut self) -> bool {
+        let mut changed = false;
+        for container in &mut self.containers {
+            changed |= container.optimize()
+        }
+        changed
+    }
 }
 
 impl Default for RoaringBitmap {
