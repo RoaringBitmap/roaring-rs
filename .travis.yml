@@ -13,9 +13,9 @@ matrix:
   - name: clippy
     rust: stable
     install:
-    - rustup component add clippy-preview
+    - rustup component add clippy
     script:
-    - cargo clippy --lib --tests -- -D warnings
+    - cargo clippy --all-targets -- -D warnings
 
 branches:
   only: [staging, trying, master]
