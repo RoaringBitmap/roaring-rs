@@ -1,17 +1,17 @@
 use crate::RoaringBitmap;
 use std::collections::BTreeMap;
 
-mod util;
 mod fmt;
+mod util;
 
 // Order of these modules matters as it determines the `impl` blocks order in
 // the docs
+mod cmp;
 mod inherent;
 mod iter;
 mod ops;
-mod cmp;
 
-pub use self::iter::{Iter, IntoIter};
+pub use self::iter::{IntoIter, Iter};
 
 /// A compressed bitmap with u64 values.
 /// Implemented as a `BTreeMap` of `RoaringBitmap`s.

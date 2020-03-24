@@ -37,11 +37,27 @@ fn smoke() {
 
 #[test]
 fn remove_range() {
-    let ranges = [0u32, 1, 63, 64, 65, 100, 4096 - 1, 4096, 4096 + 1, 65536 - 1, 65536, 65536 + 1];
+    let ranges = [
+        0u32,
+        1,
+        63,
+        64,
+        65,
+        100,
+        4096 - 1,
+        4096,
+        4096 + 1,
+        65536 - 1,
+        65536,
+        65536 + 1,
+    ];
     for (i, &a) in ranges.iter().enumerate() {
         for &b in &ranges[i..] {
             let mut bitmap = RoaringBitmap::from_iter(0..=65536);
-            assert_eq!(bitmap.remove_range(u64::from(a)..u64::from(b)), u64::from(b - a));
+            assert_eq!(
+                bitmap.remove_range(u64::from(a)..u64::from(b)),
+                u64::from(b - a)
+            );
             assert_eq!(bitmap, RoaringBitmap::from_iter((0..a).chain(b..=65536)));
         }
     }

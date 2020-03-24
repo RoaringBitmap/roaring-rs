@@ -7,11 +7,13 @@ impl fmt::Debug for RoaringTreemap {
         if self.len() < 16 {
             write!(f, "RoaringTreemap<{:?}>", self.iter().collect::<Vec<u64>>())
         } else {
-            write!(f,
-                   "RoaringTreemap<{:?} values between {:?} and {:?}>",
-                   self.len(),
-                   self.min().unwrap(),
-                   self.max().unwrap())
+            write!(
+                f,
+                "RoaringTreemap<{:?} values between {:?} and {:?}>",
+                self.len(),
+                self.min().unwrap(),
+                self.max().unwrap()
+            )
         }
     }
 }

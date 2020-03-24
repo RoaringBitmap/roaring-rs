@@ -12,8 +12,7 @@ fn create(c: &mut Criterion) {
 }
 
 fn insert(c: &mut Criterion) {
-    c.bench_function(
-        "insert 1", |b| {
+    c.bench_function("insert 1", |b| {
         b.iter(|| {
             let mut bitmap = RoaringBitmap::new();
             bitmap.insert(1);
@@ -21,13 +20,12 @@ fn insert(c: &mut Criterion) {
         });
     });
 
-    c.bench_function(
-        "insert 2", |b| {
+    c.bench_function("insert 2", |b| {
         b.iter(|| {
             let mut bitmap = RoaringBitmap::new();
-        bitmap.insert(1);
-        bitmap.insert(2);
-        bitmap
+            bitmap.insert(1);
+            bitmap.insert(2);
+            bitmap
         });
     });
 }

@@ -1,14 +1,20 @@
-use std::slice;
 use std::iter::Peekable;
+use std::slice;
 
-use crate::RoaringBitmap;
 use super::container::Container;
+use crate::RoaringBitmap;
 
-struct Pairs<'a>(Peekable<slice::Iter<'a, Container>>, Peekable<slice::Iter<'a, Container>>);
+struct Pairs<'a>(
+    Peekable<slice::Iter<'a, Container>>,
+    Peekable<slice::Iter<'a, Container>>,
+);
 
 impl RoaringBitmap {
     fn pairs<'a>(&'a self, other: &'a RoaringBitmap) -> Pairs<'a> {
-        Pairs(self.containers.iter().peekable(), other.containers.iter().peekable())
+        Pairs(
+            self.containers.iter().peekable(),
+            other.containers.iter().peekable(),
+        )
     }
 
     /// Returns true if the set has no elements in common with other. This is equivalent to
@@ -63,8 +69,14 @@ impl RoaringBitmap {
         for pair in self.pairs(other) {
             match pair {
                 (None, _) => (),
-                (_, None) => { return false; },
-                (Some(c1), Some(c2)) => if !c1.is_subset(c2) { return false; },
+                (_, None) => {
+                    return false;
+                }
+                (Some(c1), Some(c2)) => {
+                    if !c1.is_subset(c2) {
+                        return false;
+                    }
+                }
             }
         }
         true
@@ -101,7 +113,12 @@ impl<'a> Iterator for Pairs<'a> {
     type Item = (Option<&'a Container>, Option<&'a Container>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        enum Which { Left, Right, Both, None };
+        enum Which {
+            Left,
+            Right,
+            Both,
+            None,
+        };
         let which = match (self.0.peek(), self.1.peek()) {
             (None, None) => Which::None,
             (Some(_), None) => Which::Left,
@@ -111,7 +128,7 @@ impl<'a> Iterator for Pairs<'a> {
                 (key1, key2) if key1 < key2 => Which::Left,
                 (key1, key2) if key1 > key2 => Which::Right,
                 (_, _) => unreachable!(),
-            }
+            },
         };
         match which {
             Which::Left => Some((self.0.next(), None)),

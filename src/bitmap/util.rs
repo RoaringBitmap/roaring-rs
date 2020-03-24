@@ -10,7 +10,7 @@ pub fn join(high: u16, low: u16) -> u32 {
 
 #[cfg(test)]
 mod test {
-    use super::{ split, join };
+    use super::{join, split};
 
     #[test]
     fn test_split_u32() {

@@ -1,13 +1,17 @@
-use std::iter::{ self, FromIterator };
+use std::iter::{self, FromIterator};
 use std::slice;
 use std::vec;
 
-use crate::RoaringBitmap;
 use super::container::Container;
+use crate::RoaringBitmap;
 
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a> {
-    inner: iter::FlatMap<slice::Iter<'a, Container>, &'a Container, fn(&'a Container) -> &'a Container>,
+    inner: iter::FlatMap<
+        slice::Iter<'a, Container>,
+        &'a Container,
+        fn(&'a Container) -> &'a Container,
+    >,
     size_hint: u64,
 }
 
@@ -19,7 +23,9 @@ pub struct IntoIter {
 
 impl<'a> Iter<'a> {
     fn new(containers: &[Container]) -> Iter {
-        fn identity<T>(t: T) -> T { t }
+        fn identity<T>(t: T) -> T {
+            t
+        }
         let size_hint = containers.iter().map(|c| c.len).sum();
         Iter {
             inner: containers.iter().flat_map(identity as _),
@@ -30,7 +36,9 @@ impl<'a> Iter<'a> {
 
 impl IntoIter {
     fn new(containers: Vec<Container>) -> IntoIter {
-        fn identity<T>(t: T) -> T { t }
+        fn identity<T>(t: T) -> T {
+            t
+        }
         let size_hint = containers.iter().map(|c| c.len).sum();
         IntoIter {
             inner: containers.into_iter().flat_map(identity as _),

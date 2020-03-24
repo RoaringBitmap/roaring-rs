@@ -27,7 +27,11 @@ fn bitmap() {
 
 #[test]
 fn arrays() {
-    let bitmap = RoaringBitmap::from_iter((0..2000).chain(1_000_000..1_002_000).chain(2_000_000..2_001_000));
+    let bitmap = RoaringBitmap::from_iter(
+        (0..2000)
+            .chain(1_000_000..1_002_000)
+            .chain(2_000_000..2_001_000),
+    );
     let mut iter = bitmap.iter();
     assert_eq!((5000, Some(5000)), iter.size_hint());
     iter.by_ref().take(3000).for_each(drop);
@@ -38,7 +42,11 @@ fn arrays() {
 
 #[test]
 fn bitmaps() {
-    let bitmap = RoaringBitmap::from_iter((0..6000).chain(1_000_000..1_012_000).chain(2_000_000..2_010_000));
+    let bitmap = RoaringBitmap::from_iter(
+        (0..6000)
+            .chain(1_000_000..1_012_000)
+            .chain(2_000_000..2_010_000),
+    );
     let mut iter = bitmap.iter();
     assert_eq!((28000, Some(28000)), iter.size_hint());
     iter.by_ref().take(2000).for_each(drop);

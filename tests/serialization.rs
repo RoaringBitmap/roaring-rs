@@ -9,9 +9,11 @@ static BITMAP_WITHOUT_RUNS: &[u8] = include_bytes!("bitmapwithoutruns.bin");
 
 fn test_data_bitmap() -> RoaringBitmap {
     RoaringBitmap::from_iter(
-        (0..100).map(|i| i * 1000)
+        (0..100)
+            .map(|i| i * 1000)
             .chain((100_000..200_000).map(|i| i * 3))
-            .chain(700_000..800_000))
+            .chain(700_000..800_000),
+    )
 }
 
 fn serialize_and_deserialize(bitmap: &RoaringBitmap) -> RoaringBitmap {
@@ -25,7 +27,8 @@ fn serialize_and_deserialize(bitmap: &RoaringBitmap) -> RoaringBitmap {
 fn test_deserialize_from_provided_data() {
     assert_eq!(
         RoaringBitmap::deserialize_from(&mut &BITMAP_WITHOUT_RUNS[..]).unwrap(),
-        test_data_bitmap());
+        test_data_bitmap()
+    );
 }
 
 #[test]

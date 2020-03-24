@@ -14,8 +14,10 @@ matrix:
     rust: stable
     install:
     - rustup component add clippy
+    - rustup component add rustfmt
     script:
     - cargo clippy --all-targets -- -D warnings
+    - cargo fmt -- --check
 
 branches:
   only: [staging, trying, master]

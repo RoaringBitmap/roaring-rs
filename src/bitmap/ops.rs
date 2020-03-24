@@ -1,9 +1,4 @@
-use std::ops::{
-    BitAnd, BitAndAssign,
-    BitOr, BitOrAssign,
-    BitXor, BitXorAssign,
-    Sub, SubAssign
-};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
 use crate::RoaringBitmap;
 
@@ -81,7 +76,9 @@ impl RoaringBitmap {
         while index < self.containers.len() {
             let key = self.containers[index].key;
             match other.containers.binary_search_by_key(&key, |c| c.key) {
-                Err(_) => { self.containers.remove(index); }
+                Err(_) => {
+                    self.containers.remove(index);
+                }
                 Ok(loc) => {
                     self.containers[index].intersect_with(&other.containers[loc]);
                     if self.containers[index].len == 0 {
@@ -135,8 +132,10 @@ impl RoaringBitmap {
                     } else {
                         index += 1;
                     }
-                },
-                _ => { index += 1; }
+                }
+                _ => {
+                    index += 1;
+                }
             }
         }
     }

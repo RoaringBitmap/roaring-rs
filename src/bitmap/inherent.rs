@@ -1,7 +1,7 @@
 use crate::RoaringBitmap;
 
-use super::util;
 use super::container::Container;
+use super::util;
 use std::ops::Range;
 
 impl RoaringBitmap {
@@ -14,7 +14,9 @@ impl RoaringBitmap {
     /// let mut rb = RoaringBitmap::new();
     /// ```
     pub fn new() -> RoaringBitmap {
-        RoaringBitmap { containers: Vec::new() }
+        RoaringBitmap {
+            containers: Vec::new(),
+        }
     }
 
     /// Adds a value to the set. Returns `true` if the value was not already present in the set.
@@ -36,7 +38,7 @@ impl RoaringBitmap {
             Err(loc) => {
                 self.containers.insert(loc, Container::new(key));
                 &mut self.containers[loc]
-            },
+            }
         };
         container.insert(index)
     }
@@ -87,7 +89,10 @@ impl RoaringBitmap {
     /// assert_eq!(rb.remove_range(2..4), 2);
     /// ```
     pub fn remove_range(&mut self, range: Range<u64>) -> u64 {
-        assert!(range.end <= u64::from(u32::max_value()) + 1, "can't index past 2**32");
+        assert!(
+            range.end <= u64::from(u32::max_value()) + 1,
+            "can't index past 2**32"
+        );
         if range.start == range.end {
             return 0;
         }
@@ -114,8 +119,7 @@ impl RoaringBitmap {
                     result += self.containers[index].len;
                     self.containers.remove(index);
                     continue;
-                }
-                else {
+                } else {
                     result += self.containers[index].remove_range(a, b);
                     if self.containers[index].len == 0 {
                         self.containers.remove(index);
@@ -201,10 +205,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.len(), 2);
     /// ```
     pub fn len(&self) -> u64 {
-        self.containers
-            .iter()
-            .map(|container| container.len)
-            .sum()
+        self.containers.iter().map(|container| container.len).sum()
     }
 
     /// Returns the minimum value in the set (if the set is non-empty).
@@ -222,10 +223,10 @@ impl RoaringBitmap {
     /// assert_eq!(rb.min(), Some(3));
     /// ```
     pub fn min(&self) -> Option<u32> {
-        self.containers.first()
+        self.containers
+            .first()
             .map(|head| util::join(head.key, head.min()))
     }
-
 
     /// Returns the maximum value in the set (if the set is non-empty).
     ///
@@ -242,7 +243,8 @@ impl RoaringBitmap {
     /// assert_eq!(rb.max(), Some(4));
     /// ```
     pub fn max(&self) -> Option<u32> {
-        self.containers.last()
+        self.containers
+            .last()
             .map(|tail| util::join(tail.key, tail.max()))
     }
 }

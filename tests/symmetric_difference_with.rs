@@ -81,9 +81,24 @@ fn bitmap_and_array_to_array() {
 
 #[test]
 fn arrays() {
-    let mut bitmap1 = RoaringBitmap::from_iter((0..2000).chain(1_000_000..1_002_000).chain(3_000_000..3_001_000));
-    let bitmap2 = RoaringBitmap::from_iter((1000..3000).chain(1_001_000..1_003_000).chain(2_000_000..2_000_001));
-    let bitmap3 = RoaringBitmap::from_iter((0..1000).chain(1_000_000..1_001_000).chain(2000..3000).chain(1_002_000..1_003_000).chain(2_000_000..2_000_001).chain(3_000_000..3_001_000));
+    let mut bitmap1 = RoaringBitmap::from_iter(
+        (0..2000)
+            .chain(1_000_000..1_002_000)
+            .chain(3_000_000..3_001_000),
+    );
+    let bitmap2 = RoaringBitmap::from_iter(
+        (1000..3000)
+            .chain(1_001_000..1_003_000)
+            .chain(2_000_000..2_000_001),
+    );
+    let bitmap3 = RoaringBitmap::from_iter(
+        (0..1000)
+            .chain(1_000_000..1_001_000)
+            .chain(2000..3000)
+            .chain(1_002_000..1_003_000)
+            .chain(2_000_000..2_000_001)
+            .chain(3_000_000..3_001_000),
+    );
 
     bitmap1.symmetric_difference_with(&bitmap2);
 
@@ -92,9 +107,24 @@ fn arrays() {
 
 #[test]
 fn bitmaps() {
-    let mut bitmap1 = RoaringBitmap::from_iter((0..6000).chain(1_000_000..1_012_000).chain(3_000_000..3_010_000));
-    let bitmap2 = RoaringBitmap::from_iter((3000..7000).chain(1_006_000..1_018_000).chain(2_000_000..2_010_000));
-    let bitmap3 = RoaringBitmap::from_iter((0..3000).chain(1_000_000..1_006_000).chain(6000..7000).chain(1_012_000..1_018_000).chain(2_000_000..2_010_000).chain(3_000_000..3_010_000));
+    let mut bitmap1 = RoaringBitmap::from_iter(
+        (0..6000)
+            .chain(1_000_000..1_012_000)
+            .chain(3_000_000..3_010_000),
+    );
+    let bitmap2 = RoaringBitmap::from_iter(
+        (3000..7000)
+            .chain(1_006_000..1_018_000)
+            .chain(2_000_000..2_010_000),
+    );
+    let bitmap3 = RoaringBitmap::from_iter(
+        (0..3000)
+            .chain(1_000_000..1_006_000)
+            .chain(6000..7000)
+            .chain(1_012_000..1_018_000)
+            .chain(2_000_000..2_010_000)
+            .chain(3_000_000..3_010_000),
+    );
 
     bitmap1.symmetric_difference_with(&bitmap2);
 
