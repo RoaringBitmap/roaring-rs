@@ -138,3 +138,59 @@ impl<'a> Iterator for Pairs<'a> {
         }
     }
 }
+
+struct Muple<'a>(Vec<(&'a Container, Peekable<slice::Iter<'a, Container>>)>);
+
+impl<'a> Muple<'a> {
+    fn new(iters: Vec<Peekable<slice::Iter<'a, Container>>>) -> Muple<'a> {
+        let mut vec = Vec::with_capacity(iters.len());
+
+        // We peek the first key of every the container, this is ugly but
+        // the sort_unstable_by_key function does not allow us to mutable the
+        // element we are evaluating, probably to logic errors. Same for the BinaryHeap.
+        for mut i in iters {
+            if let Some(c) = i.peek() {
+                vec.push((*c, i));
+            }
+        }
+
+        vec.sort_unstable_by_key(|(c, _)| c.key);
+
+        Muple(vec)
+    }
+}
+
+impl<'a> Iterator for Muple<'a> {
+    type Item = Vec<&'a Container>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // We retrieve the lowest key that we must return containers for.
+        let key = match self.0.get(0) {
+            Some((c, _)) => c.key,
+            None => return None,
+        };
+
+        let mut output = Vec::new();
+        let mut to_remove = Vec::new();
+
+        // We iterate over the containers iterators that are related to the lowest key,
+        // poll the containers to return and mark the empty containers identified.
+        for (i, (c, iter)) in self.0.iter_mut().enumerate().take_while(|(_, (c, _))| c.key == key) {
+            let container = iter.next().unwrap();
+            output.push(container);
+            match iter.next() {
+                Some(x) => *c = x,
+                None => to_remove.push(i),
+            }
+        }
+
+        // We remove all the containers iterator that are empty.
+        // We reverse iterate to avoid invalidating the indexes when swap removing.
+        to_remove.into_iter().rev().for_each(|i| drop(self.0.swap_remove(i)));
+
+        // We sort to move the lowest keys at the front of the list.
+        self.0.sort_unstable_by_key(|(c, _)| c.key);
+
+        Some(output)
+    }
+}
