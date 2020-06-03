@@ -40,12 +40,27 @@ impl RoaringBitmap {
             self.containers.iter().peekable(),
         )));
 
-        let mut containers = Vec::new();
+        let mut stores = Vec::new();
         for mut cs in muple {
-            let mut a = cs.pop().unwrap().clone(); // safe
-            cs.into_iter().for_each(|c| a.union_with(c));
-            containers.push(a);
+            let a = cs.pop().unwrap().clone(); // safe
+            let mut store = a.store;
+            cs.into_iter().for_each(|c| store.union_with(&c.store));
+            stores.push((a.key, store));
         }
+
+        // We reconstruct the containers from the stores
+        let containers = stores
+            .into_iter()
+            .map(|(key, store)| {
+                let mut container = Container {
+                    key,
+                    len: store.len(),
+                    store,
+                };
+                container.ensure_correct_store();
+                container
+            })
+            .collect();
 
         *self = RoaringBitmap { containers };
     }
