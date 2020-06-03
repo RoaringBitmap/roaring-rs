@@ -107,6 +107,22 @@ impl RoaringBitmap {
     pub fn is_superset(&self, other: &Self) -> bool {
         other.is_subset(self)
     }
+
+    pub fn multi_union<'a, I>(bitmaps: I) -> Self
+    where I: IntoIterator<Item = &'a Self>
+    {
+        let iter = bitmaps.into_iter().map(|b| b.containers.iter().peekable());
+        let muple = Muple::new(iter);
+
+        let mut containers = Vec::new(); // TODO with_capacity
+        for mut cs in muple {
+            let mut a = cs.pop().unwrap().clone(); // safe
+            cs.into_iter().for_each(|c| a.union_with(c));
+            containers.push(a);
+        }
+
+        RoaringBitmap { containers }
+    }
 }
 
 impl<'a> Iterator for Pairs<'a> {
@@ -183,8 +199,10 @@ impl Eq for InteriorMutable<'_> {}
 struct Muple<'a>(BinaryHeap<Reverse<InteriorMutable<'a>>>);
 
 impl<'a> Muple<'a> {
-    fn new(iters: Vec<Peekable<slice::Iter<'a, Container>>>) -> Muple<'a> {
-        let mut heap = BinaryHeap::with_capacity(iters.len());
+    fn new<I>(iters: I) -> Muple<'a>
+    where I: IntoIterator<Item = Peekable<slice::Iter<'a, Container>>>
+    {
+        let mut heap = BinaryHeap::new();
 
         iters.into_iter().for_each(|iter| {
             heap.push(Reverse(InteriorMutable(RefCell::new(iter))));
@@ -231,6 +249,28 @@ impl<'a> Iterator for Muple<'a> {
             }
         }
 
-        Some(output)
+        if !output.is_empty() {
+            Some(output)
+        } else {
+            None
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn multi_union() {
+        let a: RoaringBitmap = (0..5).collect();
+        let b = (5..10).collect();
+        let c = (10..15).collect();
+        let d = (0..4).collect();
+
+        let expected = (0..15).collect();
+        let out = RoaringBitmap::multi_union(&[a, b, c, d]);
+
+        assert_eq!(out, expected);
     }
 }
