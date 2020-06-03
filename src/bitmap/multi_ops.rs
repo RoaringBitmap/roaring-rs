@@ -21,24 +21,18 @@ impl RoaringBitmap {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb1: RoaringBitmap = (0..5).collect();
+    /// let rb1 = (0..5).collect();
     /// let rb2 = (5..10).collect();
     /// let rb3 = (10..15).collect();
     /// let rb4 = (0..4).collect();
     ///
-    /// rb1.union_with_multi(&[rb2, rb3, rb4]);
+    /// let out = RoaringBitmap::union_of(&[rb1, rb2, rb3, rb4]);
     ///
-    /// assert_eq!(rb1, (0..15).collect());
+    /// assert_eq!(out, (0..15).collect());
     /// ```
-    pub fn union_with_multi<'a, I>(&mut self, others: I)
-    where
-        I: IntoIterator<Item = &'a Self>,
-    {
-        let iter = others.into_iter().map(|b| b.containers.iter().peekable());
-        let mut muple = Muple::new(iter);
-        muple.0.push(Reverse(InteriorMutable::new(
-            self.containers.iter().peekable(),
-        )));
+    pub fn union_of<'a>(bitmaps: impl IntoIterator<Item = &'a Self>) -> Self {
+        let iter = bitmaps.into_iter().map(|b| b.containers.iter().peekable());
+        let muple = Muple::new(iter);
 
         let mut stores = Vec::new();
         for mut cs in muple {
@@ -62,7 +56,7 @@ impl RoaringBitmap {
             })
             .collect();
 
-        *self = RoaringBitmap { containers };
+        RoaringBitmap { containers }
     }
 }
 

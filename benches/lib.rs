@@ -129,27 +129,26 @@ fn union_with(c: &mut Criterion) {
     });
 }
 
-fn union_with_multi(c: &mut Criterion) {
-    c.bench_function("union_with_multi", |b| {
-        let mut bitmap1: RoaringBitmap = (1..100).collect();
-        let others: Vec<RoaringBitmap> = (0..25)
+fn union_of(c: &mut Criterion) {
+    c.bench_function("union_of", |b| {
+        let bitmaps: Vec<RoaringBitmap> = (0..25)
             .map(|i| (i * 100..(i + 1) * 200).collect())
             .collect();
 
         b.iter(|| {
-            bitmap1.union_with_multi(black_box(&others));
+            RoaringBitmap::union_of(black_box(&bitmaps));
         });
     });
 
-    c.bench_function("union_with_multi by hand", |b| {
-        let mut bitmap1: RoaringBitmap = (1..100).collect();
-        let others: Vec<RoaringBitmap> = (0..25)
+    c.bench_function("union_of by hand", |b| {
+        let bitmaps: Vec<RoaringBitmap> = (0..25)
             .map(|i| (i * 100..(i + 1) * 200).collect())
             .collect();
 
         b.iter(|| {
-            for bm in &others {
-                bitmap1.union_with(black_box(bm));
+            let mut base = RoaringBitmap::default();
+            for bm in &bitmaps {
+                base.union_with(black_box(bm));
             }
         });
     });
@@ -310,8 +309,8 @@ criterion_group!(
     and,
     intersect_with,
     or,
+    union_of,
     union_with,
-    union_with_multi,
     xor,
     symmetric_deference_with,
     is_subset,
