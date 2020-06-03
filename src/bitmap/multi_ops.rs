@@ -11,7 +11,10 @@ use crate::RoaringBitmap;
 // where it is not possible to mutate self to get or compute a value.
 struct InteriorMutable<'a>(RefCell<Peekable<slice::Iter<'a, Container>>>);
 
-struct Muple<'a>(BinaryHeap<Reverse<InteriorMutable<'a>>>);
+struct Muple<'a> {
+    heap: BinaryHeap<Reverse<InteriorMutable<'a>>>,
+    buffer: Vec<&'a Container>,
+}
 
 impl RoaringBitmap {
     /// Unions in-place with the specified others bitmaps.
@@ -32,13 +35,13 @@ impl RoaringBitmap {
     /// ```
     pub fn union_of<'a>(bitmaps: impl IntoIterator<Item = &'a Self>) -> Self {
         let iter = bitmaps.into_iter().map(|b| b.containers.iter().peekable());
-        let muple = Muple::new(iter);
+        let mut muple = Muple::new(iter);
 
         let mut stores = Vec::new();
-        for mut cs in muple {
-            let a = cs.pop().unwrap().clone(); // safe
+        while let Some(cs) = muple.next() {
+            let a = cs[0].clone(); // safe
             let mut store = a.store;
-            cs.into_iter().for_each(|c| store.union_with(&c.store));
+            cs[1..].iter().for_each(|c| store.union_with(&c.store));
             stores.push((a.key, store));
         }
 
@@ -110,16 +113,16 @@ impl<'a> Muple<'a> {
             heap.push(Reverse(InteriorMutable::new(iter)));
         });
 
-        Muple(heap)
+        let buffer = Vec::with_capacity(heap.len());
+
+        Muple { heap, buffer }
     }
 }
 
-impl<'a> Iterator for Muple<'a> {
-    type Item = Vec<&'a Container>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<'a> Muple<'a> {
+    fn next(&mut self) -> Option<&[&'a Container]> {
         // We retrieve the lowest key that we must return containers for.
-        let key = match self.0.peek_mut() {
+        let key = match self.heap.peek_mut() {
             Some(mut iter) => {
                 match (iter.0).0.get_mut().peek() {
                     Some(c) => c.key,
@@ -131,16 +134,16 @@ impl<'a> Iterator for Muple<'a> {
             None => return None,
         };
 
-        let mut output = Vec::new();
+        self.buffer.clear();
 
-        while let Some(mut iter) = self.0.peek_mut() {
+        while let Some(mut iter) = self.heap.peek_mut() {
             let containers = (iter.0).0.get_mut();
             match containers.peek() {
                 // This iterator gives us a key that is corresponding
                 // to the lowest one, we must return this container
                 Some(c) if c.key == key => {
                     let container = containers.next().unwrap();
-                    output.push(container);
+                    self.buffer.push(container);
                 }
                 // Keys are no more equal to the lowest one, we must stop.
                 Some(_) => break,
@@ -151,8 +154,8 @@ impl<'a> Iterator for Muple<'a> {
             }
         }
 
-        if !output.is_empty() {
-            Some(output)
+        if !self.buffer.is_empty() {
+            Some(&self.buffer)
         } else {
             None
         }
