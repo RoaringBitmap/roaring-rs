@@ -14,28 +14,31 @@ struct InteriorMutable<'a>(RefCell<Peekable<slice::Iter<'a, Container>>>);
 struct Muple<'a>(BinaryHeap<Reverse<InteriorMutable<'a>>>);
 
 impl RoaringBitmap {
-    /// Unions between all the specified bitmaps.
+    /// Unions in-place with the specified others bitmaps.
     ///
     /// # Examples
     ///
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let rb1: RoaringBitmap = (0..5).collect();
+    /// let mut rb1: RoaringBitmap = (0..5).collect();
     /// let rb2 = (5..10).collect();
     /// let rb3 = (10..15).collect();
     /// let rb4 = (0..4).collect();
     ///
-    /// let out = RoaringBitmap::multi_union(&[rb1, rb2, rb3, rb4]);
+    /// rb1.union_with_multi(&[rb2, rb3, rb4]);
     ///
-    /// assert_eq!(out, (0..15).collect());
+    /// assert_eq!(rb1, (0..15).collect());
     /// ```
-    pub fn multi_union<'a, I>(bitmaps: I) -> Self
+    pub fn union_with_multi<'a, I>(&mut self, others: I)
     where
         I: IntoIterator<Item = &'a Self>,
     {
-        let iter = bitmaps.into_iter().map(|b| b.containers.iter().peekable());
-        let muple = Muple::new(iter);
+        let iter = others.into_iter().map(|b| b.containers.iter().peekable());
+        let mut muple = Muple::new(iter);
+        muple.0.push(Reverse(InteriorMutable::new(
+            self.containers.iter().peekable(),
+        )));
 
         let mut containers = Vec::new();
         for mut cs in muple {
@@ -44,7 +47,7 @@ impl RoaringBitmap {
             containers.push(a);
         }
 
-        RoaringBitmap { containers }
+        *self = RoaringBitmap { containers };
     }
 }
 
@@ -64,6 +67,12 @@ impl Ord for InteriorMutable<'_> {
                 (_, _) => unreachable!(),
             },
         }
+    }
+}
+
+impl<'a> InteriorMutable<'a> {
+    fn new(iter: Peekable<slice::Iter<'a, Container>>) -> Self {
+        InteriorMutable(RefCell::new(iter))
     }
 }
 
@@ -89,7 +98,7 @@ impl<'a> Muple<'a> {
         let mut heap = BinaryHeap::new();
 
         iters.into_iter().for_each(|iter| {
-            heap.push(Reverse(InteriorMutable(RefCell::new(iter))));
+            heap.push(Reverse(InteriorMutable::new(iter)));
         });
 
         Muple(heap)
