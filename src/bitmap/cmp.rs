@@ -139,24 +139,58 @@ impl<'a> Iterator for Pairs<'a> {
     }
 }
 
-struct Muple<'a>(Vec<(&'a Container, Peekable<slice::Iter<'a, Container>>)>);
+use std::cell::RefCell;
+use std::cmp::{Reverse, Ordering};
+use std::collections::BinaryHeap;
+
+// This struct is here to bypass the `Ord::cmp` limitation
+// where it is not possible to mutate self to get or compute a value.
+struct InteriorMutable<'a>(RefCell<Peekable<slice::Iter<'a, Container>>>);
+
+impl Ord for InteriorMutable<'_> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let mut c1 = self.0.borrow_mut();
+        let mut c2 = other.0.borrow_mut();
+
+        match (c1.peek(), c2.peek()) {
+            (None, None) => Ordering::Equal,
+            (Some(_), None) => Ordering::Less, // move Nones to the back
+            (None, Some(_)) => Ordering::Greater,
+            (Some(c1), Some(c2)) => match (c1.key, c2.key) {
+                (key1, key2) if key1 == key2 => Ordering::Equal,
+                (key1, key2) if key1 < key2 => Ordering::Less,
+                (key1, key2) if key1 > key2 => Ordering::Greater,
+                (_, _) => unreachable!(),
+            },
+        }
+    }
+}
+
+impl PartialOrd for InteriorMutable<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for InteriorMutable<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Eq for InteriorMutable<'_> {}
+
+struct Muple<'a>(BinaryHeap<Reverse<InteriorMutable<'a>>>);
 
 impl<'a> Muple<'a> {
     fn new(iters: Vec<Peekable<slice::Iter<'a, Container>>>) -> Muple<'a> {
-        let mut vec = Vec::with_capacity(iters.len());
+        let mut heap = BinaryHeap::with_capacity(iters.len());
 
-        // We peek the first key of every the container, this is ugly but
-        // the sort_unstable_by_key function does not allow us to mutable the
-        // element we are evaluating, probably to logic errors. Same for the BinaryHeap.
-        for mut i in iters {
-            if let Some(c) = i.peek() {
-                vec.push((*c, i));
-            }
-        }
+        iters.into_iter().for_each(|iter| {
+            heap.push(Reverse(InteriorMutable(RefCell::new(iter))));
+        });
 
-        vec.sort_unstable_by_key(|(c, _)| c.key);
-
-        Muple(vec)
+        Muple(heap)
     }
 }
 
@@ -165,31 +199,37 @@ impl<'a> Iterator for Muple<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         // We retrieve the lowest key that we must return containers for.
-        let key = match self.0.get(0) {
-            Some((c, _)) => c.key,
+        let key = match self.0.peek_mut() {
+            Some(mut iter) => {
+                match (iter.0).0.get_mut().peek() {
+                    Some(c) => c.key,
+                    // Nones are moved to the back,
+                    // it means that we only have empty iterators.
+                    None => return None,
+                }
+            },
             None => return None,
         };
 
         let mut output = Vec::new();
-        let mut to_remove = Vec::new();
 
-        // We iterate over the containers iterators that are related to the lowest key,
-        // poll the containers to return and mark the empty containers identified.
-        for (i, (c, iter)) in self.0.iter_mut().enumerate().take_while(|(_, (c, _))| c.key == key) {
-            let container = iter.next().unwrap();
-            output.push(container);
-            match iter.next() {
-                Some(x) => *c = x,
-                None => to_remove.push(i),
+        while let Some(mut iter) = self.0.peek_mut() {
+            let containers = (iter.0).0.get_mut();
+            match containers.peek() {
+                // This iterator gives us a key that is corresponding
+                // to the lowest one, we must return this container
+                Some(c) if c.key == key => {
+                    let container = containers.next().unwrap();
+                    output.push(container);
+                },
+                // Keys are no more equal to the lowest one, we must stop.
+                Some(_) => break,
+                // This iterator is exhauted we must stop here as empty iterators
+                // are pushed to the back of the heap. This means that we will
+                // continue to see this empty iterator if we continue peeking.
+                None => break,
             }
         }
-
-        // We remove all the containers iterator that are empty.
-        // We reverse iterate to avoid invalidating the indexes when swap removing.
-        to_remove.into_iter().rev().for_each(|i| drop(self.0.swap_remove(i)));
-
-        // We sort to move the lowest keys at the front of the list.
-        self.0.sort_unstable_by_key(|(c, _)| c.key);
 
         Some(output)
     }
