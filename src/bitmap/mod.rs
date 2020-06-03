@@ -8,6 +8,7 @@ mod util;
 mod cmp;
 mod inherent;
 mod iter;
+mod multi_ops;
 mod ops;
 mod serialization;
 
