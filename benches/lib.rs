@@ -129,6 +129,32 @@ fn union_with(c: &mut Criterion) {
     });
 }
 
+fn union_with_multi(c: &mut Criterion) {
+    c.bench_function("union_with_multi", |b| {
+        let mut bitmap1: RoaringBitmap = (1..100).collect();
+        let bitmap2: RoaringBitmap = (100..200).collect();
+        let bitmap3: RoaringBitmap = (200..300).collect();
+        let bitmap4: RoaringBitmap = (300..400).collect();
+
+        b.iter(|| {
+            bitmap1.union_with_multi(black_box([&bitmap2, &bitmap3, &bitmap4].iter().cloned()));
+        });
+    });
+
+    c.bench_function("union_with_multi by hand", |b| {
+        let mut bitmap1: RoaringBitmap = (1..100).collect();
+        let bitmap2: RoaringBitmap = (100..200).collect();
+        let bitmap3: RoaringBitmap = (200..300).collect();
+        let bitmap4: RoaringBitmap = (300..400).collect();
+
+        b.iter(|| {
+            bitmap1.union_with(black_box(&bitmap2));
+            bitmap1.union_with(black_box(&bitmap3));
+            bitmap1.union_with(black_box(&bitmap4));
+        });
+    });
+}
+
 fn xor(c: &mut Criterion) {
     c.bench_function("xor", |b| {
         let bitmap1: RoaringBitmap = (1..100).collect();
@@ -285,6 +311,7 @@ criterion_group!(
     intersect_with,
     or,
     union_with,
+    union_with_multi,
     xor,
     symmetric_deference_with,
     is_subset,
