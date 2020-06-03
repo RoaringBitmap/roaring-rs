@@ -132,25 +132,25 @@ fn union_with(c: &mut Criterion) {
 fn union_with_multi(c: &mut Criterion) {
     c.bench_function("union_with_multi", |b| {
         let mut bitmap1: RoaringBitmap = (1..100).collect();
-        let bitmap2: RoaringBitmap = (100..200).collect();
-        let bitmap3: RoaringBitmap = (200..300).collect();
-        let bitmap4: RoaringBitmap = (300..400).collect();
+        let others: Vec<RoaringBitmap> = (0..25)
+            .map(|i| (i * 100..(i + 1) * 200).collect())
+            .collect();
 
         b.iter(|| {
-            bitmap1.union_with_multi(black_box([&bitmap2, &bitmap3, &bitmap4].iter().cloned()));
+            bitmap1.union_with_multi(black_box(&others));
         });
     });
 
     c.bench_function("union_with_multi by hand", |b| {
         let mut bitmap1: RoaringBitmap = (1..100).collect();
-        let bitmap2: RoaringBitmap = (100..200).collect();
-        let bitmap3: RoaringBitmap = (200..300).collect();
-        let bitmap4: RoaringBitmap = (300..400).collect();
+        let others: Vec<RoaringBitmap> = (0..25)
+            .map(|i| (i * 100..(i + 1) * 200).collect())
+            .collect();
 
         b.iter(|| {
-            bitmap1.union_with(black_box(&bitmap2));
-            bitmap1.union_with(black_box(&bitmap3));
-            bitmap1.union_with(black_box(&bitmap4));
+            for bm in &others {
+                bitmap1.union_with(black_box(bm));
+            }
         });
     });
 }
