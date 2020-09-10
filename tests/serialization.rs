@@ -61,6 +61,20 @@ fn test_array() {
 }
 
 #[test]
+fn test_array_boundary() {
+    let original = RoaringBitmap::from_iter(1000..5096);
+    let new = serialize_and_deserialize(&original);
+    assert_eq!(original, new);
+}
+
+#[test]
+fn test_bitmap_boundary() {
+    let original = RoaringBitmap::from_iter(1000..5097);
+    let new = serialize_and_deserialize(&original);
+    assert_eq!(original, new);
+}
+
+#[test]
 fn test_bitmap() {
     let original = RoaringBitmap::from_iter(1000..6000);
     let new = serialize_and_deserialize(&original);
