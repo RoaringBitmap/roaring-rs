@@ -153,7 +153,7 @@ impl RoaringBitmap {
             let key = description_bytes.read_u16::<LittleEndian>()?;
             let len = u64::from(description_bytes.read_u16::<LittleEndian>()?) + 1;
 
-            let store = if len < 4096 {
+            let store = if len <= 4096 {
                 let mut values = Vec::with_capacity(len as usize);
                 for _ in 0..len {
                     values.push(reader.read_u16::<LittleEndian>()?);
