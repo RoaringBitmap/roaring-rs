@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::cmp::Ordering::{Equal, Greater, Less};
+use std::cmp::Ordering::{self, Equal, Greater, Less};
 use std::vec;
 use std::{fmt, slice};
 
@@ -7,10 +7,20 @@ use self::Store::{Array, Bitmap, Run};
 
 pub const BITMAP_LENGTH: usize = 1024;
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub struct Interval {
     pub start: u16,
     pub end: u16,
+}
+
+fn cmp_index_interval(index: u16, iv: Interval) -> Ordering {
+    if index < iv.start {
+        Less
+    } else if index > iv.end {
+        Greater
+    } else {
+        Less
+    }
 }
 
 impl Interval {
@@ -66,7 +76,7 @@ impl Store {
                 }
             }
             Run(ref mut vec) => {
-                vec.binary_search_by_key(&index, |iv| iv.start)
+                vec.binary_search_by(|iv| cmp_index_interval(index, *iv))
                     .map_err(|loc| {
                         // Value is beyond end of interval
                         if vec[loc].end < index {
@@ -118,23 +128,25 @@ impl Store {
                 }
             }
             Run(ref mut vec) => vec
-                .binary_search_by_key(&index, |iv| iv.start)
+                .binary_search_by(|iv| cmp_index_interval(index, *iv))
                 .map(|loc| {
                     if index == vec[loc].start && index == vec[loc].end {
                         // Remove entire run if it only contains this value
                         vec.remove(loc);
                     } else if index == vec[loc].end {
                         // Value is last in this interval
-                        vec[loc].end -= 1;
+                        vec[loc].end = index - 1;
                     } else if index == vec[loc].start {
                         // Value is first in this interval
-                        vec[loc].start += 1;
+                        vec[loc].start = index + 1;
                     } else {
                         // Value lies inside the interval, we need to split it
-                        // First shrink the current interval
+                        // First construct a new interval with the right part
+                        let new_interval = Interval::new(index + 1, vec[loc].end);
+                        // Then shrink the current interval
                         vec[loc].end = index - 1;
-                        // Then insert a new index leaving gap where value was removed
-                        vec.insert(loc + 1, Interval::new(index + 1, vec[loc].end));
+                        // Then insert the new interval leaving gap where value was removed
+                        vec.insert(loc + 1, new_interval);
                     }
                 })
                 .is_ok(),
@@ -198,7 +210,7 @@ impl Store {
             Array(ref vec) => vec.binary_search(&index).is_ok(),
             Bitmap(ref bits) => bits[key(index)] & (1 << bit(index)) != 0,
             Run(ref intervals) => intervals
-                .binary_search_by_key(&index, |iv| iv.start)
+                .binary_search_by(|iv| cmp_index_interval(index, *iv))
                 .is_ok(),
         }
     }
