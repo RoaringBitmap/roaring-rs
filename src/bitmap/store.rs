@@ -300,11 +300,7 @@ impl Store {
                 Array(vec)
             }
             Run(ref intervals) => Array(
-                intervals
-                    .iter()
-                    .map(|iv| iv.start..iv.end)
-                    .flatten()
-                    .collect(),
+                intervals.iter().flat_map(|iv| iv.start..=iv.end).collect()
             ),
         }
     }
@@ -322,7 +318,7 @@ impl Store {
             Run(ref intervals) => {
                 let mut bits = Box::new([0; BITMAP_LENGTH]);
                 for iv in intervals {
-                    for index in iv.start..iv.end {
+                    for index in iv.start..=iv.end {
                         bits[key(index)] |= 1 << bit(index);
                     }
                 }
