@@ -460,8 +460,9 @@ impl Store {
             (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
                 vec.retain(|i| store.contains(*i));
             }
-            // TODO(jpg) intersect_with array, run
-            (&mut Array(ref mut _intervals1), &Run(ref _intervals2)) => {}
+            (&mut Array(ref mut vec), run @ &Run(..)) => {
+                vec.retain(|i| run.contains(*i));
+            }
             (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
                 for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
                     *index1 &= index2;
