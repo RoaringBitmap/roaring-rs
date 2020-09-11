@@ -1,7 +1,6 @@
 use std::borrow::Borrow;
 use std::cmp::Ordering::{self, Equal, Greater, Less};
-use std::vec;
-use std::{fmt, slice};
+use std::{cmp, fmt, vec, slice};
 
 use self::Store::{Array, Bitmap, Run};
 
@@ -426,8 +425,39 @@ impl Store {
             }
             // TODO(jpg) union_with bitmap, run
             (ref mut _this @ &mut Bitmap(..), &Run(ref _intervals)) => unimplemented!(),
-            // TODO(jpg) union_with run, *
-            (&mut Run(ref mut _intervals1), &Run(ref _intervals2)) => unimplemented!(),
+            (&mut Run(ref mut intervals1), &Run(ref intervals2)) => {
+                let mut merged = Vec::new();
+
+                let (mut i1, mut i2) = (intervals1.iter(), intervals2.iter());
+                let (mut iv1, mut iv2) = (i1.next(), i2.next());
+                loop {
+                    // Iterate over two iterators and return the lowest value at each step.
+                    let iv = match (iv1, iv2) {
+                        (None, None) => break,
+                        (Some(v1), None) => { iv1 = i1.next(); v1 },
+                        (None, Some(v2)) => { iv2 = i2.next(); v2 },
+                        (Some(v1), Some(v2)) => match v1.start.cmp(&v2.start) {
+                            Equal => { iv1 = i1.next(); iv2 = i2.next(); v1 },
+                            Less => { iv1 = i1.next(); v1 },
+                            Greater => { iv2 = i2.next(); v2 },
+                        },
+                    };
+
+                    match merged.last_mut() {
+                        // If the list of merged intervals is empty, append the interval.
+                        None => merged.push(*iv),
+                        Some(last) => if last.end < iv.start {
+                            // If the interval does not overlap with the previous, append it.
+                            merged.push(*iv);
+                        } else {
+                            // If there is overlap, so we merge the current and previous intervals.
+                            last.end = cmp::max(last.end, iv.end);
+                        },
+                    }
+                }
+
+                *intervals1 = merged;
+            },
             (&mut Run(ref mut _intervals), &Array(ref _vec)) => unimplemented!(),
             (this @ &mut Run(..), &Bitmap(..)) => {
                 *this = this.to_bitmap();
