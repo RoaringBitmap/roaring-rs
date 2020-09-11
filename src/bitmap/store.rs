@@ -477,7 +477,11 @@ impl Store {
             (_this @ &mut Bitmap(..), &Run(..)) => unimplemented!(),
             // TODO(jpg) intersect_with run, *
             (&mut Run(ref mut _intervals1), &Run(ref _intervals2)) => unimplemented!(),
-            (&mut Run(ref mut _intervals), &Array(ref _vec)) => unimplemented!(),
+            (this @ &mut Run(..), &Array(..)) => {
+                let mut new = other.clone();
+                new.intersect_with(this);
+                *this = new;
+            },
             (&mut Run(ref mut _intervals), _store @ &Bitmap(..)) => unimplemented!(),
         }
     }
