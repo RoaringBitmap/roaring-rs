@@ -545,13 +545,17 @@ impl Store {
                 }
 
                 *intervals1 = merged;
-            },
+            }
             (this @ &mut Run(..), &Array(..)) => {
                 let mut new = other.clone();
                 new.intersect_with(this);
                 *this = new;
-            },
-            (&mut Run(ref mut _intervals), _store @ &Bitmap(..)) => unimplemented!(),
+            }
+            (this @ &mut Run(..), &Bitmap(..)) => {
+                let mut new = other.clone();
+                new.intersect_with(this);
+                *this = new;
+            }
         }
     }
 
