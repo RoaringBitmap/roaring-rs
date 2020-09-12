@@ -411,8 +411,8 @@ impl Store {
                 *this = this.to_bitmap();
                 this.union_with(other);
             }
-            (this @ &mut Array(..), run @ &Run(..)) => {
-                let mut new = run.clone();
+            (this @ &mut Array(..), &Run(..)) => {
+                let mut new = other.clone();
                 new.union_with(this);
                 *this = new;
             }
@@ -426,8 +426,10 @@ impl Store {
                     this.insert(index);
                 }
             }
-            // TODO(jpg) union_with bitmap, run
-            (ref mut _this @ &mut Bitmap(..), &Run(ref _intervals)) => unimplemented!(),
+            (this @ &mut Bitmap(..), &Run(..)) => {
+                let other = other.to_bitmap();
+                this.union_with(&other);
+            }
             (&mut Run(ref mut intervals1), &Run(ref intervals2)) => {
                 let mut merged = Vec::new();
 
