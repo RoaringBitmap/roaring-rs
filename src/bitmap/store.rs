@@ -458,7 +458,11 @@ impl Store {
 
                 *intervals1 = merged;
             },
-            (&mut Run(ref mut _intervals), &Array(ref _vec)) => unimplemented!(),
+            (ref mut this @ &mut Run(..), &Array(ref vec)) => {
+                for i in vec {
+                    this.insert(*i);
+                }
+            },
             (this @ &mut Run(..), &Bitmap(..)) => {
                 *this = this.to_bitmap();
                 this.union_with(other);
