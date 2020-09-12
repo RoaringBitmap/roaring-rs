@@ -199,8 +199,44 @@ impl Store {
                 bits[end_key] &= !(!0u64).wrapping_shr(64 - end_bit);
                 u64::from(removed)
             }
-            // TODO(jpg): Remove range
-            Run(ref mut _intervals) => unimplemented!(),
+            // TODO we must test that algorithm
+            Run(ref mut intervals) => {
+                let mut count = 0;
+                let mut search_end = false;
+
+                for iv in intervals.iter_mut() {
+                    if !search_end && cmp_index_interval(start as u16, *iv) == Equal {
+                        count += Interval::new(iv.end, start as u16).run_len();
+                        iv.end = start as u16;
+                        search_end = true;
+                    }
+
+                    if search_end {
+                        // The end bound is non-inclusive therefore we must search for end - 1.
+                        match cmp_index_interval(end as u16 - 1, *iv) {
+                            Less => {
+                                // We invalidate the intervals that are contained in
+                                // the start and end but doesn't touch the bounds.
+                                count += iv.run_len();
+                                *iv = Interval::new(u16::max_value(), 0);
+                            },
+                            Equal => {
+                                // We shrink this interval by moving the start of it to be
+                                // the end bound which is non-inclusive.
+                                count += Interval::new(end as u16, iv.start).run_len();
+                                iv.start = end as u16;
+                            },
+                            Greater => break,
+                        }
+                    }
+                }
+
+                // We invalidated the intervals to remove,
+                // the start is greater than the end.
+                intervals.retain(|iv| iv.start <= iv.end);
+
+                count
+            },
         }
     }
 
