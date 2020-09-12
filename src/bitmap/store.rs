@@ -512,8 +512,10 @@ impl Store {
                 new.intersect_with(this);
                 *this = new;
             }
-            // TODO(jpg) intersect_with bitmap, run
-            (_this @ &mut Bitmap(..), &Run(..)) => unimplemented!(),
+            (this @ &mut Bitmap(..), &Run(..)) => {
+                let other = other.to_bitmap();
+                this.intersect_with(&other);
+            }
             (&mut Run(ref mut intervals1), &Run(ref intervals2)) => {
                 let mut merged = Vec::new();
 
