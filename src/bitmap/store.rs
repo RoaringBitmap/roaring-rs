@@ -411,8 +411,11 @@ impl Store {
                 *this = this.to_bitmap();
                 this.union_with(other);
             }
-            // TODO(jpg) union_with array, run
-            (&mut Array(ref mut _vec), &Run(ref _intervals)) => {}
+            (this @ &mut Array(..), run @ &Run(..)) => {
+                let mut new = run.clone();
+                new.union_with(this);
+                *this = new;
+            }
             (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
                 for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
                     *index1 |= index2;
@@ -457,12 +460,12 @@ impl Store {
                 }
 
                 *intervals1 = merged;
-            },
+            }
             (ref mut this @ &mut Run(..), &Array(ref vec)) => {
                 for i in vec {
                     this.insert(*i);
                 }
-            },
+            }
             (this @ &mut Run(..), &Bitmap(..)) => {
                 *this = this.to_bitmap();
                 this.union_with(other);
