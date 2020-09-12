@@ -521,26 +521,23 @@ impl Store {
 
                 let (mut i1, mut i2) = (intervals1.iter(), intervals2.iter());
                 let (mut iv1, mut iv2) = (i1.next(), i2.next());
-                loop {
-                    if let (Some(v1), Some(v2)) = (iv1, iv2) {
+
+                // Iterate over both iterators.
+                while let (Some(v1), Some(v2)) = (iv1, iv2) {
+                    if v2.start <= v1.end && v1.start <= v2.end {
                         let start = cmp::max(v1.start, v2.start);
                         let end = cmp::min(v1.end, v2.end);
                         let iv = Interval::new(start, end);
-                        if iv.run_len() > 0 {
-                            merged.push(iv);
-                        }
+                        merged.push(iv);
                     }
 
-                    // Iterate over two iterators, consuming the lowest first, like merge join.
-                    match (iv1, iv2) {
-                        (None, None) => break,
-                        (Some(v1), None) => iv1 = i1.next(),
-                        (None, Some(v2)) => iv2 = i2.next(),
-                        (Some(v1), Some(v2)) => match v1.start.cmp(&v2.start) {
-                            Equal => { iv1 = i1.next(); iv2 = i2.next(); },
-                            Less => iv1 = i1.next(),
-                            Greater => iv2 = i2.next(),
-                        },
+                    if v1.end < v2.end {
+                        iv1 = i1.next();
+                    } else if v1.end > v2.end {
+                        iv2 = i2.next();
+                    } else {
+                        iv1 = i1.next();
+                        iv2 = i2.next();
                     }
                 }
 
