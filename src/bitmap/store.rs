@@ -273,8 +273,8 @@ impl Store {
             }
             // TODO(jpg) is_disjoint
             (&Run(ref _intervals1), &Run(ref _intervals2)) => unimplemented!(),
-            (&Run(ref _intervals), &Array(ref _vec)) | (&Array(ref _vec), &Run(ref _intervals)) => {
-                unimplemented!()
+            (run @ &Run(..), &Array(ref vec)) | (&Array(ref vec), run @ &Run(..)) => {
+                vec.iter().all(|&i| !run.contains(i))
             }
             (&Run(ref _intervals), _store @ &Bitmap(..))
             | (_store @ &Bitmap(..), &Run(ref _intervals)) => unimplemented!(),
