@@ -637,11 +637,7 @@ impl Store {
                 }
             }
             (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
-                for i in (0..vec.len()).rev() {
-                    if store.contains(vec[i]) {
-                        vec.remove(i);
-                    }
-                }
+                vec.retain(|i| !store.contains(*i));
             }
             // TODO(jpg) difference_with array, run
             (&mut Array(ref mut _vec), &Run(ref _intervals)) => unimplemented!(),
