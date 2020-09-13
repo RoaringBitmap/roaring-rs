@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::cmp::Ordering::{self, Equal, Greater, Less};
-use std::{cmp, fmt, vec, slice};
+use std::{cmp, fmt, slice, vec};
 
 use self::Store::{Array, Bitmap, Run};
 
@@ -219,13 +219,13 @@ impl Store {
                                 // the start and end but doesn't touch the bounds.
                                 count += iv.run_len();
                                 *iv = Interval::new(u16::max_value(), 0);
-                            },
+                            }
                             Equal => {
                                 // We shrink this interval by moving the start of it to be
                                 // the end bound which is non-inclusive.
                                 count += Interval::new(end as u16, iv.start).run_len();
                                 iv.start = end as u16;
-                            },
+                            }
                             Greater => break,
                         }
                     }
@@ -236,7 +236,7 @@ impl Store {
                 intervals.retain(|iv| iv.start <= iv.end);
 
                 count
-            },
+            }
         }
     }
 
@@ -282,19 +282,19 @@ impl Store {
                                 return false;
                             }
 
-                            if v1.end < v2.end {
-                                iv1 = i1.next();
-                            } else if v1.end > v2.end {
-                                iv2 = i2.next();
-                            } else {
-                                iv1 = i1.next();
-                                iv2 = i2.next();
+                            match v1.end.cmp(&v2.end) {
+                                Less => iv1 = i1.next(),
+                                Greater => iv2 = i2.next(),
+                                Equal => {
+                                    iv1 = i1.next();
+                                    iv2 = i2.next();
+                                }
                             }
-                        },
+                        }
                         (_, _) => return true,
                     }
                 }
-            },
+            }
             (run @ &Run(..), &Array(ref vec)) | (&Array(ref vec), run @ &Run(..)) => {
                 vec.iter().all(|&i| !run.contains(i))
             }
@@ -356,9 +356,9 @@ impl Store {
                 }
                 Array(vec)
             }
-            Run(ref intervals) => Array(
-                intervals.iter().flat_map(|iv| iv.start..=iv.end).collect()
-            ),
+            Run(ref intervals) => {
+                Array(intervals.iter().flat_map(|iv| iv.start..=iv.end).collect())
+            }
         }
     }
 
@@ -497,25 +497,43 @@ impl Store {
                     // Iterate over two iterators and return the lowest value at each step.
                     let iv = match (iv1, iv2) {
                         (None, None) => break,
-                        (Some(v1), None) => { iv1 = i1.next(); v1 },
-                        (None, Some(v2)) => { iv2 = i2.next(); v2 },
+                        (Some(v1), None) => {
+                            iv1 = i1.next();
+                            v1
+                        }
+                        (None, Some(v2)) => {
+                            iv2 = i2.next();
+                            v2
+                        }
                         (Some(v1), Some(v2)) => match v1.start.cmp(&v2.start) {
-                            Equal => { iv1 = i1.next(); iv2 = i2.next(); v1 },
-                            Less => { iv1 = i1.next(); v1 },
-                            Greater => { iv2 = i2.next(); v2 },
+                            Equal => {
+                                iv1 = i1.next();
+                                iv2 = i2.next();
+                                v1
+                            }
+                            Less => {
+                                iv1 = i1.next();
+                                v1
+                            }
+                            Greater => {
+                                iv2 = i2.next();
+                                v2
+                            }
                         },
                     };
 
                     match merged.last_mut() {
                         // If the list of merged intervals is empty, append the interval.
                         None => merged.push(*iv),
-                        Some(last) => if last.end < iv.start {
-                            // If the interval does not overlap with the previous, append it.
-                            merged.push(*iv);
-                        } else {
-                            // If there is overlap, so we merge the current and previous intervals.
-                            last.end = cmp::max(last.end, iv.end);
-                        },
+                        Some(last) => {
+                            if last.end < iv.start {
+                                // If the interval does not overlap with the previous, append it.
+                                merged.push(*iv);
+                            } else {
+                                // If there is overlap, so we merge the current and previous intervals.
+                                last.end = cmp::max(last.end, iv.end);
+                            }
+                        }
                     }
                 }
 
@@ -589,13 +607,13 @@ impl Store {
                         merged.push(iv);
                     }
 
-                    if v1.end < v2.end {
-                        iv1 = i1.next();
-                    } else if v1.end > v2.end {
-                        iv2 = i2.next();
-                    } else {
-                        iv1 = i1.next();
-                        iv2 = i2.next();
+                    match v1.end.cmp(&v2.end) {
+                        Less => iv1 = i1.next(),
+                        Greater => iv2 = i2.next(),
+                        Equal => {
+                            iv1 = i1.next();
+                            iv2 = i2.next();
+                        }
                     }
                 }
 
