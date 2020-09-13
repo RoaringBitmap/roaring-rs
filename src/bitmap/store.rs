@@ -272,7 +272,29 @@ impl Store {
                 vec.iter().all(|&i| !store.contains(i))
             }
             // TODO(jpg) is_disjoint
-            (&Run(ref _intervals1), &Run(ref _intervals2)) => unimplemented!(),
+            (&Run(ref intervals1), &Run(ref intervals2)) => {
+                let (mut i1, mut i2) = (intervals1.iter(), intervals2.iter());
+                let (mut iv1, mut iv2) = (i1.next(), i2.next());
+                loop {
+                    match (iv1, iv2) {
+                        (Some(v1), Some(v2)) => {
+                            if v2.start <= v1.end && v1.start <= v2.end {
+                                return false;
+                            }
+
+                            if v1.end < v2.end {
+                                iv1 = i1.next();
+                            } else if v1.end > v2.end {
+                                iv2 = i2.next();
+                            } else {
+                                iv1 = i1.next();
+                                iv2 = i2.next();
+                            }
+                        },
+                        (_, _) => return true,
+                    }
+                }
+            },
             (run @ &Run(..), &Array(ref vec)) | (&Array(ref vec), run @ &Run(..)) => {
                 vec.iter().all(|&i| !run.contains(i))
             }
