@@ -652,9 +652,11 @@ impl Store {
                     *index1 &= !*index2;
                 }
             }
-            // TODO(jpg) difference_with bitmap, run
-            (ref mut _this @ &mut Bitmap(..), &Run(ref _intervals)) => unimplemented!(),
-
+            (ref mut this @ &mut Bitmap(..), &Run(ref intervals)) => {
+                for iv in intervals {
+                    this.remove_range(iv.start as u32, iv.end as u32 + 1);
+                }
+            }
             // TODO(jpg) difference_with run, *
             (&mut Run(ref mut _intervals1), &Run(ref _intervals2)) => unimplemented!(),
             (&mut Run(ref mut _intervals), &Array(ref _vec)) => unimplemented!(),
