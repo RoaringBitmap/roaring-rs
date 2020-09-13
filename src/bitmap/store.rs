@@ -639,9 +639,9 @@ impl Store {
             (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
                 vec.retain(|i| !store.contains(*i));
             }
-            // TODO(jpg) difference_with array, run
-            (&mut Array(ref mut _vec), &Run(ref _intervals)) => unimplemented!(),
-
+            (&mut Array(ref mut vec), run @ &Run(..)) => {
+                vec.retain(|i| !run.contains(*i));
+            }
             (ref mut this @ &mut Bitmap(..), &Array(ref vec2)) => {
                 for index in vec2.iter() {
                     this.remove(*index);
