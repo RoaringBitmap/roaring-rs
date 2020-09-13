@@ -720,7 +720,7 @@ impl Store {
                 *this = new;
             }
             // TODO(jpg) symmetric_difference_with array, run
-            (&mut Array(ref mut _vec), &Run(ref _intervals)) => {}
+            (&mut Array(ref mut _vec), &Run(ref _intervals)) => unimplemented!(),
             (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
                 for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
                     *index1 ^= index2;
