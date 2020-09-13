@@ -674,13 +674,17 @@ impl Store {
                     this.remove_range(iv.start as u32, iv.end as u32 + 1);
                 }
             }
-            // TODO(jpg) difference_with run, *
-            (&mut Run(ref mut _intervals1), &Run(ref _intervals2)) => unimplemented!(),
+            (ref mut this @ &mut Run(..), &Run(ref intervals2)) => {
+                for iv in intervals2 {
+                    this.remove_range(iv.start as u32, iv.end as u32 + 1);
+                }
+            }
             (ref mut this @ &mut Run(..), &Array(ref vec)) => {
                 for i in vec {
                     this.remove(*i);
                 }
             }
+            // TODO(jpg) difference_with run bitmap
             (&mut Run(ref mut _vec), _store @ &Bitmap(..)) => unimplemented!(),
         }
     }
