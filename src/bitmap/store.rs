@@ -324,8 +324,7 @@ impl Store {
                 }
             }
             (&Array(ref vec), store @ &Bitmap(..)) => vec.iter().all(|&i| store.contains(i)),
-            // TODO(jpg) is_subset array, run
-            (&Array(ref _vec), &Run(ref _intervals)) => unimplemented!(),
+            (&Array(ref vec), run @ &Run(..)) => vec.iter().all(|&i| run.contains(i)),
 
             (&Bitmap(ref bits1), &Bitmap(ref bits2)) => bits1
                 .iter()
