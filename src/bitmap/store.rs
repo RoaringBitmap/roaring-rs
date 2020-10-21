@@ -203,7 +203,7 @@ impl Store {
                 for (index, mut bit) in bits.iter().cloned().enumerate() {
                     while bit != 0 {
                         vec.push((u64::trailing_zeros(bit) + (64 * index as u32)) as u16);
-                        bit = bit ^ (1 << u64::trailing_zeros(bit));
+                        bit &= bit - 1;
                     }
                 }
                 Array(vec)
