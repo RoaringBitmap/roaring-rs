@@ -46,7 +46,7 @@ impl Store {
     pub fn push(&mut self, index: u16) {
         match *self {
             Array(ref mut vec) => {
-                if vec.is_empty() || vec.last().unwrap() < &index{
+                if vec.last().map_or(true, |x| x < &index) {
                     vec.push(index)
                 }
             },
