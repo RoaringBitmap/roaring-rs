@@ -139,14 +139,14 @@ impl Extend<u32> for RoaringBitmap {
 impl RoaringBitmap {
     /// Create the set from a sorted iterator.
     /// The value **must** be strictly sorted.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
     /// let mut rb = RoaringBitmap::from_sorted_iter(0..10);
-    /// 
+    ///
     /// assert_eq!(rb.iter().collect::<Vec<u32>>(), (0..10).collect::<Vec<u32>>());
     /// ```
     pub fn from_sorted_iter<I: IntoIterator<Item = u32>>(iterator: I) -> RoaringBitmap {
@@ -158,7 +158,7 @@ impl RoaringBitmap {
     /// Extend the set with a sorted iterator.
     /// All value of the iterator **must** be strictly bigger than the max element
     /// contained in the set.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```rust
@@ -166,7 +166,7 @@ impl RoaringBitmap {
     ///
     /// let mut rb = RoaringBitmap::new();
     /// rb.append(0..10);
-    /// 
+    ///
     /// assert_eq!(rb.iter().collect::<Vec<u32>>(), (0..10).collect::<Vec<u32>>());
     /// ```
     pub fn append<I: IntoIterator<Item = u32>>(&mut self, iterator: I) {
