@@ -74,7 +74,7 @@ impl RoaringBitmap {
         }
         let last = self.containers.last_mut().unwrap();
         assert!(last.key <= key);
-        assert!(last.len == 0 || last.max() < index);
+        assert!(last.len == 0 || last.max() <= index);
         last.push(index)
     }
 
