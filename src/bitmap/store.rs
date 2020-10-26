@@ -46,10 +46,10 @@ impl Store {
     pub fn push(&mut self, index: u16) {
         match *self {
             Array(ref mut vec) => {
-                if vec.is_empty() || vec.last().unwrap() < &index{
+                if vec.is_empty() || vec.last().unwrap() < &index {
                     vec.push(index)
                 }
-            },
+            }
             Bitmap(ref mut bits) => {
                 let (key, bit) = (key(index), bit(index));
                 bits[key] |= 1 << bit;
