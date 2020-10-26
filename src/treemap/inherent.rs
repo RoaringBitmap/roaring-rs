@@ -56,7 +56,7 @@ impl RoaringTreemap {
     ///
     /// assert_eq!(rb.iter().collect::<Vec<u64>>(), vec![1, 3, 5]);
     /// ```
-    pub fn push(&mut self, value: u64){
+    pub fn push(&mut self, value: u64) {
         let (hi, lo) = util::split(value);
         self.map
             .entry(hi)
