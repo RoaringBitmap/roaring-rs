@@ -137,6 +137,12 @@ impl Extend<u32> for RoaringBitmap {
 }
 
 impl RoaringBitmap {
+    pub fn from_sorted_iter<I: IntoIterator<Item = u32>>(iterator: I) -> RoaringBitmap {
+        let mut rb = RoaringBitmap::new();
+        rb.append(iterator);
+        rb
+    }
+
     pub fn append<I: IntoIterator<Item = u32>>(&mut self, iterator: I) {
         for value in iterator {
             self.push(value);
