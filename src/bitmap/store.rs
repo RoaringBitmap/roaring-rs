@@ -43,6 +43,18 @@ impl Store {
         }
     }
 
+    pub fn push(&mut self, index: u16){
+        match *self {
+            Array(ref mut vec) => {
+                vec.push(index)
+            },
+            Bitmap(ref mut bits) => {
+                let (key, bit) = (key(index), bit(index));
+                bits[key] |= 1 << bit;
+            }
+        }
+    }
+
     pub fn remove(&mut self, index: u16) -> bool {
         match *self {
             Array(ref mut vec) => vec.binary_search(&index).map(|loc| vec.remove(loc)).is_ok(),

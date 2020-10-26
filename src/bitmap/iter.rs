@@ -135,3 +135,11 @@ impl Extend<u32> for RoaringBitmap {
         }
     }
 }
+
+impl RoaringBitmap {
+    pub fn append<I: IntoIterator<Item = u32>>(&mut self, iterator: I) {
+        for value in iterator {
+            self.push(value);
+        }
+    }
+}

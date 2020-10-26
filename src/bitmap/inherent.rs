@@ -43,6 +43,22 @@ impl RoaringBitmap {
         container.insert(index)
     }
 
+    /// 
+    pub fn push(&mut self, value: u32) {
+        let (key, index) = util::split(value);
+        match self.containers.last() {
+            Some(container) => {
+                if container.key != key {
+                    self.containers.insert(self.containers.len(), Container::new(key));
+                }
+            },
+            None => {
+                self.containers.insert(self.containers.len(), Container::new(key));
+            }
+        }
+        self.containers.last_mut().unwrap().push(index)
+    }
+
     /// Removes a value from the set. Returns `true` if the value was present in the set.
     ///
     /// # Examples
