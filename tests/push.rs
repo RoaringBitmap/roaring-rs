@@ -1,8 +1,6 @@
 extern crate roaring;
 use roaring::RoaringBitmap;
 
-use std::iter::FromIterator;
-
 #[test]
 fn append() {
     let values = (0..10u32).map(|x| 13 * x).collect::<Vec<u32>>();

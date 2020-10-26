@@ -43,7 +43,21 @@ impl RoaringBitmap {
         container.insert(index)
     }
 
+    /// Adds a value to the set.
+    /// The value **must** be strictly bigger than the maximum value in the set.
     /// 
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// rb.push(1);
+    /// rb.push(3);
+    /// rb.push(5);
+    /// 
+    /// assert_eq!(rb.iter().collect::<Vec<u32>>(), vec![1, 3, 5]);
+    /// ```
     pub fn push(&mut self, value: u32) {
         let (key, index) = util::split(value);
         match self.containers.last() {
@@ -56,7 +70,10 @@ impl RoaringBitmap {
                 self.containers.insert(self.containers.len(), Container::new(key));
             }
         }
-        self.containers.last_mut().unwrap().push(index)
+        let last = self.containers.last_mut().unwrap();
+        assert!(last.key <= key);
+        assert!(last.len == 0 || last.max() < index);
+        last.push(index)
     }
 
     /// Removes a value from the set. Returns `true` if the value was present in the set.

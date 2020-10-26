@@ -39,7 +39,7 @@ impl Container {
     }
 
     pub fn push(&mut self, index: u16){
-       self.store.push(index);
+        self.store.push(index);
         self.len += 1;
         self.ensure_correct_store();
     }
