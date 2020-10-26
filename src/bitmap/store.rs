@@ -43,16 +43,24 @@ impl Store {
         }
     }
 
-    pub fn push(&mut self, index: u16) {
+    pub fn push(&mut self, index: u16) -> bool {
         match *self {
             Array(ref mut vec) => {
                 if vec.last().map_or(true, |x| x < &index) {
-                    vec.push(index)
+                    vec.push(index);
+                    false
+                } else {
+                    true
                 }
             }
             Bitmap(ref mut bits) => {
                 let (key, bit) = (key(index), bit(index));
-                bits[key] |= 1 << bit;
+                if bits[key] & (1 << bit) == 0 {
+                    bits[key] |= 1 << bit;
+                    true
+                } else {
+                    false
+                }
             }
         }
     }

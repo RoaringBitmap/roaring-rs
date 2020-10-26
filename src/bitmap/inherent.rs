@@ -58,7 +58,7 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb.iter().collect::<Vec<u32>>(), vec![1, 3, 5]);
     /// ```
-    pub fn push(&mut self, value: u32) {
+    pub fn push(&mut self, value: u32) -> bool {
         let (key, index) = util::split(value);
         match self.containers.last() {
             Some(container) => {
