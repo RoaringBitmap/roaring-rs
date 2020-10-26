@@ -43,11 +43,9 @@ impl Store {
         }
     }
 
-    pub fn push(&mut self, index: u16){
+    pub fn push(&mut self, index: u16) {
         match *self {
-            Array(ref mut vec) => {
-                vec.push(index)
-            },
+            Array(ref mut vec) => vec.push(index),
             Bitmap(ref mut bits) => {
                 let (key, bit) = (key(index), bit(index));
                 bits[key] |= 1 << bit;

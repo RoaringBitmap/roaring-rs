@@ -45,7 +45,7 @@ impl RoaringBitmap {
 
     /// Adds a value to the set.
     /// The value **must** be strictly bigger than the maximum value in the set.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```rust
@@ -55,7 +55,7 @@ impl RoaringBitmap {
     /// rb.push(1);
     /// rb.push(3);
     /// rb.push(5);
-    /// 
+    ///
     /// assert_eq!(rb.iter().collect::<Vec<u32>>(), vec![1, 3, 5]);
     /// ```
     pub fn push(&mut self, value: u32) {
@@ -63,11 +63,13 @@ impl RoaringBitmap {
         match self.containers.last() {
             Some(container) => {
                 if container.key != key {
-                    self.containers.insert(self.containers.len(), Container::new(key));
+                    self.containers
+                        .insert(self.containers.len(), Container::new(key));
                 }
-            },
+            }
             None => {
-                self.containers.insert(self.containers.len(), Container::new(key));
+                self.containers
+                    .insert(self.containers.len(), Container::new(key));
             }
         }
         let last = self.containers.last_mut().unwrap();
