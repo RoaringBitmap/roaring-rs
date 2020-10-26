@@ -41,6 +41,29 @@ impl RoaringTreemap {
             .insert(lo)
     }
 
+    /// Adds a value to the set.
+    /// The value **must** be strictly bigger than the maximum value in the set.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let mut rb = RoaringTreemap::new();
+    /// rb.push(1);
+    /// rb.push(3);
+    /// rb.push(5);
+    ///
+    /// assert_eq!(rb.iter().collect::<Vec<u64>>(), vec![1, 3, 5]);
+    /// ```
+    pub fn push(&mut self, value: u64){
+        let (hi, lo) = util::split(value);
+        self.map
+            .entry(hi)
+            .or_insert_with(RoaringBitmap::new)
+            .push(lo)
+    }
+
     /// Removes a value from the set. Returns `true` if the value was present in the set.
     ///
     /// # Examples
