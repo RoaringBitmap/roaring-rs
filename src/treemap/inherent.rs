@@ -44,6 +44,8 @@ impl RoaringTreemap {
     /// Adds a value to the set.
     /// The value **must** be strictly bigger than the maximum value in the set.
     ///
+    /// This method can be faster than `insert` because it skips the binary searches.
+    ///
     /// # Examples
     ///
     /// ```rust
@@ -56,7 +58,7 @@ impl RoaringTreemap {
     ///
     /// assert_eq!(rb.iter().collect::<Vec<u64>>(), vec![1, 3, 5]);
     /// ```
-    pub fn push(&mut self, value: u64) -> bool {
+    pub fn push(&mut self, value: u64) {
         let (hi, lo) = util::split(value);
         self.map
             .entry(hi)

@@ -38,13 +38,10 @@ impl Container {
         }
     }
 
-    pub fn push(&mut self, index: u16) -> bool {
+    pub fn push(&mut self, index: u16) {
         if self.store.push(index) {
             self.len += 1;
             self.ensure_correct_store();
-            true
-        } else {
-            false
         }
     }
 

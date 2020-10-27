@@ -43,14 +43,18 @@ impl Store {
         }
     }
 
+    /// Push the value that must be the new max of the set.
+    /// This function returns whether the value is equal to the
+    /// last max. This infomation is needed to correctly update the
+    /// length of the container.
     pub fn push(&mut self, index: u16) -> bool {
         match *self {
             Array(ref mut vec) => {
                 if vec.last().map_or(true, |x| x < &index) {
                     vec.push(index);
-                    false
-                } else {
                     true
+                } else {
+                    false
                 }
             }
             Bitmap(ref mut bits) => {

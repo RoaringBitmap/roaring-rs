@@ -225,6 +225,8 @@ impl RoaringTreemap {
     /// Create the set from a sorted iterator.
     /// The value **must** be strictly sorted.
     ///
+    /// This method can be faster than `from_iter` because it skips the binary searches.
+    ///
     /// # Examples
     ///
     /// ```rust
@@ -243,6 +245,8 @@ impl RoaringTreemap {
     /// Extend the set with a sorted iterator.
     /// All value of the iterator **must** be strictly bigger than the max element
     /// contained in the set.
+    ///
+    /// This method can be faster than `extend` because it skips the binary searches.
     ///
     /// # Examples
     ///

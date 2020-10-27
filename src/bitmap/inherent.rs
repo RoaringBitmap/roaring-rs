@@ -44,7 +44,10 @@ impl RoaringBitmap {
     }
 
     /// Adds a value to the set.
-    /// The value **must** be strictly bigger than the maximum value in the set.
+    /// The value **must** be bigger than the maximum value in the set
+    /// but duplicates are allowed.
+    ///
+    /// This method can be faster than `insert` because it skips the binary searches.
     ///
     /// # Examples
     ///
@@ -54,11 +57,12 @@ impl RoaringBitmap {
     /// let mut rb = RoaringBitmap::new();
     /// rb.push(1);
     /// rb.push(3);
+    /// rb.push(3);
     /// rb.push(5);
     ///
     /// assert_eq!(rb.iter().collect::<Vec<u32>>(), vec![1, 3, 5]);
     /// ```
-    pub fn push(&mut self, value: u32) -> bool {
+    pub fn push(&mut self, value: u32) {
         let (key, index) = util::split(value);
         match self.containers.last() {
             Some(container) => {
