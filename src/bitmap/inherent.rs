@@ -44,8 +44,7 @@ impl RoaringBitmap {
     }
 
     /// Adds a value to the set.
-    /// The value **must** be bigger than the maximum value in the set
-    /// but duplicates are allowed.
+    /// The value **must** be bigger or equal to the maximum value in the set.
     ///
     /// This method can be faster than `insert` because it skips the binary searches.
     ///
