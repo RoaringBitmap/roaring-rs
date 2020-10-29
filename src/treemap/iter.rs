@@ -242,7 +242,7 @@ impl RoaringTreemap {
     }
 
     /// Extend the set with a sorted iterator.
-    /// All value of the iterator **must** be strictly bigger than the max element
+    /// All value of the iterator **must** be greater or equal than the max element
     /// contained in the set.
     ///
     /// This method can be faster than `extend` because it skips the binary searches.
