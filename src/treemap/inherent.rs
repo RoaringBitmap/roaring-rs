@@ -42,7 +42,7 @@ impl RoaringTreemap {
     }
 
     /// Adds a value to the set.
-    /// The value **must** be strictly bigger than the maximum value in the set.
+    /// The value **must** be greater or equal to the maximum value in the set.
     ///
     /// This method can be faster than `insert` because it skips the binary searches.
     ///
