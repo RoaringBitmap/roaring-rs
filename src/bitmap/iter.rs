@@ -137,8 +137,7 @@ impl Extend<u32> for RoaringBitmap {
 }
 
 impl RoaringBitmap {
-    /// Create the set from a sorted iterator.
-    /// The value **must** be strictly sorted.
+    /// Create the set from a sorted iterator. Values **must** be sorted.
     ///
     /// This method can be faster than `from_iter` because it skips the binary searches.
     ///
