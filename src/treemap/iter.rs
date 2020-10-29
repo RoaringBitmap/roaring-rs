@@ -221,6 +221,49 @@ impl Extend<u64> for RoaringTreemap {
     }
 }
 
+impl RoaringTreemap {
+    /// Create the set from a sorted iterator. Values **must** be sorted.
+    ///
+    /// This method can be faster than `from_iter` because it skips the binary searches.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let mut rb = RoaringTreemap::from_sorted_iter(0..10);
+    ///
+    /// assert_eq!(rb.iter().collect::<Vec<u64>>(), (0..10).collect::<Vec<u64>>());
+    /// ```
+    pub fn from_sorted_iter<I: IntoIterator<Item = u64>>(iterator: I) -> RoaringTreemap {
+        let mut rb = RoaringTreemap::new();
+        rb.append(iterator);
+        rb
+    }
+
+    /// Extend the set with a sorted iterator.
+    /// All value of the iterator **must** be greater or equal than the max element
+    /// contained in the set.
+    ///
+    /// This method can be faster than `extend` because it skips the binary searches.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let mut rb = RoaringTreemap::new();
+    /// rb.append(0..10);
+    ///
+    /// assert_eq!(rb.iter().collect::<Vec<u64>>(), (0..10).collect::<Vec<u64>>());
+    /// ```
+    pub fn append<I: IntoIterator<Item = u64>>(&mut self, iterator: I) {
+        for value in iterator {
+            self.push(value);
+        }
+    }
+}
+
 pub struct BitmapIter<'a>(btree_map::Iter<'a, u32, RoaringBitmap>);
 
 impl<'a> Iterator for BitmapIter<'a> {

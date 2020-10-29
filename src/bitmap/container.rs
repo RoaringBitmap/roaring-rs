@@ -38,6 +38,13 @@ impl Container {
         }
     }
 
+    pub fn push(&mut self, index: u16) {
+        if self.store.push(index) {
+            self.len += 1;
+            self.ensure_correct_store();
+        }
+    }
+
     pub fn remove(&mut self, index: u16) -> bool {
         if self.store.remove(index) {
             self.len -= 1;
