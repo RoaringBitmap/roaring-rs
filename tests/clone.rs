@@ -42,3 +42,16 @@ fn bitmaps() {
 
     assert_eq!(clone, original);
 }
+
+#[test]
+fn runs() {
+    let mut original = RoaringBitmap::from_iter(
+        (0..6000)
+            .chain(1_000_000..1_012_000)
+            .chain(2_000_000..2_010_000),
+    );
+    original.optimize();
+    let clone = original.clone();
+
+    assert_eq!(clone, original);
+}
