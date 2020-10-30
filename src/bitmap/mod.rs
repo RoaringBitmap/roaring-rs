@@ -11,6 +11,9 @@ mod iter;
 mod ops;
 mod serialization;
 
+#[cfg(feature = "serde")]
+mod serde;
+
 pub use self::iter::IntoIter;
 pub use self::iter::Iter;
 

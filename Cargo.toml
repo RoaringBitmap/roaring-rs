@@ -17,8 +17,14 @@ license = "MIT/Apache-2.0"
 [badges]
 travis-ci = { repository = "Nemo157/roaring-rs" }
 
+[features]
+default = ["serde"]
+serde = ["serde_cr", "serde_bytes"]
+
 [dependencies]
 byteorder = "1.0"
+serde_cr = { package = "serde", version = "1.0", optional = true }
+serde_bytes = { version = "0.11", optional = true }
 
 [dev-dependencies]
 criterion = "0.3"
