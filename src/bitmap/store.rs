@@ -200,11 +200,10 @@ impl Store {
             Array(..) => panic!("Cannot convert array to array"),
             Bitmap(ref bits) => {
                 let mut vec = Vec::new();
-                for (key, val) in bits.iter().cloned().enumerate().filter(|&(_, v)| v != 0) {
-                    for bit in 0..64 {
-                        if (val & (1 << bit)) != 0 {
-                            vec.push(key as u16 * 64 + bit as u16);
-                        }
+                for (index, mut bit) in bits.iter().cloned().enumerate() {
+                    while bit != 0 {
+                        vec.push((u64::trailing_zeros(bit) + (64 * index as u32)) as u16);
+                        bit &= bit - 1;
                     }
                 }
                 Array(vec)
