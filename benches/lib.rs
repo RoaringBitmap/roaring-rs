@@ -184,7 +184,7 @@ fn remove(c: &mut Criterion) {
 }
 
 fn remove_range_bitmap(c: &mut Criterion) {
-    c.bench_function("remove_range", |b| {
+    c.bench_function("remove_range 1", |b| {
         let mut sub: RoaringBitmap = (0..65_536).collect();
         b.iter(|| {
             // carefully delete part of the bitmap
@@ -192,6 +192,16 @@ fn remove_range_bitmap(c: &mut Criterion) {
             // but the runtime remains identical afterwards
             black_box(sub.remove_range(4096 + 1..65_536));
             assert_eq!(sub.len(), 4096 + 1);
+        });
+    });
+
+    c.bench_function("remove_range 2", |b| {
+        // Slower bench that creates a new bitmap on each iteration so that can benchmark
+        // bitmap to array conversion
+        b.iter(|| {
+            let mut sub: RoaringBitmap = (0..65_536).collect();
+            black_box(sub.remove_range(100..65_536));
+            assert_eq!(sub.len(), 100);
         });
     });
 }
