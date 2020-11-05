@@ -130,7 +130,7 @@ impl RoaringBitmap {
             }
         };
 
-        if size > u16::max_value() as usize {
+        if size > u32::max_value() as usize {
             return Err(io::Error::new(
                 io::ErrorKind::Other,
                 "size is greater than supported",
