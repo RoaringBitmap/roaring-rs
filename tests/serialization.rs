@@ -74,6 +74,23 @@ fn test_bitmap_boundary() {
     assert_eq!(original, new);
 }
 
+
+#[test]
+fn test_bitmap_high16bits() {
+    let mut bitmap = RoaringBitmap::new();
+    for i in 0..1<<16 {
+        let value = i << 16;
+        bitmap.insert(value);
+    }
+
+    let mut buffer = vec![];
+    bitmap.serialize_into(&mut buffer).unwrap();
+
+    let new = RoaringBitmap::deserialize_from(&mut &buffer[..]);
+    assert_eq!(true, new.is_ok());
+    assert_eq!(bitmap, new.unwrap());
+}
+
 #[test]
 fn test_bitmap() {
     let original = RoaringBitmap::from_iter(1000..6000);
