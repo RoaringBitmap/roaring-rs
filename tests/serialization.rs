@@ -74,7 +74,6 @@ fn test_bitmap_boundary() {
     assert_eq!(original, new);
 }
 
-
 #[test]
 fn test_bitmap_high16bits() {
     let mut bitmap = RoaringBitmap::new();
