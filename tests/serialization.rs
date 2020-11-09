@@ -78,7 +78,7 @@ fn test_bitmap_boundary() {
 #[test]
 fn test_bitmap_high16bits() {
     let mut bitmap = RoaringBitmap::new();
-    for i in 0..1<<16 {
+    for i in 0..1 << 16 {
         let value = i << 16;
         bitmap.insert(value);
     }
