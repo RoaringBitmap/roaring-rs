@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, ops::Range};
 
 use super::store::{self, Store};
 use super::util;
@@ -36,6 +36,13 @@ impl Container {
         } else {
             false
         }
+    }
+
+    pub fn insert_range(&mut self, range: Range<u16>) -> u64 {
+        let inserted = self.store.insert_range(range);
+        self.len += inserted;
+        self.ensure_correct_store();
+        inserted
     }
 
     pub fn push(&mut self, index: u16) {

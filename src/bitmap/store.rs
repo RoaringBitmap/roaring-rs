@@ -1,7 +1,7 @@
-use std::borrow::Borrow;
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::slice;
 use std::vec;
+use std::{borrow::Borrow, ops::Range};
 
 const BITMAP_LENGTH: usize = 1024;
 
@@ -39,6 +39,69 @@ impl Store {
                 } else {
                     false
                 }
+            }
+        }
+    }
+
+    pub fn insert_range(&mut self, range: Range<u16>) -> u64 {
+        // A Range is defined as being of size 0 if start >= end.
+        if range.is_empty() {
+            return 0;
+        }
+
+        match *self {
+            Array(ref mut vec) => {
+                let (range_start, range_end) = (range.start, range.end);
+
+                // Figure out the starting/ending position in the vec
+                let pos_start = unwrap_either(vec.binary_search(&range_start));
+                let pos_end = unwrap_either(vec.binary_search(&(range_end)));
+
+                // Overwrite the range in the middle - there's no need to take
+                // into account any existing elements between start and end, as
+                // they're all being added to the set.
+                let dropped = vec.splice(pos_start..pos_end, range);
+
+                u64::from(range_end - range_start) - dropped.len() as u64
+            }
+            Bitmap(ref mut bits) => {
+                let (start_key, start_bit) = (key(range.start), bit(range.start));
+                let (end_key, end_bit) = (key(range.end), bit(range.end));
+
+                if start_key == end_key {
+                    // Set the end_bit -> LSB to 1
+                    let mut mask = (1 << end_bit) - 1;
+                    // Set start_bit -> LSB to 0
+                    mask &= !((1 << start_bit) - 1);
+                    // Leaving end_bit -> start_bit set to 1
+
+                    let existed = (bits[start_key] & mask).count_ones();
+                    bits[start_key] |= mask;
+
+                    return u64::from(range.end - range.start) - u64::from(existed);
+                }
+
+                // Mask off the left-most bits (MSB -> start_bit)
+                let mask = !((1 << start_bit) - 1);
+
+                // Keep track of the number of bits that were already set to
+                // return how many new bits were set later
+                let mut existed = (bits[start_key] & mask).count_ones();
+
+                bits[start_key] |= mask;
+
+                // Set the full blocks, tracking the number of set bits
+                for i in (start_key + 1)..end_key {
+                    existed += bits[i].count_ones();
+                    bits[i] = u64::MAX;
+                }
+
+                // Set the end bits in the last chunk (MSB -> end_bit)
+                let mask = (1 << end_bit) - 1;
+                existed += (bits[end_key] & mask).count_ones();
+                bits[end_key] |= mask;
+
+                u64::from(range.end - range.start) - u64::from(existed)
             }
         }
     }
@@ -535,4 +598,156 @@ fn key(index: u16) -> usize {
 #[inline]
 fn bit(index: u16) -> usize {
     index as usize % 64
+}
+
+#[inline]
+fn unwrap_either<R>(r: Result<R, R>) -> R {
+    match r {
+        Ok(v) => v,
+        Err(v) => v,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn as_vec(s: Store) -> Vec<u16> {
+        if let Store::Array(v) = s {
+            return v;
+        }
+        as_vec(s.to_array())
+    }
+
+    #[test]
+    fn test_array_insert_invalid_range() {
+        let mut store = Store::Array(vec![1, 2, 8, 9]);
+
+        // Insert a range with start > end.
+        let new = store.insert_range(6..1);
+        assert_eq!(new, 0);
+
+        assert_eq!(as_vec(store), vec![1, 2, 8, 9]);
+    }
+
+    #[test]
+    fn test_array_insert_range() {
+        let mut store = Store::Array(vec![1, 2, 8, 9]);
+
+        let new = store.insert_range(4..6);
+        assert_eq!(new, 2);
+
+        assert_eq!(as_vec(store), vec![1, 2, 4, 5, 8, 9]);
+    }
+
+    #[test]
+    fn test_array_insert_range_left_overlap() {
+        let mut store = Store::Array(vec![1, 2, 8, 9]);
+
+        let new = store.insert_range(2..6);
+        assert_eq!(new, 3);
+
+        assert_eq!(as_vec(store), vec![1, 2, 3, 4, 5, 8, 9]);
+    }
+
+    #[test]
+    fn test_array_insert_range_right_overlap() {
+        let mut store = Store::Array(vec![1, 2, 8, 9]);
+
+        let new = store.insert_range(4..9);
+        assert_eq!(new, 4);
+
+        assert_eq!(as_vec(store), vec![1, 2, 4, 5, 6, 7, 8, 9]);
+    }
+
+    #[test]
+    fn test_array_insert_range_full_overlap() {
+        let mut store = Store::Array(vec![1, 2, 8, 9]);
+
+        let new = store.insert_range(1..10);
+        assert_eq!(new, 5);
+
+        assert_eq!(as_vec(store), vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    }
+
+    #[test]
+    fn test_bitmap_insert_invalid_range() {
+        let store = Store::Array(vec![1, 2, 8, 9]);
+        let mut store = store.to_bitmap();
+
+        // Insert a range with start > end.
+        let new = store.insert_range(6..1);
+        assert_eq!(new, 0);
+
+        assert_eq!(as_vec(store), vec![1, 2, 8, 9]);
+    }
+
+    #[test]
+    fn test_bitmap_insert_same_key_overlap() {
+        let store = Store::Array(vec![1, 2, 3, 62, 63]);
+        let mut store = store.to_bitmap();
+
+        let new = store.insert_range(1..63);
+        assert_eq!(new, 58);
+
+        assert_eq!(as_vec(store), (1..64).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn test_bitmap_insert_range() {
+        let store = Store::Array(vec![1, 2, 130]);
+        let mut store = store.to_bitmap();
+
+        let new = store.insert_range(4..129);
+        assert_eq!(new, 125);
+
+        let mut want = vec![1, 2];
+        want.extend(4..129);
+        want.extend(&[130]);
+
+        assert_eq!(as_vec(store), want);
+    }
+
+    #[test]
+    fn test_bitmap_insert_range_left_overlap() {
+        let store = Store::Array(vec![1, 2, 130]);
+        let mut store = store.to_bitmap();
+
+        let new = store.insert_range(1..129);
+        assert_eq!(new, 126);
+
+        let mut want = Vec::new();
+        want.extend(1..129);
+        want.extend(&[130]);
+
+        assert_eq!(as_vec(store), want);
+    }
+
+    #[test]
+    fn test_bitmap_insert_range_right_overlap() {
+        let store = Store::Array(vec![1, 2, 130]);
+        let mut store = store.to_bitmap();
+
+        let new = store.insert_range(4..133);
+        assert_eq!(new, 128);
+
+        let mut want = vec![1, 2];
+        want.extend(4..133);
+
+        assert_eq!(as_vec(store), want);
+    }
+
+    #[test]
+    fn test_bitmap_insert_range_full_overlap() {
+        let store = Store::Array(vec![1, 2, 130]);
+        let mut store = store.to_bitmap();
+
+        let new = store.insert_range(1..135);
+        assert_eq!(new, 131);
+
+        let mut want = Vec::new();
+        want.extend(1..135);
+
+        assert_eq!(as_vec(store), want);
+    }
 }
