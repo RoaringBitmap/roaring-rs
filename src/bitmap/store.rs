@@ -54,8 +54,8 @@ impl Store {
                 let (range_start, range_end) = (range.start, range.end);
 
                 // Figure out the starting/ending position in the vec
-                let pos_start = unwrap_either(vec.binary_search(&range_start));
-                let pos_end = unwrap_either(vec.binary_search(&(range_end)));
+                let pos_start = vec.binary_search(&range_start).unwrap_or_else(|x| x);
+                let pos_end = vec.binary_search(&(range_end)).unwrap_or_else(|x| x);
 
                 // Overwrite the range in the middle - there's no need to take
                 // into account any existing elements between start and end, as
@@ -598,14 +598,6 @@ fn key(index: u16) -> usize {
 #[inline]
 fn bit(index: u16) -> usize {
     index as usize % 64
-}
-
-#[inline]
-fn unwrap_either<R>(r: Result<R, R>) -> R {
-    match r {
-        Ok(v) => v,
-        Err(v) => v,
-    }
 }
 
 #[cfg(test)]
