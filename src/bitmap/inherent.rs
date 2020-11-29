@@ -43,6 +43,27 @@ impl RoaringBitmap {
         container.insert(index)
     }
 
+    /// Inserts a range of values from the set specific as [start..end). Returns
+    /// the number of inserted values.
+    ///
+    /// Note that due to the exclusive end this functions take indexes as u64
+    /// but you still can't index past 2**32 (u32::MAX + 1).
+    ///
+    /// # Safety
+    ///
+    /// This function panics if the range upper bound exceeds `u32::MAX`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// rb.insert_range(2..4);
+    /// assert!(rb.contains(2));
+    /// assert!(rb.contains(3));
+    /// assert!(!rb.contains(4));
+    /// ```
     pub fn insert_range(&mut self, range: Range<u64>) -> u64 {
         assert!(
             range.end <= u64::from(u32::max_value()) + 1,
