@@ -39,6 +39,14 @@ impl Container {
     }
 
     pub fn insert_range(&mut self, range: Range<u16>) -> u64 {
+        // If the range is larger than the array limit, skip populating the
+        // array to then have to convert it to a bitmap anyway.
+        if matches!(self.store, Store::Array(_)) {
+            if range.end - range.start > ARRAY_LIMIT as u16 {
+                self.store = self.store.to_bitmap()
+            }
+        }
+
         let inserted = self.store.insert_range(range);
         self.len += inserted;
         self.ensure_correct_store();
