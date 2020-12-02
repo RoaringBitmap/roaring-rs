@@ -51,18 +51,16 @@ impl Store {
 
         match *self {
             Array(ref mut vec) => {
-                let (range_start, range_end) = (range.start, range.end);
-
                 // Figure out the starting/ending position in the vec
-                let pos_start = vec.binary_search(&range_start).unwrap_or_else(|x| x);
-                let pos_end = vec.binary_search(&(range_end)).unwrap_or_else(|x| x);
+                let pos_start = vec.binary_search(&range.start).unwrap_or_else(|x| x);
+                let pos_end = vec.binary_search(&range.end).unwrap_or_else(|x| x);
 
                 // Overwrite the range in the middle - there's no need to take
                 // into account any existing elements between start and end, as
                 // they're all being added to the set.
-                let dropped = vec.splice(pos_start..pos_end, range);
+                let dropped = vec.splice(pos_start..pos_end, range.clone());
 
-                u64::from(range_end - range_start) - dropped.len() as u64
+                u64::from(&range.end - &range.start) - dropped.len() as u64
             }
             Bitmap(ref mut bits) => {
                 let (start_key, start_bit) = (key(range.start), bit(range.start));
