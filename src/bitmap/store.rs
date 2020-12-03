@@ -60,7 +60,7 @@ impl Store {
                 // they're all being added to the set.
                 let dropped = vec.splice(pos_start..pos_end, range.clone());
 
-                u64::from(&range.end - &range.start) - dropped.len() as u64
+                u64::from(range.end - range.start) - dropped.len() as u64
             }
             Bitmap(ref mut bits) => {
                 let (start_key, start_bit) = (key(range.start), bit(range.start));
