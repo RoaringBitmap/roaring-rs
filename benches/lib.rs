@@ -1,3 +1,5 @@
+#![allow(clippy::from_iter_instead_of_collect)]
+
 extern crate roaring;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};

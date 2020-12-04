@@ -1,3 +1,5 @@
+#![allow(clippy::from_iter_instead_of_collect)]
+
 extern crate roaring;
 
 use std::iter::FromIterator;

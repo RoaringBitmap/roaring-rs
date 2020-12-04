@@ -9,7 +9,7 @@
 
 #![warn(missing_docs)]
 #![warn(variant_size_differences)]
-#![allow(unknown_lints)] // For clippy
+#![allow(unknown_lints, clippy::from_iter_instead_of_collect)] // For clippy
 
 extern crate byteorder;
 

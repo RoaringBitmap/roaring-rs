@@ -1,3 +1,5 @@
+#![allow(clippy::from_iter_instead_of_collect)]
+
 extern crate roaring;
 use roaring::{RoaringBitmap, RoaringTreemap};
 use std::iter::FromIterator;
