@@ -158,7 +158,7 @@ impl RoaringTreemap {
     /// let original = RoaringTreemap::from_iter(0..6000);
     /// let mut bitmaps = original.bitmaps();
     ///
-    /// assert_eq!(bitmaps.next(), Some((0, &RoaringBitmap::from_iter(0..6000))));
+    /// assert_eq!(bitmaps.next(), Some((0, &(0..6000).collect::<RoaringBitmap>())));
     /// assert_eq!(bitmaps.next(), None);
     /// ```
     pub fn bitmaps(&self) -> BitmapIter {

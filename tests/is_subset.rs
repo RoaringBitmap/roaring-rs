@@ -5,50 +5,50 @@ use std::iter::FromIterator;
 
 #[test]
 fn array_not() {
-    let sup = RoaringBitmap::from_iter(0..2000);
-    let sub = RoaringBitmap::from_iter(1000..3000);
+    let sup = (0..2000).collect::<RoaringBitmap>();
+    let sub = (1000..3000).collect::<RoaringBitmap>();
     assert_eq!(sub.is_subset(&sup), false);
 }
 
 #[test]
 fn array() {
-    let sup = RoaringBitmap::from_iter(0..4000);
-    let sub = RoaringBitmap::from_iter(2000..3000);
+    let sup = (0..4000).collect::<RoaringBitmap>();
+    let sub = (2000..3000).collect::<RoaringBitmap>();
     assert_eq!(sub.is_subset(&sup), true);
 }
 
 #[test]
 fn array_bitmap_not() {
-    let sup = RoaringBitmap::from_iter(0..2000);
-    let sub = RoaringBitmap::from_iter(1000..15000);
+    let sup = (0..2000).collect::<RoaringBitmap>();
+    let sub = (1000..15000).collect::<RoaringBitmap>();
     assert_eq!(sub.is_subset(&sup), false);
 }
 
 #[test]
 fn bitmap_not() {
-    let sup = RoaringBitmap::from_iter(0..6000);
-    let sub = RoaringBitmap::from_iter(4000..10000);
+    let sup = (0..6000).collect::<RoaringBitmap>();
+    let sub = (4000..10000).collect::<RoaringBitmap>();
     assert_eq!(sub.is_subset(&sup), false);
 }
 
 #[test]
 fn bitmap() {
-    let sup = RoaringBitmap::from_iter(0..20000);
-    let sub = RoaringBitmap::from_iter(5000..15000);
+    let sup = (0..20000).collect::<RoaringBitmap>();
+    let sub = (5000..15000).collect::<RoaringBitmap>();
     assert_eq!(sub.is_subset(&sup), true);
 }
 
 #[test]
 fn bitmap_array_not() {
-    let sup = RoaringBitmap::from_iter(0..20000);
-    let sub = RoaringBitmap::from_iter(19000..21000);
+    let sup = (0..20000).collect::<RoaringBitmap>();
+    let sub = (19000..21000).collect::<RoaringBitmap>();
     assert_eq!(sub.is_subset(&sup), false);
 }
 
 #[test]
 fn bitmap_array() {
-    let sup = RoaringBitmap::from_iter(0..20000);
-    let sub = RoaringBitmap::from_iter(18000..20000);
+    let sup = (0..20000).collect::<RoaringBitmap>();
+    let sub = (18000..20000).collect::<RoaringBitmap>();
     assert_eq!(sub.is_subset(&sup), true);
 }
 

@@ -5,9 +5,9 @@ use std::iter::FromIterator;
 
 #[test]
 fn array_to_array() {
-    let mut bitmap1 = RoaringBitmap::from_iter(0..2000);
-    let bitmap2 = RoaringBitmap::from_iter(1000..3000);
-    let bitmap3 = RoaringBitmap::from_iter(0..3000);
+    let mut bitmap1 = (0..2000).collect::<RoaringBitmap>();
+    let bitmap2 = (1000..3000).collect::<RoaringBitmap>();
+    let bitmap3 = (0..3000).collect::<RoaringBitmap>();
 
     bitmap1.union_with(&bitmap2);
 
@@ -16,9 +16,9 @@ fn array_to_array() {
 
 #[test]
 fn array_to_bitmap() {
-    let mut bitmap1 = RoaringBitmap::from_iter(0..4000);
-    let bitmap2 = RoaringBitmap::from_iter(4000..8000);
-    let bitmap3 = RoaringBitmap::from_iter(0..8000);
+    let mut bitmap1 = (0..4000).collect::<RoaringBitmap>();
+    let bitmap2 = (4000..8000).collect::<RoaringBitmap>();
+    let bitmap3 = (0..8000).collect::<RoaringBitmap>();
 
     bitmap1.union_with(&bitmap2);
 
@@ -27,9 +27,9 @@ fn array_to_bitmap() {
 
 #[test]
 fn array_and_bitmap() {
-    let mut bitmap1 = RoaringBitmap::from_iter(0..2000);
-    let bitmap2 = RoaringBitmap::from_iter(1000..8000);
-    let bitmap3 = RoaringBitmap::from_iter(0..8000);
+    let mut bitmap1 = (0..2000).collect::<RoaringBitmap>();
+    let bitmap2 = (1000..8000).collect::<RoaringBitmap>();
+    let bitmap3 = (0..8000).collect::<RoaringBitmap>();
 
     bitmap1.union_with(&bitmap2);
 
@@ -38,9 +38,9 @@ fn array_and_bitmap() {
 
 #[test]
 fn bitmap() {
-    let mut bitmap1 = RoaringBitmap::from_iter(0..12000);
-    let bitmap2 = RoaringBitmap::from_iter(6000..18000);
-    let bitmap3 = RoaringBitmap::from_iter(0..18000);
+    let mut bitmap1 = (0..12000).collect::<RoaringBitmap>();
+    let bitmap2 = (6000..18000).collect::<RoaringBitmap>();
+    let bitmap3 = (0..18000).collect::<RoaringBitmap>();
 
     bitmap1.union_with(&bitmap2);
 
@@ -49,9 +49,9 @@ fn bitmap() {
 
 #[test]
 fn bitmap_and_array() {
-    let mut bitmap1 = RoaringBitmap::from_iter(0..12000);
-    let bitmap2 = RoaringBitmap::from_iter(10000..13000);
-    let bitmap3 = RoaringBitmap::from_iter(0..13000);
+    let mut bitmap1 = (0..12000).collect::<RoaringBitmap>();
+    let bitmap2 = (10000..13000).collect::<RoaringBitmap>();
+    let bitmap3 = (0..13000).collect::<RoaringBitmap>();
 
     bitmap1.union_with(&bitmap2);
 

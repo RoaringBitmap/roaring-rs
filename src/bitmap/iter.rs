@@ -90,7 +90,7 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     /// use std::iter::FromIterator;
     ///
-    /// let bitmap = RoaringBitmap::from_iter(1..3);
+    /// let bitmap = (1..3).collect::<RoaringBitmap>();
     /// let mut iter = bitmap.iter();
     ///
     /// assert_eq!(iter.next(), Some(1));
