@@ -610,6 +610,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::reversed_empty_ranges)]
     fn test_array_insert_invalid_range() {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
@@ -661,6 +662,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::reversed_empty_ranges)]
     fn test_bitmap_insert_invalid_range() {
         let store = Store::Array(vec![1, 2, 8, 9]);
         let mut store = store.to_bitmap();
