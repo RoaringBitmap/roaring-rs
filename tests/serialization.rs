@@ -48,28 +48,28 @@ fn test_empty() {
 
 #[test]
 fn test_one() {
-    let original = RoaringBitmap::from_iter(1..2);
+    let original = (1..2).collect::<RoaringBitmap>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
 
 #[test]
 fn test_array() {
-    let original = RoaringBitmap::from_iter(1000..3000);
+    let original = (1000..3000).collect::<RoaringBitmap>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
 
 #[test]
 fn test_array_boundary() {
-    let original = RoaringBitmap::from_iter(1000..5096);
+    let original = (1000..5096).collect::<RoaringBitmap>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
 
 #[test]
 fn test_bitmap_boundary() {
-    let original = RoaringBitmap::from_iter(1000..5097);
+    let original = (1000..5097).collect::<RoaringBitmap>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
@@ -92,7 +92,7 @@ fn test_bitmap_high16bits() {
 
 #[test]
 fn test_bitmap() {
-    let original = RoaringBitmap::from_iter(1000..6000);
+    let original = (1000..6000).collect::<RoaringBitmap>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }

@@ -5,7 +5,7 @@ use std::iter::FromIterator;
 
 #[test]
 fn array() {
-    let bitmap = RoaringBitmap::from_iter(0..2000);
+    let bitmap = (0..2000).collect::<RoaringBitmap>();
     let mut iter = bitmap.iter();
     assert_eq!((2000, Some(2000)), iter.size_hint());
     iter.by_ref().take(1000).for_each(drop);
@@ -16,7 +16,7 @@ fn array() {
 
 #[test]
 fn bitmap() {
-    let bitmap = RoaringBitmap::from_iter(0..6000);
+    let bitmap = (0..6000).collect::<RoaringBitmap>();
     let mut iter = bitmap.iter();
     assert_eq!((6000, Some(6000)), iter.size_hint());
     iter.by_ref().take(3000).for_each(drop);

@@ -5,29 +5,29 @@ use std::iter::FromIterator;
 
 #[test]
 fn array() {
-    let bitmap1 = RoaringBitmap::from_iter(0..2000);
-    let bitmap2 = RoaringBitmap::from_iter(4000..6000);
+    let bitmap1 = (0..2000).collect::<RoaringBitmap>();
+    let bitmap2 = (4000..6000).collect::<RoaringBitmap>();
     assert_eq!(bitmap1.is_disjoint(&bitmap2), true);
 }
 
 #[test]
 fn array_not() {
-    let bitmap1 = RoaringBitmap::from_iter(0..4000);
-    let bitmap2 = RoaringBitmap::from_iter(2000..6000);
+    let bitmap1 = (0..4000).collect::<RoaringBitmap>();
+    let bitmap2 = (2000..6000).collect::<RoaringBitmap>();
     assert_eq!(bitmap1.is_disjoint(&bitmap2), false);
 }
 
 #[test]
 fn bitmap() {
-    let bitmap1 = RoaringBitmap::from_iter(0..6000);
-    let bitmap2 = RoaringBitmap::from_iter(10000..16000);
+    let bitmap1 = (0..6000).collect::<RoaringBitmap>();
+    let bitmap2 = (10000..16000).collect::<RoaringBitmap>();
     assert_eq!(bitmap1.is_disjoint(&bitmap2), true);
 }
 
 #[test]
 fn bitmap_not() {
-    let bitmap1 = RoaringBitmap::from_iter(0..10000);
-    let bitmap2 = RoaringBitmap::from_iter(5000..15000);
+    let bitmap1 = (0..10000).collect::<RoaringBitmap>();
+    let bitmap2 = (5000..15000).collect::<RoaringBitmap>();
     assert_eq!(bitmap1.is_disjoint(&bitmap2), false);
 }
 
