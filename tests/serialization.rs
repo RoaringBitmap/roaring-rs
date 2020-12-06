@@ -1,19 +1,16 @@
 extern crate roaring;
 
-use std::iter::FromIterator;
-
 use roaring::RoaringBitmap;
 
 // Test data from https://github.com/RoaringBitmap/RoaringFormatSpec/tree/master/testdata
 static BITMAP_WITHOUT_RUNS: &[u8] = include_bytes!("bitmapwithoutruns.bin");
 
 fn test_data_bitmap() -> RoaringBitmap {
-    RoaringBitmap::from_iter(
-        (0..100)
-            .map(|i| i * 1000)
-            .chain((100_000..200_000).map(|i| i * 3))
-            .chain(700_000..800_000),
-    )
+    (0..100)
+        .map(|i| i * 1000)
+        .chain((100_000..200_000).map(|i| i * 3))
+        .chain(700_000..800_000)
+        .collect::<RoaringBitmap>()
 }
 
 fn serialize_and_deserialize(bitmap: &RoaringBitmap) -> RoaringBitmap {
@@ -99,21 +96,21 @@ fn test_bitmap() {
 
 #[test]
 fn test_arrays() {
-    let original = RoaringBitmap::from_iter((1000..3000).chain(70000..74000));
+    let original = (1000..3000).chain(70000..74000).collect::<RoaringBitmap>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
 
 #[test]
 fn test_bitmaps() {
-    let original = RoaringBitmap::from_iter((1000..6000).chain(70000..77000));
+    let original = (1000..6000).chain(70000..77000).collect::<RoaringBitmap>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
 
 #[test]
 fn test_mixed() {
-    let original = RoaringBitmap::from_iter((1000..3000).chain(70000..77000));
+    let original = (1000..3000).chain(70000..77000).collect::<RoaringBitmap>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
@@ -532,7 +529,7 @@ fn test_strange() {
         6684416, 6684424, 6684472, 6684563, 6684574, 6684575, 6684576, 6684577, 6684601, 6684635,
         6684636, 6684639, 6684640, 6684641, 6684642, 6684666, 108658947,
     ];
-    let original = RoaringBitmap::from_iter(ARRAY.iter().cloned());
+    let original = ARRAY.iter().cloned().collect::<RoaringBitmap>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
