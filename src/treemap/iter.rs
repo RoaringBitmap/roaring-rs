@@ -135,7 +135,7 @@ impl RoaringTreemap {
     /// use roaring::RoaringTreemap;
     /// use std::iter::FromIterator;
     ///
-    /// let bitmap = (1..3).collect::<RoaringBitmap>();
+    /// let bitmap = (1..3).collect::<RoaringTreemap>();
     /// let mut iter = bitmap.iter();
     ///
     /// assert_eq!(iter.next(), Some(1));
@@ -155,7 +155,7 @@ impl RoaringTreemap {
     /// use roaring::{RoaringBitmap, RoaringTreemap};
     /// use std::iter::FromIterator;
     ///
-    /// let original = (0..6000).collect::<RoaringBitmap>();
+    /// let original = (0..6000).collect::<RoaringTreemap>();
     /// let mut bitmaps = original.bitmaps();
     ///
     /// assert_eq!(bitmaps.next(), Some((0, &(0..6000).collect::<RoaringBitmap>())));
@@ -175,7 +175,7 @@ impl RoaringTreemap {
     /// use roaring::RoaringTreemap;
     /// use std::iter::FromIterator;
     ///
-    /// let original = (0..6000).collect::<RoaringBitmap>();
+    /// let original = (0..6000).collect::<RoaringTreemap>();
     /// let clone = RoaringTreemap::from_bitmaps(original.bitmaps().map(|(p, b)| (p, b.clone())));
     ///
     /// assert_eq!(clone, original);
