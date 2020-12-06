@@ -1,8 +1,6 @@
 extern crate roaring;
 use roaring::RoaringBitmap;
 
-use std::iter::FromIterator;
-
 #[test]
 fn or() {
     let mut rb1 = (1..4).collect::<RoaringBitmap>();
@@ -58,7 +56,7 @@ fn sub() {
 fn xor() {
     let mut rb1 = (1..4).collect::<RoaringBitmap>();
     let rb2 = (3..6).collect::<RoaringBitmap>();
-    let rb3 = RoaringBitmap::from_iter((1..3).chain(4..6));
+    let rb3 = (1..3).chain(4..6).collect::<RoaringBitmap>();
     let rb4 = (0..0).collect::<RoaringBitmap>();
 
     assert_eq!(rb3, &rb1 ^ &rb2);

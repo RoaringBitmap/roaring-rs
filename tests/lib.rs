@@ -1,8 +1,6 @@
 extern crate roaring;
 use roaring::RoaringBitmap;
 
-use std::iter::FromIterator;
-
 #[test]
 fn smoke() {
     let mut bitmap = RoaringBitmap::new();
@@ -53,12 +51,12 @@ fn remove_range() {
     ];
     for (i, &a) in ranges.iter().enumerate() {
         for &b in &ranges[i..] {
-            let mut bitmap = RoaringBitmap::from_iter(0..=65536);
+            let mut bitmap = (0..=65536).collect::<RoaringBitmap>();
             assert_eq!(
                 bitmap.remove_range(u64::from(a)..u64::from(b)),
                 u64::from(b - a)
             );
-            assert_eq!(bitmap, RoaringBitmap::from_iter((0..a).chain(b..=65536)));
+            assert_eq!(bitmap, (0..a).chain(b..=65536).collect::<RoaringBitmap>());
         }
     }
 }
@@ -74,7 +72,7 @@ fn remove_range_array() {
 
     // insert 0, 2, 4, ..
     // remove [0, 2), [2, 4), ..
-    let mut bitmap = RoaringBitmap::from_iter((0..1000).map(|x| x * 2));
+    let mut bitmap = (0..1000).map(|x| x * 2).collect::<RoaringBitmap>();
     for i in 0..1000 {
         assert_eq!(bitmap.remove_range(i * 2..(i + 1) * 2), 1);
     }
@@ -89,7 +87,7 @@ fn remove_range_array() {
 #[test]
 #[allow(clippy::range_plus_one)] // remove_range needs an exclusive range
 fn remove_range_bitmap() {
-    let mut bitmap = RoaringBitmap::from_iter(0..4096 + 1000);
+    let mut bitmap = (0..4096 + 1000).collect::<RoaringBitmap>();
     for i in 0..1000 {
         assert_eq!(bitmap.remove_range(i..i), 0);
         assert_eq!(bitmap.remove_range(i..i + 1), 1);
@@ -97,19 +95,19 @@ fn remove_range_bitmap() {
 
     // insert 0, 2, 4, ..
     // remove [0, 2), [2, 4), ..
-    let mut bitmap = RoaringBitmap::from_iter((0..4096 + 1000).map(|x| x * 2));
+    let mut bitmap = ((0..4096 + 1000).map(|x| x * 2)).collect::<RoaringBitmap>();
     for i in 0..1000 {
         assert_eq!(bitmap.remove_range(i * 2..(i + 1) * 2), 1);
     }
 
     // remove [0, 2), [2, 4), ..
-    let mut bitmap = RoaringBitmap::from_iter(0..4096 + 1000);
+    let mut bitmap = (0..4096 + 1000).collect::<RoaringBitmap>();
     for i in 0..1000 / 2 {
         assert_eq!(bitmap.remove_range(i * 2..(i + 1) * 2), 2);
     }
 
     // remove [1, 3), [3, 5), ..
-    let mut bitmap = RoaringBitmap::from_iter(0..4096 + 1000);
+    let mut bitmap = (0..4096 + 1000).collect::<RoaringBitmap>();
     for i in 0..1000 / 2 {
         assert_eq!(bitmap.remove_range(i * 2 + 1..(i + 1) * 2 + 1), 2);
     }
