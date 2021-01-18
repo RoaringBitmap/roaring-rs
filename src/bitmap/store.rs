@@ -323,23 +323,11 @@ impl Store {
     pub fn intersect_with(&mut self, other: &Self) {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
-                let mut i1 = 0usize;
-                let mut iter2 = vec2.iter();
-                let mut current2 = iter2.next();
-                while i1 < vec1.len() {
-                    match current2.map(|c2| vec1[i1].cmp(c2)) {
-                        None | Some(Less) => {
-                            vec1.remove(i1);
-                        }
-                        Some(Greater) => {
-                            current2 = iter2.next();
-                        }
-                        Some(Equal) => {
-                            i1 += 1;
-                            current2 = iter2.next();
-                        }
-                    }
-                }
+                let mut i = 0;
+                vec1.retain(|x| {
+                    i += vec2.iter().skip(i).position(|y| y >= x).unwrap_or(vec2.len());
+                    vec2.get(i).map_or(false, |y| x == y)
+                });
             }
             (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
                 for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
