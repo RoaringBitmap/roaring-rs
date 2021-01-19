@@ -10,6 +10,7 @@ mod cmp;
 mod inherent;
 mod iter;
 mod ops;
+mod serialization;
 
 pub use self::iter::{IntoIter, Iter};
 
