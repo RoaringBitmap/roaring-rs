@@ -325,7 +325,11 @@ impl Store {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
                 let mut i = 0;
                 vec1.retain(|x| {
-                    i += vec2.iter().skip(i).position(|y| y >= x).unwrap_or(vec2.len());
+                    i += vec2
+                        .iter()
+                        .skip(i)
+                        .position(|y| y >= x)
+                        .unwrap_or(vec2.len());
                     vec2.get(i).map_or(false, |y| x == y)
                 });
             }
@@ -350,7 +354,11 @@ impl Store {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
                 let mut i = 0;
                 vec1.retain(|x| {
-                    i += vec2.iter().skip(i).position(|y| y >= x).unwrap_or(vec2.len());
+                    i += vec2
+                        .iter()
+                        .skip(i)
+                        .position(|y| y >= x)
+                        .unwrap_or(vec2.len());
                     vec2.get(i).map_or(true, |y| x != y)
                 });
             }
