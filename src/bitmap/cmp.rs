@@ -118,7 +118,7 @@ impl<'a> Iterator for Pairs<'a> {
             Right,
             Both,
             None,
-        };
+        }
         let which = match (self.0.peek(), self.1.peek()) {
             (None, None) => Which::None,
             (Some(_), None) => Which::Left,
