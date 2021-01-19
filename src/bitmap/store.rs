@@ -378,11 +378,7 @@ impl Store {
                 }
             }
             (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
-                for i in (0..vec.len()).rev() {
-                    if store.contains(vec[i]) {
-                        vec.remove(i);
-                    }
-                }
+                vec.retain(|x| !store.contains(*x));
             }
         }
     }
