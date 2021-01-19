@@ -348,24 +348,11 @@ impl Store {
     pub fn difference_with(&mut self, other: &Self) {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
-                let mut i1 = 0usize;
-                let mut iter2 = vec2.iter();
-                let mut current2 = iter2.next();
-                while i1 < vec1.len() {
-                    match current2.map(|c2| vec1[i1].cmp(c2)) {
-                        None => break,
-                        Some(Less) => {
-                            i1 += 1;
-                        }
-                        Some(Greater) => {
-                            current2 = iter2.next();
-                        }
-                        Some(Equal) => {
-                            vec1.remove(i1);
-                            current2 = iter2.next();
-                        }
-                    }
-                }
+                let mut i = 0;
+                vec1.retain(|x| {
+                    i += vec2.iter().skip(i).position(|y| y >= x).unwrap_or(vec2.len());
+                    vec2.get(i).map_or(true, |y| x != y)
+                });
             }
             (ref mut this @ &mut Bitmap(..), &Array(ref vec2)) => {
                 for index in vec2.iter() {
