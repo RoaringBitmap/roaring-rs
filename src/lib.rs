@@ -21,3 +21,25 @@ pub mod treemap;
 
 pub use bitmap::RoaringBitmap;
 pub use treemap::RoaringTreemap;
+
+fn retain_mut<T, F>(vec: &mut Vec<T>, mut f: F)
+where
+    F: FnMut(&mut T) -> bool,
+{
+    let len = vec.len();
+    let mut del = 0;
+    {
+        let v = &mut **vec;
+
+        for i in 0..len {
+            if !f(&mut v[i]) {
+                del += 1;
+            } else if del > 0 {
+                v.swap(i - del, i);
+            }
+        }
+    }
+    if del > 0 {
+        vec.truncate(len - del);
+    }
+}
