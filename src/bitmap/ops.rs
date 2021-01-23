@@ -1,6 +1,6 @@
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
-use crate::RoaringBitmap;
+use crate::{retain_mut, RoaringBitmap};
 
 impl RoaringBitmap {
     /// Unions in-place with the specified other bitmap.
@@ -72,23 +72,15 @@ impl RoaringBitmap {
     /// assert_eq!(rb1, rb3);
     /// ```
     pub fn intersect_with(&mut self, other: &RoaringBitmap) {
-        let mut index = 0;
-        while index < self.containers.len() {
-            let key = self.containers[index].key;
-            match other.containers.binary_search_by_key(&key, |c| c.key) {
-                Err(_) => {
-                    self.containers.remove(index);
-                }
+        retain_mut(&mut self.containers, |cont| {
+            match other.containers.binary_search_by_key(&cont.key, |c| c.key) {
                 Ok(loc) => {
-                    self.containers[index].intersect_with(&other.containers[loc]);
-                    if self.containers[index].len == 0 {
-                        self.containers.remove(index);
-                    } else {
-                        index += 1;
-                    }
+                    cont.intersect_with(&other.containers[loc]);
+                    cont.len != 0
                 }
+                Err(_) => false,
             }
-        }
+        })
     }
 
     /// Removes all values in the specified other bitmap from self, in-place.
@@ -121,23 +113,15 @@ impl RoaringBitmap {
     /// assert_eq!(rb1, rb3);
     /// ```
     pub fn difference_with(&mut self, other: &RoaringBitmap) {
-        let mut index = 0;
-        while index < self.containers.len() {
-            let key = self.containers[index].key;
-            match other.containers.binary_search_by_key(&key, |c| c.key) {
+        retain_mut(&mut self.containers, |cont| {
+            match other.containers.binary_search_by_key(&cont.key, |c| c.key) {
                 Ok(loc) => {
-                    self.containers[index].difference_with(&other.containers[loc]);
-                    if self.containers[index].len == 0 {
-                        self.containers.remove(index);
-                    } else {
-                        index += 1;
-                    }
+                    cont.difference_with(&other.containers[loc]);
+                    cont.len != 0
                 }
-                _ => {
-                    index += 1;
-                }
+                Err(_) => true,
             }
-        }
+        })
     }
 
     /// Replaces this bitmap with one that is equivalent to `self XOR other`.
