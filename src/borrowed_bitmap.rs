@@ -1,8 +1,9 @@
 use std::cmp::Ordering::{self, Equal, Greater, Less};
+use std::convert::TryInto;
 use std::io::{Read, Error, ErrorKind};
-use std::{mem, io};
 use std::iter::Map;
 use std::slice::ChunksExact;
+use std::{mem, io};
 
 use byteorder::{ByteOrder, ReadBytesExt, LittleEndian};
 use bytemuck::{bytes_of_mut, pod_collect_to_vec};
@@ -12,7 +13,6 @@ use crate::bitmap::store::Store as OwnedStore;
 
 use self::Store::{Array, Bitmap};
 
-const ARRAY_LIMIT: u64 = 4096;
 const BITMAP_LENGTH: usize = 1024;
 
 const SERIAL_COOKIE: u16 = 12347;
@@ -78,12 +78,13 @@ impl<'a> BorrowedRoaringBitmap<'a> {
             let len = u64::from(description_bytes.read_u16::<LittleEndian>().unwrap()) + 1;
 
             let store = if len <= 4096 {
-                let (left, right) = slice.split_at(len as usize * mem::size_of::<u16>());
+                let (left, right) = slice.split_at(len as usize * U16_SIZE);
                 slice = right;
                 Store::Array(LazyArray::new(left))
             } else {
-                let (left, right) = slice.split_at(1024 * mem::size_of::<u64>() as usize);
+                let (left, right) = slice.split_at(BITMAP_LENGTH * U64_SIZE as usize);
                 slice = right;
+                let left = left.try_into().unwrap();
                 Store::Bitmap(LazyBitmap::new(left))
             };
 
@@ -173,11 +174,11 @@ impl LazyArray<'_> {
 
 #[derive(Clone)]
 pub struct LazyBitmap<'a> {
-    bytes: &'a [u8],
+    bytes: &'a [u8; BITMAP_LENGTH * U64_SIZE],
 }
 
 impl LazyBitmap<'_> {
-    fn new(bytes: &[u8]) -> LazyBitmap {
+    fn new(bytes: &[u8; BITMAP_LENGTH * U64_SIZE]) -> LazyBitmap {
         LazyBitmap { bytes }
     }
 
