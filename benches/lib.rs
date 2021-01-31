@@ -1,6 +1,6 @@
 extern crate roaring;
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId, BatchSize};
 use roaring::RoaringBitmap;
 use roaring::borrowed_bitmap::BorrowedRoaringBitmap;
 use rand::{Rng, SeedableRng};
@@ -370,26 +370,22 @@ fn deserialize_intersect(c: &mut Criterion) {
             bitmap_a.serialize_into(&mut buffer_a).unwrap();
             bitmap_b.serialize_into(&mut buffer_b).unwrap();
 
-            b.iter(|| {
-                let mut bitmap_a = RoaringBitmap::deserialize_from(&buffer_a[..]).unwrap();
+            b.iter_batched(|| bitmap_a.clone(), |mut bitmap_a| {
                 let bitmap_b = RoaringBitmap::deserialize_from(&buffer_b[..]).unwrap();
                 bitmap_a.intersect_with(&bitmap_b)
-            });
+            }, BatchSize::SmallInput);
         });
     group.bench_with_input(BenchmarkId::new("Borrowed", "random 10000"), &(&rna, &rnb),
         |b, (rna, rnb)| {
             let bitmap_a: RoaringBitmap = rna.iter().copied().collect();
             let bitmap_b: RoaringBitmap = rnb.iter().copied().collect();
-            let mut buffer_a = Vec::with_capacity(bitmap_a.serialized_size());
             let mut buffer_b = Vec::with_capacity(bitmap_b.serialized_size());
-            bitmap_a.serialize_into(&mut buffer_a).unwrap();
             bitmap_b.serialize_into(&mut buffer_b).unwrap();
 
-            b.iter(|| {
-                let mut bitmap_a = BorrowedRoaringBitmap::deserialize_from_slice(&buffer_a[..]).unwrap();
+            b.iter_batched(|| bitmap_a.clone(), |mut bitmap_a| {
                 let bitmap_b = BorrowedRoaringBitmap::deserialize_from_slice(&buffer_b[..]).unwrap();
-                bitmap_a.intersect_with(&bitmap_b)
-            });
+                bitmap_a &= &bitmap_b;
+            }, BatchSize::SmallInput);
         });
 }
 
@@ -407,31 +403,25 @@ fn deserialize_union(c: &mut Criterion) {
         |b, (rna, rnb)| {
             let bitmap_a: RoaringBitmap = rna.iter().copied().collect();
             let bitmap_b: RoaringBitmap = rnb.iter().copied().collect();
-            let mut buffer_a = Vec::with_capacity(bitmap_a.serialized_size());
             let mut buffer_b = Vec::with_capacity(bitmap_b.serialized_size());
-            bitmap_a.serialize_into(&mut buffer_a).unwrap();
             bitmap_b.serialize_into(&mut buffer_b).unwrap();
 
-            b.iter(|| {
-                let mut bitmap_a = RoaringBitmap::deserialize_from(&buffer_a[..]).unwrap();
+            b.iter_batched(|| bitmap_a.clone(), |mut bitmap_a| {
                 let bitmap_b = RoaringBitmap::deserialize_from(&buffer_b[..]).unwrap();
                 bitmap_a.union_with(&bitmap_b)
-            });
+            }, BatchSize::SmallInput);
         });
     group.bench_with_input(BenchmarkId::new("Borrowed", "random 10000"), &(&rna, &rnb),
         |b, (rna, rnb)| {
             let bitmap_a: RoaringBitmap = rna.iter().copied().collect();
             let bitmap_b: RoaringBitmap = rnb.iter().copied().collect();
-            let mut buffer_a = Vec::with_capacity(bitmap_a.serialized_size());
             let mut buffer_b = Vec::with_capacity(bitmap_b.serialized_size());
-            bitmap_a.serialize_into(&mut buffer_a).unwrap();
             bitmap_b.serialize_into(&mut buffer_b).unwrap();
 
-            b.iter(|| {
-                let mut bitmap_a = BorrowedRoaringBitmap::deserialize_from_slice(&buffer_a[..]).unwrap();
+            b.iter_batched(|| bitmap_a.clone(), |mut bitmap_a| {
                 let bitmap_b = BorrowedRoaringBitmap::deserialize_from_slice(&buffer_b[..]).unwrap();
-                bitmap_a.union_with(&bitmap_b)
-            });
+                bitmap_a |= &bitmap_b;
+            }, BatchSize::SmallInput);
         });
 }
 
@@ -465,6 +455,6 @@ criterion_group!(
     deserialize_big,
     deserialize_intersect,
     deserialize_union,
-    serialized_size
+    serialized_size,
 );
 criterion_main!(benches);

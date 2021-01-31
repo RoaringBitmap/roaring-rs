@@ -1,7 +1,12 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
+use std::ops::{BitAndAssign, BitOrAssign};
 use std::slice;
 use std::vec;
 use std::{borrow::Borrow, ops::Range};
+
+use crate::borrowed_bitmap::Store as BorrowedStore;
+use crate::borrowed_bitmap::Store::Array as BorrowedArray;
+use crate::borrowed_bitmap::Store::Bitmap as BorrowedBitmap;
 
 const BITMAP_LENGTH: usize = 1024;
 
@@ -571,6 +576,74 @@ fn key(index: u16) -> usize {
 #[inline]
 fn bit(index: u16) -> usize {
     index as usize % 64
+}
+
+impl<'a, 'c> BitAndAssign<&'a BorrowedStore<'c>> for Store {
+    fn bitand_assign(&mut self, rhs: &'a BorrowedStore<'c>) {
+        match (self, rhs) {
+            (&mut Array(ref mut vec1), &BorrowedArray(ref array2)) => {
+                let mut i = 0;
+                vec1.retain(|x| {
+                    i += array2
+                        .iter()
+                        .skip(i)
+                        .position(|y| y >= *x)
+                        .unwrap_or(array2.len());
+                    array2.get(i).map_or(false, |y| *x == y)
+                });
+            }
+            (&mut Bitmap(ref mut bits1), &BorrowedBitmap(ref bits2)) => {
+                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
+                    *index1 &= index2;
+                }
+            }
+            (&mut Array(ref mut vec), store @ &BorrowedBitmap(..)) => {
+                vec.retain(|x| store.contains(*x));
+            }
+            (this @ &mut Bitmap(..), &BorrowedArray(..)) => {
+                let mut new = rhs.to_owned();
+                new.intersect_with(this);
+                *this = new;
+            }
+        }
+    }
+}
+
+impl<'a, 'c> BitOrAssign<&'a BorrowedStore<'c>> for Store {
+    fn bitor_assign(&mut self, rhs: &'a BorrowedStore<'c>) {
+        match (self, rhs) {
+            (&mut Array(ref mut vec1), &BorrowedArray(ref vec2)) => {
+                let mut i1 = 0;
+                let mut iter2 = vec2.iter();
+                'outer: for index2 in &mut iter2 {
+                    while i1 < vec1.len() {
+                        match vec1[i1].cmp(&index2) {
+                            Less => i1 += 1,
+                            Greater => vec1.insert(i1, index2),
+                            Equal => continue 'outer,
+                        }
+                    }
+                    vec1.push(index2);
+                    break;
+                }
+                vec1.extend(iter2);
+            }
+            (ref mut this @ &mut Bitmap(..), &BorrowedArray(ref vec)) => {
+                for index in vec.iter() {
+                    this.insert(index);
+                }
+            }
+            (&mut Bitmap(ref mut bits1), &BorrowedBitmap(ref bits2)) => {
+                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
+                    *index1 |= index2;
+                }
+            }
+            (this @ &mut Array(..), &BorrowedBitmap(..)) => {
+                *this = this.to_bitmap();
+                *this |= rhs;
+            }
+        }
+    }
 }
 
 #[cfg(test)]

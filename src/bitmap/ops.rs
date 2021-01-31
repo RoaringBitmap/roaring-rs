@@ -1,5 +1,6 @@
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
+use crate::borrowed_bitmap::BorrowedRoaringBitmap;
 use crate::{retain_mut, RoaringBitmap};
 
 impl RoaringBitmap {
@@ -215,6 +216,18 @@ impl<'a> BitOrAssign<&'a RoaringBitmap> for RoaringBitmap {
     }
 }
 
+impl<'a, 'c> BitOrAssign<&'a BorrowedRoaringBitmap<'c>> for RoaringBitmap {
+    fn bitor_assign(&mut self, rhs: &'a BorrowedRoaringBitmap<'c>) {
+        for container in &rhs.containers {
+            let key = container.key;
+            match self.containers.binary_search_by_key(&key, |c| c.key) {
+                Err(loc) => self.containers.insert(loc, container.to_owned()),
+                Ok(loc) => self.containers[loc] |= container,
+            }
+        }
+    }
+}
+
 impl BitAnd<RoaringBitmap> for RoaringBitmap {
     type Output = crate::RoaringBitmap;
 
@@ -258,6 +271,20 @@ impl BitAndAssign<RoaringBitmap> for RoaringBitmap {
 impl<'a> BitAndAssign<&'a RoaringBitmap> for RoaringBitmap {
     fn bitand_assign(&mut self, rhs: &'a RoaringBitmap) {
         self.intersect_with(rhs)
+    }
+}
+
+impl<'a, 'c> BitAndAssign<&'a BorrowedRoaringBitmap<'c>> for RoaringBitmap {
+    fn bitand_assign(&mut self, rhs: &'a BorrowedRoaringBitmap<'c>) {
+        retain_mut(&mut self.containers, |cont| {
+            match rhs.containers.binary_search_by_key(&cont.key, |c| c.key) {
+                Ok(loc) => {
+                    *cont &= &rhs.containers[loc];
+                    cont.len != 0
+                }
+                Err(_) => false,
+            }
+        })
     }
 }
 

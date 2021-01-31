@@ -1,7 +1,7 @@
-mod container;
+pub(crate) mod container;
 mod fmt;
-mod store;
 mod util;
+pub(crate) mod store;
 
 // Order of these modules matters as it determines the `impl` blocks order in
 // the docs
