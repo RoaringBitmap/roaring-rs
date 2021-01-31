@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use std::cmp::Ordering::{self, Equal, Greater, Less};
 use std::convert::TryInto;
 use std::io::{Read, Error, ErrorKind};
