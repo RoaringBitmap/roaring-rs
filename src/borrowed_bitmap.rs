@@ -1,6 +1,8 @@
 use std::cmp::Ordering::{self, Equal, Greater, Less};
 use std::io::{Read, Error, ErrorKind};
 use std::{mem, io};
+use std::iter::Map;
+use std::slice::ChunksExact;
 
 use byteorder::{ByteOrder, ReadBytesExt, LittleEndian};
 use bytemuck::{bytes_of_mut, pod_collect_to_vec};
@@ -164,8 +166,7 @@ impl LazyArray<'_> {
         LittleEndian::read_u16(bytes)
     }
 
-    // FIXME more efficient type for skip/nth
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = u16> + 'a {
+    pub fn iter(&self) -> Map<ChunksExact<u8>, fn(&[u8]) -> u16> {
         self.bytes.chunks_exact(U16_SIZE).map(LittleEndian::read_u16)
     }
 }
@@ -185,7 +186,7 @@ impl LazyBitmap<'_> {
         self.bytes.get(base..base + U64_SIZE).map(LittleEndian::read_u64)
     }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = u64> + 'a {
+    pub fn iter(&self) -> Map<ChunksExact<u8>, fn(&[u8]) -> u64> {
         self.bytes.chunks_exact(U64_SIZE).map(LittleEndian::read_u64)
     }
 }
