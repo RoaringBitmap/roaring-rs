@@ -4,9 +4,9 @@ use std::slice;
 use std::vec;
 use std::{borrow::Borrow, ops::Range};
 
-use crate::borrowed_bitmap::Store as BorrowedStore;
-use crate::borrowed_bitmap::Store::Array as BorrowedArray;
-use crate::borrowed_bitmap::Store::Bitmap as BorrowedBitmap;
+use crate::bitmap_ref::Store as StoreRef;
+use crate::bitmap_ref::Store::Array as ArrayRef;
+use crate::bitmap_ref::Store::Bitmap as BitmapRef;
 
 const BITMAP_LENGTH: usize = 1024;
 
@@ -578,10 +578,10 @@ fn bit(index: u16) -> usize {
     index as usize % 64
 }
 
-impl<'a, 'c> BitAndAssign<&'a BorrowedStore<'c>> for Store {
-    fn bitand_assign(&mut self, rhs: &'a BorrowedStore<'c>) {
+impl<'a, 'c> BitAndAssign<&'a StoreRef<'c>> for Store {
+    fn bitand_assign(&mut self, rhs: &'a StoreRef<'c>) {
         match (self, rhs) {
-            (&mut Array(ref mut vec1), &BorrowedArray(ref array2)) => {
+            (&mut Array(ref mut vec1), &ArrayRef(ref array2)) => {
                 let mut i = 0;
                 vec1.retain(|x| {
                     i += array2
@@ -592,15 +592,15 @@ impl<'a, 'c> BitAndAssign<&'a BorrowedStore<'c>> for Store {
                     array2.get(i).map_or(false, |y| *x == y)
                 });
             }
-            (&mut Bitmap(ref mut bits1), &BorrowedBitmap(ref bits2)) => {
+            (&mut Bitmap(ref mut bits1), &BitmapRef(ref bits2)) => {
                 for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
                     *index1 &= index2;
                 }
             }
-            (&mut Array(ref mut vec), store @ &BorrowedBitmap(..)) => {
+            (&mut Array(ref mut vec), store @ &BitmapRef(..)) => {
                 vec.retain(|x| store.contains(*x));
             }
-            (this @ &mut Bitmap(..), &BorrowedArray(..)) => {
+            (this @ &mut Bitmap(..), &ArrayRef(..)) => {
                 let mut new = rhs.to_owned();
                 new.intersect_with(this);
                 *this = new;
@@ -609,10 +609,10 @@ impl<'a, 'c> BitAndAssign<&'a BorrowedStore<'c>> for Store {
     }
 }
 
-impl<'a, 'c> BitOrAssign<&'a BorrowedStore<'c>> for Store {
-    fn bitor_assign(&mut self, rhs: &'a BorrowedStore<'c>) {
+impl<'a, 'c> BitOrAssign<&'a StoreRef<'c>> for Store {
+    fn bitor_assign(&mut self, rhs: &'a StoreRef<'c>) {
         match (self, rhs) {
-            (&mut Array(ref mut vec1), &BorrowedArray(ref vec2)) => {
+            (&mut Array(ref mut vec1), &ArrayRef(ref vec2)) => {
                 let mut i1 = 0;
                 let mut iter2 = vec2.iter();
                 'outer: for index2 in &mut iter2 {
@@ -628,17 +628,17 @@ impl<'a, 'c> BitOrAssign<&'a BorrowedStore<'c>> for Store {
                 }
                 vec1.extend(iter2);
             }
-            (ref mut this @ &mut Bitmap(..), &BorrowedArray(ref vec)) => {
+            (ref mut this @ &mut Bitmap(..), &ArrayRef(ref vec)) => {
                 for index in vec.iter() {
                     this.insert(index);
                 }
             }
-            (&mut Bitmap(ref mut bits1), &BorrowedBitmap(ref bits2)) => {
+            (&mut Bitmap(ref mut bits1), &BitmapRef(ref bits2)) => {
                 for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
                     *index1 |= index2;
                 }
             }
-            (this @ &mut Array(..), &BorrowedBitmap(..)) => {
+            (this @ &mut Array(..), &BitmapRef(..)) => {
                 *this = this.to_bitmap();
                 *this |= rhs;
             }

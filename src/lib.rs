@@ -17,7 +17,7 @@ extern crate byteorder;
 pub mod bitmap;
 
 /// A compressed bitmap that is borrowed on the bytes it has been deserialized from.
-pub mod borrowed_bitmap;
+pub mod bitmap_ref;
 
 /// A compressed bitmap with u64 values.  Implemented as a `BTreeMap` of `RoaringBitmap`s.
 pub mod treemap;

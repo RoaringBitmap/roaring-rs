@@ -39,12 +39,12 @@ fn bit(index: u16) -> usize {
 }
 
 #[derive(Clone)]
-pub struct BorrowedRoaringBitmap<'a> {
+pub struct RoaringBitmapRef<'a> {
     pub containers: Vec<Container<'a>>,
 }
 
-impl<'a> BorrowedRoaringBitmap<'a> {
-    pub fn deserialize_from_slice(mut slice: &[u8]) -> io::Result<BorrowedRoaringBitmap> {
+impl<'a> RoaringBitmapRef<'a> {
+    pub fn deserialize_from_slice(mut slice: &[u8]) -> io::Result<RoaringBitmapRef> {
         let (size, has_offsets) = {
             let cookie = slice.read_u32::<LittleEndian>().unwrap();
             if cookie == SERIAL_COOKIE_NO_RUNCONTAINER {
@@ -93,7 +93,7 @@ impl<'a> BorrowedRoaringBitmap<'a> {
             containers.push(Container { key, len, store });
         }
 
-        Ok(BorrowedRoaringBitmap { containers })
+        Ok(RoaringBitmapRef { containers })
     }
 }
 

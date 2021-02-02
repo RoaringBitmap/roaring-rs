@@ -1,7 +1,7 @@
 use std::{fmt, ops::Range};
 use std::ops::{BitAndAssign, BitOrAssign};
 
-use crate::borrowed_bitmap::Container as BorrowedContainer;
+use crate::bitmap_ref::Container as ContainerRef;
 
 use super::store::{self, Store};
 use super::util;
@@ -178,16 +178,16 @@ impl fmt::Debug for Container {
     }
 }
 
-impl<'a, 'c> BitAndAssign<&'a BorrowedContainer<'c>> for Container {
-    fn bitand_assign(&mut self, rhs: &'a BorrowedContainer<'c>) {
+impl<'a, 'c> BitAndAssign<&'a ContainerRef<'c>> for Container {
+    fn bitand_assign(&mut self, rhs: &'a ContainerRef<'c>) {
         self.store &= &rhs.store;
         self.len = self.store.len();
         self.ensure_correct_store();
     }
 }
 
-impl<'a, 'c> BitOrAssign<&'a BorrowedContainer<'c>> for Container {
-    fn bitor_assign(&mut self, rhs: &'a BorrowedContainer<'c>) {
+impl<'a, 'c> BitOrAssign<&'a ContainerRef<'c>> for Container {
+    fn bitor_assign(&mut self, rhs: &'a ContainerRef<'c>) {
         self.store |= &rhs.store;
         self.len = self.store.len();
         self.ensure_correct_store();

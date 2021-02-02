@@ -2,7 +2,7 @@ extern crate roaring;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId, BatchSize};
 use roaring::RoaringBitmap;
-use roaring::borrowed_bitmap::BorrowedRoaringBitmap;
+use roaring::bitmap_ref::RoaringBitmapRef;
 use rand::{Rng, SeedableRng};
 
 fn create(c: &mut Criterion) {
@@ -304,7 +304,7 @@ fn deserialize(c: &mut Criterion) {
                 bitmap.serialize_into(&mut buffer).unwrap();
 
                 b.iter(|| {
-                    BorrowedRoaringBitmap::deserialize_from_slice(&buffer[..]).unwrap();
+                    RoaringBitmapRef::deserialize_from_slice(&buffer[..]).unwrap();
                 });
             });
     }
@@ -330,7 +330,7 @@ fn deserialize(c: &mut Criterion) {
             bitmap.serialize_into(&mut buffer).unwrap();
 
             b.iter(|| {
-                BorrowedRoaringBitmap::deserialize_from_slice(&buffer[..]).unwrap();
+                RoaringBitmapRef::deserialize_from_slice(&buffer[..]).unwrap();
             });
         });
 }
@@ -347,7 +347,7 @@ fn deserialize_big(c: &mut Criterion) {
         }));
     group.bench_with_input("Borrowed", bytes,
         |b, bytes| b.iter(|| {
-            BorrowedRoaringBitmap::deserialize_from_slice(bytes).unwrap();
+            RoaringBitmapRef::deserialize_from_slice(bytes).unwrap();
         }));
 }
 
@@ -384,7 +384,7 @@ fn deserialize_intersect(c: &mut Criterion) {
                 bitmap_b.serialize_into(&mut buffer_b).unwrap();
 
                 b.iter_batched(|| bitmap_a.clone(), |mut bitmap_a| {
-                    let bitmap_b = BorrowedRoaringBitmap::deserialize_from_slice(&buffer_b[..]).unwrap();
+                    let bitmap_b = RoaringBitmapRef::deserialize_from_slice(&buffer_b[..]).unwrap();
                     bitmap_a &= &bitmap_b;
                 }, BatchSize::SmallInput);
             });
@@ -423,7 +423,7 @@ fn deserialize_union(c: &mut Criterion) {
                 bitmap_b.serialize_into(&mut buffer_b).unwrap();
 
                 b.iter_batched(|| bitmap_a.clone(), |mut bitmap_a| {
-                    let bitmap_b = BorrowedRoaringBitmap::deserialize_from_slice(&buffer_b[..]).unwrap();
+                    let bitmap_b = RoaringBitmapRef::deserialize_from_slice(&buffer_b[..]).unwrap();
                     bitmap_a |= &bitmap_b;
                 }, BatchSize::SmallInput);
             });
