@@ -1,5 +1,5 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::ops::{BitAndAssign, BitOrAssign};
+use std::ops::{SubAssign, BitAndAssign, BitOrAssign};
 use std::slice;
 use std::vec;
 use std::{borrow::Borrow, ops::Range};
@@ -641,6 +641,37 @@ impl<'a, 'c> BitOrAssign<&'a StoreRef<'c>> for Store {
             (this @ &mut Array(..), &BitmapRef(..)) => {
                 *this = this.to_bitmap();
                 *this |= rhs;
+            }
+        }
+    }
+}
+
+impl<'a, 'c> SubAssign<&'a StoreRef<'c>> for Store {
+    fn sub_assign(&mut self, rhs: &'a StoreRef<'c>) {
+        match (self, rhs) {
+            (&mut Array(ref mut vec1), &ArrayRef(ref vec2)) => {
+                let mut i = 0;
+                vec1.retain(|x| {
+                    i += vec2
+                        .iter()
+                        .skip(i)
+                        .position(|y| y >= *x)
+                        .unwrap_or(vec2.len());
+                    vec2.get(i).map_or(true, |y| *x != y)
+                });
+            }
+            (ref mut this @ &mut Bitmap(..), &ArrayRef(ref vec2)) => {
+                for index in vec2.iter() {
+                    this.remove(index);
+                }
+            }
+            (&mut Bitmap(ref mut bits1), &BitmapRef(ref bits2)) => {
+                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
+                    *index1 &= !index2;
+                }
+            }
+            (&mut Array(ref mut vec), store @ &BitmapRef(..)) => {
+                vec.retain(|x| !store.contains(*x));
             }
         }
     }

@@ -1,5 +1,5 @@
 use std::{fmt, ops::Range};
-use std::ops::{BitAndAssign, BitOrAssign};
+use std::ops::{SubAssign, BitAndAssign, BitOrAssign};
 
 use crate::bitmap_ref::Container as ContainerRef;
 
@@ -189,6 +189,14 @@ impl<'a, 'c> BitAndAssign<&'a ContainerRef<'c>> for Container {
 impl<'a, 'c> BitOrAssign<&'a ContainerRef<'c>> for Container {
     fn bitor_assign(&mut self, rhs: &'a ContainerRef<'c>) {
         self.store |= &rhs.store;
+        self.len = self.store.len();
+        self.ensure_correct_store();
+    }
+}
+
+impl<'a, 'c> SubAssign<&'a ContainerRef<'c>> for Container {
+    fn sub_assign(&mut self, rhs: &'a ContainerRef<'c>) {
+        self.store -= &rhs.store;
         self.len = self.store.len();
         self.ensure_correct_store();
     }

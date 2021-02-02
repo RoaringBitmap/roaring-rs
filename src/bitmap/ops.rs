@@ -334,6 +334,20 @@ impl<'a> SubAssign<&'a RoaringBitmap> for RoaringBitmap {
     }
 }
 
+impl<'a, 'c> SubAssign<&'a RoaringBitmapRef<'c>> for RoaringBitmap {
+    fn sub_assign(&mut self, rhs: &'a RoaringBitmapRef<'c>) {
+        retain_mut(&mut self.containers, |cont| {
+            match rhs.containers.binary_search_by_key(&cont.key, |c| c.key) {
+                Ok(loc) => {
+                    *cont -= &rhs.containers[loc];
+                    cont.len != 0
+                }
+                Err(_) => true,
+            }
+        })
+    }
+}
+
 impl BitXor<RoaringBitmap> for RoaringBitmap {
     type Output = crate::RoaringBitmap;
 

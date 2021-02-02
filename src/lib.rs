@@ -23,6 +23,7 @@ pub mod bitmap_ref;
 pub mod treemap;
 
 pub use bitmap::RoaringBitmap;
+pub use bitmap_ref::RoaringBitmapRef;
 pub use treemap::RoaringTreemap;
 
 fn retain_mut<T, F>(vec: &mut Vec<T>, mut f: F)
