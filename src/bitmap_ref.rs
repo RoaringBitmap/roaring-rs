@@ -12,6 +12,7 @@ use bytemuck::{bytes_of_mut, pod_collect_to_vec};
 
 use crate::bitmap::container::Container as OwnedContainer;
 use crate::bitmap::store::Store as OwnedStore;
+use crate::RoaringBitmap;
 
 use self::Store::{Array, Bitmap};
 
@@ -44,6 +45,18 @@ pub struct RoaringBitmapRef<'a> {
 }
 
 impl<'a> RoaringBitmapRef<'a> {
+    pub fn is_empty(&self) -> bool {
+        self.containers.is_empty()
+    }
+
+    pub fn len(&self) -> u64 {
+        self.containers.iter().map(|container| container.len).sum()
+    }
+
+    pub fn to_owned(&self) -> RoaringBitmap {
+        RoaringBitmap { containers: self.containers.iter().map(|c| c.to_owned()).collect() }
+    }
+
     pub fn deserialize_from_slice(mut slice: &[u8]) -> io::Result<RoaringBitmapRef> {
         let (size, has_offsets) = {
             let cookie = slice.read_u32::<LittleEndian>().unwrap();

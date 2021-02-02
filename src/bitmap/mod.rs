@@ -32,5 +32,5 @@ pub use self::iter::Iter;
 /// ```
 #[derive(PartialEq, Clone)]
 pub struct RoaringBitmap {
-    containers: Vec<container::Container>,
+    pub(crate) containers: Vec<container::Container>,
 }
