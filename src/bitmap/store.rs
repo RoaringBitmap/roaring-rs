@@ -289,7 +289,8 @@ impl Store {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
                 fn merge_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
-                    let mut out = Vec::with_capacity(arr1.len().max(arr2.len()));
+                    let len = (arr1.len() + arr2.len()).min(4096);
+                    let mut out = Vec::with_capacity(len);
 
                     // Traverse both arrays
                     let mut i = 0;
