@@ -1,6 +1,7 @@
+use retain_mut::RetainMut;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
-use crate::{retain_mut, RoaringBitmap};
+use crate::RoaringBitmap;
 
 impl RoaringBitmap {
     /// Unions in-place with the specified other bitmap.
@@ -72,7 +73,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb1, rb3);
     /// ```
     pub fn intersect_with(&mut self, other: &RoaringBitmap) {
-        retain_mut(&mut self.containers, |cont| {
+        self.containers.retain_mut(|cont| {
             match other.containers.binary_search_by_key(&cont.key, |c| c.key) {
                 Ok(loc) => {
                     cont.intersect_with(&other.containers[loc]);
@@ -113,7 +114,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb1, rb3);
     /// ```
     pub fn difference_with(&mut self, other: &RoaringBitmap) {
-        retain_mut(&mut self.containers, |cont| {
+        self.containers.retain_mut(|cont| {
             match other.containers.binary_search_by_key(&cont.key, |c| c.key) {
                 Ok(loc) => {
                     cont.difference_with(&other.containers[loc]);
