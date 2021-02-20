@@ -296,17 +296,19 @@ impl Store {
                     let mut i = 0;
                     let mut j = 0;
                     while i < arr1.len() && j < arr2.len() {
-                        match arr1[i].cmp(&arr2[j]) {
+                        let a = unsafe { arr1.get_unchecked(i) };
+                        let b = unsafe { arr2.get_unchecked(j) };
+                        match a.cmp(&b) {
                             Less => {
-                                out.push(arr1[i]);
+                                out.push(*a);
                                 i += 1
                             }
                             Greater => {
-                                out.push(arr2[j]);
+                                out.push(*b);
                                 j += 1
                             }
                             Equal => {
-                                out.push(arr1[i]);
+                                out.push(*a);
                                 i += 1;
                                 j += 1;
                             }
