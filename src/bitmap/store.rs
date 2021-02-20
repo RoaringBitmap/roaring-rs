@@ -288,20 +288,39 @@ impl Store {
     pub fn union_with(&mut self, other: &Self) {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
-                let mut i1 = 0;
-                let mut iter2 = vec2.iter();
-                'outer: for &index2 in &mut iter2 {
-                    while i1 < vec1.len() {
-                        match vec1[i1].cmp(&index2) {
-                            Less => i1 += 1,
-                            Greater => vec1.insert(i1, index2),
-                            Equal => continue 'outer,
+                fn merge_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
+                    let mut out = Vec::with_capacity(arr1.len().max(arr2.len()));
+
+                    // Traverse both arrays
+                    let mut i = 0;
+                    let mut j = 0;
+                    while i < arr1.len() && j < arr2.len() {
+                        match arr1[i].cmp(&arr2[j]) {
+                            Less => {
+                                out.push(arr1[i]);
+                                i += 1
+                            }
+                            Greater => {
+                                out.push(arr2[j]);
+                                j += 1
+                            }
+                            Equal => {
+                                out.push(arr1[i]);
+                                i += 1;
+                                j += 1;
+                            }
                         }
                     }
-                    vec1.push(index2);
-                    break;
+
+                    // Store remaining elements of the arrays
+                    out.extend_from_slice(&arr1[i..]);
+                    out.extend_from_slice(&arr2[j..]);
+
+                    out
                 }
-                vec1.extend(iter2);
+
+                let this = std::mem::take(vec1);
+                *vec1 = merge_arrays(&this, &vec2);
             }
             (ref mut this @ &mut Bitmap(..), &Array(ref vec)) => {
                 for &index in vec {
