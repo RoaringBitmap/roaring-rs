@@ -1,3 +1,4 @@
+use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 
@@ -154,16 +155,14 @@ impl RoaringBitmap {
             let len = u64::from(description_bytes.read_u16::<LittleEndian>()?) + 1;
 
             let store = if len <= 4096 {
-                let mut values = Vec::with_capacity(len as usize);
-                for _ in 0..len {
-                    values.push(reader.read_u16::<LittleEndian>()?);
-                }
+                let mut values = vec![0; len as usize];
+                reader.read_exact(cast_slice_mut(&mut values))?;
+                values.iter_mut().for_each(|n| *n = u16::from_le(*n));
                 Store::Array(values)
             } else {
                 let mut values = Box::new([0; 1024]);
-                for value in values.iter_mut() {
-                    *value = reader.read_u64::<LittleEndian>()?;
-                }
+                reader.read_exact(cast_slice_mut(&mut values[..]))?;
+                values.iter_mut().for_each(|n| *n = u64::from_le(*n));
                 Store::Bitmap(values)
             };
 

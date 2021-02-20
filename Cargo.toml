@@ -18,6 +18,7 @@ license = "MIT/Apache-2.0"
 travis-ci = { repository = "Nemo157/roaring-rs" }
 
 [dependencies]
+bytemuck = "1.5.1"
 byteorder = "1.0"
 
 [dev-dependencies]
