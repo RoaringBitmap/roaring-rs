@@ -206,7 +206,13 @@ impl<'a, 'b> BitOr<&'a RoaringBitmap> for &'b RoaringBitmap {
 
 impl BitOrAssign<RoaringBitmap> for RoaringBitmap {
     fn bitor_assign(&mut self, rhs: RoaringBitmap) {
-        self.union_with(&rhs)
+        for container in rhs.containers {
+            let key = container.key;
+            match self.containers.binary_search_by_key(&key, |c| c.key) {
+                Err(loc) => self.containers.insert(loc, container),
+                Ok(loc) => self.containers[loc].union_with(&container),
+            }
+        }
     }
 }
 
