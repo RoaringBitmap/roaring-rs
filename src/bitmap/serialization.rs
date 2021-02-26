@@ -1,6 +1,6 @@
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use std::io;
+use std::{io, slice};
 
 use super::container::Container;
 use super::store::Store;
@@ -155,8 +155,13 @@ impl RoaringBitmap {
             let len = u64::from(description_bytes.read_u16::<LittleEndian>()?) + 1;
 
             let store = if len <= 4096 {
-                let mut values = vec![0; len as usize];
-                reader.read_exact(cast_slice_mut(&mut values))?;
+                let mut values = Vec::with_capacity(len as usize);
+                // It is safe to construct a slice with unitialized bytes because
+                // we don't read them until the read_exact succeeds.
+                let slice = unsafe { slice::from_raw_parts_mut(values.as_mut_ptr(), len as usize) };
+                reader.read_exact(cast_slice_mut(slice))?;
+                // It is safe as we are sure that read_exact succeeded to read enough bytes.
+                unsafe { values.set_len(len as usize) };
                 values.iter_mut().for_each(|n| *n = u16::from_le(*n));
                 Store::Array(values)
             } else {
