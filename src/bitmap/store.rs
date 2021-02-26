@@ -1,7 +1,8 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::slice;
-use std::vec;
 use std::{borrow::Borrow, ops::Range};
+use std::{slice, vec};
+
+use crate::bitmap::util::{intersect_uint16, intersect_skewed_u16};
 
 const BITMAP_LENGTH: usize = 1024;
 
@@ -345,15 +346,14 @@ impl Store {
     pub fn intersect_with(&mut self, other: &Self) {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
-                let mut i = 0;
-                vec1.retain(|x| {
-                    i += vec2
-                        .iter()
-                        .skip(i)
-                        .position(|y| y >= x)
-                        .unwrap_or(vec2.len());
-                    vec2.get(i).map_or(false, |y| x == y)
-                });
+                let threshold = 64; // subject to tuning
+                *vec1 = if vec1.len() * threshold < vec2.len() {
+                    intersect_skewed_u16(&vec1, &vec2)
+                } else if vec2.len() * threshold < vec1.len() {
+                    intersect_skewed_u16(&vec2, &vec1)
+                } else {
+                    intersect_uint16(&vec1, &vec2)
+                };
             }
             (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
                 for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
