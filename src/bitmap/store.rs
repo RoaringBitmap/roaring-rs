@@ -351,6 +351,8 @@ impl Store {
                     intersect_skewed_u16(&vec1, &vec2)
                 } else if vec2.len() * threshold < vec1.len() {
                     intersect_skewed_u16(&vec2, &vec1)
+                } else if cfg!(target_arch = "x86_64") {
+                    unsafe { crate::bitmap::util::intersect_vector16(&vec1, &vec2) }
                 } else {
                     intersect_uint16(&vec1, &vec2)
                 };
