@@ -1,8 +1,9 @@
+use std::ops::{Bound, RangeBounds};
+
 use crate::RoaringBitmap;
 
 use super::container::Container;
 use super::util;
-use std::ops::Range;
 
 impl RoaringBitmap {
     /// Creates an empty `RoaringBitmap`.
@@ -43,15 +44,8 @@ impl RoaringBitmap {
         container.insert(index)
     }
 
-    /// Inserts a range of values from the set specific as [start..end). Returns
-    /// the number of inserted values.
-    ///
-    /// Note that due to the exclusive end this functions take indexes as u64
-    /// but you still can't index past 2**32 (u32::MAX + 1).
-    ///
-    /// # Safety
-    ///
-    /// This function panics if the range upper bound exceeds `u32::MAX`.
+    /// Inserts a range of values from the set.
+    /// Returns the number of inserted values.
     ///
     /// # Examples
     ///
@@ -64,17 +58,31 @@ impl RoaringBitmap {
     /// assert!(rb.contains(3));
     /// assert!(!rb.contains(4));
     /// ```
-    pub fn insert_range(&mut self, range: Range<u64>) -> u64 {
-        assert!(
-            range.end <= u64::from(u32::max_value()) + 1,
-            "can't index past 2**32"
-        );
-        if range.is_empty() {
+    pub fn insert_range<R: RangeBounds<u32>>(&mut self, range: R) -> u64 {
+        let start = match range.start_bound() {
+            Bound::Included(value) => *value,
+            Bound::Excluded(value) => match value.checked_add(1) {
+                Some(value) => value,
+                None => return 0,
+            },
+            Bound::Unbounded => 0,
+        };
+
+        let end = match range.end_bound() {
+            Bound::Included(value) => match value.checked_add(1) {
+                Some(value) => value,
+                None => return 0,
+            },
+            Bound::Excluded(value) => *value,
+            Bound::Unbounded => u32::max_value(),
+        };
+
+        if end.saturating_sub(start) == 0 {
             return 0;
         }
 
-        let (start_container_key, start_index) = util::split(range.start as u32);
-        let (end_container_key, end_index) = util::split((range.end) as u32);
+        let (start_container_key, start_index) = util::split(start);
+        let (end_container_key, end_index) = util::split(end);
 
         // Find the container index for start_container_key
         let start_i = match self
@@ -129,7 +137,7 @@ impl RoaringBitmap {
         let c = match self.containers.get_mut(end_i) {
             Some(c) => c,
             None => {
-                let (key, _) = util::split(range.start as u32);
+                let (key, _) = util::split(start);
                 self.containers.insert(end_i, Container::new(key));
                 &mut self.containers[end_i]
             }
@@ -206,11 +214,9 @@ impl RoaringBitmap {
             _ => false,
         }
     }
-    /// Removes a range of values from the set specific as [start..end).
+
+    /// Removes a range of values from the set.
     /// Returns the number of removed values.
-    ///
-    /// Note that due to the exclusive end this functions take indexes as u64
-    /// but you still can't index past 2**32 (u32::MAX + 1).
     ///
     /// # Examples
     ///
@@ -222,17 +228,31 @@ impl RoaringBitmap {
     /// rb.insert(3);
     /// assert_eq!(rb.remove_range(2..4), 2);
     /// ```
-    pub fn remove_range(&mut self, range: Range<u64>) -> u64 {
-        assert!(
-            range.end <= u64::from(u32::max_value()) + 1,
-            "can't index past 2**32"
-        );
-        if range.is_empty() {
+    pub fn remove_range<R: RangeBounds<u32>>(&mut self, range: R) -> u64 {
+        let start = match range.start_bound() {
+            Bound::Included(value) => *value,
+            Bound::Excluded(value) => match value.checked_add(1) {
+                Some(value) => value,
+                None => return 0,
+            },
+            Bound::Unbounded => 0,
+        };
+
+        let end = match range.end_bound() {
+            Bound::Included(value) => match value.checked_add(1) {
+                Some(value) => value,
+                None => return 0,
+            },
+            Bound::Excluded(value) => *value,
+            Bound::Unbounded => u32::max_value(),
+        };
+
+        if end.saturating_sub(start) == 0 {
             return 0;
         }
         // inclusive bounds for start and end
-        let (start_hi, start_lo) = util::split(range.start as u32);
-        let (end_hi, end_lo) = util::split((range.end - 1) as u32);
+        let (start_hi, start_lo) = util::split(start);
+        let (end_hi, end_lo) = util::split(end - 1);
         let mut index = 0;
         let mut result = 0;
         while index < self.containers.len() {
@@ -391,19 +411,20 @@ impl Default for RoaringBitmap {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::ops::Range;
+
     use quickcheck_macros::quickcheck;
+
+    use super::*;
 
     #[quickcheck]
     fn insert_range(r: Range<u32>, checks: Vec<u32>) {
-        let r: Range<u64> = u64::from(r.start)..u64::from(r.end);
-
         let mut b = RoaringBitmap::new();
         let inserted = b.insert_range(r.clone());
         if r.end > r.start {
-            assert_eq!(inserted, r.end - r.start);
+            assert_eq!(inserted as u32, r.end - r.start);
         } else {
-            assert_eq!(inserted, 0);
+            assert_eq!(inserted as u32, 0);
         }
 
         // Assert all values in the range are present
@@ -414,7 +435,7 @@ mod tests {
         // Run the check values looking for any false positives
         for i in checks {
             let bitmap_has = b.contains(i);
-            let range_has = r.contains(&u64::from(i));
+            let range_has = r.contains(&i);
             assert!(
                 bitmap_has == range_has,
                 format!(

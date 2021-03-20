@@ -1,10 +1,10 @@
+use std::collections::btree_map::{BTreeMap, Entry};
+use std::ops::{Range, RangeInclusive};
+
 use crate::RoaringBitmap;
 use crate::RoaringTreemap;
 
 use super::util;
-use std::collections::btree_map::Entry;
-use std::collections::BTreeMap;
-use std::ops::Range;
 
 impl RoaringTreemap {
     /// Creates an empty `RoaringTreemap`.
@@ -96,11 +96,8 @@ impl RoaringTreemap {
         }
     }
 
-    /// Removes a range of values from the set specific as [start..end).
+    /// Removes a range of values from the set.
     /// Returns the number of removed values.
-    ///
-    /// Note that due to the exclusive end you can't remove the item at the
-    /// last index (u64::MAX) using this function!
     ///
     /// # Examples
     ///
@@ -123,21 +120,19 @@ impl RoaringTreemap {
         let (end_hi, end_lo) = util::split(range.end - 1);
         for (&key, rb) in &mut self.map {
             if key >= start_hi && key <= end_hi {
-                let a = if key == start_hi {
-                    u64::from(start_lo)
+                let start = if key == start_hi { start_lo } else { 0 };
+                let end = if key == end_hi {
+                    end_lo
                 } else {
-                    0
+                    u32::max_value()
                 };
-                let b = if key == end_hi {
-                    u64::from(end_lo) + 1 // make it exclusive
-                } else {
-                    u64::from(u32::max_value()) + 1
-                };
-                if a == 0 && b == u64::from(u32::max_value()) + 1 {
+                let range = RangeInclusive::new(start, end);
+
+                if key != start_hi && key != end_lo {
                     removed += rb.len();
                     keys_to_remove.push(key);
                 } else {
-                    removed += rb.remove_range(a..b);
+                    removed += rb.remove_range(range);
                     if rb.is_empty() {
                         keys_to_remove.push(key);
                     }
