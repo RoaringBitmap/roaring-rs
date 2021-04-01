@@ -429,7 +429,7 @@ mod tests {
 
         // Assert all values in the range are present
         for i in r.clone() {
-            assert!(b.contains(i as u32), format!("does not contain {}", i));
+            assert!(b.contains(i as u32), "does not contain {}", i);
         }
 
         // Run the check values looking for any false positives
@@ -438,10 +438,8 @@ mod tests {
             let range_has = r.contains(&i);
             assert!(
                 bitmap_has == range_has,
-                format!(
-                    "value {} in bitmap={} and range={}",
-                    i, bitmap_has, range_has
-                )
+                "value {} in bitmap={} and range={}",
+                i, bitmap_has, range_has,
             );
         }
     }
@@ -465,5 +463,38 @@ mod tests {
 
         let inserted = b.insert_range(1..20_000);
         assert_eq!(inserted, 0);
+    }
+
+    #[test]
+    fn test_insert_max_u32() {
+        let mut b = RoaringBitmap::new();
+        let inserted = b.insert(u32::MAX);
+         // We are allowed to add u32::MAX
+        assert!(inserted);
+    }
+
+    #[test]
+    fn test_insert_range_zero_inclusive() {
+        let mut b = RoaringBitmap::new();
+        let inserted = b.insert_range(0..=0);
+        // `insert_range(value..=value)` appears equivalent to `insert(value)`
+        assert_eq!(inserted, 1);
+        assert!(b.contains(0), "does not contain {}", 0);
+    }
+
+    #[test]
+    fn test_insert_range_max_u32_inclusive() {
+        let mut b = RoaringBitmap::new();
+        let inserted = b.insert_range(u32::MAX..=u32::MAX);
+        // But not equivalent for u32::MAX
+        assert_eq!(inserted, 1); // Fails - left: 0, right: 1
+        assert!(b.contains(u32::MAX), "does not contain {}", u32::MAX);
+    }
+
+    #[test]
+    fn test_insert_all_u32() {
+        let mut b = RoaringBitmap::new();
+        let inserted = b.insert_range(0..u32::MAX); // Largest possible range seemingly allowed
+        assert_eq!(inserted, u32::MAX as u64); // Still not bigger than u32::MAX
     }
 }
