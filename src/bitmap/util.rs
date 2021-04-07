@@ -1,8 +1,12 @@
+/// Returns the container key and the index
+/// in this container for a given integer.
 #[inline]
 pub fn split(value: u32) -> (u16, u16) {
     ((value >> 16) as u16, value as u16)
 }
 
+/// Returns the original integer from the container
+/// key and the index of it in the container.
 #[inline]
 pub fn join(high: u16, low: u16) -> u32 {
     (u32::from(high) << 16) + u32::from(low)

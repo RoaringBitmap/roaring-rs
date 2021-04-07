@@ -1,8 +1,9 @@
+use std::ops::{Bound, RangeBounds};
+
 use crate::RoaringBitmap;
 
 use super::container::Container;
 use super::util;
-use std::ops::Range;
 
 impl RoaringBitmap {
     /// Creates an empty `RoaringBitmap`.
@@ -43,15 +44,8 @@ impl RoaringBitmap {
         container.insert(index)
     }
 
-    /// Inserts a range of values from the set specific as [start..end). Returns
-    /// the number of inserted values.
-    ///
-    /// Note that due to the exclusive end this functions take indexes as u64
-    /// but you still can't index past 2**32 (u32::MAX + 1).
-    ///
-    /// # Safety
-    ///
-    /// This function panics if the range upper bound exceeds `u32::MAX`.
+    /// Inserts a range of values from the set.
+    /// Returns the number of inserted values.
     ///
     /// # Examples
     ///
@@ -64,79 +58,118 @@ impl RoaringBitmap {
     /// assert!(rb.contains(3));
     /// assert!(!rb.contains(4));
     /// ```
-    pub fn insert_range(&mut self, range: Range<u64>) -> u64 {
-        assert!(
-            range.end <= u64::from(u32::max_value()) + 1,
-            "can't index past 2**32"
-        );
-        if range.is_empty() {
-            return 0;
-        }
+    pub fn insert_range<R: RangeBounds<u32>>(&mut self, range: R) -> u64 {
+        use Bound::{Included, Excluded, Unbounded};
+        use util::split;
 
-        let (start_container_key, start_index) = util::split(range.start as u32);
-        let (end_container_key, end_index) = util::split((range.end) as u32);
-
-        // Find the container index for start_container_key
-        let start_i = match self
-            .containers
-            .binary_search_by_key(&start_container_key, |c| c.key)
-        {
-            Ok(loc) => loc,
-            Err(loc) => {
-                self.containers
-                    .insert(loc, Container::new(start_container_key));
-                loc
-            }
+        let range = match (range.start_bound(), range.end_bound()) {
+            (Included(start), Included(end)) => todo!(),
+            (Included(start), Excluded(end)) => todo!(),
+            (Included(start), Unbounded)     => todo!(),
+            (Excluded(start), Included(end)) => todo!(),
+            (Excluded(start), Excluded(end)) => todo!(),
+            (Excluded(start), Unbounded)     => todo!(),
+            (Unbounded,       Included(end)) => todo!(),
+            (Unbounded,       Excluded(end)) => todo!(),
+            (Unbounded,       Unbounded)     => split(0)..=split(u32::max_value()),
         };
 
-        // If the end range value is in the same container, just call into
-        // the one container.
-        if start_container_key == end_container_key {
-            return self.containers[start_i].insert_range(start_index..end_index);
-        }
+        // let start = match range.start_bound() {
+        //     Bound::Included(value) => util::split(*value),
+        //     Bound::Excluded(value) => util::split(*value),
+        //     Bound::Unbounded => util::split(0),
+        // };
 
-        // For the first container, insert start_index..u16::MAX, with
-        // subsequent containers inserting 0..MAX.
-        //
-        // The last container (end_container_key) is handled explicitly outside
-        // the loop.
-        let mut low = start_index;
-        let mut inserted = 0;
+        // let end = match range.end_bound() {
+        //     Bound::Included(value) => util::split(*value),
+        //     Bound::Excluded(value) => util::split(*value),
+        //     Bound::Unbounded => util::split(u32::max_value()),
+        // };
 
-        // Walk through the containers until the container for end_container_key
-        let end_i = usize::from(end_container_key - start_container_key);
-        for i in start_i..end_i {
-            // Fetch (or upsert) the container for i
-            let c = match self.containers.get_mut(i) {
-                Some(c) => c,
-                None => {
-                    // For each i, the container key is start_container + i in
-                    // the upper u8 of the u16.
-                    let key = start_container_key + ((1 << 8) * i) as u16;
-                    self.containers.insert(i, Container::new(key));
-                    &mut self.containers[i]
-                }
-            };
+        // dbg!(start, end);
 
-            // Insert the range subset for this container
-            inserted += c.insert_range(low..u16::MAX);
+        // ...
 
-            // After the first container, always fill the containers.
-            low = 0;
-        }
+        todo!()
 
-        // Handle the last container
-        let c = match self.containers.get_mut(end_i) {
-            Some(c) => c,
-            None => {
-                let (key, _) = util::split(range.start as u32);
-                self.containers.insert(end_i, Container::new(key));
-                &mut self.containers[end_i]
-            }
-        };
-        c.insert_range(0..end_index);
+        // let (start_container_key, start_index) = match range.start_bound() {
+        //     Bound::Included(value) => util::split(*value),
+        //     Bound::Excluded(value) if *value == u32::max_value() => return 0,
+        //     Bound::Excluded(value) => util::split(value + 1),
+        //     Bound::Unbounded => util::split(0),
+        // };
 
-        inserted
+        // let (end_container_key, end_index) = match range.end_bound() {
+        //     Bound::Included(value) => util::split(*value),
+        //     Bound::Excluded(value) if *value == 0 => return 0,
+        //     Bound::Excluded(value) => util::split(value - 1),
+        //     Bound::Unbounded => util::split(u32::max_value()),
+        // };
+
+        // dbg!(range.start_bound(), range.end_bound());
+        // dbg!(start_container_key, start_index, end_container_key, end_index);
+
+        // // Find the container index for start_container_key
+        // let start_i = match self
+        //     .containers
+        //     .binary_search_by_key(&start_container_key, |c| c.key)
+        // {
+        //     Ok(loc) => loc,
+        //     Err(loc) => {
+        //         self.containers
+        //             .insert(loc, Container::new(start_container_key));
+        //         loc
+        //     }
+        // };
+
+        // // If the end range value is in the same container, just call into
+        // // the one container.
+        // if start_container_key == end_container_key {
+        //     dbg!(start_container_key, end_container_key);
+        //     return self.containers[start_i].insert_range(start_index..end_index);
+        // }
+
+        // // For the first container, insert start_index..u16::MAX, with
+        // // subsequent containers inserting 0..MAX.
+        // //
+        // // The last container (end_container_key) is handled explicitly outside
+        // // the loop.
+        // let mut low = start_index;
+        // let mut inserted = 0;
+
+        // // Walk through the containers until the container for end_container_key
+        // let end_i = usize::from(end_container_key - start_container_key);
+        // for i in start_i..end_i {
+        //     // Fetch (or upsert) the container for i
+        //     let c = match self.containers.get_mut(i) {
+        //         Some(c) => c,
+        //         None => {
+        //             // For each i, the container key is start_container + i in
+        //             // the upper u8 of the u16.
+        //             let key = start_container_key + ((1 << 8) * i) as u16;
+        //             self.containers.insert(i, Container::new(key));
+        //             &mut self.containers[i]
+        //         }
+        //     };
+
+        //     // Insert the range subset for this container
+        //     inserted += c.insert_range(low..u16::MAX);
+
+        //     // After the first container, always fill the containers.
+        //     low = 0;
+        // }
+
+        // // Handle the last container
+        // let c = match self.containers.get_mut(end_i) {
+        //     Some(c) => c,
+        //     None => {
+        //         self.containers.insert(end_i, Container::new(start_container_key));
+        //         &mut self.containers[end_i]
+        //     }
+        // };
+        // c.insert_range(0..end_index);
+
+        // inserted
     }
 
     /// Adds a value to the set.
@@ -206,11 +239,9 @@ impl RoaringBitmap {
             _ => false,
         }
     }
-    /// Removes a range of values from the set specific as [start..end).
+
+    /// Removes a range of values from the set.
     /// Returns the number of removed values.
-    ///
-    /// Note that due to the exclusive end this functions take indexes as u64
-    /// but you still can't index past 2**32 (u32::MAX + 1).
     ///
     /// # Examples
     ///
@@ -222,17 +253,31 @@ impl RoaringBitmap {
     /// rb.insert(3);
     /// assert_eq!(rb.remove_range(2..4), 2);
     /// ```
-    pub fn remove_range(&mut self, range: Range<u64>) -> u64 {
-        assert!(
-            range.end <= u64::from(u32::max_value()) + 1,
-            "can't index past 2**32"
-        );
-        if range.is_empty() {
+    pub fn remove_range<R: RangeBounds<u32>>(&mut self, range: R) -> u64 {
+        let start = match range.start_bound() {
+            Bound::Included(value) => *value,
+            Bound::Excluded(value) => match value.checked_add(1) {
+                Some(value) => value,
+                None => return 0,
+            },
+            Bound::Unbounded => 0,
+        };
+
+        let end = match range.end_bound() {
+            Bound::Included(value) => match value.checked_add(1) {
+                Some(value) => value,
+                None => return 0,
+            },
+            Bound::Excluded(value) => *value,
+            Bound::Unbounded => u32::max_value(),
+        };
+
+        if end.saturating_sub(start) == 0 {
             return 0;
         }
         // inclusive bounds for start and end
-        let (start_hi, start_lo) = util::split(range.start as u32);
-        let (end_hi, end_lo) = util::split((range.end - 1) as u32);
+        let (start_hi, start_lo) = util::split(start);
+        let (end_hi, end_lo) = util::split(end - 1);
         let mut index = 0;
         let mut result = 0;
         while index < self.containers.len() {
@@ -391,36 +436,35 @@ impl Default for RoaringBitmap {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::ops::Range;
+
     use quickcheck_macros::quickcheck;
 
-    #[quickcheck]
-    fn insert_range(r: Range<u32>, checks: Vec<u32>) {
-        let r: Range<u64> = u64::from(r.start)..u64::from(r.end);
+    use super::*;
 
+    #[quickcheck]
+    fn qc_insert_range(r: Range<u32>, checks: Vec<u32>) {
         let mut b = RoaringBitmap::new();
         let inserted = b.insert_range(r.clone());
         if r.end > r.start {
-            assert_eq!(inserted, r.end - r.start);
+            assert_eq!(inserted as u32, r.end - r.start);
         } else {
-            assert_eq!(inserted, 0);
+            assert_eq!(inserted as u32, 0);
         }
 
         // Assert all values in the range are present
         for i in r.clone() {
-            assert!(b.contains(i as u32), format!("does not contain {}", i));
+            assert!(b.contains(i as u32), "does not contain {}", i);
         }
 
         // Run the check values looking for any false positives
         for i in checks {
             let bitmap_has = b.contains(i);
-            let range_has = r.contains(&u64::from(i));
+            let range_has = r.contains(&i);
             assert!(
                 bitmap_has == range_has,
-                format!(
-                    "value {} in bitmap={} and range={}",
-                    i, bitmap_has, range_has
-                )
+                "value {} in bitmap={} and range={}",
+                i, bitmap_has, range_has,
             );
         }
     }
@@ -444,5 +488,38 @@ mod tests {
 
         let inserted = b.insert_range(1..20_000);
         assert_eq!(inserted, 0);
+    }
+
+    #[test]
+    fn test_insert_max_u32() {
+        let mut b = RoaringBitmap::new();
+        let inserted = b.insert(u32::MAX);
+         // We are allowed to add u32::MAX
+        assert!(inserted);
+    }
+
+    #[test]
+    fn test_insert_range_zero_inclusive() {
+        let mut b = RoaringBitmap::new();
+        let inserted = b.insert_range(0..=0);
+        // `insert_range(value..=value)` appears equivalent to `insert(value)`
+        assert_eq!(inserted, 1);
+        assert!(b.contains(0), "does not contain {}", 0);
+    }
+
+    #[test]
+    fn test_insert_range_max_u32_inclusive() {
+        let mut b = RoaringBitmap::new();
+        let inserted = b.insert_range(u32::MAX..=u32::MAX);
+        // But not equivalent for u32::MAX
+        assert_eq!(inserted, 1); // Fails - left: 0, right: 1
+        assert!(b.contains(u32::MAX), "does not contain {}", u32::MAX);
+    }
+
+    #[test]
+    fn test_insert_all_u32() {
+        let mut b = RoaringBitmap::new();
+        let inserted = b.insert_range(0..u32::MAX); // Largest possible range seemingly allowed
+        assert_eq!(inserted, u32::MAX as u64); // Still not bigger than u32::MAX
     }
 }
