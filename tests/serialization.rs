@@ -17,13 +17,13 @@ fn serialize_and_deserialize(bitmap: &RoaringBitmap) -> RoaringBitmap {
     let mut buffer = vec![];
     bitmap.serialize_into(&mut buffer).unwrap();
     assert_eq!(buffer.len(), bitmap.serialized_size());
-    RoaringBitmap::deserialize_from(&mut &buffer[..]).unwrap()
+    RoaringBitmap::deserialize_from(&buffer[..]).unwrap()
 }
 
 #[test]
 fn test_deserialize_from_provided_data() {
     assert_eq!(
-        RoaringBitmap::deserialize_from(&mut &BITMAP_WITHOUT_RUNS[..]).unwrap(),
+        RoaringBitmap::deserialize_from(BITMAP_WITHOUT_RUNS).unwrap(),
         test_data_bitmap()
     );
 }
@@ -82,7 +82,7 @@ fn test_bitmap_high16bits() {
     let mut buffer = vec![];
     bitmap.serialize_into(&mut buffer).unwrap();
 
-    let new = RoaringBitmap::deserialize_from(&mut &buffer[..]);
+    let new = RoaringBitmap::deserialize_from(&buffer[..]);
     assert_eq!(true, new.is_ok());
     assert_eq!(bitmap, new.unwrap());
 }

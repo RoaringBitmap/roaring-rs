@@ -408,7 +408,7 @@ mod tests {
 
         // Assert all values in the range are present
         for i in r.clone() {
-            assert!(b.contains(i as u32), format!("does not contain {}", i));
+            assert!(b.contains(i as u32), "does not contain {}", i);
         }
 
         // Run the check values looking for any false positives
@@ -417,10 +417,10 @@ mod tests {
             let range_has = r.contains(&u64::from(i));
             assert!(
                 bitmap_has == range_has,
-                format!(
-                    "value {} in bitmap={} and range={}",
-                    i, bitmap_has, range_has
-                )
+                "value {} in bitmap={} and range={}",
+                i,
+                bitmap_has,
+                range_has
             );
         }
     }

@@ -13,7 +13,7 @@ where
 
     assert_eq!(buffer.len(), rb.serialized_size());
 
-    let new_rb = RoaringTreemap::deserialize_from(&mut &buffer[..]).unwrap();
+    let new_rb = RoaringTreemap::deserialize_from(&buffer[..]).unwrap();
 
     assert_eq!(rb, new_rb);
 }
