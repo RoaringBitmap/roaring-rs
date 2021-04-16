@@ -15,7 +15,7 @@ impl RoaringTreemap {
     /// let rb1: RoaringTreemap = (1..4).collect();
     /// let mut bytes = Vec::with_capacity(rb1.serialized_size());
     /// rb1.serialize_into(&mut bytes).unwrap();
-    /// let rb2 = RoaringTreemap::deserialize_from(&mut &bytes[..]).unwrap();
+    /// let rb2 = RoaringTreemap::deserialize_from(&bytes[..]).unwrap();
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
@@ -36,7 +36,7 @@ impl RoaringTreemap {
     /// let rb1: RoaringTreemap = (1..4).collect();
     /// let mut bytes = vec![];
     /// rb1.serialize_into(&mut bytes).unwrap();
-    /// let rb2 = RoaringTreemap::deserialize_from(&mut &bytes[..]).unwrap();
+    /// let rb2 = RoaringTreemap::deserialize_from(&bytes[..]).unwrap();
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
@@ -62,7 +62,7 @@ impl RoaringTreemap {
     /// let rb1: RoaringTreemap = (1..4).collect();
     /// let mut bytes = vec![];
     /// rb1.serialize_into(&mut bytes).unwrap();
-    /// let rb2 = RoaringTreemap::deserialize_from(&mut &bytes[..]).unwrap();
+    /// let rb2 = RoaringTreemap::deserialize_from(&bytes[..]).unwrap();
     ///
     /// assert_eq!(rb1, rb2);
     /// ```

@@ -23,7 +23,7 @@ impl RoaringBitmap {
     /// let rb1: RoaringBitmap = (1..4).collect();
     /// let mut bytes = Vec::with_capacity(rb1.serialized_size());
     /// rb1.serialize_into(&mut bytes).unwrap();
-    /// let rb2 = RoaringBitmap::deserialize_from(&mut &bytes[..]).unwrap();
+    /// let rb2 = RoaringBitmap::deserialize_from(&bytes[..]).unwrap();
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
@@ -54,7 +54,7 @@ impl RoaringBitmap {
     /// let rb1: RoaringBitmap = (1..4).collect();
     /// let mut bytes = vec![];
     /// rb1.serialize_into(&mut bytes).unwrap();
-    /// let rb2 = RoaringBitmap::deserialize_from(&mut &bytes[..]).unwrap();
+    /// let rb2 = RoaringBitmap::deserialize_from(&bytes[..]).unwrap();
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
@@ -112,7 +112,7 @@ impl RoaringBitmap {
     /// let rb1: RoaringBitmap = (1..4).collect();
     /// let mut bytes = vec![];
     /// rb1.serialize_into(&mut bytes).unwrap();
-    /// let rb2 = RoaringBitmap::deserialize_from(&mut &bytes[..]).unwrap();
+    /// let rb2 = RoaringBitmap::deserialize_from(&bytes[..]).unwrap();
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
@@ -140,7 +140,7 @@ impl RoaringBitmap {
 
         let mut description_bytes = vec![0u8; size * 4];
         reader.read_exact(&mut description_bytes)?;
-        let description_bytes = &mut &description_bytes[..];
+        let mut description_bytes = &description_bytes[..];
 
         if has_offsets {
             let mut offsets = vec![0u8; size * 4];
