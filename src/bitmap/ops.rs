@@ -171,47 +171,61 @@ impl RoaringBitmap {
 }
 
 impl BitOr<RoaringBitmap> for RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+    type Output = RoaringBitmap;
 
-    fn bitor(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
-        self.union_with(&rhs);
-        self
+    fn bitor(mut self, mut rhs: RoaringBitmap) -> RoaringBitmap {
+        if self.len() <= rhs.len() {
+            rhs.union_with(&self);
+            rhs
+        } else {
+            self.union_with(&rhs);
+            self
+        }
     }
 }
 
-impl<'a> BitOr<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+impl BitOr<&RoaringBitmap> for RoaringBitmap {
+    type Output = RoaringBitmap;
 
-    fn bitor(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn bitor(mut self, rhs: &RoaringBitmap) -> RoaringBitmap {
         self.union_with(rhs);
         self
     }
 }
 
-impl<'a> BitOr<RoaringBitmap> for &'a RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+impl BitOr<RoaringBitmap> for &RoaringBitmap {
+    type Output = RoaringBitmap;
 
     fn bitor(self, rhs: RoaringBitmap) -> RoaringBitmap {
         rhs | self
     }
 }
 
-impl<'a, 'b> BitOr<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+impl BitOr<&RoaringBitmap> for &RoaringBitmap {
+    type Output = RoaringBitmap;
 
-    fn bitor(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
-        self.clone() | rhs
+    fn bitor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
+        if self.len() <= rhs.len() {
+            rhs.clone() | self
+        } else {
+            self.clone() | rhs
+        }
     }
 }
 
 impl BitOrAssign<RoaringBitmap> for RoaringBitmap {
-    fn bitor_assign(&mut self, rhs: RoaringBitmap) {
-        self.union_with(&rhs)
+    fn bitor_assign(&mut self, mut rhs: RoaringBitmap) {
+        if self.len() <= rhs.len() {
+            rhs.union_with(&self);
+            *self = rhs;
+        } else {
+            self.union_with(&rhs);
+        }
     }
 }
 
-impl<'a> BitOrAssign<&'a RoaringBitmap> for RoaringBitmap {
-    fn bitor_assign(&mut self, rhs: &'a RoaringBitmap) {
+impl BitOrAssign<&RoaringBitmap> for RoaringBitmap {
+    fn bitor_assign(&mut self, rhs: &RoaringBitmap) {
         self.union_with(rhs)
     }
 }
