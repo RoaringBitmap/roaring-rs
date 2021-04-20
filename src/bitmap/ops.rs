@@ -217,47 +217,61 @@ impl<'a> BitOrAssign<&'a RoaringBitmap> for RoaringBitmap {
 }
 
 impl BitAnd<RoaringBitmap> for RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+    type Output = RoaringBitmap;
 
-    fn bitand(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
-        self.intersect_with(&rhs);
-        self
+    fn bitand(mut self, mut rhs: RoaringBitmap) -> RoaringBitmap {
+        if self.len() <= rhs.len() {
+            self.intersect_with(&rhs);
+            self
+        } else {
+            rhs.intersect_with(&self);
+            rhs
+        }
     }
 }
 
-impl<'a> BitAnd<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+impl BitAnd<&RoaringBitmap> for RoaringBitmap {
+    type Output = RoaringBitmap;
 
-    fn bitand(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    fn bitand(mut self, rhs: &RoaringBitmap) -> RoaringBitmap {
         self.intersect_with(rhs);
         self
     }
 }
 
-impl<'a> BitAnd<RoaringBitmap> for &'a RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+impl BitAnd<RoaringBitmap> for &RoaringBitmap {
+    type Output = RoaringBitmap;
 
     fn bitand(self, rhs: RoaringBitmap) -> RoaringBitmap {
         rhs & self
     }
 }
 
-impl<'a, 'b> BitAnd<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+impl BitAnd<&RoaringBitmap> for &RoaringBitmap {
+    type Output = RoaringBitmap;
 
-    fn bitand(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
-        self.clone() & rhs
+    fn bitand(self, rhs: &RoaringBitmap) -> RoaringBitmap {
+        if self.len() <= rhs.len() {
+            self.clone() & rhs
+        } else {
+            rhs.clone() & self
+        }
     }
 }
 
 impl BitAndAssign<RoaringBitmap> for RoaringBitmap {
-    fn bitand_assign(&mut self, rhs: RoaringBitmap) {
-        self.intersect_with(&rhs)
+    fn bitand_assign(&mut self, mut rhs: RoaringBitmap) {
+        if self.len() <= rhs.len() {
+            self.intersect_with(&rhs);
+        } else {
+            rhs.intersect_with(self);
+            *self = rhs;
+        }
     }
 }
 
-impl<'a> BitAndAssign<&'a RoaringBitmap> for RoaringBitmap {
-    fn bitand_assign(&mut self, rhs: &'a RoaringBitmap) {
+impl BitAndAssign<&RoaringBitmap> for RoaringBitmap {
+    fn bitand_assign(&mut self, rhs: &RoaringBitmap) {
         self.intersect_with(rhs)
     }
 }
