@@ -1,7 +1,6 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::slice;
-use std::vec;
 use std::{borrow::Borrow, ops::Range};
+use std::{mem, slice, vec};
 
 const BITMAP_LENGTH: usize = 1024;
 
@@ -322,7 +321,7 @@ impl Store {
                     out
                 }
 
-                let this = std::mem::take(vec1);
+                let this = mem::take(vec1);
                 *vec1 = merge_arrays(&this, &vec2);
             }
             (ref mut this @ &mut Bitmap(..), &Array(ref vec)) => {
@@ -345,15 +344,19 @@ impl Store {
     pub fn intersect_with(&mut self, other: &Self) {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
+                let (mut lhs, rhs) = if vec1.len() <= vec2.len() {
+                    (mem::take(vec1), vec2.as_slice())
+                } else {
+                    (vec2.clone(), vec1.as_slice())
+                };
+
                 let mut i = 0;
-                vec1.retain(|x| {
-                    i += vec2
-                        .iter()
-                        .skip(i)
-                        .position(|y| y >= x)
-                        .unwrap_or(vec2.len());
-                    vec2.get(i).map_or(false, |y| x == y)
+                lhs.retain(|x| {
+                    i += rhs.iter().skip(i).position(|y| y >= x).unwrap_or(rhs.len());
+                    rhs.get(i).map_or(false, |y| x == y)
                 });
+
+                *vec1 = lhs;
             }
             (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
                 for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
