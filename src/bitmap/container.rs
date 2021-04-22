@@ -1,4 +1,4 @@
-use std::ops::BitOrAssign;
+use std::ops::{BitAndAssign, BitOrAssign};
 use std::{fmt, ops::Range};
 
 use super::store::{self, Store};
@@ -105,9 +105,7 @@ impl Container {
         note = "Please use the `BitAndAssign::bitand_assign` ops method instead"
     )]
     pub fn intersect_with(&mut self, other: &Self) {
-        self.store.intersect_with(&other.store);
-        self.len = self.store.len();
-        self.ensure_correct_store();
+        BitAndAssign::bitand_assign(self, other)
     }
 
     #[deprecated(
@@ -161,6 +159,22 @@ impl BitOrAssign<Container> for Container {
 impl BitOrAssign<&Container> for Container {
     fn bitor_assign(&mut self, rhs: &Container) {
         BitOrAssign::bitor_assign(&mut self.store, &rhs.store);
+        self.len = self.store.len();
+        self.ensure_correct_store();
+    }
+}
+
+impl BitAndAssign<Container> for Container {
+    fn bitand_assign(&mut self, rhs: Container) {
+        BitAndAssign::bitand_assign(&mut self.store, rhs.store);
+        self.len = self.store.len();
+        self.ensure_correct_store();
+    }
+}
+
+impl BitAndAssign<&Container> for Container {
+    fn bitand_assign(&mut self, rhs: &Container) {
+        BitAndAssign::bitand_assign(&mut self.store, &rhs.store);
         self.len = self.store.len();
         self.ensure_correct_store();
     }

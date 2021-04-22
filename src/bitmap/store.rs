@@ -1,5 +1,5 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::ops::BitOrAssign;
+use std::ops::{BitAndAssign, BitOrAssign};
 use std::{borrow::Borrow, ops::Range};
 use std::{mem, slice, vec};
 
@@ -298,36 +298,7 @@ impl Store {
         note = "Please use the `BitAndAssign::bitand_assign` ops method instead"
     )]
     pub fn intersect_with(&mut self, other: &Self) {
-        match (self, other) {
-            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
-                let (mut lhs, rhs) = if vec1.len() <= vec2.len() {
-                    (mem::take(vec1), vec2.as_slice())
-                } else {
-                    (vec2.clone(), vec1.as_slice())
-                };
-
-                let mut i = 0;
-                lhs.retain(|x| {
-                    i += rhs.iter().skip(i).position(|y| y >= x).unwrap_or(rhs.len());
-                    rhs.get(i).map_or(false, |y| x == y)
-                });
-
-                *vec1 = lhs;
-            }
-            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
-                for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
-                    *index1 &= index2;
-                }
-            }
-            (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
-                vec.retain(|x| store.contains(*x));
-            }
-            (this @ &mut Bitmap(..), &Array(..)) => {
-                let mut new = other.clone();
-                new.intersect_with(this);
-                *this = new;
-            }
-        }
+        BitAndAssign::bitand_assign(self, other)
     }
 
     #[deprecated(
@@ -494,6 +465,71 @@ impl BitOrAssign<&Store> for Store {
             (this @ &mut Array(..), &Bitmap(..)) => {
                 *this = this.to_bitmap();
                 BitOrAssign::bitor_assign(this, rhs);
+            }
+        }
+    }
+}
+
+impl BitAndAssign<Store> for Store {
+    fn bitand_assign(&mut self, mut rhs: Store) {
+        match (self, &mut rhs) {
+            (&mut Array(ref mut lhs), &mut Array(ref mut rhs)) => {
+                if rhs.len() < lhs.len() {
+                    mem::swap(lhs, rhs);
+                }
+
+                let mut i = 0;
+                lhs.retain(|x| {
+                    i += rhs.iter().skip(i).position(|y| y >= x).unwrap_or(rhs.len());
+                    rhs.get(i).map_or(false, |y| x == y)
+                });
+            }
+            (&mut Bitmap(ref mut bits1), &mut Bitmap(ref bits2)) => {
+                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
+                    BitAndAssign::bitand_assign(index1, index2);
+                }
+            }
+            (&mut Array(ref mut vec), store @ &mut Bitmap(..)) => {
+                vec.retain(|x| store.contains(*x));
+            }
+            (this @ &mut Bitmap(..), &mut Array(..)) => {
+                mem::swap(this, &mut rhs);
+                BitAndAssign::bitand_assign(this, rhs);
+            }
+        }
+    }
+}
+
+impl BitAndAssign<&Store> for Store {
+    fn bitand_assign(&mut self, rhs: &Store) {
+        match (self, rhs) {
+            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
+                let (mut lhs, rhs) = if vec1.len() <= vec2.len() {
+                    (mem::take(vec1), vec2.as_slice())
+                } else {
+                    (vec2.clone(), vec1.as_slice())
+                };
+
+                let mut i = 0;
+                lhs.retain(|x| {
+                    i += rhs.iter().skip(i).position(|y| y >= x).unwrap_or(rhs.len());
+                    rhs.get(i).map_or(false, |y| x == y)
+                });
+
+                *vec1 = lhs;
+            }
+            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
+                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
+                    BitAndAssign::bitand_assign(index1, index2);
+                }
+            }
+            (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
+                vec.retain(|x| store.contains(*x));
+            }
+            (this @ &mut Bitmap(..), &Array(..)) => {
+                let mut new = rhs.clone();
+                BitAndAssign::bitand_assign(&mut new, &*this);
+                *this = new;
             }
         }
     }

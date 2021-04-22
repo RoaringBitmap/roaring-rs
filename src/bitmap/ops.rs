@@ -78,15 +78,7 @@ impl RoaringBitmap {
         note = "Please use the `BitAndAssign::bitand_assign` ops method instead"
     )]
     pub fn intersect_with(&mut self, other: &RoaringBitmap) {
-        self.containers.retain_mut(|cont| {
-            match other.containers.binary_search_by_key(&cont.key, |c| c.key) {
-                Ok(loc) => {
-                    cont.intersect_with(&other.containers[loc]);
-                    cont.len != 0
-                }
-                Err(_) => false,
-            }
-        })
+        BitAndAssign::bitand_assign(self, other)
     }
 
     /// Removes all values in the specified other bitmap from self, in-place.
@@ -260,14 +252,9 @@ impl BitAnd<RoaringBitmap> for RoaringBitmap {
     type Output = RoaringBitmap;
 
     /// This is equivalent to an `intersection` between both maps.
-    fn bitand(mut self, mut rhs: RoaringBitmap) -> RoaringBitmap {
-        if self.len() <= rhs.len() {
-            self.intersect_with(&rhs);
-            self
-        } else {
-            rhs.intersect_with(&self);
-            rhs
-        }
+    fn bitand(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
+        BitAndAssign::bitand_assign(&mut self, rhs);
+        self
     }
 }
 
@@ -276,7 +263,7 @@ impl BitAnd<&RoaringBitmap> for RoaringBitmap {
 
     /// This is equivalent to an `intersection` between both maps.
     fn bitand(mut self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        self.intersect_with(rhs);
+        BitAndAssign::bitand_assign(&mut self, rhs);
         self
     }
 }
@@ -286,7 +273,7 @@ impl BitAnd<RoaringBitmap> for &RoaringBitmap {
 
     /// This is equivalent to an `intersection` between both maps.
     fn bitand(self, rhs: RoaringBitmap) -> RoaringBitmap {
-        rhs & self
+        BitAnd::bitand(rhs, self)
     }
 }
 
@@ -295,10 +282,10 @@ impl BitAnd<&RoaringBitmap> for &RoaringBitmap {
 
     /// This is equivalent to an `intersection` between both maps.
     fn bitand(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        if self.len() <= rhs.len() {
-            self.clone() & rhs
+        if rhs.len() < self.len() {
+            BitAnd::bitand(self.clone(), rhs)
         } else {
-            rhs.clone() & self
+            BitAnd::bitand(rhs.clone(), self)
         }
     }
 }
@@ -306,19 +293,39 @@ impl BitAnd<&RoaringBitmap> for &RoaringBitmap {
 impl BitAndAssign<RoaringBitmap> for RoaringBitmap {
     /// This is equivalent to an `intersection` between both maps.
     fn bitand_assign(&mut self, mut rhs: RoaringBitmap) {
-        if self.len() <= rhs.len() {
-            self.intersect_with(&rhs);
-        } else {
-            rhs.intersect_with(self);
-            *self = rhs;
+        // We make sure that we apply the intersection operation on the smallest map.
+        if rhs.len() < self.len() {
+            mem::swap(self, &mut rhs);
         }
+
+        self.containers.retain_mut(|cont| {
+            let key = cont.key;
+            match rhs.containers.binary_search_by_key(&key, |c| c.key) {
+                Ok(loc) => {
+                    let rhs_cont = &mut rhs.containers[loc];
+                    let rhs_cont = mem::replace(rhs_cont, Container::new(rhs_cont.key));
+                    BitAndAssign::bitand_assign(cont, rhs_cont);
+                    cont.len != 0
+                }
+                Err(_) => false,
+            }
+        })
     }
 }
 
 impl BitAndAssign<&RoaringBitmap> for RoaringBitmap {
     /// This is equivalent to an `intersection` between both maps.
     fn bitand_assign(&mut self, rhs: &RoaringBitmap) {
-        self.intersect_with(rhs)
+        self.containers.retain_mut(|cont| {
+            let key = cont.key;
+            match rhs.containers.binary_search_by_key(&key, |c| c.key) {
+                Ok(loc) => {
+                    BitAndAssign::bitand_assign(cont, &rhs.containers[loc]);
+                    cont.len != 0
+                }
+                Err(_) => false,
+            }
+        })
     }
 }
 
