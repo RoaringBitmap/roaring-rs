@@ -189,6 +189,7 @@ impl RoaringBitmap {
 impl BitOr<RoaringBitmap> for RoaringBitmap {
     type Output = RoaringBitmap;
 
+    /// This is equivalent to an `union` between both maps.
     fn bitor(mut self, mut rhs: RoaringBitmap) -> RoaringBitmap {
         if self.len() <= rhs.len() {
             rhs.union_with(&self);
@@ -203,6 +204,7 @@ impl BitOr<RoaringBitmap> for RoaringBitmap {
 impl BitOr<&RoaringBitmap> for RoaringBitmap {
     type Output = RoaringBitmap;
 
+    /// This is equivalent to an `union` between both maps.
     fn bitor(mut self, rhs: &RoaringBitmap) -> RoaringBitmap {
         self.union_with(rhs);
         self
@@ -212,6 +214,7 @@ impl BitOr<&RoaringBitmap> for RoaringBitmap {
 impl BitOr<RoaringBitmap> for &RoaringBitmap {
     type Output = RoaringBitmap;
 
+    /// This is equivalent to an `union` between both maps.
     fn bitor(self, rhs: RoaringBitmap) -> RoaringBitmap {
         rhs | self
     }
@@ -220,6 +223,7 @@ impl BitOr<RoaringBitmap> for &RoaringBitmap {
 impl BitOr<&RoaringBitmap> for &RoaringBitmap {
     type Output = RoaringBitmap;
 
+    /// This is equivalent to an `union` between both maps.
     fn bitor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
         if self.len() <= rhs.len() {
             rhs.clone() | self
@@ -230,6 +234,7 @@ impl BitOr<&RoaringBitmap> for &RoaringBitmap {
 }
 
 impl BitOrAssign<RoaringBitmap> for RoaringBitmap {
+    /// This is equivalent to an `union` between both maps.
     fn bitor_assign(&mut self, mut rhs: RoaringBitmap) {
         if self.len() <= rhs.len() {
             rhs.union_with(&self);
@@ -241,6 +246,7 @@ impl BitOrAssign<RoaringBitmap> for RoaringBitmap {
 }
 
 impl BitOrAssign<&RoaringBitmap> for RoaringBitmap {
+    /// This is equivalent to an `union` between both maps.
     fn bitor_assign(&mut self, rhs: &RoaringBitmap) {
         self.union_with(rhs)
     }
@@ -249,6 +255,7 @@ impl BitOrAssign<&RoaringBitmap> for RoaringBitmap {
 impl BitAnd<RoaringBitmap> for RoaringBitmap {
     type Output = RoaringBitmap;
 
+    /// This is equivalent to an `intersection` between both maps.
     fn bitand(mut self, mut rhs: RoaringBitmap) -> RoaringBitmap {
         if self.len() <= rhs.len() {
             self.intersect_with(&rhs);
@@ -263,6 +270,7 @@ impl BitAnd<RoaringBitmap> for RoaringBitmap {
 impl BitAnd<&RoaringBitmap> for RoaringBitmap {
     type Output = RoaringBitmap;
 
+    /// This is equivalent to an `intersection` between both maps.
     fn bitand(mut self, rhs: &RoaringBitmap) -> RoaringBitmap {
         self.intersect_with(rhs);
         self
@@ -272,6 +280,7 @@ impl BitAnd<&RoaringBitmap> for RoaringBitmap {
 impl BitAnd<RoaringBitmap> for &RoaringBitmap {
     type Output = RoaringBitmap;
 
+    /// This is equivalent to an `intersection` between both maps.
     fn bitand(self, rhs: RoaringBitmap) -> RoaringBitmap {
         rhs & self
     }
@@ -280,6 +289,7 @@ impl BitAnd<RoaringBitmap> for &RoaringBitmap {
 impl BitAnd<&RoaringBitmap> for &RoaringBitmap {
     type Output = RoaringBitmap;
 
+    /// This is equivalent to an `intersection` between both maps.
     fn bitand(self, rhs: &RoaringBitmap) -> RoaringBitmap {
         if self.len() <= rhs.len() {
             self.clone() & rhs
@@ -290,6 +300,7 @@ impl BitAnd<&RoaringBitmap> for &RoaringBitmap {
 }
 
 impl BitAndAssign<RoaringBitmap> for RoaringBitmap {
+    /// This is equivalent to an `intersection` between both maps.
     fn bitand_assign(&mut self, mut rhs: RoaringBitmap) {
         if self.len() <= rhs.len() {
             self.intersect_with(&rhs);
@@ -301,6 +312,7 @@ impl BitAndAssign<RoaringBitmap> for RoaringBitmap {
 }
 
 impl BitAndAssign<&RoaringBitmap> for RoaringBitmap {
+    /// This is equivalent to an `intersection` between both maps.
     fn bitand_assign(&mut self, rhs: &RoaringBitmap) {
         self.intersect_with(rhs)
     }
@@ -309,45 +321,51 @@ impl BitAndAssign<&RoaringBitmap> for RoaringBitmap {
 impl Sub<RoaringBitmap> for RoaringBitmap {
     type Output = crate::RoaringBitmap;
 
+    /// This is equivalent to a `difference` between both maps.
     fn sub(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
         self.difference_with(&rhs);
         self
     }
 }
 
-impl<'a> Sub<&'a RoaringBitmap> for RoaringBitmap {
+impl Sub<&RoaringBitmap> for RoaringBitmap {
     type Output = crate::RoaringBitmap;
 
-    fn sub(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    /// This is equivalent to a `difference` between both maps.
+    fn sub(mut self, rhs: &RoaringBitmap) -> RoaringBitmap {
         self.difference_with(rhs);
         self
     }
 }
 
-impl<'a> Sub<RoaringBitmap> for &'a RoaringBitmap {
+impl Sub<RoaringBitmap> for &RoaringBitmap {
     type Output = crate::RoaringBitmap;
 
+    /// This is equivalent to a `difference` between both maps.
     fn sub(self, rhs: RoaringBitmap) -> RoaringBitmap {
         self.clone() - rhs
     }
 }
 
-impl<'a, 'b> Sub<&'a RoaringBitmap> for &'b RoaringBitmap {
+impl Sub<&RoaringBitmap> for &RoaringBitmap {
     type Output = crate::RoaringBitmap;
 
-    fn sub(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    /// This is equivalent to a `difference` between both maps.
+    fn sub(self, rhs: &RoaringBitmap) -> RoaringBitmap {
         self.clone() - rhs
     }
 }
 
 impl SubAssign<RoaringBitmap> for RoaringBitmap {
+    /// This is equivalent to a `difference` between both maps.
     fn sub_assign(&mut self, rhs: RoaringBitmap) {
         self.difference_with(&rhs)
     }
 }
 
-impl<'a> SubAssign<&'a RoaringBitmap> for RoaringBitmap {
-    fn sub_assign(&mut self, rhs: &'a RoaringBitmap) {
+impl SubAssign<&RoaringBitmap> for RoaringBitmap {
+    /// This is equivalent to a `difference` between both maps.
+    fn sub_assign(&mut self, rhs: &RoaringBitmap) {
         self.difference_with(rhs)
     }
 }
@@ -355,45 +373,51 @@ impl<'a> SubAssign<&'a RoaringBitmap> for RoaringBitmap {
 impl BitXor<RoaringBitmap> for RoaringBitmap {
     type Output = crate::RoaringBitmap;
 
+    /// This is equivalent to a `symmetric difference` between both maps.
     fn bitxor(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
         self.symmetric_difference_with(&rhs);
         self
     }
 }
 
-impl<'a> BitXor<&'a RoaringBitmap> for RoaringBitmap {
+impl BitXor<&RoaringBitmap> for RoaringBitmap {
     type Output = crate::RoaringBitmap;
 
-    fn bitxor(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    /// This is equivalent to a `symmetric difference` between both maps.
+    fn bitxor(mut self, rhs: &RoaringBitmap) -> RoaringBitmap {
         self.symmetric_difference_with(rhs);
         self
     }
 }
 
-impl<'a> BitXor<RoaringBitmap> for &'a RoaringBitmap {
+impl BitXor<RoaringBitmap> for &RoaringBitmap {
     type Output = crate::RoaringBitmap;
 
+    /// This is equivalent to a `symmetric difference` between both maps.
     fn bitxor(self, rhs: RoaringBitmap) -> RoaringBitmap {
         rhs ^ self
     }
 }
 
-impl<'a, 'b> BitXor<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+impl BitXor<&RoaringBitmap> for &RoaringBitmap {
+    type Output = RoaringBitmap;
 
-    fn bitxor(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
+    /// This is equivalent to a `symmetric difference` between both maps.
+    fn bitxor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
         self.clone() ^ rhs
     }
 }
 
 impl BitXorAssign<RoaringBitmap> for RoaringBitmap {
+    /// This is equivalent to a `symmetric difference` between both maps.
     fn bitxor_assign(&mut self, rhs: RoaringBitmap) {
         self.symmetric_difference_with(&rhs)
     }
 }
 
-impl<'a> BitXorAssign<&'a RoaringBitmap> for RoaringBitmap {
-    fn bitxor_assign(&mut self, rhs: &'a RoaringBitmap) {
+impl BitXorAssign<&RoaringBitmap> for RoaringBitmap {
+    /// This is equivalent to a `symmetric difference` between both maps.
+    fn bitxor_assign(&mut self, rhs: &RoaringBitmap) {
         self.symmetric_difference_with(rhs)
     }
 }
