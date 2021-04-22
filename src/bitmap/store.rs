@@ -284,6 +284,10 @@ impl Store {
         }
     }
 
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitOrAssign::bitor_assign` ops method instead",
+    )]
     pub fn union_with(&mut self, other: &Self) {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
@@ -341,6 +345,10 @@ impl Store {
         }
     }
 
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitAndAssign::bitand_assign` ops method instead",
+    )]
     pub fn intersect_with(&mut self, other: &Self) {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
@@ -374,6 +382,10 @@ impl Store {
         }
     }
 
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `SubAssign::sub_assign` ops method instead",
+    )]
     pub fn difference_with(&mut self, other: &Self) {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
@@ -403,6 +415,10 @@ impl Store {
         }
     }
 
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitXorAssign::bitxor_assign` ops method instead",
+    )]
     pub fn symmetric_difference_with(&mut self, other: &Self) {
         match (self, other) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {

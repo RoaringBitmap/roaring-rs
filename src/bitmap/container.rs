@@ -91,24 +91,40 @@ impl Container {
         self.len <= other.len && self.store.is_subset(&other.store)
     }
 
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitOrAssign::bitor_assign` ops method instead",
+    )]
     pub fn union_with(&mut self, other: &Self) {
         self.store.union_with(&other.store);
         self.len = self.store.len();
         self.ensure_correct_store();
     }
 
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitAndAssign::bitand_assign` ops method instead",
+    )]
     pub fn intersect_with(&mut self, other: &Self) {
         self.store.intersect_with(&other.store);
         self.len = self.store.len();
         self.ensure_correct_store();
     }
 
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `SubAssign::sub_assign` ops method instead",
+    )]
     pub fn difference_with(&mut self, other: &Self) {
         self.store.difference_with(&other.store);
         self.len = self.store.len();
         self.ensure_correct_store();
     }
 
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitXorAssign::bitxor_assign` ops method instead",
+    )]
     pub fn symmetric_difference_with(&mut self, other: &Self) {
         self.store.symmetric_difference_with(&other.store);
         self.len = self.store.len();

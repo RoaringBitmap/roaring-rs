@@ -33,6 +33,10 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitOrAssign::or_assign` ops method instead",
+    )]
     pub fn union_with(&mut self, other: &RoaringBitmap) {
         for container in &other.containers {
             let key = container.key;
@@ -72,6 +76,10 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitAndAssign::and_assign` ops method instead",
+    )]
     pub fn intersect_with(&mut self, other: &RoaringBitmap) {
         self.containers.retain_mut(|cont| {
             match other.containers.binary_search_by_key(&cont.key, |c| c.key) {
@@ -113,6 +121,10 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `SubAssign::sub_assign` ops method instead",
+    )]
     pub fn difference_with(&mut self, other: &RoaringBitmap) {
         self.containers.retain_mut(|cont| {
             match other.containers.binary_search_by_key(&cont.key, |c| c.key) {
@@ -154,6 +166,10 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitXorAssign::xor_assign` ops method instead",
+    )]
     pub fn symmetric_difference_with(&mut self, other: &RoaringBitmap) {
         for container in &other.containers {
             let key = container.key;
