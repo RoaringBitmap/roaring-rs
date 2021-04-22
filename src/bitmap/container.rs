@@ -1,4 +1,4 @@
-use std::ops::{BitAndAssign, BitOrAssign, SubAssign};
+use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, SubAssign};
 use std::{fmt, ops::Range};
 
 use super::store::{self, Store};
@@ -121,9 +121,7 @@ impl Container {
         note = "Please use the `BitXorAssign::bitxor_assign` ops method instead"
     )]
     pub fn symmetric_difference_with(&mut self, other: &Self) {
-        self.store.symmetric_difference_with(&other.store);
-        self.len = self.store.len();
-        self.ensure_correct_store();
+        BitXorAssign::bitxor_assign(self, other)
     }
 
     pub fn min(&self) -> u16 {
@@ -181,6 +179,22 @@ impl BitAndAssign<&Container> for Container {
 impl SubAssign<&Container> for Container {
     fn sub_assign(&mut self, rhs: &Container) {
         SubAssign::sub_assign(&mut self.store, &rhs.store);
+        self.len = self.store.len();
+        self.ensure_correct_store();
+    }
+}
+
+impl BitXorAssign<Container> for Container {
+    fn bitxor_assign(&mut self, rhs: Container) {
+        BitXorAssign::bitxor_assign(&mut self.store, rhs.store);
+        self.len = self.store.len();
+        self.ensure_correct_store();
+    }
+}
+
+impl BitXorAssign<&Container> for Container {
+    fn bitxor_assign(&mut self, rhs: &Container) {
+        BitXorAssign::bitxor_assign(&mut self.store, &rhs.store);
         self.len = self.store.len();
         self.ensure_correct_store();
     }

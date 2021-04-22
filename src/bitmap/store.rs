@@ -1,5 +1,5 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::ops::{BitAndAssign, BitOrAssign, SubAssign};
+use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, SubAssign};
 use std::{borrow::Borrow, ops::Range};
 use std::{mem, slice, vec};
 
@@ -314,53 +314,7 @@ impl Store {
         note = "Please use the `BitXorAssign::bitxor_assign` ops method instead"
     )]
     pub fn symmetric_difference_with(&mut self, other: &Self) {
-        match (self, other) {
-            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
-                let mut i1 = 0usize;
-                let mut iter2 = vec2.iter();
-                let mut current2 = iter2.next();
-                while i1 < vec1.len() {
-                    match current2.map(|c2| vec1[i1].cmp(c2)) {
-                        None => break,
-                        Some(Less) => {
-                            i1 += 1;
-                        }
-                        Some(Greater) => {
-                            vec1.insert(i1, *current2.unwrap());
-                            i1 += 1;
-                            current2 = iter2.next();
-                        }
-                        Some(Equal) => {
-                            vec1.remove(i1);
-                            current2 = iter2.next();
-                        }
-                    }
-                }
-                if let Some(current) = current2 {
-                    vec1.push(*current);
-                    vec1.extend(iter2.cloned());
-                }
-            }
-            (ref mut this @ &mut Bitmap(..), &Array(ref vec2)) => {
-                for index in vec2.iter() {
-                    if this.contains(*index) {
-                        this.remove(*index);
-                    } else {
-                        this.insert(*index);
-                    }
-                }
-            }
-            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
-                for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
-                    *index1 ^= index2;
-                }
-            }
-            (this @ &mut Array(..), &Bitmap(..)) => {
-                let mut new = other.clone();
-                new.symmetric_difference_with(this);
-                *this = new;
-            }
-        }
+        BitXorAssign::bitxor_assign(self, other)
     }
 
     pub fn len(&self) -> u64 {
@@ -532,6 +486,110 @@ impl SubAssign<&Store> for Store {
             }
             (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
                 vec.retain(|x| !store.contains(*x));
+            }
+        }
+    }
+}
+
+impl BitXorAssign<Store> for Store {
+    fn bitxor_assign(&mut self, mut rhs: Store) {
+        // TODO improve this function
+        match (self, &mut rhs) {
+            (&mut Array(ref mut vec1), &mut Array(ref mut vec2)) => {
+                let mut i1 = 0usize;
+                let mut iter2 = vec2.iter();
+                let mut current2 = iter2.next();
+                while i1 < vec1.len() {
+                    match current2.map(|c2| vec1[i1].cmp(c2)) {
+                        None => break,
+                        Some(Less) => {
+                            i1 += 1;
+                        }
+                        Some(Greater) => {
+                            vec1.insert(i1, *current2.unwrap());
+                            i1 += 1;
+                            current2 = iter2.next();
+                        }
+                        Some(Equal) => {
+                            vec1.remove(i1);
+                            current2 = iter2.next();
+                        }
+                    }
+                }
+                if let Some(current) = current2 {
+                    vec1.push(*current);
+                    vec1.extend(iter2.cloned());
+                }
+            }
+            (ref mut this @ &mut Bitmap(..), &mut Array(ref mut vec2)) => {
+                for index in vec2 {
+                    if this.contains(*index) {
+                        this.remove(*index);
+                    } else {
+                        this.insert(*index);
+                    }
+                }
+            }
+            (&mut Bitmap(ref mut bits1), &mut Bitmap(ref mut bits2)) => {
+                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
+                    BitXorAssign::bitxor_assign(index1, index2);
+                }
+            }
+            (this @ &mut Array(..), &mut Bitmap(..)) => {
+                mem::swap(this, &mut rhs);
+                BitXorAssign::bitxor_assign(this, rhs);
+            }
+        }
+    }
+}
+
+impl BitXorAssign<&Store> for Store {
+    fn bitxor_assign(&mut self, rhs: &Store) {
+        match (self, rhs) {
+            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
+                let mut i1 = 0usize;
+                let mut iter2 = vec2.iter();
+                let mut current2 = iter2.next();
+                while i1 < vec1.len() {
+                    match current2.map(|c2| vec1[i1].cmp(c2)) {
+                        None => break,
+                        Some(Less) => {
+                            i1 += 1;
+                        }
+                        Some(Greater) => {
+                            vec1.insert(i1, *current2.unwrap());
+                            i1 += 1;
+                            current2 = iter2.next();
+                        }
+                        Some(Equal) => {
+                            vec1.remove(i1);
+                            current2 = iter2.next();
+                        }
+                    }
+                }
+                if let Some(current) = current2 {
+                    vec1.push(*current);
+                    vec1.extend(iter2.cloned());
+                }
+            }
+            (ref mut this @ &mut Bitmap(..), &Array(ref vec2)) => {
+                for index in vec2.iter() {
+                    if this.contains(*index) {
+                        this.remove(*index);
+                    } else {
+                        this.insert(*index);
+                    }
+                }
+            }
+            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
+                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
+                    BitXorAssign::bitxor_assign(index1, index2);
+                }
+            }
+            (this @ &mut Array(..), &Bitmap(..)) => {
+                let mut new = rhs.clone();
+                BitXorAssign::bitxor_assign(&mut new, &*this);
+                *this = new;
             }
         }
     }

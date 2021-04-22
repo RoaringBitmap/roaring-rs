@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
@@ -152,18 +153,7 @@ impl RoaringBitmap {
         note = "Please use the `BitXorAssign::bitxor_assign` ops method instead"
     )]
     pub fn symmetric_difference_with(&mut self, other: &RoaringBitmap) {
-        for container in &other.containers {
-            let key = container.key;
-            match self.containers.binary_search_by_key(&key, |c| c.key) {
-                Err(loc) => self.containers.insert(loc, container.clone()),
-                Ok(loc) => {
-                    self.containers[loc].symmetric_difference_with(container);
-                    if self.containers[loc].len == 0 {
-                        self.containers.remove(loc);
-                    }
-                }
-            }
-        }
+        BitXorAssign::bitxor_assign(self, other)
     }
 }
 
@@ -382,31 +372,31 @@ impl SubAssign<&RoaringBitmap> for RoaringBitmap {
 }
 
 impl BitXor<RoaringBitmap> for RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+    type Output = RoaringBitmap;
 
     /// This is equivalent to a `symmetric difference` between both maps.
     fn bitxor(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
-        self.symmetric_difference_with(&rhs);
+        BitXorAssign::bitxor_assign(&mut self, rhs);
         self
     }
 }
 
 impl BitXor<&RoaringBitmap> for RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+    type Output = RoaringBitmap;
 
     /// This is equivalent to a `symmetric difference` between both maps.
     fn bitxor(mut self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        self.symmetric_difference_with(rhs);
+        BitXorAssign::bitxor_assign(&mut self, rhs);
         self
     }
 }
 
 impl BitXor<RoaringBitmap> for &RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+    type Output = RoaringBitmap;
 
     /// This is equivalent to a `symmetric difference` between both maps.
     fn bitxor(self, rhs: RoaringBitmap) -> RoaringBitmap {
-        rhs ^ self
+        BitXor::bitxor(rhs, self)
     }
 }
 
@@ -415,20 +405,90 @@ impl BitXor<&RoaringBitmap> for &RoaringBitmap {
 
     /// This is equivalent to a `symmetric difference` between both maps.
     fn bitxor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        self.clone() ^ rhs
+        if self.len() < rhs.len() {
+            BitXor::bitxor(self, rhs.clone())
+        } else {
+            BitXor::bitxor(self.clone(), rhs)
+        }
     }
 }
 
 impl BitXorAssign<RoaringBitmap> for RoaringBitmap {
     /// This is equivalent to a `symmetric difference` between both maps.
     fn bitxor_assign(&mut self, rhs: RoaringBitmap) {
-        self.symmetric_difference_with(&rhs)
+        let mut left = mem::take(&mut self.containers).into_iter().peekable();
+        let mut right = rhs.containers.into_iter().peekable();
+
+        loop {
+            match (left.peek(), right.peek()) {
+                (None, None) => break,
+                (Some(_), None) => {
+                    self.containers.extend(left);
+                    break;
+                }
+                (None, Some(_)) => {
+                    self.containers.extend(right);
+                    break;
+                }
+                (Some(l), Some(r)) => match l.key.cmp(&r.key) {
+                    Ordering::Equal => {
+                        let mut lhs = left.next().unwrap();
+                        let rhs = right.next().unwrap();
+                        BitXorAssign::bitxor_assign(&mut lhs, rhs);
+                        if lhs.len != 0 {
+                            self.containers.push(lhs);
+                        }
+                    }
+                    Ordering::Less => {
+                        let lhs = left.next().unwrap();
+                        self.containers.push(lhs);
+                    }
+                    Ordering::Greater => {
+                        let rhs = right.next().unwrap();
+                        self.containers.push(rhs);
+                    }
+                },
+            }
+        }
     }
 }
 
 impl BitXorAssign<&RoaringBitmap> for RoaringBitmap {
     /// This is equivalent to a `symmetric difference` between both maps.
     fn bitxor_assign(&mut self, rhs: &RoaringBitmap) {
-        self.symmetric_difference_with(rhs)
+        let mut left = mem::take(&mut self.containers).into_iter().peekable();
+        let mut right = rhs.containers.iter().peekable();
+
+        loop {
+            match (left.peek(), right.peek()) {
+                (None, None) => break,
+                (Some(_), None) => {
+                    self.containers.extend(left);
+                    break;
+                }
+                (None, Some(_)) => {
+                    self.containers.extend(right.cloned());
+                    break;
+                }
+                (Some(l), Some(r)) => match l.key.cmp(&r.key) {
+                    Ordering::Equal => {
+                        let mut lhs = left.next().unwrap();
+                        let rhs = right.next().unwrap();
+                        BitXorAssign::bitxor_assign(&mut lhs, rhs);
+                        if lhs.len != 0 {
+                            self.containers.push(lhs);
+                        }
+                    }
+                    Ordering::Less => {
+                        let lhs = left.next().unwrap();
+                        self.containers.push(lhs);
+                    }
+                    Ordering::Greater => {
+                        let rhs = right.next().unwrap();
+                        self.containers.push(rhs.clone());
+                    }
+                },
+            }
+        }
     }
 }
