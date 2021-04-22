@@ -1,5 +1,5 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::ops::{BitAndAssign, BitOrAssign};
+use std::ops::{BitAndAssign, BitOrAssign, SubAssign};
 use std::{borrow::Borrow, ops::Range};
 use std::{mem, slice, vec};
 
@@ -306,32 +306,7 @@ impl Store {
         note = "Please use the `SubAssign::sub_assign` ops method instead"
     )]
     pub fn difference_with(&mut self, other: &Self) {
-        match (self, other) {
-            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
-                let mut i = 0;
-                vec1.retain(|x| {
-                    i += vec2
-                        .iter()
-                        .skip(i)
-                        .position(|y| y >= x)
-                        .unwrap_or(vec2.len());
-                    vec2.get(i).map_or(true, |y| x != y)
-                });
-            }
-            (ref mut this @ &mut Bitmap(..), &Array(ref vec2)) => {
-                for index in vec2.iter() {
-                    this.remove(*index);
-                }
-            }
-            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
-                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
-                    *index1 &= !*index2;
-                }
-            }
-            (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
-                vec.retain(|x| !store.contains(*x));
-            }
-        }
+        SubAssign::sub_assign(self, other)
     }
 
     #[deprecated(
@@ -530,6 +505,33 @@ impl BitAndAssign<&Store> for Store {
                 let mut new = rhs.clone();
                 BitAndAssign::bitand_assign(&mut new, &*this);
                 *this = new;
+            }
+        }
+    }
+}
+
+impl SubAssign<&Store> for Store {
+    fn sub_assign(&mut self, rhs: &Store) {
+        match (self, rhs) {
+            (&mut Array(ref mut lhs), &Array(ref rhs)) => {
+                let mut i = 0;
+                lhs.retain(|x| {
+                    i += rhs.iter().skip(i).position(|y| y >= x).unwrap_or(rhs.len());
+                    rhs.get(i).map_or(true, |y| x != y)
+                });
+            }
+            (ref mut this @ &mut Bitmap(..), &Array(ref vec2)) => {
+                vec2.iter().for_each(|index| {
+                    this.remove(*index);
+                });
+            }
+            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
+                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
+                    *index1 &= !*index2;
+                }
+            }
+            (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
+                vec.retain(|x| !store.contains(*x));
             }
         }
     }

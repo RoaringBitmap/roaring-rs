@@ -1,4 +1,4 @@
-use std::ops::{BitAndAssign, BitOrAssign};
+use std::ops::{BitAndAssign, BitOrAssign, SubAssign};
 use std::{fmt, ops::Range};
 
 use super::store::{self, Store};
@@ -113,9 +113,7 @@ impl Container {
         note = "Please use the `SubAssign::sub_assign` ops method instead"
     )]
     pub fn difference_with(&mut self, other: &Self) {
-        self.store.difference_with(&other.store);
-        self.len = self.store.len();
-        self.ensure_correct_store();
+        SubAssign::sub_assign(self, other)
     }
 
     #[deprecated(
@@ -175,6 +173,14 @@ impl BitAndAssign<Container> for Container {
 impl BitAndAssign<&Container> for Container {
     fn bitand_assign(&mut self, rhs: &Container) {
         BitAndAssign::bitand_assign(&mut self.store, &rhs.store);
+        self.len = self.store.len();
+        self.ensure_correct_store();
+    }
+}
+
+impl SubAssign<&Container> for Container {
+    fn sub_assign(&mut self, rhs: &Container) {
+        SubAssign::sub_assign(&mut self.store, &rhs.store);
         self.len = self.store.len();
         self.ensure_correct_store();
     }

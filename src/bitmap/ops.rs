@@ -115,15 +115,7 @@ impl RoaringBitmap {
         note = "Please use the `SubAssign::sub_assign` ops method instead"
     )]
     pub fn difference_with(&mut self, other: &RoaringBitmap) {
-        self.containers.retain_mut(|cont| {
-            match other.containers.binary_search_by_key(&cont.key, |c| c.key) {
-                Ok(loc) => {
-                    cont.difference_with(&other.containers[loc]);
-                    cont.len != 0
-                }
-                Err(_) => true,
-            }
-        })
+        SubAssign::sub_assign(self, other)
     }
 
     /// Replaces this bitmap with one that is equivalent to `self XOR other`.
@@ -330,54 +322,62 @@ impl BitAndAssign<&RoaringBitmap> for RoaringBitmap {
 }
 
 impl Sub<RoaringBitmap> for RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+    type Output = RoaringBitmap;
 
     /// This is equivalent to a `difference` between both maps.
     fn sub(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
-        self.difference_with(&rhs);
+        SubAssign::sub_assign(&mut self, &rhs);
         self
     }
 }
 
 impl Sub<&RoaringBitmap> for RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+    type Output = RoaringBitmap;
 
     /// This is equivalent to a `difference` between both maps.
     fn sub(mut self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        self.difference_with(rhs);
+        SubAssign::sub_assign(&mut self, rhs);
         self
     }
 }
 
 impl Sub<RoaringBitmap> for &RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+    type Output = RoaringBitmap;
 
     /// This is equivalent to a `difference` between both maps.
     fn sub(self, rhs: RoaringBitmap) -> RoaringBitmap {
-        self.clone() - rhs
+        Sub::sub(self.clone(), rhs)
     }
 }
 
 impl Sub<&RoaringBitmap> for &RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+    type Output = RoaringBitmap;
 
     /// This is equivalent to a `difference` between both maps.
     fn sub(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        self.clone() - rhs
+        Sub::sub(self.clone(), rhs)
     }
 }
 
 impl SubAssign<RoaringBitmap> for RoaringBitmap {
     /// This is equivalent to a `difference` between both maps.
     fn sub_assign(&mut self, rhs: RoaringBitmap) {
-        self.difference_with(&rhs)
+        SubAssign::sub_assign(self, &rhs)
     }
 }
 
 impl SubAssign<&RoaringBitmap> for RoaringBitmap {
     /// This is equivalent to a `difference` between both maps.
     fn sub_assign(&mut self, rhs: &RoaringBitmap) {
-        self.difference_with(rhs)
+        self.containers.retain_mut(|cont| {
+            match rhs.containers.binary_search_by_key(&cont.key, |c| c.key) {
+                Ok(loc) => {
+                    SubAssign::sub_assign(cont, &rhs.containers[loc]);
+                    cont.len != 0
+                }
+                Err(_) => true,
+            }
+        })
     }
 }
 
