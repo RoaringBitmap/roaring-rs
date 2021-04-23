@@ -285,38 +285,6 @@ impl Store {
         }
     }
 
-    #[deprecated(
-        since = "0.6.7",
-        note = "Please use the `BitOrAssign::bitor_assign` ops method instead"
-    )]
-    pub fn union_with(&mut self, other: &Self) {
-        BitOrAssign::bitor_assign(self, other)
-    }
-
-    #[deprecated(
-        since = "0.6.7",
-        note = "Please use the `BitAndAssign::bitand_assign` ops method instead"
-    )]
-    pub fn intersect_with(&mut self, other: &Self) {
-        BitAndAssign::bitand_assign(self, other)
-    }
-
-    #[deprecated(
-        since = "0.6.7",
-        note = "Please use the `SubAssign::sub_assign` ops method instead"
-    )]
-    pub fn difference_with(&mut self, other: &Self) {
-        SubAssign::sub_assign(self, other)
-    }
-
-    #[deprecated(
-        since = "0.6.7",
-        note = "Please use the `BitXorAssign::bitxor_assign` ops method instead"
-    )]
-    pub fn symmetric_difference_with(&mut self, other: &Self) {
-        BitXorAssign::bitxor_assign(self, other)
-    }
-
     pub fn len(&self) -> u64 {
         match *self {
             Array(ref vec) => vec.len() as u64,
