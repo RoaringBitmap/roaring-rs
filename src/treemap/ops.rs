@@ -1,4 +1,5 @@
 use std::collections::btree_map::Entry;
+use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
 use crate::RoaringTreemap;
@@ -33,17 +34,12 @@ impl RoaringTreemap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitOrAssign::bitor_assign` ops method instead"
+    )]
     pub fn union_with(&mut self, other: &RoaringTreemap) {
-        for (key, other_rb) in &other.map {
-            match self.map.entry(*key) {
-                Entry::Vacant(ent) => {
-                    ent.insert(other_rb.clone());
-                }
-                Entry::Occupied(mut ent) => {
-                    ent.get_mut().union_with(other_rb);
-                }
-            };
-        }
+        BitOrAssign::bitor_assign(self, other)
     }
 
     /// Intersects in-place with the specified other bitmap.
@@ -195,46 +191,79 @@ impl RoaringTreemap {
 impl BitOr<RoaringTreemap> for RoaringTreemap {
     type Output = RoaringTreemap;
 
+    /// This is equivalent to an `union` between both maps.
     fn bitor(mut self, rhs: RoaringTreemap) -> RoaringTreemap {
-        self.union_with(&rhs);
+        BitOrAssign::bitor_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> BitOr<&'a RoaringTreemap> for RoaringTreemap {
+impl BitOr<&RoaringTreemap> for RoaringTreemap {
     type Output = RoaringTreemap;
 
-    fn bitor(mut self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.union_with(rhs);
+    /// This is equivalent to an `union` between both maps.
+    fn bitor(mut self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        BitOrAssign::bitor_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> BitOr<RoaringTreemap> for &'a RoaringTreemap {
+impl BitOr<RoaringTreemap> for &RoaringTreemap {
     type Output = RoaringTreemap;
 
+    /// This is equivalent to an `union` between both maps.
     fn bitor(self, rhs: RoaringTreemap) -> RoaringTreemap {
-        rhs | self
+        BitOr::bitor(rhs, self)
     }
 }
 
-impl<'a, 'b> BitOr<&'a RoaringTreemap> for &'b RoaringTreemap {
+impl BitOr<&RoaringTreemap> for &RoaringTreemap {
     type Output = RoaringTreemap;
 
-    fn bitor(self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.clone() | rhs
+    /// This is equivalent to an `union` between both maps.
+    fn bitor(self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        if self.len() <= rhs.len() {
+            BitOr::bitor(rhs.clone(), self)
+        } else {
+            BitOr::bitor(self.clone(), rhs)
+        }
     }
 }
 
 impl BitOrAssign<RoaringTreemap> for RoaringTreemap {
-    fn bitor_assign(&mut self, rhs: RoaringTreemap) {
-        self.union_with(&rhs)
+    /// This is equivalent to an `union` between both maps.
+    fn bitor_assign(&mut self, mut rhs: RoaringTreemap) {
+        // We make sure that we apply the union operation on the biggest map.
+        if self.len() < rhs.len() {
+            mem::swap(self, &mut rhs);
+        }
+
+        for (key, other_rb) in rhs.map {
+            match self.map.entry(key) {
+                Entry::Vacant(ent) => {
+                    ent.insert(other_rb);
+                }
+                Entry::Occupied(mut ent) => {
+                    BitOrAssign::bitor_assign(ent.get_mut(), other_rb);
+                }
+            }
+        }
     }
 }
 
-impl<'a> BitOrAssign<&'a RoaringTreemap> for RoaringTreemap {
-    fn bitor_assign(&mut self, rhs: &'a RoaringTreemap) {
-        self.union_with(rhs)
+impl BitOrAssign<&RoaringTreemap> for RoaringTreemap {
+    /// This is equivalent to an `union` between both maps.
+    fn bitor_assign(&mut self, rhs: &RoaringTreemap) {
+        for (key, other_rb) in &rhs.map {
+            match self.map.entry(*key) {
+                Entry::Vacant(ent) => {
+                    ent.insert(other_rb.clone());
+                }
+                Entry::Occupied(mut ent) => {
+                    BitOrAssign::bitor_assign(ent.get_mut(), other_rb);
+                }
+            }
+        }
     }
 }
 
