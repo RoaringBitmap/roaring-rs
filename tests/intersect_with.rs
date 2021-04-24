@@ -7,7 +7,7 @@ fn array() {
     let bitmap2 = (1000..3000).collect::<RoaringBitmap>();
     let bitmap3 = (1000..2000).collect::<RoaringBitmap>();
 
-    bitmap1.intersect_with(&bitmap2);
+    bitmap1 &= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }
@@ -17,7 +17,7 @@ fn no_intersection() {
     let mut bitmap1 = (0..2).collect::<RoaringBitmap>();
     let bitmap2 = (3..4).collect::<RoaringBitmap>();
 
-    bitmap1.intersect_with(&bitmap2);
+    bitmap1 &= bitmap2;
 
     assert_eq!(bitmap1, RoaringBitmap::new());
 }
@@ -28,7 +28,7 @@ fn array_and_bitmap() {
     let bitmap2 = (1000..8000).collect::<RoaringBitmap>();
     let bitmap3 = (1000..2000).collect::<RoaringBitmap>();
 
-    bitmap1.intersect_with(&bitmap2);
+    bitmap1 &= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }
@@ -39,7 +39,7 @@ fn bitmap_to_bitmap() {
     let bitmap2 = (6000..18000).collect::<RoaringBitmap>();
     let bitmap3 = (6000..12000).collect::<RoaringBitmap>();
 
-    bitmap1.intersect_with(&bitmap2);
+    bitmap1 &= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }
@@ -50,7 +50,7 @@ fn bitmap_to_array() {
     let bitmap2 = (3000..9000).collect::<RoaringBitmap>();
     let bitmap3 = (3000..6000).collect::<RoaringBitmap>();
 
-    bitmap1.intersect_with(&bitmap2);
+    bitmap1 &= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }
@@ -61,7 +61,7 @@ fn bitmap_and_array() {
     let bitmap2 = (7000..9000).collect::<RoaringBitmap>();
     let bitmap3 = (7000..9000).collect::<RoaringBitmap>();
 
-    bitmap1.intersect_with(&bitmap2);
+    bitmap1 &= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }
@@ -80,7 +80,7 @@ fn arrays() {
         .chain(1_001_000..1_002_000)
         .collect::<RoaringBitmap>();
 
-    bitmap1.intersect_with(&bitmap2);
+    bitmap1 &= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }
@@ -99,7 +99,7 @@ fn bitmaps() {
         .chain(1_006_000..1_012_000)
         .collect::<RoaringBitmap>();
 
-    bitmap1.intersect_with(&bitmap2);
+    bitmap1 &= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }
