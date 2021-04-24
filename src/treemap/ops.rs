@@ -71,25 +71,12 @@ impl RoaringTreemap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitAndAssign::bitand_assign` ops method instead"
+    )]
     pub fn intersect_with(&mut self, other: &RoaringTreemap) {
-        let mut keys_to_remove: Vec<u32> = Vec::new();
-        for (key, self_rb) in &mut self.map {
-            match other.map.get(key) {
-                None => {
-                    keys_to_remove.push(*key);
-                }
-                Some(other_rb) => {
-                    self_rb.intersect_with(other_rb);
-                    if self_rb.is_empty() {
-                        keys_to_remove.push(*key);
-                    }
-                }
-            }
-        }
-
-        for key in keys_to_remove {
-            self.map.remove(&key);
-        }
+        BitAndAssign::bitand_assign(self, other)
     }
 
     /// Removes all values in the specified other bitmap from self, in-place.
@@ -270,46 +257,76 @@ impl BitOrAssign<&RoaringTreemap> for RoaringTreemap {
 impl BitAnd<RoaringTreemap> for RoaringTreemap {
     type Output = RoaringTreemap;
 
+    /// This is equivalent to an `intersection` between both maps.
     fn bitand(mut self, rhs: RoaringTreemap) -> RoaringTreemap {
-        self.intersect_with(&rhs);
+        BitAndAssign::bitand_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> BitAnd<&'a RoaringTreemap> for RoaringTreemap {
+impl BitAnd<&RoaringTreemap> for RoaringTreemap {
     type Output = RoaringTreemap;
 
-    fn bitand(mut self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.intersect_with(rhs);
+    /// This is equivalent to an `intersection` between both maps.
+    fn bitand(mut self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        BitAndAssign::bitand_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> BitAnd<RoaringTreemap> for &'a RoaringTreemap {
+impl BitAnd<RoaringTreemap> for &RoaringTreemap {
     type Output = RoaringTreemap;
 
+    /// This is equivalent to an `intersection` between both maps.
     fn bitand(self, rhs: RoaringTreemap) -> RoaringTreemap {
-        rhs & self
+        BitAnd::bitand(rhs, self)
     }
 }
 
-impl<'a, 'b> BitAnd<&'a RoaringTreemap> for &'b RoaringTreemap {
+impl BitAnd<&RoaringTreemap> for &RoaringTreemap {
     type Output = RoaringTreemap;
 
-    fn bitand(self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.clone() & rhs
+    /// This is equivalent to an `intersection` between both maps.
+    fn bitand(self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        if rhs.len() < self.len() {
+            BitAnd::bitand(self.clone(), rhs)
+        } else {
+            BitAnd::bitand(rhs.clone(), self)
+        }
     }
 }
 
 impl BitAndAssign<RoaringTreemap> for RoaringTreemap {
-    fn bitand_assign(&mut self, rhs: RoaringTreemap) {
-        self.intersect_with(&rhs)
+    /// This is equivalent to an `intersection` between both maps.
+    fn bitand_assign(&mut self, mut rhs: RoaringTreemap) {
+        // We make sure that we apply the intersection operation on the smallest map.
+        if rhs.len() < self.len() {
+            mem::swap(self, &mut rhs);
+        }
+
+        BitAndAssign::bitand_assign(self, &rhs)
     }
 }
 
-impl<'a> BitAndAssign<&'a RoaringTreemap> for RoaringTreemap {
-    fn bitand_assign(&mut self, rhs: &'a RoaringTreemap) {
-        self.intersect_with(rhs)
+impl BitAndAssign<&RoaringTreemap> for RoaringTreemap {
+    /// This is equivalent to an `intersection` between both maps.
+    fn bitand_assign(&mut self, rhs: &RoaringTreemap) {
+        let mut keys_to_remove: Vec<u32> = Vec::new();
+        for (key, self_rb) in &mut self.map {
+            match rhs.map.get(key) {
+                Some(other_rb) => {
+                    BitAndAssign::bitand_assign(self_rb, other_rb);
+                    if self_rb.is_empty() {
+                        keys_to_remove.push(*key);
+                    }
+                }
+                None => keys_to_remove.push(*key),
+            }
+        }
+
+        for key in keys_to_remove {
+            self.map.remove(&key);
+        }
     }
 }
 
