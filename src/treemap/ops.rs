@@ -145,25 +145,12 @@ impl RoaringTreemap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitXorAssign::bitxor_assign` ops method instead"
+    )]
     pub fn symmetric_difference_with(&mut self, other: &RoaringTreemap) {
-        let mut keys_to_remove: Vec<u32> = Vec::new();
-        for (key, other_rb) in &other.map {
-            match self.map.entry(*key) {
-                Entry::Vacant(ent) => {
-                    ent.insert(other_rb.clone());
-                }
-                Entry::Occupied(mut ent) => {
-                    ent.get_mut().symmetric_difference_with(other_rb);
-                    if ent.get().is_empty() {
-                        keys_to_remove.push(*key);
-                    }
-                }
-            };
-        }
-
-        for key in keys_to_remove {
-            self.map.remove(&key);
-        }
+        BitXorAssign::bitxor_assign(self, other)
     }
 }
 
@@ -389,45 +376,89 @@ impl SubAssign<&RoaringTreemap> for RoaringTreemap {
 impl BitXor<RoaringTreemap> for RoaringTreemap {
     type Output = RoaringTreemap;
 
+    /// This is equivalent to a `symmetric difference` between both maps.
     fn bitxor(mut self, rhs: RoaringTreemap) -> RoaringTreemap {
-        self.symmetric_difference_with(&rhs);
+        BitXorAssign::bitxor_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> BitXor<&'a RoaringTreemap> for RoaringTreemap {
+impl BitXor<&RoaringTreemap> for RoaringTreemap {
     type Output = RoaringTreemap;
 
-    fn bitxor(mut self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.symmetric_difference_with(rhs);
+    /// This is equivalent to a `symmetric difference` between both maps.
+    fn bitxor(mut self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        BitXorAssign::bitxor_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> BitXor<RoaringTreemap> for &'a RoaringTreemap {
+impl BitXor<RoaringTreemap> for &RoaringTreemap {
     type Output = RoaringTreemap;
 
+    /// This is equivalent to a `symmetric difference` between both maps.
     fn bitxor(self, rhs: RoaringTreemap) -> RoaringTreemap {
-        rhs ^ self
+        BitXor::bitxor(rhs, self)
     }
 }
 
-impl<'a, 'b> BitXor<&'a RoaringTreemap> for &'b RoaringTreemap {
+impl BitXor<&RoaringTreemap> for &RoaringTreemap {
     type Output = RoaringTreemap;
 
-    fn bitxor(self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.clone() ^ rhs
+    /// This is equivalent to a `symmetric difference` between both maps.
+    fn bitxor(self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        if self.len() < rhs.len() {
+            BitXor::bitxor(self, rhs.clone())
+        } else {
+            BitXor::bitxor(self.clone(), rhs)
+        }
     }
 }
 
 impl BitXorAssign<RoaringTreemap> for RoaringTreemap {
+    /// This is equivalent to a `symmetric difference` between both maps.
     fn bitxor_assign(&mut self, rhs: RoaringTreemap) {
-        self.symmetric_difference_with(&rhs)
+        let mut keys_to_remove: Vec<u32> = Vec::new();
+        for (key, other_rb) in rhs.map {
+            match self.map.entry(key) {
+                Entry::Vacant(ent) => {
+                    ent.insert(other_rb);
+                }
+                Entry::Occupied(mut ent) => {
+                    BitXorAssign::bitxor_assign(ent.get_mut(), other_rb);
+                    if ent.get().is_empty() {
+                        keys_to_remove.push(key);
+                    }
+                }
+            }
+        }
+
+        for key in keys_to_remove {
+            self.map.remove(&key);
+        }
     }
 }
 
-impl<'a> BitXorAssign<&'a RoaringTreemap> for RoaringTreemap {
-    fn bitxor_assign(&mut self, rhs: &'a RoaringTreemap) {
-        self.symmetric_difference_with(rhs)
+impl BitXorAssign<&RoaringTreemap> for RoaringTreemap {
+    /// This is equivalent to a `symmetric difference` between both maps.
+    fn bitxor_assign(&mut self, rhs: &RoaringTreemap) {
+        let mut keys_to_remove: Vec<u32> = Vec::new();
+        for (key, other_rb) in &rhs.map {
+            match self.map.entry(*key) {
+                Entry::Vacant(ent) => {
+                    ent.insert(other_rb.clone());
+                }
+                Entry::Occupied(mut ent) => {
+                    BitXorAssign::bitxor_assign(ent.get_mut(), other_rb);
+                    if ent.get().is_empty() {
+                        keys_to_remove.push(*key);
+                    }
+                }
+            }
+        }
+
+        for key in keys_to_remove {
+            self.map.remove(&key);
+        }
     }
 }
