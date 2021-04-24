@@ -108,20 +108,12 @@ impl RoaringTreemap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `SubAssign::sub_assign` ops method instead"
+    )]
     pub fn difference_with(&mut self, other: &RoaringTreemap) {
-        let mut keys_to_remove: Vec<u32> = Vec::new();
-        for (key, self_rb) in &mut self.map {
-            if let Some(other_rb) = other.map.get(key) {
-                self_rb.difference_with(other_rb);
-                if self_rb.is_empty() {
-                    keys_to_remove.push(*key);
-                }
-            }
-        }
-
-        for key in keys_to_remove {
-            self.map.remove(&key);
-        }
+        SubAssign::sub_assign(self, other)
     }
 
     /// Replaces this bitmap with one that is equivalent to `self XOR other`.
@@ -333,46 +325,64 @@ impl BitAndAssign<&RoaringTreemap> for RoaringTreemap {
 impl Sub<RoaringTreemap> for RoaringTreemap {
     type Output = RoaringTreemap;
 
+    /// This is equivalent to a `difference` between both maps.
     fn sub(mut self, rhs: RoaringTreemap) -> RoaringTreemap {
-        self.difference_with(&rhs);
+        SubAssign::sub_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> Sub<&'a RoaringTreemap> for RoaringTreemap {
+impl Sub<&RoaringTreemap> for RoaringTreemap {
     type Output = RoaringTreemap;
 
-    fn sub(mut self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.difference_with(rhs);
+    /// This is equivalent to a `difference` between both maps.
+    fn sub(mut self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        SubAssign::sub_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> Sub<RoaringTreemap> for &'a RoaringTreemap {
+impl Sub<RoaringTreemap> for &RoaringTreemap {
     type Output = RoaringTreemap;
 
+    /// This is equivalent to a `difference` between both maps.
     fn sub(self, rhs: RoaringTreemap) -> RoaringTreemap {
-        self.clone() - rhs
+        Sub::sub(self.clone(), rhs)
     }
 }
 
-impl<'a, 'b> Sub<&'a RoaringTreemap> for &'b RoaringTreemap {
+impl Sub<&RoaringTreemap> for &RoaringTreemap {
     type Output = RoaringTreemap;
 
-    fn sub(self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.clone() - rhs
+    /// This is equivalent to a `difference` between both maps.
+    fn sub(self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        Sub::sub(self.clone(), rhs)
     }
 }
 
 impl SubAssign<RoaringTreemap> for RoaringTreemap {
+    /// This is equivalent to a `difference` between both maps.
     fn sub_assign(&mut self, rhs: RoaringTreemap) {
-        self.difference_with(&rhs)
+        SubAssign::sub_assign(self, &rhs)
     }
 }
 
-impl<'a> SubAssign<&'a RoaringTreemap> for RoaringTreemap {
-    fn sub_assign(&mut self, rhs: &'a RoaringTreemap) {
-        self.difference_with(rhs)
+impl SubAssign<&RoaringTreemap> for RoaringTreemap {
+    /// This is equivalent to a `difference` between both maps.
+    fn sub_assign(&mut self, rhs: &RoaringTreemap) {
+        let mut keys_to_remove: Vec<u32> = Vec::new();
+        for (key, self_rb) in &mut self.map {
+            if let Some(other_rb) = rhs.map.get(key) {
+                SubAssign::sub_assign(self_rb, other_rb);
+                if self_rb.is_empty() {
+                    keys_to_remove.push(*key);
+                }
+            }
+        }
+
+        for key in keys_to_remove {
+            self.map.remove(&key);
+        }
     }
 }
 
