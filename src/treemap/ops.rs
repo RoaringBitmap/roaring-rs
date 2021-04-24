@@ -16,7 +16,7 @@ impl RoaringTreemap {
     /// let rb2: RoaringTreemap = (3..5).collect();
     /// let rb3: RoaringTreemap = (1..5).collect();
     ///
-    /// rb1.union_with(&rb2);
+    /// rb1 |= rb2;
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
@@ -53,7 +53,7 @@ impl RoaringTreemap {
     /// let rb2: RoaringTreemap = (3..5).collect();
     /// let rb3: RoaringTreemap = (3..4).collect();
     ///
-    /// rb1.intersect_with(&rb2);
+    /// rb1 &= rb2;
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
@@ -90,7 +90,7 @@ impl RoaringTreemap {
     /// let rb2: RoaringTreemap = (3..5).collect();
     /// let rb3: RoaringTreemap = (1..3).collect();
     ///
-    /// rb1.difference_with(&rb2);
+    /// rb1 -= rb2;
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
@@ -127,7 +127,7 @@ impl RoaringTreemap {
     /// let rb2: RoaringTreemap = (3..6).collect();
     /// let rb3: RoaringTreemap = (1..3).chain(4..6).collect();
     ///
-    /// rb1.symmetric_difference_with(&rb2);
+    /// rb1 ^= rb2;
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
