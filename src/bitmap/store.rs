@@ -1,4 +1,5 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
+use std::ops::BitOrAssign;
 use std::{borrow::Borrow, ops::Range};
 use std::{mem, slice, vec};
 
@@ -286,68 +287,15 @@ impl Store {
 
     #[deprecated(
         since = "0.6.7",
-        note = "Please use the `BitOrAssign::bitor_assign` ops method instead",
+        note = "Please use the `BitOrAssign::bitor_assign` ops method instead"
     )]
     pub fn union_with(&mut self, other: &Self) {
-        match (self, other) {
-            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
-                fn merge_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
-                    let len = (arr1.len() + arr2.len()).min(4096);
-                    let mut out = Vec::with_capacity(len);
-
-                    // Traverse both arrays
-                    let mut i = 0;
-                    let mut j = 0;
-                    while i < arr1.len() && j < arr2.len() {
-                        let a = unsafe { arr1.get_unchecked(i) };
-                        let b = unsafe { arr2.get_unchecked(j) };
-                        match a.cmp(&b) {
-                            Less => {
-                                out.push(*a);
-                                i += 1
-                            }
-                            Greater => {
-                                out.push(*b);
-                                j += 1
-                            }
-                            Equal => {
-                                out.push(*a);
-                                i += 1;
-                                j += 1;
-                            }
-                        }
-                    }
-
-                    // Store remaining elements of the arrays
-                    out.extend_from_slice(&arr1[i..]);
-                    out.extend_from_slice(&arr2[j..]);
-
-                    out
-                }
-
-                let this = mem::take(vec1);
-                *vec1 = merge_arrays(&this, &vec2);
-            }
-            (ref mut this @ &mut Bitmap(..), &Array(ref vec)) => {
-                for &index in vec {
-                    this.insert(index);
-                }
-            }
-            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
-                for (index1, &index2) in bits1.iter_mut().zip(bits2.iter()) {
-                    *index1 |= index2;
-                }
-            }
-            (this @ &mut Array(..), &Bitmap(..)) => {
-                *this = this.to_bitmap();
-                this.union_with(other);
-            }
-        }
+        BitOrAssign::bitor_assign(self, other)
     }
 
     #[deprecated(
         since = "0.6.7",
-        note = "Please use the `BitAndAssign::bitand_assign` ops method instead",
+        note = "Please use the `BitAndAssign::bitand_assign` ops method instead"
     )]
     pub fn intersect_with(&mut self, other: &Self) {
         match (self, other) {
@@ -384,7 +332,7 @@ impl Store {
 
     #[deprecated(
         since = "0.6.7",
-        note = "Please use the `SubAssign::sub_assign` ops method instead",
+        note = "Please use the `SubAssign::sub_assign` ops method instead"
     )]
     pub fn difference_with(&mut self, other: &Self) {
         match (self, other) {
@@ -417,7 +365,7 @@ impl Store {
 
     #[deprecated(
         since = "0.6.7",
-        note = "Please use the `BitXorAssign::bitxor_assign` ops method instead",
+        note = "Please use the `BitXorAssign::bitxor_assign` ops method instead"
     )]
     pub fn symmetric_difference_with(&mut self, other: &Self) {
         match (self, other) {
@@ -498,6 +446,55 @@ impl Store {
                 .find(|&(_, &bit)| bit != 0)
                 .map(|(index, bit)| index * 64 + (63 - bit.leading_zeros() as usize))
                 .unwrap() as u16,
+        }
+    }
+}
+
+impl BitOrAssign<Store> for Store {
+    fn bitor_assign(&mut self, mut rhs: Store) {
+        match (self, &mut rhs) {
+            (&mut Array(ref mut vec1), &mut Array(ref vec2)) => {
+                *vec1 = union_arrays(vec1, vec2);
+            }
+            (this @ &mut Bitmap(..), &mut Array(ref vec)) => {
+                vec.iter().for_each(|index| {
+                    this.insert(*index);
+                });
+            }
+            (&mut Bitmap(ref mut bits1), &mut Bitmap(ref bits2)) => {
+                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
+                    BitOrAssign::bitor_assign(index1, index2);
+                }
+            }
+            (this @ &mut Array(..), &mut Bitmap(..)) => {
+                mem::swap(this, &mut rhs);
+                BitOrAssign::bitor_assign(this, rhs);
+            }
+        }
+    }
+}
+
+impl BitOrAssign<&Store> for Store {
+    fn bitor_assign(&mut self, rhs: &Store) {
+        match (self, rhs) {
+            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
+                let this = mem::take(vec1);
+                *vec1 = union_arrays(&this, &vec2);
+            }
+            (this @ &mut Bitmap(..), &Array(ref vec)) => {
+                vec.iter().for_each(|index| {
+                    this.insert(*index);
+                });
+            }
+            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
+                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
+                    BitOrAssign::bitor_assign(index1, index2);
+                }
+            }
+            (this @ &mut Array(..), &Bitmap(..)) => {
+                *this = this.to_bitmap();
+                BitOrAssign::bitor_assign(this, rhs);
+            }
         }
     }
 }
@@ -602,6 +599,41 @@ impl<'a> Iterator for Iter<'a> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         panic!("Should never be called (roaring::Iter caches the size_hint itself)")
     }
+}
+
+#[inline]
+fn union_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
+    let len = (arr1.len() + arr2.len()).min(4096);
+    let mut out = Vec::with_capacity(len);
+
+    // Traverse both arrays
+    let mut i = 0;
+    let mut j = 0;
+    while i < arr1.len() && j < arr2.len() {
+        let a = unsafe { arr1.get_unchecked(i) };
+        let b = unsafe { arr2.get_unchecked(j) };
+        match a.cmp(&b) {
+            Less => {
+                out.push(*a);
+                i += 1
+            }
+            Greater => {
+                out.push(*b);
+                j += 1
+            }
+            Equal => {
+                out.push(*a);
+                i += 1;
+                j += 1;
+            }
+        }
+    }
+
+    // Store remaining elements of the arrays
+    out.extend_from_slice(&arr1[i..]);
+    out.extend_from_slice(&arr2[j..]);
+
+    out
 }
 
 #[inline]

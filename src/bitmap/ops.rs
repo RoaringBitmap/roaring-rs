@@ -1,6 +1,9 @@
-use retain_mut::RetainMut;
+use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
+use retain_mut::RetainMut;
+
+use crate::bitmap::container::Container;
 use crate::RoaringBitmap;
 
 impl RoaringBitmap {
@@ -35,16 +38,10 @@ impl RoaringBitmap {
     /// ```
     #[deprecated(
         since = "0.6.7",
-        note = "Please use the `BitOrAssign::or_assign` ops method instead",
+        note = "Please use the `BitOrAssign::bitor_assign` ops method instead"
     )]
     pub fn union_with(&mut self, other: &RoaringBitmap) {
-        for container in &other.containers {
-            let key = container.key;
-            match self.containers.binary_search_by_key(&key, |c| c.key) {
-                Err(loc) => self.containers.insert(loc, container.clone()),
-                Ok(loc) => self.containers[loc].union_with(container),
-            }
-        }
+        BitOrAssign::bitor_assign(self, other)
     }
 
     /// Intersects in-place with the specified other bitmap.
@@ -78,7 +75,7 @@ impl RoaringBitmap {
     /// ```
     #[deprecated(
         since = "0.6.7",
-        note = "Please use the `BitAndAssign::and_assign` ops method instead",
+        note = "Please use the `BitAndAssign::bitand_assign` ops method instead"
     )]
     pub fn intersect_with(&mut self, other: &RoaringBitmap) {
         self.containers.retain_mut(|cont| {
@@ -123,7 +120,7 @@ impl RoaringBitmap {
     /// ```
     #[deprecated(
         since = "0.6.7",
-        note = "Please use the `SubAssign::sub_assign` ops method instead",
+        note = "Please use the `SubAssign::sub_assign` ops method instead"
     )]
     pub fn difference_with(&mut self, other: &RoaringBitmap) {
         self.containers.retain_mut(|cont| {
@@ -168,7 +165,7 @@ impl RoaringBitmap {
     /// ```
     #[deprecated(
         since = "0.6.7",
-        note = "Please use the `BitXorAssign::xor_assign` ops method instead",
+        note = "Please use the `BitXorAssign::bitxor_assign` ops method instead"
     )]
     pub fn symmetric_difference_with(&mut self, other: &RoaringBitmap) {
         for container in &other.containers {
@@ -190,14 +187,9 @@ impl BitOr<RoaringBitmap> for RoaringBitmap {
     type Output = RoaringBitmap;
 
     /// This is equivalent to an `union` between both maps.
-    fn bitor(mut self, mut rhs: RoaringBitmap) -> RoaringBitmap {
-        if self.len() <= rhs.len() {
-            rhs.union_with(&self);
-            rhs
-        } else {
-            self.union_with(&rhs);
-            self
-        }
+    fn bitor(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
+        BitOrAssign::bitor_assign(&mut self, rhs);
+        self
     }
 }
 
@@ -206,7 +198,7 @@ impl BitOr<&RoaringBitmap> for RoaringBitmap {
 
     /// This is equivalent to an `union` between both maps.
     fn bitor(mut self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        self.union_with(rhs);
+        BitOrAssign::bitor_assign(&mut self, rhs);
         self
     }
 }
@@ -216,7 +208,7 @@ impl BitOr<RoaringBitmap> for &RoaringBitmap {
 
     /// This is equivalent to an `union` between both maps.
     fn bitor(self, rhs: RoaringBitmap) -> RoaringBitmap {
-        rhs | self
+        BitOr::bitor(rhs, self)
     }
 }
 
@@ -226,9 +218,9 @@ impl BitOr<&RoaringBitmap> for &RoaringBitmap {
     /// This is equivalent to an `union` between both maps.
     fn bitor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
         if self.len() <= rhs.len() {
-            rhs.clone() | self
+            BitOr::bitor(rhs.clone(), self)
         } else {
-            self.clone() | rhs
+            BitOr::bitor(self.clone(), rhs)
         }
     }
 }
@@ -236,11 +228,17 @@ impl BitOr<&RoaringBitmap> for &RoaringBitmap {
 impl BitOrAssign<RoaringBitmap> for RoaringBitmap {
     /// This is equivalent to an `union` between both maps.
     fn bitor_assign(&mut self, mut rhs: RoaringBitmap) {
-        if self.len() <= rhs.len() {
-            rhs.union_with(&self);
-            *self = rhs;
-        } else {
-            self.union_with(&rhs);
+        // We make sure that we apply the union operation on the biggest map.
+        if self.len() < rhs.len() {
+            mem::swap(self, &mut rhs);
+        }
+
+        for container in rhs.containers {
+            let key = container.key;
+            match self.containers.binary_search_by_key(&key, |c| c.key) {
+                Err(loc) => self.containers.insert(loc, container),
+                Ok(loc) => BitOrAssign::bitor_assign(&mut self.containers[loc], container),
+            }
         }
     }
 }
@@ -248,7 +246,13 @@ impl BitOrAssign<RoaringBitmap> for RoaringBitmap {
 impl BitOrAssign<&RoaringBitmap> for RoaringBitmap {
     /// This is equivalent to an `union` between both maps.
     fn bitor_assign(&mut self, rhs: &RoaringBitmap) {
-        self.union_with(rhs)
+        for container in &rhs.containers {
+            let key = container.key;
+            match self.containers.binary_search_by_key(&key, |c| c.key) {
+                Err(loc) => self.containers.insert(loc, container.clone()),
+                Ok(loc) => BitOrAssign::bitor_assign(&mut self.containers[loc], container),
+            }
+        }
     }
 }
 

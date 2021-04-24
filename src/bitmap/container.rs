@@ -1,3 +1,4 @@
+use std::ops::BitOrAssign;
 use std::{fmt, ops::Range};
 
 use super::store::{self, Store};
@@ -93,17 +94,15 @@ impl Container {
 
     #[deprecated(
         since = "0.6.7",
-        note = "Please use the `BitOrAssign::bitor_assign` ops method instead",
+        note = "Please use the `BitOrAssign::bitor_assign` ops method instead"
     )]
     pub fn union_with(&mut self, other: &Self) {
-        self.store.union_with(&other.store);
-        self.len = self.store.len();
-        self.ensure_correct_store();
+        BitOrAssign::bitor_assign(self, other)
     }
 
     #[deprecated(
         since = "0.6.7",
-        note = "Please use the `BitAndAssign::bitand_assign` ops method instead",
+        note = "Please use the `BitAndAssign::bitand_assign` ops method instead"
     )]
     pub fn intersect_with(&mut self, other: &Self) {
         self.store.intersect_with(&other.store);
@@ -113,7 +112,7 @@ impl Container {
 
     #[deprecated(
         since = "0.6.7",
-        note = "Please use the `SubAssign::sub_assign` ops method instead",
+        note = "Please use the `SubAssign::sub_assign` ops method instead"
     )]
     pub fn difference_with(&mut self, other: &Self) {
         self.store.difference_with(&other.store);
@@ -123,7 +122,7 @@ impl Container {
 
     #[deprecated(
         since = "0.6.7",
-        note = "Please use the `BitXorAssign::bitxor_assign` ops method instead",
+        note = "Please use the `BitXorAssign::bitxor_assign` ops method instead"
     )]
     pub fn symmetric_difference_with(&mut self, other: &Self) {
         self.store.symmetric_difference_with(&other.store);
@@ -148,6 +147,22 @@ impl Container {
         if let Some(new_store) = new_store {
             self.store = new_store;
         }
+    }
+}
+
+impl BitOrAssign<Container> for Container {
+    fn bitor_assign(&mut self, rhs: Container) {
+        BitOrAssign::bitor_assign(&mut self.store, rhs.store);
+        self.len = self.store.len();
+        self.ensure_correct_store();
+    }
+}
+
+impl BitOrAssign<&Container> for Container {
+    fn bitor_assign(&mut self, rhs: &Container) {
+        BitOrAssign::bitor_assign(&mut self.store, &rhs.store);
+        self.len = self.store.len();
+        self.ensure_correct_store();
     }
 }
 
