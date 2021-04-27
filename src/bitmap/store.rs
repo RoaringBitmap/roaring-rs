@@ -368,6 +368,7 @@ impl BitOrAssign<&Store> for Store {
 }
 
 impl BitAndAssign<Store> for Store {
+    #[allow(clippy::suspicious_op_assign_impl)]
     fn bitand_assign(&mut self, mut rhs: Store) {
         match (self, &mut rhs) {
             (&mut Array(ref mut lhs), &mut Array(ref mut rhs)) => {
@@ -398,6 +399,7 @@ impl BitAndAssign<Store> for Store {
 }
 
 impl BitAndAssign<&Store> for Store {
+    #[allow(clippy::suspicious_op_assign_impl)]
     fn bitand_assign(&mut self, rhs: &Store) {
         match (self, rhs) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
