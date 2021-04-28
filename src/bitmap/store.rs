@@ -104,30 +104,21 @@ impl Store {
         }
     }
 
-    /// Push the value that must be the new max of the set.
+    /// Push `index` at the end of the store only if `index` is the new max.
     ///
-    /// This function returns whether the value is equal to the
-    /// last max. This information is needed to correctly update the
-    /// length of the container.
+    /// Returns whether `index` was effectively pushed.
     pub fn push(&mut self, index: u16) -> bool {
-        match *self {
-            Array(ref mut vec) => {
-                if vec.last().map_or(true, |x| x < &index) {
-                    vec.push(index);
-                    true
-                } else {
-                    false
-                }
-            }
-            Bitmap(ref mut bits) => {
-                let (key, bit) = (key(index), bit(index));
-                if bits[key] & (1 << bit) == 0 {
+        if self.max().map_or(true, |max| max < index) {
+            match self {
+                Array(vec) => vec.push(index),
+                Bitmap(bits) => {
+                    let (key, bit) = (key(index), bit(index));
                     bits[key] |= 1 << bit;
-                    true
-                } else {
-                    false
                 }
             }
+            true
+        } else {
+            false
         }
     }
 
@@ -292,28 +283,26 @@ impl Store {
         }
     }
 
-    pub fn min(&self) -> u16 {
+    pub fn min(&self) -> Option<u16> {
         match *self {
-            Array(ref vec) => *vec.first().unwrap(),
+            Array(ref vec) => vec.first().copied(),
             Bitmap(ref bits) => bits
                 .iter()
                 .enumerate()
                 .find(|&(_, &bit)| bit != 0)
-                .map(|(index, bit)| index * 64 + (bit.trailing_zeros() as usize))
-                .unwrap() as u16,
+                .map(|(index, bit)| (index * 64 + (bit.trailing_zeros() as usize)) as u16),
         }
     }
 
-    pub fn max(&self) -> u16 {
+    pub fn max(&self) -> Option<u16> {
         match *self {
-            Array(ref vec) => *vec.last().unwrap(),
+            Array(ref vec) => vec.last().copied(),
             Bitmap(ref bits) => bits
                 .iter()
                 .enumerate()
                 .rev()
                 .find(|&(_, &bit)| bit != 0)
-                .map(|(index, bit)| index * 64 + (63 - bit.leading_zeros() as usize))
-                .unwrap() as u16,
+                .map(|(index, bit)| (index * 64 + (63 - bit.leading_zeros() as usize)) as u16),
         }
     }
 }

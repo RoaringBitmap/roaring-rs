@@ -19,7 +19,9 @@ impl RoaringBitmap {
         }
     }
 
-    /// Adds a value to the set. Returns `true` if the value was not already present in the set.
+    /// Adds a value to the set.
+    ///
+    /// Returns whether the value was absent from the set.
     ///
     /// # Examples
     ///
@@ -139,10 +141,9 @@ impl RoaringBitmap {
         inserted
     }
 
-    /// Adds a value to the set.
-    /// The value **must** be greater or equal to the maximum value in the set.
+    /// Pushes `value` in the bitmap only if it is greater than the current maximum value.
     ///
-    /// This method can be faster than `insert` because it skips the binary searches.
+    /// Returns whether the value was inserted.
     ///
     /// # Examples
     ///
@@ -150,31 +151,26 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     ///
     /// let mut rb = RoaringBitmap::new();
-    /// rb.push(1);
-    /// rb.push(3);
-    /// rb.push(3);
-    /// rb.push(5);
+    /// assert!(rb.push(1));
+    /// assert!(rb.push(3));
+    /// assert_eq!(rb.push(3), false);
+    /// assert!(rb.push(5));
     ///
     /// assert_eq!(rb.iter().collect::<Vec<u32>>(), vec![1, 3, 5]);
     /// ```
-    pub fn push(&mut self, value: u32) {
+    pub fn push(&mut self, value: u32) -> bool {
         let (key, index) = util::split(value);
-        match self.containers.last() {
-            Some(container) => {
-                if container.key != key {
-                    self.containers
-                        .insert(self.containers.len(), Container::new(key));
-                }
-            }
-            None => {
-                self.containers
-                    .insert(self.containers.len(), Container::new(key));
+
+        match self.containers.last_mut() {
+            Some(container) if container.key == key => container.push(index),
+            Some(container) if container.key > key => false,
+            _otherwise => {
+                let mut container = Container::new(key);
+                container.push(index);
+                self.containers.push(container);
+                true
             }
         }
-        let last = self.containers.last_mut().unwrap();
-        assert!(last.key <= key);
-        assert!(last.len == 0 || last.max() <= index);
-        last.push(index)
     }
 
     /// Removes a value from the set. Returns `true` if the value was present in the set.
@@ -359,7 +355,7 @@ impl RoaringBitmap {
     pub fn min(&self) -> Option<u32> {
         self.containers
             .first()
-            .map(|head| util::join(head.key, head.min()))
+            .and_then(|tail| tail.min().map(|min| util::join(tail.key, min)))
     }
 
     /// Returns the maximum value in the set (if the set is non-empty).
@@ -379,7 +375,7 @@ impl RoaringBitmap {
     pub fn max(&self) -> Option<u32> {
         self.containers
             .last()
-            .map(|tail| util::join(tail.key, tail.max()))
+            .and_then(|tail| tail.max().map(|max| util::join(tail.key, max)))
     }
 }
 

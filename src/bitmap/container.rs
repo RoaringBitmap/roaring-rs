@@ -52,10 +52,16 @@ impl Container {
         inserted
     }
 
-    pub fn push(&mut self, index: u16) {
+    /// Pushes `index` at the end of the container only if `index` is the new max.
+    ///
+    /// Returns whether the `index` was effectively pushed.
+    pub fn push(&mut self, index: u16) -> bool {
         if self.store.push(index) {
             self.len += 1;
             self.ensure_correct_store();
+            true
+        } else {
+            false
         }
     }
 
@@ -92,11 +98,11 @@ impl Container {
         self.len <= other.len && self.store.is_subset(&other.store)
     }
 
-    pub fn min(&self) -> u16 {
+    pub fn min(&self) -> Option<u16> {
         self.store.min()
     }
 
-    pub fn max(&self) -> u16 {
+    pub fn max(&self) -> Option<u16> {
         self.store.max()
     }
 
