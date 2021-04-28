@@ -83,7 +83,7 @@ fn test_bitmap_high16bits() {
     bitmap.serialize_into(&mut buffer).unwrap();
 
     let new = RoaringBitmap::deserialize_from(&buffer[..]);
-    assert_eq!(true, new.is_ok());
+    assert!(new.is_ok());
     assert_eq!(bitmap, new.unwrap());
 }
 
