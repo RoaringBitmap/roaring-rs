@@ -111,7 +111,7 @@ impl Store {
     pub fn push(&mut self, index: u16) -> bool {
         match *self {
             Array(ref mut vec) => {
-                if vec.last().map_or(true, |x| x < &index) {
+                if vec.last().map_or(true, |max| max < &index) {
                     vec.push(index);
                     true
                 } else {

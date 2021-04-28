@@ -19,7 +19,9 @@ impl RoaringBitmap {
         }
     }
 
-    /// Adds a value to the set. Returns `true` if the value was not already present in the set.
+    /// Adds a value to the set.
+    ///
+    /// Returns `true` if the value was not already present in the set.
     ///
     /// # Examples
     ///
@@ -140,7 +142,9 @@ impl RoaringBitmap {
     }
 
     /// Adds a value to the set.
-    /// The value **must** be greater or equal to the maximum value in the set.
+    ///
+    /// The value **must** be greater or equal to the maximum value in the set,
+    /// returns `true` if the value was effectively inserted.
     ///
     /// This method can be faster than `insert` because it skips the binary searches.
     ///
@@ -157,24 +161,25 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb.iter().collect::<Vec<u32>>(), vec![1, 3, 5]);
     /// ```
-    pub fn push(&mut self, value: u32) {
+    pub fn push(&mut self, value: u32) -> bool {
         let (key, index) = util::split(value);
-        match self.containers.last() {
-            Some(container) => {
-                if container.key != key {
-                    self.containers
-                        .insert(self.containers.len(), Container::new(key));
+
+        match self.containers.last_mut() {
+            Some(container) if container.key == key => {
+                if container.len != 0 && container.max() <= index {
+                    container.push(index)
+                } else {
+                    false
                 }
-            }
-            None => {
-                self.containers
-                    .insert(self.containers.len(), Container::new(key));
+            },
+            Some(container) if container.key > key => return false,
+            _otherwise => {
+                let mut container = Container::new(key);
+                container.push(index);
+                self.containers.push(container);
+                true
             }
         }
-        let last = self.containers.last_mut().unwrap();
-        assert!(last.key <= key);
-        assert!(last.len == 0 || last.max() <= index);
-        last.push(index)
     }
 
     /// Removes a value from the set. Returns `true` if the value was present in the set.

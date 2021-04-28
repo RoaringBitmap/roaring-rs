@@ -51,10 +51,15 @@ impl Container {
         inserted
     }
 
-    pub fn push(&mut self, index: u16) {
+    /// Push the value at the end of the store, returns `true`
+    /// if it as effectively been inserted in the store and is the new max value.
+    pub fn push(&mut self, index: u16) -> bool {
         if self.store.push(index) {
             self.len += 1;
             self.ensure_correct_store();
+            true
+        } else {
+            false
         }
     }
 
