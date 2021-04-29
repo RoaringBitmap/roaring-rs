@@ -104,7 +104,7 @@ fn intersect_with(c: &mut Criterion) {
         let bitmap2: RoaringBitmap = (100..200).collect();
 
         b.iter(|| {
-            bitmap1.intersect_with(black_box(&bitmap2));
+            bitmap1 &= black_box(&bitmap2);
         });
     });
 }
@@ -124,7 +124,7 @@ fn union_with(c: &mut Criterion) {
         let bitmap2: RoaringBitmap = (100..200).collect();
 
         b.iter(|| {
-            bitmap1.union_with(black_box(&bitmap2));
+            bitmap1 |= black_box(&bitmap2);
         });
     });
 }
@@ -144,7 +144,7 @@ fn symmetric_deference_with(c: &mut Criterion) {
         let bitmap2: RoaringBitmap = (100..200).collect();
 
         b.iter(|| {
-            bitmap1.symmetric_difference_with(black_box(&bitmap2));
+            bitmap1 ^= black_box(&bitmap2);
         });
     });
 }

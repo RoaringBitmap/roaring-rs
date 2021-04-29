@@ -1,4 +1,5 @@
 use std::collections::btree_map::Entry;
+use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
 use crate::RoaringTreemap;
@@ -15,7 +16,7 @@ impl RoaringTreemap {
     /// let rb2: RoaringTreemap = (3..5).collect();
     /// let rb3: RoaringTreemap = (1..5).collect();
     ///
-    /// rb1.union_with(&rb2);
+    /// rb1 |= rb2;
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
@@ -33,17 +34,12 @@ impl RoaringTreemap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitOrAssign::bitor_assign` (`|=`) ops method instead"
+    )]
     pub fn union_with(&mut self, other: &RoaringTreemap) {
-        for (key, other_rb) in &other.map {
-            match self.map.entry(*key) {
-                Entry::Vacant(ent) => {
-                    ent.insert(other_rb.clone());
-                }
-                Entry::Occupied(mut ent) => {
-                    ent.get_mut().union_with(other_rb);
-                }
-            };
-        }
+        BitOrAssign::bitor_assign(self, other)
     }
 
     /// Intersects in-place with the specified other bitmap.
@@ -57,7 +53,7 @@ impl RoaringTreemap {
     /// let rb2: RoaringTreemap = (3..5).collect();
     /// let rb3: RoaringTreemap = (3..4).collect();
     ///
-    /// rb1.intersect_with(&rb2);
+    /// rb1 &= rb2;
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
@@ -75,25 +71,12 @@ impl RoaringTreemap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitAndAssign::bitand_assign` (`&=`) ops method instead"
+    )]
     pub fn intersect_with(&mut self, other: &RoaringTreemap) {
-        let mut keys_to_remove: Vec<u32> = Vec::new();
-        for (key, self_rb) in &mut self.map {
-            match other.map.get(key) {
-                None => {
-                    keys_to_remove.push(*key);
-                }
-                Some(other_rb) => {
-                    self_rb.intersect_with(other_rb);
-                    if self_rb.is_empty() {
-                        keys_to_remove.push(*key);
-                    }
-                }
-            }
-        }
-
-        for key in keys_to_remove {
-            self.map.remove(&key);
-        }
+        BitAndAssign::bitand_assign(self, other)
     }
 
     /// Removes all values in the specified other bitmap from self, in-place.
@@ -107,7 +90,7 @@ impl RoaringTreemap {
     /// let rb2: RoaringTreemap = (3..5).collect();
     /// let rb3: RoaringTreemap = (1..3).collect();
     ///
-    /// rb1.difference_with(&rb2);
+    /// rb1 -= rb2;
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
@@ -125,20 +108,12 @@ impl RoaringTreemap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `SubAssign::sub_assign` (`-=`) ops method instead"
+    )]
     pub fn difference_with(&mut self, other: &RoaringTreemap) {
-        let mut keys_to_remove: Vec<u32> = Vec::new();
-        for (key, self_rb) in &mut self.map {
-            if let Some(other_rb) = other.map.get(key) {
-                self_rb.difference_with(other_rb);
-                if self_rb.is_empty() {
-                    keys_to_remove.push(*key);
-                }
-            }
-        }
-
-        for key in keys_to_remove {
-            self.map.remove(&key);
-        }
+        SubAssign::sub_assign(self, other)
     }
 
     /// Replaces this bitmap with one that is equivalent to `self XOR other`.
@@ -152,7 +127,7 @@ impl RoaringTreemap {
     /// let rb2: RoaringTreemap = (3..6).collect();
     /// let rb3: RoaringTreemap = (1..3).chain(4..6).collect();
     ///
-    /// rb1.symmetric_difference_with(&rb2);
+    /// rb1 ^= rb2;
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
@@ -170,20 +145,162 @@ impl RoaringTreemap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitXorAssign::bitxor_assign` (`^=`) ops method instead"
+    )]
     pub fn symmetric_difference_with(&mut self, other: &RoaringTreemap) {
-        let mut keys_to_remove: Vec<u32> = Vec::new();
-        for (key, other_rb) in &other.map {
+        BitXorAssign::bitxor_assign(self, other)
+    }
+}
+
+impl BitOr<RoaringTreemap> for RoaringTreemap {
+    type Output = RoaringTreemap;
+
+    /// An `union` between two sets.
+    fn bitor(mut self, rhs: RoaringTreemap) -> RoaringTreemap {
+        BitOrAssign::bitor_assign(&mut self, rhs);
+        self
+    }
+}
+
+impl BitOr<&RoaringTreemap> for RoaringTreemap {
+    type Output = RoaringTreemap;
+
+    /// An `union` between two sets.
+    fn bitor(mut self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        BitOrAssign::bitor_assign(&mut self, rhs);
+        self
+    }
+}
+
+impl BitOr<RoaringTreemap> for &RoaringTreemap {
+    type Output = RoaringTreemap;
+
+    /// An `union` between two sets.
+    fn bitor(self, rhs: RoaringTreemap) -> RoaringTreemap {
+        BitOr::bitor(rhs, self)
+    }
+}
+
+impl BitOr<&RoaringTreemap> for &RoaringTreemap {
+    type Output = RoaringTreemap;
+
+    /// An `union` between two sets.
+    fn bitor(self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        if self.len() <= rhs.len() {
+            BitOr::bitor(rhs.clone(), self)
+        } else {
+            BitOr::bitor(self.clone(), rhs)
+        }
+    }
+}
+
+impl BitOrAssign<RoaringTreemap> for RoaringTreemap {
+    /// An `union` between two sets.
+    fn bitor_assign(&mut self, mut rhs: RoaringTreemap) {
+        // We make sure that we apply the union operation on the biggest map.
+        if self.len() < rhs.len() {
+            mem::swap(self, &mut rhs);
+        }
+
+        for (key, other_rb) in rhs.map {
+            match self.map.entry(key) {
+                Entry::Vacant(ent) => {
+                    ent.insert(other_rb);
+                }
+                Entry::Occupied(mut ent) => {
+                    BitOrAssign::bitor_assign(ent.get_mut(), other_rb);
+                }
+            }
+        }
+    }
+}
+
+impl BitOrAssign<&RoaringTreemap> for RoaringTreemap {
+    /// An `union` between two sets.
+    fn bitor_assign(&mut self, rhs: &RoaringTreemap) {
+        for (key, other_rb) in &rhs.map {
             match self.map.entry(*key) {
                 Entry::Vacant(ent) => {
                     ent.insert(other_rb.clone());
                 }
                 Entry::Occupied(mut ent) => {
-                    ent.get_mut().symmetric_difference_with(other_rb);
-                    if ent.get().is_empty() {
+                    BitOrAssign::bitor_assign(ent.get_mut(), other_rb);
+                }
+            }
+        }
+    }
+}
+
+impl BitAnd<RoaringTreemap> for RoaringTreemap {
+    type Output = RoaringTreemap;
+
+    /// An `intersection` between two sets.
+    fn bitand(mut self, rhs: RoaringTreemap) -> RoaringTreemap {
+        BitAndAssign::bitand_assign(&mut self, rhs);
+        self
+    }
+}
+
+impl BitAnd<&RoaringTreemap> for RoaringTreemap {
+    type Output = RoaringTreemap;
+
+    /// An `intersection` between two sets.
+    fn bitand(mut self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        BitAndAssign::bitand_assign(&mut self, rhs);
+        self
+    }
+}
+
+impl BitAnd<RoaringTreemap> for &RoaringTreemap {
+    type Output = RoaringTreemap;
+
+    /// An `intersection` between two sets.
+    fn bitand(self, rhs: RoaringTreemap) -> RoaringTreemap {
+        BitAnd::bitand(rhs, self)
+    }
+}
+
+impl BitAnd<&RoaringTreemap> for &RoaringTreemap {
+    type Output = RoaringTreemap;
+
+    /// An `intersection` between two sets.
+    fn bitand(self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        if rhs.len() < self.len() {
+            BitAnd::bitand(self.clone(), rhs)
+        } else {
+            BitAnd::bitand(rhs.clone(), self)
+        }
+    }
+}
+
+impl BitAndAssign<RoaringTreemap> for RoaringTreemap {
+    /// An `intersection` between two sets.
+    fn bitand_assign(&mut self, mut rhs: RoaringTreemap) {
+        // We make sure that we apply the intersection operation on the smallest map.
+        if rhs.len() < self.len() {
+            mem::swap(self, &mut rhs);
+        }
+
+        BitAndAssign::bitand_assign(self, &rhs)
+    }
+}
+
+impl BitAndAssign<&RoaringTreemap> for RoaringTreemap {
+    /// An `intersection` between two sets.
+    fn bitand_assign(&mut self, rhs: &RoaringTreemap) {
+        let mut keys_to_remove: Vec<u32> = Vec::new();
+        for (key, self_rb) in &mut self.map {
+            match rhs.map.get(key) {
+                Some(other_rb) => {
+                    BitAndAssign::bitand_assign(self_rb, other_rb);
+                    if self_rb.is_empty() {
                         keys_to_remove.push(*key);
                     }
                 }
-            };
+                None => keys_to_remove.push(*key),
+            }
         }
 
         for key in keys_to_remove {
@@ -192,186 +309,144 @@ impl RoaringTreemap {
     }
 }
 
-impl BitOr<RoaringTreemap> for RoaringTreemap {
-    type Output = RoaringTreemap;
-
-    fn bitor(mut self, rhs: RoaringTreemap) -> RoaringTreemap {
-        self.union_with(&rhs);
-        self
-    }
-}
-
-impl<'a> BitOr<&'a RoaringTreemap> for RoaringTreemap {
-    type Output = RoaringTreemap;
-
-    fn bitor(mut self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.union_with(rhs);
-        self
-    }
-}
-
-impl<'a> BitOr<RoaringTreemap> for &'a RoaringTreemap {
-    type Output = RoaringTreemap;
-
-    fn bitor(self, rhs: RoaringTreemap) -> RoaringTreemap {
-        rhs | self
-    }
-}
-
-impl<'a, 'b> BitOr<&'a RoaringTreemap> for &'b RoaringTreemap {
-    type Output = RoaringTreemap;
-
-    fn bitor(self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.clone() | rhs
-    }
-}
-
-impl BitOrAssign<RoaringTreemap> for RoaringTreemap {
-    fn bitor_assign(&mut self, rhs: RoaringTreemap) {
-        self.union_with(&rhs)
-    }
-}
-
-impl<'a> BitOrAssign<&'a RoaringTreemap> for RoaringTreemap {
-    fn bitor_assign(&mut self, rhs: &'a RoaringTreemap) {
-        self.union_with(rhs)
-    }
-}
-
-impl BitAnd<RoaringTreemap> for RoaringTreemap {
-    type Output = RoaringTreemap;
-
-    fn bitand(mut self, rhs: RoaringTreemap) -> RoaringTreemap {
-        self.intersect_with(&rhs);
-        self
-    }
-}
-
-impl<'a> BitAnd<&'a RoaringTreemap> for RoaringTreemap {
-    type Output = RoaringTreemap;
-
-    fn bitand(mut self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.intersect_with(rhs);
-        self
-    }
-}
-
-impl<'a> BitAnd<RoaringTreemap> for &'a RoaringTreemap {
-    type Output = RoaringTreemap;
-
-    fn bitand(self, rhs: RoaringTreemap) -> RoaringTreemap {
-        rhs & self
-    }
-}
-
-impl<'a, 'b> BitAnd<&'a RoaringTreemap> for &'b RoaringTreemap {
-    type Output = RoaringTreemap;
-
-    fn bitand(self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.clone() & rhs
-    }
-}
-
-impl BitAndAssign<RoaringTreemap> for RoaringTreemap {
-    fn bitand_assign(&mut self, rhs: RoaringTreemap) {
-        self.intersect_with(&rhs)
-    }
-}
-
-impl<'a> BitAndAssign<&'a RoaringTreemap> for RoaringTreemap {
-    fn bitand_assign(&mut self, rhs: &'a RoaringTreemap) {
-        self.intersect_with(rhs)
-    }
-}
-
 impl Sub<RoaringTreemap> for RoaringTreemap {
     type Output = RoaringTreemap;
 
+    /// A `difference` between two sets.
     fn sub(mut self, rhs: RoaringTreemap) -> RoaringTreemap {
-        self.difference_with(&rhs);
+        SubAssign::sub_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> Sub<&'a RoaringTreemap> for RoaringTreemap {
+impl Sub<&RoaringTreemap> for RoaringTreemap {
     type Output = RoaringTreemap;
 
-    fn sub(mut self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.difference_with(rhs);
+    /// A `difference` between two sets.
+    fn sub(mut self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        SubAssign::sub_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> Sub<RoaringTreemap> for &'a RoaringTreemap {
+impl Sub<RoaringTreemap> for &RoaringTreemap {
     type Output = RoaringTreemap;
 
+    /// A `difference` between two sets.
     fn sub(self, rhs: RoaringTreemap) -> RoaringTreemap {
-        self.clone() - rhs
+        Sub::sub(self.clone(), rhs)
     }
 }
 
-impl<'a, 'b> Sub<&'a RoaringTreemap> for &'b RoaringTreemap {
+impl Sub<&RoaringTreemap> for &RoaringTreemap {
     type Output = RoaringTreemap;
 
-    fn sub(self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.clone() - rhs
+    /// A `difference` between two sets.
+    fn sub(self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        Sub::sub(self.clone(), rhs)
     }
 }
 
 impl SubAssign<RoaringTreemap> for RoaringTreemap {
+    /// A `difference` between two sets.
     fn sub_assign(&mut self, rhs: RoaringTreemap) {
-        self.difference_with(&rhs)
+        SubAssign::sub_assign(self, &rhs)
     }
 }
 
-impl<'a> SubAssign<&'a RoaringTreemap> for RoaringTreemap {
-    fn sub_assign(&mut self, rhs: &'a RoaringTreemap) {
-        self.difference_with(rhs)
+impl SubAssign<&RoaringTreemap> for RoaringTreemap {
+    /// A `difference` between two sets.
+    fn sub_assign(&mut self, rhs: &RoaringTreemap) {
+        for (key, rhs_rb) in &rhs.map {
+            match self.map.entry(*key) {
+                Entry::Vacant(_entry) => (),
+                Entry::Occupied(mut entry) => {
+                    SubAssign::sub_assign(entry.get_mut(), rhs_rb);
+                    if entry.get().is_empty() {
+                        entry.remove_entry();
+                    }
+                }
+            }
+        }
     }
 }
 
 impl BitXor<RoaringTreemap> for RoaringTreemap {
     type Output = RoaringTreemap;
 
+    /// A `symmetric difference` between two sets.
     fn bitxor(mut self, rhs: RoaringTreemap) -> RoaringTreemap {
-        self.symmetric_difference_with(&rhs);
+        BitXorAssign::bitxor_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> BitXor<&'a RoaringTreemap> for RoaringTreemap {
+impl BitXor<&RoaringTreemap> for RoaringTreemap {
     type Output = RoaringTreemap;
 
-    fn bitxor(mut self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.symmetric_difference_with(rhs);
+    /// A `symmetric difference` between two sets.
+    fn bitxor(mut self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        BitXorAssign::bitxor_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> BitXor<RoaringTreemap> for &'a RoaringTreemap {
+impl BitXor<RoaringTreemap> for &RoaringTreemap {
     type Output = RoaringTreemap;
 
+    /// A `symmetric difference` between two sets.
     fn bitxor(self, rhs: RoaringTreemap) -> RoaringTreemap {
-        rhs ^ self
+        BitXor::bitxor(rhs, self)
     }
 }
 
-impl<'a, 'b> BitXor<&'a RoaringTreemap> for &'b RoaringTreemap {
+impl BitXor<&RoaringTreemap> for &RoaringTreemap {
     type Output = RoaringTreemap;
 
-    fn bitxor(self, rhs: &'a RoaringTreemap) -> RoaringTreemap {
-        self.clone() ^ rhs
+    /// A `symmetric difference` between two sets.
+    fn bitxor(self, rhs: &RoaringTreemap) -> RoaringTreemap {
+        if self.len() < rhs.len() {
+            BitXor::bitxor(self, rhs.clone())
+        } else {
+            BitXor::bitxor(self.clone(), rhs)
+        }
     }
 }
 
 impl BitXorAssign<RoaringTreemap> for RoaringTreemap {
+    /// A `symmetric difference` between two sets.
     fn bitxor_assign(&mut self, rhs: RoaringTreemap) {
-        self.symmetric_difference_with(&rhs)
+        for (key, other_rb) in rhs.map {
+            match self.map.entry(key) {
+                Entry::Vacant(entry) => {
+                    entry.insert(other_rb);
+                }
+                Entry::Occupied(mut entry) => {
+                    BitXorAssign::bitxor_assign(entry.get_mut(), other_rb);
+                    if entry.get().is_empty() {
+                        entry.remove_entry();
+                    }
+                }
+            }
+        }
     }
 }
 
-impl<'a> BitXorAssign<&'a RoaringTreemap> for RoaringTreemap {
-    fn bitxor_assign(&mut self, rhs: &'a RoaringTreemap) {
-        self.symmetric_difference_with(rhs)
+impl BitXorAssign<&RoaringTreemap> for RoaringTreemap {
+    /// A `symmetric difference` between two sets.
+    fn bitxor_assign(&mut self, rhs: &RoaringTreemap) {
+        for (key, other_rb) in &rhs.map {
+            match self.map.entry(*key) {
+                Entry::Vacant(entry) => {
+                    entry.insert(other_rb.clone());
+                }
+                Entry::Occupied(mut entry) => {
+                    BitXorAssign::bitxor_assign(entry.get_mut(), other_rb);
+                    if entry.get().is_empty() {
+                        entry.remove_entry();
+                    }
+                }
+            }
+        }
     }
 }

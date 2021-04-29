@@ -1,6 +1,10 @@
-use retain_mut::RetainMut;
+use std::cmp::Ordering;
+use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
+use retain_mut::RetainMut;
+
+use crate::bitmap::container::Container;
 use crate::RoaringBitmap;
 
 impl RoaringBitmap {
@@ -15,7 +19,7 @@ impl RoaringBitmap {
     /// let rb2: RoaringBitmap = (3..5).collect();
     /// let rb3: RoaringBitmap = (1..5).collect();
     ///
-    /// rb1.union_with(&rb2);
+    /// rb1 |= rb2;
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
@@ -33,14 +37,12 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitOrAssign::bitor_assign` (`|=`) ops method instead"
+    )]
     pub fn union_with(&mut self, other: &RoaringBitmap) {
-        for container in &other.containers {
-            let key = container.key;
-            match self.containers.binary_search_by_key(&key, |c| c.key) {
-                Err(loc) => self.containers.insert(loc, container.clone()),
-                Ok(loc) => self.containers[loc].union_with(container),
-            }
-        }
+        BitOrAssign::bitor_assign(self, other)
     }
 
     /// Intersects in-place with the specified other bitmap.
@@ -54,7 +56,7 @@ impl RoaringBitmap {
     /// let rb2: RoaringBitmap = (3..5).collect();
     /// let rb3: RoaringBitmap = (3..4).collect();
     ///
-    /// rb1.intersect_with(&rb2);
+    /// rb1 &= rb2;
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
@@ -72,16 +74,12 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitAndAssign::bitand_assign` (`&=`) ops method instead"
+    )]
     pub fn intersect_with(&mut self, other: &RoaringBitmap) {
-        self.containers.retain_mut(|cont| {
-            match other.containers.binary_search_by_key(&cont.key, |c| c.key) {
-                Ok(loc) => {
-                    cont.intersect_with(&other.containers[loc]);
-                    cont.len != 0
-                }
-                Err(_) => false,
-            }
-        })
+        BitAndAssign::bitand_assign(self, other)
     }
 
     /// Removes all values in the specified other bitmap from self, in-place.
@@ -95,7 +93,7 @@ impl RoaringBitmap {
     /// let rb2: RoaringBitmap = (3..5).collect();
     /// let rb3: RoaringBitmap = (1..3).collect();
     ///
-    /// rb1.difference_with(&rb2);
+    /// rb1 -= rb2;
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
@@ -113,16 +111,12 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `SubAssign::sub_assign` (`-=`) ops method instead"
+    )]
     pub fn difference_with(&mut self, other: &RoaringBitmap) {
-        self.containers.retain_mut(|cont| {
-            match other.containers.binary_search_by_key(&cont.key, |c| c.key) {
-                Ok(loc) => {
-                    cont.difference_with(&other.containers[loc]);
-                    cont.len != 0
-                }
-                Err(_) => true,
-            }
-        })
+        SubAssign::sub_assign(self, other)
     }
 
     /// Replaces this bitmap with one that is equivalent to `self XOR other`.
@@ -136,7 +130,7 @@ impl RoaringBitmap {
     /// let rb2: RoaringBitmap = (3..6).collect();
     /// let rb3: RoaringBitmap = (1..3).chain(4..6).collect();
     ///
-    /// rb1.symmetric_difference_with(&rb2);
+    /// rb1 ^= rb2;
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
@@ -154,41 +148,31 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb1, rb3);
     /// ```
+    #[deprecated(
+        since = "0.6.7",
+        note = "Please use the `BitXorAssign::bitxor_assign` (`^=`) ops method instead"
+    )]
     pub fn symmetric_difference_with(&mut self, other: &RoaringBitmap) {
-        for container in &other.containers {
-            let key = container.key;
-            match self.containers.binary_search_by_key(&key, |c| c.key) {
-                Err(loc) => self.containers.insert(loc, container.clone()),
-                Ok(loc) => {
-                    self.containers[loc].symmetric_difference_with(container);
-                    if self.containers[loc].len == 0 {
-                        self.containers.remove(loc);
-                    }
-                }
-            }
-        }
+        BitXorAssign::bitxor_assign(self, other)
     }
 }
 
 impl BitOr<RoaringBitmap> for RoaringBitmap {
     type Output = RoaringBitmap;
 
-    fn bitor(mut self, mut rhs: RoaringBitmap) -> RoaringBitmap {
-        if self.len() <= rhs.len() {
-            rhs.union_with(&self);
-            rhs
-        } else {
-            self.union_with(&rhs);
-            self
-        }
+    /// An `union` between two sets.
+    fn bitor(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
+        BitOrAssign::bitor_assign(&mut self, rhs);
+        self
     }
 }
 
 impl BitOr<&RoaringBitmap> for RoaringBitmap {
     type Output = RoaringBitmap;
 
+    /// An `union` between two sets.
     fn bitor(mut self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        self.union_with(rhs);
+        BitOrAssign::bitor_assign(&mut self, rhs);
         self
     }
 }
@@ -196,59 +180,72 @@ impl BitOr<&RoaringBitmap> for RoaringBitmap {
 impl BitOr<RoaringBitmap> for &RoaringBitmap {
     type Output = RoaringBitmap;
 
+    /// An `union` between two sets.
     fn bitor(self, rhs: RoaringBitmap) -> RoaringBitmap {
-        rhs | self
+        BitOr::bitor(rhs, self)
     }
 }
 
 impl BitOr<&RoaringBitmap> for &RoaringBitmap {
     type Output = RoaringBitmap;
 
+    /// An `union` between two sets.
     fn bitor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
         if self.len() <= rhs.len() {
-            rhs.clone() | self
+            BitOr::bitor(rhs.clone(), self)
         } else {
-            self.clone() | rhs
+            BitOr::bitor(self.clone(), rhs)
         }
     }
 }
 
 impl BitOrAssign<RoaringBitmap> for RoaringBitmap {
+    /// An `union` between two sets.
     fn bitor_assign(&mut self, mut rhs: RoaringBitmap) {
-        if self.len() <= rhs.len() {
-            rhs.union_with(&self);
-            *self = rhs;
-        } else {
-            self.union_with(&rhs);
+        // We make sure that we apply the union operation on the biggest map.
+        if self.len() < rhs.len() {
+            mem::swap(self, &mut rhs);
+        }
+
+        for container in rhs.containers {
+            let key = container.key;
+            match self.containers.binary_search_by_key(&key, |c| c.key) {
+                Err(loc) => self.containers.insert(loc, container),
+                Ok(loc) => BitOrAssign::bitor_assign(&mut self.containers[loc], container),
+            }
         }
     }
 }
 
 impl BitOrAssign<&RoaringBitmap> for RoaringBitmap {
+    /// An `union` between two sets.
     fn bitor_assign(&mut self, rhs: &RoaringBitmap) {
-        self.union_with(rhs)
+        for container in &rhs.containers {
+            let key = container.key;
+            match self.containers.binary_search_by_key(&key, |c| c.key) {
+                Err(loc) => self.containers.insert(loc, container.clone()),
+                Ok(loc) => BitOrAssign::bitor_assign(&mut self.containers[loc], container),
+            }
+        }
     }
 }
 
 impl BitAnd<RoaringBitmap> for RoaringBitmap {
     type Output = RoaringBitmap;
 
-    fn bitand(mut self, mut rhs: RoaringBitmap) -> RoaringBitmap {
-        if self.len() <= rhs.len() {
-            self.intersect_with(&rhs);
-            self
-        } else {
-            rhs.intersect_with(&self);
-            rhs
-        }
+    /// An `intersection` between two sets.
+    fn bitand(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
+        BitAndAssign::bitand_assign(&mut self, rhs);
+        self
     }
 }
 
 impl BitAnd<&RoaringBitmap> for RoaringBitmap {
     type Output = RoaringBitmap;
 
+    /// An `intersection` between two sets.
     fn bitand(mut self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        self.intersect_with(rhs);
+        BitAndAssign::bitand_assign(&mut self, rhs);
         self
     }
 }
@@ -256,128 +253,242 @@ impl BitAnd<&RoaringBitmap> for RoaringBitmap {
 impl BitAnd<RoaringBitmap> for &RoaringBitmap {
     type Output = RoaringBitmap;
 
+    /// An `intersection` between two sets.
     fn bitand(self, rhs: RoaringBitmap) -> RoaringBitmap {
-        rhs & self
+        BitAnd::bitand(rhs, self)
     }
 }
 
 impl BitAnd<&RoaringBitmap> for &RoaringBitmap {
     type Output = RoaringBitmap;
 
+    /// An `intersection` between two sets.
     fn bitand(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        if self.len() <= rhs.len() {
-            self.clone() & rhs
+        if rhs.len() < self.len() {
+            BitAnd::bitand(self.clone(), rhs)
         } else {
-            rhs.clone() & self
+            BitAnd::bitand(rhs.clone(), self)
         }
     }
 }
 
 impl BitAndAssign<RoaringBitmap> for RoaringBitmap {
+    /// An `intersection` between two sets.
     fn bitand_assign(&mut self, mut rhs: RoaringBitmap) {
-        if self.len() <= rhs.len() {
-            self.intersect_with(&rhs);
-        } else {
-            rhs.intersect_with(self);
-            *self = rhs;
+        // We make sure that we apply the intersection operation on the smallest map.
+        if rhs.len() < self.len() {
+            mem::swap(self, &mut rhs);
         }
+
+        self.containers.retain_mut(|cont| {
+            let key = cont.key;
+            match rhs.containers.binary_search_by_key(&key, |c| c.key) {
+                Ok(loc) => {
+                    let rhs_cont = &mut rhs.containers[loc];
+                    let rhs_cont = mem::replace(rhs_cont, Container::new(rhs_cont.key));
+                    BitAndAssign::bitand_assign(cont, rhs_cont);
+                    cont.len != 0
+                }
+                Err(_) => false,
+            }
+        })
     }
 }
 
 impl BitAndAssign<&RoaringBitmap> for RoaringBitmap {
+    /// An `intersection` between two sets.
     fn bitand_assign(&mut self, rhs: &RoaringBitmap) {
-        self.intersect_with(rhs)
+        self.containers.retain_mut(|cont| {
+            let key = cont.key;
+            match rhs.containers.binary_search_by_key(&key, |c| c.key) {
+                Ok(loc) => {
+                    BitAndAssign::bitand_assign(cont, &rhs.containers[loc]);
+                    cont.len != 0
+                }
+                Err(_) => false,
+            }
+        })
     }
 }
 
 impl Sub<RoaringBitmap> for RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+    type Output = RoaringBitmap;
 
+    /// A `difference` between two sets.
     fn sub(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
-        self.difference_with(&rhs);
+        SubAssign::sub_assign(&mut self, &rhs);
         self
     }
 }
 
-impl<'a> Sub<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+impl Sub<&RoaringBitmap> for RoaringBitmap {
+    type Output = RoaringBitmap;
 
-    fn sub(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
-        self.difference_with(rhs);
+    /// A `difference` between two sets.
+    fn sub(mut self, rhs: &RoaringBitmap) -> RoaringBitmap {
+        SubAssign::sub_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> Sub<RoaringBitmap> for &'a RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+impl Sub<RoaringBitmap> for &RoaringBitmap {
+    type Output = RoaringBitmap;
 
+    /// A `difference` between two sets.
     fn sub(self, rhs: RoaringBitmap) -> RoaringBitmap {
-        self.clone() - rhs
+        Sub::sub(self.clone(), rhs)
     }
 }
 
-impl<'a, 'b> Sub<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+impl Sub<&RoaringBitmap> for &RoaringBitmap {
+    type Output = RoaringBitmap;
 
-    fn sub(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
-        self.clone() - rhs
+    /// A `difference` between two sets.
+    fn sub(self, rhs: &RoaringBitmap) -> RoaringBitmap {
+        Sub::sub(self.clone(), rhs)
     }
 }
 
 impl SubAssign<RoaringBitmap> for RoaringBitmap {
+    /// A `difference` between two sets.
     fn sub_assign(&mut self, rhs: RoaringBitmap) {
-        self.difference_with(&rhs)
+        SubAssign::sub_assign(self, &rhs)
     }
 }
 
-impl<'a> SubAssign<&'a RoaringBitmap> for RoaringBitmap {
-    fn sub_assign(&mut self, rhs: &'a RoaringBitmap) {
-        self.difference_with(rhs)
+impl SubAssign<&RoaringBitmap> for RoaringBitmap {
+    /// A `difference` between two sets.
+    fn sub_assign(&mut self, rhs: &RoaringBitmap) {
+        self.containers.retain_mut(|cont| {
+            match rhs.containers.binary_search_by_key(&cont.key, |c| c.key) {
+                Ok(loc) => {
+                    SubAssign::sub_assign(cont, &rhs.containers[loc]);
+                    cont.len != 0
+                }
+                Err(_) => true,
+            }
+        })
     }
 }
 
 impl BitXor<RoaringBitmap> for RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+    type Output = RoaringBitmap;
 
+    /// A `symmetric difference` between two sets.
     fn bitxor(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
-        self.symmetric_difference_with(&rhs);
+        BitXorAssign::bitxor_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> BitXor<&'a RoaringBitmap> for RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+impl BitXor<&RoaringBitmap> for RoaringBitmap {
+    type Output = RoaringBitmap;
 
-    fn bitxor(mut self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
-        self.symmetric_difference_with(rhs);
+    /// A `symmetric difference` between two sets.
+    fn bitxor(mut self, rhs: &RoaringBitmap) -> RoaringBitmap {
+        BitXorAssign::bitxor_assign(&mut self, rhs);
         self
     }
 }
 
-impl<'a> BitXor<RoaringBitmap> for &'a RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+impl BitXor<RoaringBitmap> for &RoaringBitmap {
+    type Output = RoaringBitmap;
 
+    /// A `symmetric difference` between two sets.
     fn bitxor(self, rhs: RoaringBitmap) -> RoaringBitmap {
-        rhs ^ self
+        BitXor::bitxor(rhs, self)
     }
 }
 
-impl<'a, 'b> BitXor<&'a RoaringBitmap> for &'b RoaringBitmap {
-    type Output = crate::RoaringBitmap;
+impl BitXor<&RoaringBitmap> for &RoaringBitmap {
+    type Output = RoaringBitmap;
 
-    fn bitxor(self, rhs: &'a RoaringBitmap) -> RoaringBitmap {
-        self.clone() ^ rhs
+    /// A `symmetric difference` between two sets.
+    fn bitxor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
+        if self.len() < rhs.len() {
+            BitXor::bitxor(self, rhs.clone())
+        } else {
+            BitXor::bitxor(self.clone(), rhs)
+        }
     }
 }
 
 impl BitXorAssign<RoaringBitmap> for RoaringBitmap {
+    /// A `symmetric difference` between two sets.
     fn bitxor_assign(&mut self, rhs: RoaringBitmap) {
-        self.symmetric_difference_with(&rhs)
+        let mut left = mem::take(&mut self.containers).into_iter().peekable();
+        let mut right = rhs.containers.into_iter().peekable();
+
+        loop {
+            match (left.peek(), right.peek()) {
+                (None, None) => break,
+                (Some(_), None) => {
+                    self.containers.extend(left);
+                    break;
+                }
+                (None, Some(_)) => {
+                    self.containers.extend(right);
+                    break;
+                }
+                (Some(l), Some(r)) => match l.key.cmp(&r.key) {
+                    Ordering::Equal => {
+                        let mut lhs = left.next().unwrap();
+                        let rhs = right.next().unwrap();
+                        BitXorAssign::bitxor_assign(&mut lhs, rhs);
+                        if lhs.len != 0 {
+                            self.containers.push(lhs);
+                        }
+                    }
+                    Ordering::Less => {
+                        let lhs = left.next().unwrap();
+                        self.containers.push(lhs);
+                    }
+                    Ordering::Greater => {
+                        let rhs = right.next().unwrap();
+                        self.containers.push(rhs);
+                    }
+                },
+            }
+        }
     }
 }
 
-impl<'a> BitXorAssign<&'a RoaringBitmap> for RoaringBitmap {
-    fn bitxor_assign(&mut self, rhs: &'a RoaringBitmap) {
-        self.symmetric_difference_with(rhs)
+impl BitXorAssign<&RoaringBitmap> for RoaringBitmap {
+    /// A `symmetric difference` between two sets.
+    fn bitxor_assign(&mut self, rhs: &RoaringBitmap) {
+        let mut left = mem::take(&mut self.containers).into_iter().peekable();
+        let mut right = rhs.containers.iter().peekable();
+
+        loop {
+            match (left.peek(), right.peek()) {
+                (None, None) => break,
+                (Some(_), None) => {
+                    self.containers.extend(left);
+                    break;
+                }
+                (None, Some(_)) => {
+                    self.containers.extend(right.cloned());
+                    break;
+                }
+                (Some(l), Some(r)) => match l.key.cmp(&r.key) {
+                    Ordering::Equal => {
+                        let mut lhs = left.next().unwrap();
+                        let rhs = right.next().unwrap();
+                        BitXorAssign::bitxor_assign(&mut lhs, rhs);
+                        if lhs.len != 0 {
+                            self.containers.push(lhs);
+                        }
+                    }
+                    Ordering::Less => {
+                        let lhs = left.next().unwrap();
+                        self.containers.push(lhs);
+                    }
+                    Ordering::Greater => {
+                        let rhs = right.next().unwrap();
+                        self.containers.push(rhs.clone());
+                    }
+                },
+            }
+        }
     }
 }

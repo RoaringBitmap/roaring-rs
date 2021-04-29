@@ -7,7 +7,7 @@ fn array() {
     let bitmap2 = (1000..3000).collect::<RoaringBitmap>();
     let bitmap3 = (0..1000).chain(2000..3000).collect::<RoaringBitmap>();
 
-    bitmap1.symmetric_difference_with(&bitmap2);
+    bitmap1 ^= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }
@@ -17,7 +17,7 @@ fn no_symmetric_difference() {
     let mut bitmap1 = (0..2).collect::<RoaringBitmap>();
     let bitmap2 = (0..2).collect::<RoaringBitmap>();
 
-    bitmap1.symmetric_difference_with(&bitmap2);
+    bitmap1 ^= bitmap2;
 
     assert_eq!(bitmap1, RoaringBitmap::new());
 }
@@ -28,7 +28,7 @@ fn array_and_bitmap() {
     let bitmap2 = (1000..8000).collect::<RoaringBitmap>();
     let bitmap3 = (0..1000).chain(2000..8000).collect::<RoaringBitmap>();
 
-    bitmap1.symmetric_difference_with(&bitmap2);
+    bitmap1 ^= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }
@@ -39,7 +39,7 @@ fn bitmap_to_bitmap() {
     let bitmap2 = (6000..18000).collect::<RoaringBitmap>();
     let bitmap3 = (0..6000).chain(12000..18000).collect::<RoaringBitmap>();
 
-    bitmap1.symmetric_difference_with(&bitmap2);
+    bitmap1 ^= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }
@@ -50,7 +50,7 @@ fn bitmap_to_array() {
     let bitmap2 = (2000..7000).collect::<RoaringBitmap>();
     let bitmap3 = (0..2000).chain(6000..7000).collect::<RoaringBitmap>();
 
-    bitmap1.symmetric_difference_with(&bitmap2);
+    bitmap1 ^= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }
@@ -61,7 +61,7 @@ fn bitmap_and_array_to_bitmap() {
     let bitmap2 = (11000..14000).collect::<RoaringBitmap>();
     let bitmap3 = (0..11000).chain(12000..14000).collect::<RoaringBitmap>();
 
-    bitmap1.symmetric_difference_with(&bitmap2);
+    bitmap1 ^= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }
@@ -72,7 +72,7 @@ fn bitmap_and_array_to_array() {
     let bitmap2 = (3000..7000).collect::<RoaringBitmap>();
     let bitmap3 = (0..3000).chain(6000..7000).collect::<RoaringBitmap>();
 
-    bitmap1.symmetric_difference_with(&bitmap2);
+    bitmap1 ^= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }
@@ -95,7 +95,7 @@ fn arrays() {
         .chain(3_000_000..3_001_000)
         .collect::<RoaringBitmap>();
 
-    bitmap1.symmetric_difference_with(&bitmap2);
+    bitmap1 ^= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }
@@ -118,7 +118,7 @@ fn bitmaps() {
         .chain(3_000_000..3_010_000)
         .collect::<RoaringBitmap>();
 
-    bitmap1.symmetric_difference_with(&bitmap2);
+    bitmap1 ^= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
 }

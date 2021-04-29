@@ -1,3 +1,4 @@
+use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, SubAssign};
 use std::{fmt, ops::Range};
 
 use super::store::{self, Store};
@@ -91,30 +92,6 @@ impl Container {
         self.len <= other.len && self.store.is_subset(&other.store)
     }
 
-    pub fn union_with(&mut self, other: &Self) {
-        self.store.union_with(&other.store);
-        self.len = self.store.len();
-        self.ensure_correct_store();
-    }
-
-    pub fn intersect_with(&mut self, other: &Self) {
-        self.store.intersect_with(&other.store);
-        self.len = self.store.len();
-        self.ensure_correct_store();
-    }
-
-    pub fn difference_with(&mut self, other: &Self) {
-        self.store.difference_with(&other.store);
-        self.len = self.store.len();
-        self.ensure_correct_store();
-    }
-
-    pub fn symmetric_difference_with(&mut self, other: &Self) {
-        self.store.symmetric_difference_with(&other.store);
-        self.len = self.store.len();
-        self.ensure_correct_store();
-    }
-
     pub fn min(&self) -> u16 {
         self.store.min()
     }
@@ -132,6 +109,62 @@ impl Container {
         if let Some(new_store) = new_store {
             self.store = new_store;
         }
+    }
+}
+
+impl BitOrAssign<Container> for Container {
+    fn bitor_assign(&mut self, rhs: Container) {
+        BitOrAssign::bitor_assign(&mut self.store, rhs.store);
+        self.len = self.store.len();
+        self.ensure_correct_store();
+    }
+}
+
+impl BitOrAssign<&Container> for Container {
+    fn bitor_assign(&mut self, rhs: &Container) {
+        BitOrAssign::bitor_assign(&mut self.store, &rhs.store);
+        self.len = self.store.len();
+        self.ensure_correct_store();
+    }
+}
+
+impl BitAndAssign<Container> for Container {
+    fn bitand_assign(&mut self, rhs: Container) {
+        BitAndAssign::bitand_assign(&mut self.store, rhs.store);
+        self.len = self.store.len();
+        self.ensure_correct_store();
+    }
+}
+
+impl BitAndAssign<&Container> for Container {
+    fn bitand_assign(&mut self, rhs: &Container) {
+        BitAndAssign::bitand_assign(&mut self.store, &rhs.store);
+        self.len = self.store.len();
+        self.ensure_correct_store();
+    }
+}
+
+impl SubAssign<&Container> for Container {
+    fn sub_assign(&mut self, rhs: &Container) {
+        SubAssign::sub_assign(&mut self.store, &rhs.store);
+        self.len = self.store.len();
+        self.ensure_correct_store();
+    }
+}
+
+impl BitXorAssign<Container> for Container {
+    fn bitxor_assign(&mut self, rhs: Container) {
+        BitXorAssign::bitxor_assign(&mut self.store, rhs.store);
+        self.len = self.store.len();
+        self.ensure_correct_store();
+    }
+}
+
+impl BitXorAssign<&Container> for Container {
+    fn bitxor_assign(&mut self, rhs: &Container) {
+        BitXorAssign::bitxor_assign(&mut self.store, &rhs.store);
+        self.len = self.store.len();
+        self.ensure_correct_store();
     }
 }
 
