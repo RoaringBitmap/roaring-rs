@@ -41,10 +41,9 @@ impl RoaringTreemap {
             .insert(lo)
     }
 
-    /// Adds a value to the set.
-    /// The value **must** be greater or equal to the maximum value in the set.
+    /// Pushes `value` in the treemap only if it is greater than the current maximum value.
     ///
-    /// This method can be faster than `insert` because it skips the binary searches.
+    /// Returns whether the value was inserted.
     ///
     /// # Examples
     ///
@@ -52,13 +51,14 @@ impl RoaringTreemap {
     /// use roaring::RoaringTreemap;
     ///
     /// let mut rb = RoaringTreemap::new();
-    /// rb.push(1);
-    /// rb.push(3);
-    /// rb.push(5);
+    /// assert!(rb.push(1));
+    /// assert!(rb.push(3));
+    /// assert_eq!(rb.push(3), false);
+    /// assert!(rb.push(5));
     ///
     /// assert_eq!(rb.iter().collect::<Vec<u64>>(), vec![1, 3, 5]);
     /// ```
-    pub fn push(&mut self, value: u64) {
+    pub fn push(&mut self, value: u64) -> bool {
         let (hi, lo) = util::split(value);
         self.map
             .entry(hi)
