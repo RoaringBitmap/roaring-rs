@@ -418,23 +418,18 @@ impl BitXor<&RoaringTreemap> for &RoaringTreemap {
 impl BitXorAssign<RoaringTreemap> for RoaringTreemap {
     /// A `symmetric difference` between two sets.
     fn bitxor_assign(&mut self, rhs: RoaringTreemap) {
-        let mut keys_to_remove: Vec<u32> = Vec::new();
         for (key, other_rb) in rhs.map {
             match self.map.entry(key) {
-                Entry::Vacant(ent) => {
-                    ent.insert(other_rb);
+                Entry::Vacant(entry) => {
+                    entry.insert(other_rb);
                 }
-                Entry::Occupied(mut ent) => {
-                    BitXorAssign::bitxor_assign(ent.get_mut(), other_rb);
-                    if ent.get().is_empty() {
-                        keys_to_remove.push(key);
+                Entry::Occupied(mut entry) => {
+                    BitXorAssign::bitxor_assign(entry.get_mut(), other_rb);
+                    if entry.get().is_empty() {
+                        entry.remove_entry();
                     }
                 }
             }
-        }
-
-        for key in keys_to_remove {
-            self.map.remove(&key);
         }
     }
 }
@@ -442,23 +437,18 @@ impl BitXorAssign<RoaringTreemap> for RoaringTreemap {
 impl BitXorAssign<&RoaringTreemap> for RoaringTreemap {
     /// A `symmetric difference` between two sets.
     fn bitxor_assign(&mut self, rhs: &RoaringTreemap) {
-        let mut keys_to_remove: Vec<u32> = Vec::new();
         for (key, other_rb) in &rhs.map {
             match self.map.entry(*key) {
-                Entry::Vacant(ent) => {
-                    ent.insert(other_rb.clone());
+                Entry::Vacant(entry) => {
+                    entry.insert(other_rb.clone());
                 }
-                Entry::Occupied(mut ent) => {
-                    BitXorAssign::bitxor_assign(ent.get_mut(), other_rb);
-                    if ent.get().is_empty() {
-                        keys_to_remove.push(*key);
+                Entry::Occupied(mut entry) => {
+                    BitXorAssign::bitxor_assign(entry.get_mut(), other_rb);
+                    if entry.get().is_empty() {
+                        entry.remove_entry();
                     }
                 }
             }
-        }
-
-        for key in keys_to_remove {
-            self.map.remove(&key);
         }
     }
 }
