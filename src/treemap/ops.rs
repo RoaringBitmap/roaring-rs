@@ -357,18 +357,16 @@ impl SubAssign<RoaringTreemap> for RoaringTreemap {
 impl SubAssign<&RoaringTreemap> for RoaringTreemap {
     /// A `difference` between two sets.
     fn sub_assign(&mut self, rhs: &RoaringTreemap) {
-        let mut keys_to_remove: Vec<u32> = Vec::new();
-        for (key, self_rb) in &mut self.map {
-            if let Some(other_rb) = rhs.map.get(key) {
-                SubAssign::sub_assign(self_rb, other_rb);
-                if self_rb.is_empty() {
-                    keys_to_remove.push(*key);
+        for (key, rhs_rb) in &rhs.map {
+            match self.map.entry(*key) {
+                Entry::Vacant(_entry) => (),
+                Entry::Occupied(mut entry) => {
+                    SubAssign::sub_assign(entry.get_mut(), rhs_rb);
+                    if entry.get().is_empty() {
+                        entry.remove_entry();
+                    }
                 }
             }
-        }
-
-        for key in keys_to_remove {
-            self.map.remove(&key);
         }
     }
 }
