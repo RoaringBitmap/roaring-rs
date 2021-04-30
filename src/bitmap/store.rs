@@ -1,5 +1,5 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, SubAssign};
+use std::ops::{BitAndAssign, BitOr, BitOrAssign, BitXorAssign, SubAssign};
 use std::{borrow::Borrow, ops::Range};
 use std::{mem, slice, vec};
 
@@ -303,6 +303,31 @@ impl Store {
                 .rev()
                 .find(|&(_, &bit)| bit != 0)
                 .map(|(index, bit)| (index * 64 + (63 - bit.leading_zeros() as usize)) as u16),
+        }
+    }
+}
+
+impl BitOr<&Store> for &Store {
+    type Output = Store;
+
+    fn bitor(self, rhs: &Store) -> Store {
+        match (self, rhs) {
+            (&Array(ref vec1), &Array(ref vec2)) => Array(union_arrays(vec1, vec2)),
+            (&Bitmap(_), &Array(_)) => {
+                let mut lhs = self.clone();
+                BitOrAssign::bitor_assign(&mut lhs, rhs);
+                lhs
+            }
+            (&Bitmap(_), &Bitmap(_)) => {
+                let mut lhs = self.clone();
+                BitOrAssign::bitor_assign(&mut lhs, rhs);
+                lhs
+            }
+            (&Array(_), &Bitmap(_)) => {
+                let mut rhs = rhs.clone();
+                BitOrAssign::bitor_assign(&mut rhs, self);
+                rhs
+            }
         }
     }
 }

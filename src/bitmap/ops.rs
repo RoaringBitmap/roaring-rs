@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
-use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
+use std::{cmp, mem};
 
 use retain_mut::RetainMut;
 
@@ -191,11 +191,34 @@ impl BitOr<&RoaringBitmap> for &RoaringBitmap {
 
     /// An `union` between two sets.
     fn bitor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        if self.len() <= rhs.len() {
-            BitOr::bitor(rhs.clone(), self)
-        } else {
-            BitOr::bitor(self.clone(), rhs)
+        let len = cmp::max(self.containers.len(), rhs.containers.len());
+        let mut containers = Vec::with_capacity(len);
+
+        let mut iter_lhs = self.containers.iter().peekable();
+        let mut iter_rhs = rhs.containers.iter().peekable();
+
+        loop {
+            match (iter_lhs.peek(), iter_rhs.peek()) {
+                (Some(lhs), Some(rhs)) => {
+                    let container = match lhs.key.cmp(&rhs.key) {
+                        Ordering::Less => iter_lhs.next().cloned().unwrap(),
+                        Ordering::Greater => iter_rhs.next().cloned().unwrap(),
+                        Ordering::Equal => {
+                            let container = BitOr::bitor(*lhs, *rhs);
+                            iter_lhs.next();
+                            iter_rhs.next();
+                            container
+                        }
+                    };
+                    containers.push(container);
+                }
+                (Some(_), None) => containers.extend(iter_lhs.by_ref().cloned()),
+                (None, Some(_)) => containers.extend(iter_rhs.by_ref().cloned()),
+                (None, None) => break,
+            }
         }
+
+        RoaringBitmap { containers }
     }
 }
 
