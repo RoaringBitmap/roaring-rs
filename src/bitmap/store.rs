@@ -1,5 +1,5 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::ops::{BitAndAssign, BitOr, BitOrAssign, BitXorAssign, SubAssign};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXorAssign, SubAssign};
 use std::{borrow::Borrow, ops::Range};
 use std::{mem, slice, vec};
 
@@ -381,6 +381,31 @@ impl BitOrAssign<&Store> for Store {
     }
 }
 
+impl BitAnd<&Store> for &Store {
+    type Output = Store;
+
+    fn bitand(self, rhs: &Store) -> Store {
+        match (self, rhs) {
+            (&Array(ref vec1), &Array(ref vec2)) => Array(intersect_arrays(vec1, vec2)),
+            (&Bitmap(_), &Array(_)) => {
+                let mut rhs = rhs.clone();
+                BitAndAssign::bitand_assign(&mut rhs, self);
+                rhs
+            }
+            (&Bitmap(_), &Bitmap(_)) => {
+                let mut lhs = self.clone();
+                BitAndAssign::bitand_assign(&mut lhs, rhs);
+                lhs
+            }
+            (&Array(_), &Bitmap(_)) => {
+                let mut lhs = self.clone();
+                BitAndAssign::bitand_assign(&mut lhs, rhs);
+                lhs
+            }
+        }
+    }
+}
+
 impl BitAndAssign<Store> for Store {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn bitand_assign(&mut self, mut rhs: Store) {
@@ -712,6 +737,30 @@ fn union_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
     // Store remaining elements of the arrays
     out.extend_from_slice(&arr1[i..]);
     out.extend_from_slice(&arr2[j..]);
+
+    out
+}
+
+#[inline]
+fn intersect_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
+    let mut out = Vec::new();
+
+    // Traverse both arrays
+    let mut i = 0;
+    let mut j = 0;
+    while i < arr1.len() && j < arr2.len() {
+        let a = unsafe { arr1.get_unchecked(i) };
+        let b = unsafe { arr2.get_unchecked(j) };
+        match a.cmp(&b) {
+            Less => i += 1,
+            Greater => j += 1,
+            Equal => {
+                out.push(*a);
+                i += 1;
+                j += 1;
+            }
+        }
+    }
 
     out
 }
