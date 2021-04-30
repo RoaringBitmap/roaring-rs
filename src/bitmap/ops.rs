@@ -288,11 +288,36 @@ impl BitAnd<&RoaringBitmap> for &RoaringBitmap {
 
     /// An `intersection` between two sets.
     fn bitand(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        if rhs.len() < self.len() {
-            BitAnd::bitand(self.clone(), rhs)
-        } else {
-            BitAnd::bitand(rhs.clone(), self)
+        let mut containers = Vec::new();
+        let mut iter_lhs = self.containers.iter().peekable();
+        let mut iter_rhs = rhs.containers.iter().peekable();
+
+        loop {
+            match (iter_lhs.peek(), iter_rhs.peek()) {
+                (None, None) => break,
+                (Some(lhs), Some(rhs)) => {
+                    if lhs.key == rhs.key {
+                        let (lhs, rhs) = iter_lhs.next().zip(iter_rhs.next()).unwrap();
+                        let container = BitAnd::bitand(lhs, rhs);
+                        if container.len != 0 {
+                            containers.push(container);
+                        }
+                    } else if lhs.key < rhs.key {
+                        iter_lhs.next().unwrap();
+                    } else {
+                        iter_rhs.next().unwrap();
+                    }
+                }
+                (Some(_), None) => {
+                    iter_lhs.next().unwrap();
+                }
+                (None, Some(_)) => {
+                    iter_rhs.next().unwrap();
+                }
+            }
         }
+
+        RoaringBitmap { containers }
     }
 }
 
