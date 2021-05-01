@@ -204,10 +204,8 @@ impl BitOr<&RoaringBitmap> for &RoaringBitmap {
                         Ordering::Less => iter_lhs.next().cloned().unwrap(),
                         Ordering::Greater => iter_rhs.next().cloned().unwrap(),
                         Ordering::Equal => {
-                            let container = BitOr::bitor(*lhs, *rhs);
-                            iter_lhs.next();
-                            iter_rhs.next();
-                            container
+                            let (lhs, rhs) = iter_lhs.next().zip(iter_rhs.next()).unwrap();
+                            BitOr::bitor(lhs, rhs)
                         }
                     };
                     containers.push(container);
@@ -443,11 +441,35 @@ impl BitXor<&RoaringBitmap> for &RoaringBitmap {
 
     /// A `symmetric difference` between two sets.
     fn bitxor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        if self.len() < rhs.len() {
-            BitXor::bitxor(self, rhs.clone())
-        } else {
-            BitXor::bitxor(self.clone(), rhs)
+        let mut containers = Vec::new();
+        let mut iter_lhs = self.containers.iter().peekable();
+        let mut iter_rhs = rhs.containers.iter().peekable();
+
+        loop {
+            match (iter_lhs.peek(), iter_rhs.peek()) {
+                (None, None) => break,
+                (Some(_), None) => containers.extend(iter_lhs.by_ref().cloned()),
+                (None, Some(_)) => containers.extend(iter_rhs.by_ref().cloned()),
+                (Some(lhs), Some(rhs)) => {
+                    let container = match lhs.key.cmp(&rhs.key) {
+                        Ordering::Equal => {
+                            let (lhs, rhs) = iter_lhs.next().zip(iter_rhs.next()).unwrap();
+                            let container = BitXor::bitxor(lhs, rhs);
+                            if container.len != 0 {
+                                container
+                            } else {
+                                continue;
+                            }
+                        }
+                        Ordering::Less => iter_lhs.next().cloned().unwrap(),
+                        Ordering::Greater => iter_rhs.next().cloned().unwrap(),
+                    };
+                    containers.push(container);
+                }
+            }
         }
+
+        RoaringBitmap { containers }
     }
 }
 
