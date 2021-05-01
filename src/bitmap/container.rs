@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, SubAssign};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 use std::{fmt, ops::Range};
 
 use super::store::{self, Store};
@@ -146,11 +146,7 @@ impl BitAnd<&Container> for &Container {
 
     fn bitand(self, rhs: &Container) -> Container {
         let store = BitAnd::bitand(&self.store, &rhs.store);
-        let mut container = Container {
-            key: self.key,
-            len: store.len(),
-            store,
-        };
+        let mut container = Container { key: self.key, len: store.len(), store };
         container.ensure_correct_store();
         container
     }
@@ -172,6 +168,17 @@ impl BitAndAssign<&Container> for Container {
     }
 }
 
+impl Sub<&Container> for &Container {
+    type Output = Container;
+
+    fn sub(self, rhs: &Container) -> Container {
+        let store = Sub::sub(&self.store, &rhs.store);
+        let mut container = Container { key: self.key, len: store.len(), store };
+        container.ensure_correct_store();
+        container
+    }
+}
+
 impl SubAssign<&Container> for Container {
     fn sub_assign(&mut self, rhs: &Container) {
         SubAssign::sub_assign(&mut self.store, &rhs.store);
@@ -185,11 +192,7 @@ impl BitXor<&Container> for &Container {
 
     fn bitxor(self, rhs: &Container) -> Container {
         let store = BitXor::bitxor(&self.store, &rhs.store);
-        let mut container = Container {
-            key: self.key,
-            len: store.len(),
-            store,
-        };
+        let mut container = Container { key: self.key, len: store.len(), store };
         container.ensure_correct_store();
         container
     }

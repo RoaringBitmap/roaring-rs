@@ -383,7 +383,7 @@ impl Sub<RoaringBitmap> for &RoaringBitmap {
 
     /// A `difference` between two sets.
     fn sub(self, rhs: RoaringBitmap) -> RoaringBitmap {
-        Sub::sub(self.clone(), rhs)
+        Sub::sub(self, &rhs)
     }
 }
 
@@ -392,7 +392,40 @@ impl Sub<&RoaringBitmap> for &RoaringBitmap {
 
     /// A `difference` between two sets.
     fn sub(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        Sub::sub(self.clone(), rhs)
+        let mut iter_lhs = self.containers.iter().peekable();
+        let mut iter_rhs = rhs.containers.iter().peekable();
+        let mut containers = Vec::new();
+
+        loop {
+            match (iter_lhs.peek(), iter_rhs.peek()) {
+                (None, None) => break,
+                (Some(_), None) => {
+                    let container = iter_lhs.next().cloned().unwrap();
+                    containers.push(container);
+                }
+                (None, Some(_)) => {
+                    iter_rhs.next().unwrap();
+                }
+                (Some(lhs), Some(rhs)) => match lhs.key.cmp(&rhs.key) {
+                    Ordering::Less => {
+                        let container = iter_lhs.next().cloned().unwrap();
+                        containers.push(container);
+                    }
+                    Ordering::Equal => {
+                        let (lhs, rhs) = iter_lhs.next().zip(iter_rhs.next()).unwrap();
+                        let container = Sub::sub(lhs, rhs);
+                        if container.len != 0 {
+                            containers.push(container);
+                        }
+                    }
+                    Ordering::Greater => {
+                        iter_rhs.next().unwrap();
+                    }
+                },
+            }
+        }
+
+        RoaringBitmap { containers }
     }
 }
 
