@@ -1,5 +1,5 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, SubAssign};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 use std::{borrow::Borrow, ops::Range};
 use std::{mem, slice, vec};
 
@@ -473,6 +473,31 @@ impl BitAndAssign<&Store> for Store {
     }
 }
 
+impl Sub<&Store> for &Store {
+    type Output = Store;
+
+    fn sub(self, rhs: &Store) -> Store {
+        match (self, rhs) {
+            (&Array(ref vec1), &Array(ref vec2)) => Array(difference_arrays(vec1, vec2)),
+            (&Bitmap(_), &Array(_)) => {
+                let mut lhs = self.clone();
+                BitOrAssign::bitor_assign(&mut lhs, rhs);
+                lhs
+            }
+            (&Bitmap(_), &Bitmap(_)) => {
+                let mut lhs = self.clone();
+                BitOrAssign::bitor_assign(&mut lhs, rhs);
+                lhs
+            }
+            (&Array(_), &Bitmap(_)) => {
+                let mut lhs = self.clone();
+                BitOrAssign::bitor_assign(&mut lhs, rhs);
+                lhs
+            }
+        }
+    }
+}
+
 impl SubAssign<&Store> for Store {
     fn sub_assign(&mut self, rhs: &Store) {
         match (self, rhs) {
@@ -786,6 +811,35 @@ fn intersect_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
             }
         }
     }
+
+    out
+}
+
+#[inline]
+fn difference_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
+    let mut out = Vec::new();
+
+    // Traverse both arrays
+    let mut i = 0;
+    let mut j = 0;
+    while i < arr1.len() && j < arr2.len() {
+        let a = unsafe { arr1.get_unchecked(i) };
+        let b = unsafe { arr2.get_unchecked(j) };
+        match a.cmp(&b) {
+            Less => {
+                out.push(*a);
+                i += 1;
+            }
+            Greater => j += 1,
+            Equal => {
+                i += 1;
+                j += 1;
+            }
+        }
+    }
+
+    // Store remaining elements of the left array
+    out.extend_from_slice(&arr1[i..]);
 
     out
 }
