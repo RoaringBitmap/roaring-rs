@@ -149,6 +149,7 @@ impl RoaringBitmap {
         }
 
         let mut containers = Vec::with_capacity(size);
+        let mut total_len = 0;
 
         for _ in 0..size {
             let key = description_bytes.read_u16::<LittleEndian>()?;
@@ -167,8 +168,12 @@ impl RoaringBitmap {
             };
 
             containers.push(Container { key, len, store });
+            total_len += len;
         }
 
-        Ok(RoaringBitmap { containers })
+        Ok(RoaringBitmap {
+            containers,
+            len: total_len,
+        })
     }
 }

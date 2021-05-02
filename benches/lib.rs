@@ -129,6 +129,15 @@ fn union_with(c: &mut Criterion) {
     });
 }
 
+fn sub(c: &mut Criterion) {
+    c.bench_function("sub", |b| {
+        let bitmap1: RoaringBitmap = (1..100_000).collect();
+        let bitmap2: RoaringBitmap = (10..2_000_000).collect();
+
+        b.iter(|| &bitmap1 - &bitmap2);
+    });
+}
+
 fn xor(c: &mut Criterion) {
     c.bench_function("xor", |b| {
         let bitmap1: RoaringBitmap = (1..100).collect();
@@ -319,6 +328,7 @@ criterion_group!(
     intersect_with,
     or,
     union_with,
+    sub,
     xor,
     symmetric_deference_with,
     is_subset,
