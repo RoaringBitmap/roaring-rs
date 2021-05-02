@@ -16,6 +16,7 @@ impl RoaringBitmap {
     pub fn new() -> RoaringBitmap {
         RoaringBitmap {
             containers: Vec::new(),
+            len: 0,
         }
     }
 
@@ -42,7 +43,13 @@ impl RoaringBitmap {
                 &mut self.containers[loc]
             }
         };
-        container.insert(index)
+
+        if container.insert(index) {
+            self.len += 1;
+            true
+        } else {
+            false
+        }
     }
 
     /// Inserts a range of values from the set specific as [start..end). Returns
@@ -94,7 +101,9 @@ impl RoaringBitmap {
         // If the end range value is in the same container, just call into
         // the one container.
         if start_container_key == end_container_key {
-            return self.containers[start_i].insert_range(start_index..end_index);
+            let inserted = self.containers[start_i].insert_range(start_index..end_index);
+            self.len += inserted;
+            return inserted;
         }
 
         // For the first container, insert start_index..u16::MAX, with
@@ -138,6 +147,8 @@ impl RoaringBitmap {
         };
         c.insert_range(0..end_index);
 
+        self.len += inserted;
+
         inserted
     }
 
@@ -162,12 +173,20 @@ impl RoaringBitmap {
         let (key, index) = util::split(value);
 
         match self.containers.last_mut() {
-            Some(container) if container.key == key => container.push(index),
+            Some(container) if container.key == key => {
+                if container.push(index) {
+                    self.len += 1;
+                    true
+                } else {
+                    false
+                }
+            }
             Some(container) if container.key > key => false,
             _otherwise => {
                 let mut container = Container::new(key);
                 container.push(index);
                 self.containers.push(container);
+                self.len += 1;
                 true
             }
         }
@@ -194,12 +213,13 @@ impl RoaringBitmap {
                     if self.containers[loc].len == 0 {
                         self.containers.remove(loc);
                     }
+                    self.len -= 1;
                     true
                 } else {
                     false
                 }
             }
-            _ => false,
+            Err(_) => false,
         }
     }
     /// Removes a range of values from the set specific as [start..end).
@@ -230,7 +250,7 @@ impl RoaringBitmap {
         let (start_hi, start_lo) = util::split(range.start as u32);
         let (end_hi, end_lo) = util::split((range.end - 1) as u32);
         let mut index = 0;
-        let mut result = 0;
+        let mut removed = 0;
         while index < self.containers.len() {
             let key = self.containers[index].key;
             if key >= start_hi && key <= end_hi {
@@ -246,11 +266,11 @@ impl RoaringBitmap {
                 };
                 // remove container?
                 if a == 0 && b == u32::from(u16::max_value()) + 1 {
-                    result += self.containers[index].len;
+                    removed += self.containers[index].len;
                     self.containers.remove(index);
                     continue;
                 } else {
-                    result += self.containers[index].remove_range(a, b);
+                    removed += self.containers[index].remove_range(a, b);
                     if self.containers[index].len == 0 {
                         self.containers.remove(index);
                         continue;
@@ -259,7 +279,10 @@ impl RoaringBitmap {
             }
             index += 1;
         }
-        result
+
+        self.len -= removed;
+
+        removed
     }
 
     /// Returns `true` if this set contains the specified integer.
@@ -298,6 +321,7 @@ impl RoaringBitmap {
     /// ```
     pub fn clear(&mut self) {
         self.containers.clear();
+        self.len = 0;
     }
 
     /// Returns `true` if there are no integers in this set.
@@ -314,7 +338,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.is_empty(), false);
     /// ```
     pub fn is_empty(&self) -> bool {
-        self.containers.is_empty()
+        self.len == 0
     }
 
     /// Returns the number of distinct integers added to the set.
@@ -335,7 +359,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.len(), 2);
     /// ```
     pub fn len(&self) -> u64 {
-        self.containers.iter().map(|container| container.len).sum()
+        self.len
     }
 
     /// Returns the minimum value in the set (if the set is non-empty).
