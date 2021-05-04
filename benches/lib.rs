@@ -349,7 +349,7 @@ fn from_sorted_iter(c: &mut Criterion) {
     group.finish();
 }
 
-fn successive_and_assign_ref(c: &mut Criterion) {
+fn successive_and(c: &mut Criterion) {
     let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
     let parsed_numbers = parse_dir_files(files).unwrap();
 
@@ -361,65 +361,40 @@ fn successive_and_assign_ref(c: &mut Criterion) {
     // biggest bitmaps first.
     bitmaps.sort_unstable_by_key(|b| Reverse(b.len()));
 
-    c.bench_function("successive_and_assign_ref", |b| {
+    let mut group = c.benchmark_group("Successive And");
+
+    group.bench_function("Successive And Assign Ref", |b| {
         b.iter(|| {
-            let mut output = RoaringBitmap::new();
-            for bitmap in &bitmaps {
-                output &= bitmap;
+            let mut iter = bitmaps.iter();
+            let mut first = iter.next().unwrap().clone();
+            for bitmap in iter {
+                first &= bitmap;
             }
         });
     });
-}
 
-fn successive_and_assign_owned(c: &mut Criterion) {
-    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
-    let parsed_numbers = parse_dir_files(files).unwrap();
-
-    let mut bitmaps: Vec<_> = parsed_numbers
-        .into_iter()
-        .map(|(_, r)| r.map(RoaringBitmap::from_sorted_iter).unwrap())
-        .collect();
-
-    // biggest bitmaps first.
-    bitmaps.sort_unstable_by_key(|b| Reverse(b.len()));
-
-    c.bench_function("successive_and_assign_owned", |b| {
+    group.bench_function("Successive And Assign Owned", |b| {
         b.iter_batched(
             || bitmaps.clone(),
             |bitmaps| {
-                let mut output = RoaringBitmap::new();
-                for bitmap in bitmaps {
-                    output &= bitmap;
-                }
+                black_box(bitmaps.into_iter().reduce(|a, b| a & b).unwrap());
             },
-            BatchSize::LargeInput,
+            BatchSize::SmallInput,
         );
     });
-}
 
-fn successive_and_ref_ref(c: &mut Criterion) {
-    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
-    let parsed_numbers = parse_dir_files(files).unwrap();
-
-    let mut bitmaps: Vec<_> = parsed_numbers
-        .into_iter()
-        .map(|(_, r)| r.map(RoaringBitmap::from_sorted_iter).unwrap())
-        .collect();
-
-    // biggest bitmaps first.
-    bitmaps.sort_unstable_by_key(|b| Reverse(b.len()));
-
-    c.bench_function("successive_and_ref_ref", |b| {
+    group.bench_function("Successive And Ref Ref", |b| {
         b.iter(|| {
-            let mut output = RoaringBitmap::new();
-            for bitmap in &bitmaps {
-                output = (&output) & bitmap;
-            }
+            let mut iter = bitmaps.iter();
+            let first = iter.next().unwrap().clone();
+            black_box(iter.fold(first, |acc, x| (&acc) & x));
         });
     });
+
+    group.finish();
 }
 
-fn successive_or_assign_ref(c: &mut Criterion) {
+fn successive_or(c: &mut Criterion) {
     let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
     let parsed_numbers = parse_dir_files(files).unwrap();
 
@@ -428,7 +403,8 @@ fn successive_or_assign_ref(c: &mut Criterion) {
         .map(|(_, r)| r.map(RoaringBitmap::from_sorted_iter).unwrap())
         .collect();
 
-    c.bench_function("successive_or_assign_ref", |b| {
+    let mut group = c.benchmark_group("Successive Or");
+    group.bench_function("Successive Or Assign Ref", |b| {
         b.iter(|| {
             let mut output = RoaringBitmap::new();
             for bitmap in &bitmaps {
@@ -436,18 +412,8 @@ fn successive_or_assign_ref(c: &mut Criterion) {
             }
         });
     });
-}
 
-fn successive_or_assign_owned(c: &mut Criterion) {
-    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
-    let parsed_numbers = parse_dir_files(files).unwrap();
-
-    let bitmaps: Vec<_> = parsed_numbers
-        .into_iter()
-        .map(|(_, r)| r.map(RoaringBitmap::from_sorted_iter).unwrap())
-        .collect();
-
-    c.bench_function("successive_or_assign_owned", |b| {
+    group.bench_function("Successive Or Assign Owned", |b| {
         b.iter_batched(
             || bitmaps.clone(),
             |bitmaps: Vec<RoaringBitmap>| {
@@ -456,21 +422,11 @@ fn successive_or_assign_owned(c: &mut Criterion) {
                     output |= bitmap;
                 }
             },
-            BatchSize::LargeInput,
+            BatchSize::SmallInput,
         );
     });
-}
 
-fn successive_or_ref_ref(c: &mut Criterion) {
-    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
-    let parsed_numbers = parse_dir_files(files).unwrap();
-
-    let bitmaps: Vec<_> = parsed_numbers
-        .into_iter()
-        .map(|(_, r)| r.map(RoaringBitmap::from_sorted_iter).unwrap())
-        .collect();
-
-    c.bench_function("successive_or_ref_ref", |b| {
+    group.bench_function("Successive Or Ref Ref", |b| {
         b.iter(|| {
             let mut output = RoaringBitmap::new();
             for bitmap in &bitmaps {
@@ -478,6 +434,8 @@ fn successive_or_ref_ref(c: &mut Criterion) {
             }
         });
     });
+
+    group.finish();
 }
 
 criterion_group!(
@@ -502,11 +460,7 @@ criterion_group!(
     deserialize,
     serialized_size,
     from_sorted_iter,
-    successive_and_assign_ref,
-    successive_and_ref_ref,
-    successive_and_assign_owned,
-    successive_or_assign_ref,
-    successive_or_assign_owned,
-    successive_or_ref_ref,
+    successive_and,
+    successive_or,
 );
 criterion_main!(benches);
