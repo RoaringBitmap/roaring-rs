@@ -2,10 +2,10 @@
 name = "roaring"
 version = "0.7.0"
 authors = ["Wim Looman <wim@nemo157.com>", "Kerollmops <kero@meilisearch.com>"]
-description = "http://roaringbitmap.org : A better compressed bitset - pure Rust implementation "
+description = "http://roaringbitmap.org: A better compressed bitset - pure Rust implementation "
 
-documentation = "https://nemo157.com/roaring-rs"
-repository = "https://github.com/Nemo157/roaring-rs"
+documentation = "https://docs.rs/roaring-rs"
+repository = "https://github.com/Roaringbitmap/roaring-rs"
 
 readme = "README.md"
 keywords = ["roaring", "data-structure", "bitmap"]
@@ -14,19 +14,11 @@ edition = "2018"
 
 license = "MIT/Apache-2.0"
 
-[badges]
-travis-ci = { repository = "Nemo157/roaring-rs" }
-
 [dependencies]
 bytemuck = "1.5.1"
 byteorder = "1.0"
 retain_mut = "0.1.2"
 
 [dev-dependencies]
-criterion = "0.3"
 quickcheck = "0.9"
 quickcheck_macros = "0.9"
-
-[[bench]]
-name = "lib"
-harness = false
