@@ -357,7 +357,7 @@ fn successive_and(c: &mut Criterion) {
 
     let mut bitmaps: Vec<_> = parsed_numbers
         .into_iter()
-        .map(|(_, r)| r.map(RoaringBitmap::from_sorted_iter).unwrap())
+        .map(|(_, r)| r.map(|iter| RoaringBitmap::from_sorted_iter(iter).unwrap()).unwrap())
         .collect();
 
     // biggest bitmaps first.
@@ -410,7 +410,7 @@ fn successive_or(c: &mut Criterion) {
 
     let bitmaps: Vec<_> = parsed_numbers
         .into_iter()
-        .map(|(_, r)| r.map(RoaringBitmap::from_sorted_iter).unwrap())
+        .map(|(_, r)| r.map(|iter| RoaringBitmap::from_sorted_iter(iter).unwrap()).unwrap())
         .collect();
 
     let mut group = c.benchmark_group("Successive Or");
