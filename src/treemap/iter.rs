@@ -208,30 +208,42 @@ impl Extend<u64> for RoaringTreemap {
 }
 
 impl RoaringTreemap {
-    /// Create the set from a sorted iterator. Values **must** be sorted.
+    /// Create the set from a sorted iterator. Values must be sorted and deduplicated.
     ///
-    /// This method can be faster than `from_iter` because it skips the binary searches.
+    /// The values of the iterator must be ordered and strictly bigger than the biggest value
+    /// in the set. If a value in this iterator doesn't follow this rule it is not added
+    /// and the append operation is stopped.
+    ///
+    /// Returns `Ok` with the requested `RoaringTreemap`, `Err` with the number of elements
+    /// we tried to append before an error occurred.
     ///
     /// # Examples
     ///
     /// ```rust
     /// use roaring::RoaringTreemap;
     ///
-    /// let mut rb = RoaringTreemap::from_sorted_iter(0..10);
+    /// let mut rb = RoaringTreemap::from_sorted_iter(0..10).unwrap();
     ///
-    /// assert_eq!(rb.iter().collect::<Vec<u64>>(), (0..10).collect::<Vec<u64>>());
+    /// assert!(rb.iter().eq(0..10));
     /// ```
-    pub fn from_sorted_iter<I: IntoIterator<Item = u64>>(iterator: I) -> RoaringTreemap {
+    pub fn from_sorted_iter<I: IntoIterator<Item = u64>>(
+        iterator: I,
+    ) -> Result<RoaringTreemap, u64> {
         let mut rb = RoaringTreemap::new();
-        rb.append(iterator);
-        rb
+        match rb.append(iterator) {
+            Ok(_) => Ok(rb),
+            Err(count) => Err(count),
+        }
     }
 
     /// Extend the set with a sorted iterator.
-    /// All value of the iterator **must** be greater or equal than the max element
-    /// contained in the set.
     ///
-    /// This method can be faster than `extend` because it skips the binary searches.
+    /// The values of the iterator must be ordered and strictly bigger than the biggest value
+    /// in the set. If a value in this iterator doesn't follow this rule it is not added
+    /// and the append operation is stopped.
+    ///
+    /// Returns `Ok` with the number of elements appended to the set, `Err` with
+    /// the number of elements we effectively appended before an error occurred.
     ///
     /// # Examples
     ///
@@ -241,12 +253,20 @@ impl RoaringTreemap {
     /// let mut rb = RoaringTreemap::new();
     /// rb.append(0..10);
     ///
-    /// assert_eq!(rb.iter().collect::<Vec<u64>>(), (0..10).collect::<Vec<u64>>());
+    /// assert!(rb.iter().eq(0..10));
     /// ```
-    pub fn append<I: IntoIterator<Item = u64>>(&mut self, iterator: I) {
+    pub fn append<I: IntoIterator<Item = u64>>(&mut self, iterator: I) -> Result<u64, u64> {
+        let mut count = 0;
+
         for value in iterator {
-            self.push(value);
+            if self.push(value) {
+                count += 1;
+            } else {
+                return Err(count);
+            }
         }
+
+        Ok(count)
     }
 }
 
