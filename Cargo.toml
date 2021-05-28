@@ -15,6 +15,7 @@ edition = "2018"
 license = "MIT/Apache-2.0"
 
 [dependencies]
+binary-heap-plus = "0.4.1"
 bytemuck = "1.5.1"
 byteorder = "1.0"
 retain_mut = "0.1.2"

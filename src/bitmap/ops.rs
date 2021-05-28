@@ -492,3 +492,81 @@ impl BitXorAssign<&RoaringBitmap> for RoaringBitmap {
         }
     }
 }
+
+pub trait MultiOps {
+    fn bitor(self) -> RoaringBitmap;
+}
+
+impl MultiOps for &[RoaringBitmap] {
+    fn bitor(self) -> RoaringBitmap {
+        use binary_heap_plus::{BinaryHeap, PeekMut};
+        use std::cmp::Reverse;
+        use std::slice::Iter;
+
+        let mut heap = BinaryHeap::with_capacity_by_key(
+            self.len(),
+            |(container, _iter): &(&Container, Iter<Container>)| {
+                Reverse((container.key, container.len))
+            },
+        );
+
+        self.iter().for_each(|rb| {
+            let mut iter = rb.containers.iter();
+            if let Some(first) = iter.next() {
+                heap.push((first, iter));
+            }
+        });
+
+        let mut containers = Vec::new();
+        let mut current = None;
+
+        while let Some(mut peek) = heap.peek_mut() {
+            let pkey = peek.0.key;
+            let container = match peek.1.next() {
+                Some(next_container) => mem::replace(&mut peek.0, next_container),
+                None => PeekMut::pop(peek).0,
+            };
+
+            match current.as_mut() {
+                Some((ckey, cstore)) if *ckey == pkey => {
+                    *cstore |= &container.store;
+                }
+                Some((ckey, cstore)) => {
+                    let key = mem::replace(ckey, container.key);
+                    let store = mem::replace(cstore, container.store.to_bitmap());
+
+                    let mut container = Container { key, len: store.len(), store };
+                    container.ensure_correct_store();
+                    containers.push(container);
+                }
+                None => current = Some((container.key, container.store.to_bitmap())),
+            }
+        }
+
+        if let Some((key, store)) = current {
+            let mut container = Container { key, len: store.len(), store };
+            container.ensure_correct_store();
+            containers.push(container);
+        }
+
+        RoaringBitmap { containers }
+    }
+}
+
+impl MultiOps for &mut [RoaringBitmap] {
+    fn bitor(self) -> RoaringBitmap {
+        self.sort_unstable_by(|a, b| b.len().cmp(&a.len()));
+        MultiOps::bitor(&*self)
+    }
+}
+
+impl MultiOps for Vec<RoaringBitmap> {
+    fn bitor(mut self) -> RoaringBitmap {
+        self.sort_unstable_by(|a, b| b.len().cmp(&a.len()));
+        let mut iter = self.into_iter();
+        match iter.next() {
+            Some(first) => iter.fold(first, |acc, rb| acc | rb),
+            None => RoaringBitmap::default(),
+        }
+    }
+}

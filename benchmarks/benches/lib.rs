@@ -439,6 +439,58 @@ fn successive_or(c: &mut Criterion) {
     group.finish();
 }
 
+fn multi_or(c: &mut Criterion) {
+    use roaring::bitmap::MultiOps;
+
+    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
+    let parsed_numbers = parse_dir_files(files).unwrap();
+
+    let bitmaps: Vec<_> = parsed_numbers
+        .into_iter()
+        .map(|(_, r)| r.map(RoaringBitmap::from_sorted_iter).unwrap())
+        .collect();
+
+    let mut group = c.benchmark_group("Multi Or");
+
+    group.bench_function("Multi Or Ref", |b| {
+        b.iter(|| {
+            black_box(bitmaps.as_slice().bitor());
+        });
+    });
+
+    group.bench_function("Multi Or Ref By Hand", |b| {
+        b.iter(|| {
+            let mut base = RoaringBitmap::default();
+            for bm in &bitmaps {
+                black_box(base |= bm);
+            }
+        });
+    });
+
+    group.bench_function("Multi Or Owned", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                black_box(bitmaps.bitor());
+            },
+            BatchSize::SmallInput,
+        );
+    });
+
+    group.bench_function("Multi Or Owned By Hand", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                let mut base = RoaringBitmap::default();
+                for bm in bitmaps {
+                    black_box(base |= bm);
+                }
+            },
+            BatchSize::SmallInput,
+        );
+    });
+}
+
 criterion_group!(
     benches,
     create,
@@ -463,5 +515,6 @@ criterion_group!(
     from_sorted_iter,
     successive_and,
     successive_or,
+    multi_or,
 );
 criterion_main!(benches);

@@ -246,7 +246,7 @@ impl Store {
 
     pub fn to_array(&self) -> Self {
         match *self {
-            Array(..) => panic!("Cannot convert array to array"),
+            Array(_) => self.clone(),
             Bitmap(ref bits) => {
                 let mut vec = Vec::new();
                 for (index, mut bit) in bits.iter().cloned().enumerate() {
@@ -269,7 +269,7 @@ impl Store {
                 }
                 Bitmap(bits)
             }
-            Bitmap(..) => panic!("Cannot convert bitmap to bitmap"),
+            Bitmap(_) => self.clone(),
         }
     }
 
