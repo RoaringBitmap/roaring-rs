@@ -315,11 +315,7 @@ fn serialized_size(c: &mut Criterion) {
 }
 
 fn extract_integers<A: AsRef<str>>(content: A) -> Result<Vec<u32>, ParseIntError> {
-    content
-        .as_ref()
-        .split(',')
-        .map(|s| s.trim().parse())
-        .collect()
+    content.as_ref().split(',').map(|s| s.trim().parse()).collect()
 }
 
 // Parse every file into a vector of integer.

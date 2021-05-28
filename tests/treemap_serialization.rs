@@ -37,21 +37,8 @@ fn basic_2() {
 fn basic_3() {
     let u32max = u32::MAX as u64;
     serialize_deserialize(
-        vec![
-            1,
-            2,
-            3,
-            4,
-            5,
-            100,
-            1000,
-            10000,
-            100000,
-            1000000,
-            u32max + 10,
-            u32max << 10,
-        ]
-        .into_iter()
-        .chain(u32max..(u32max + 2 * (1 << 16))),
+        vec![1, 2, 3, 4, 5, 100, 1000, 10000, 100000, 1000000, u32max + 10, u32max << 10]
+            .into_iter()
+            .chain(u32max..(u32max + 2 * (1 << 16))),
     )
 }

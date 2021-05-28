@@ -21,18 +21,12 @@ macro_rules! test_from_sorted_iter {
 
 #[test]
 fn append() {
-    test_from_sorted_iter!(
-        (0..1_000_000).map(|x| 13 * x).collect::<Vec<u32>>(),
-        RoaringBitmap
-    );
+    test_from_sorted_iter!((0..1_000_000).map(|x| 13 * x).collect::<Vec<u32>>(), RoaringBitmap);
     test_from_sorted_iter!(vec![1, 2, 4, 5, 5, 7, 8, 8, 9], RoaringBitmap);
 }
 
 #[test]
 fn append_tree() {
-    test_from_sorted_iter!(
-        (0..1_000_000).map(|x| 13 * x).collect::<Vec<u64>>(),
-        RoaringTreemap
-    );
+    test_from_sorted_iter!((0..1_000_000).map(|x| 13 * x).collect::<Vec<u64>>(), RoaringTreemap);
     test_from_sorted_iter!(vec![1, 2, 4, 5, 5, 7, 8, 8, 9], RoaringTreemap);
 }

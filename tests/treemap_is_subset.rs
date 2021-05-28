@@ -66,10 +66,8 @@ fn arrays() {
 
 #[test]
 fn bitmaps_not() {
-    let sup = ((0..6000)
-        .chain(1_000_000..1_006_000)
-        .chain(2_000_000..2_010_000))
-    .collect::<RoaringTreemap>();
+    let sup = ((0..6000).chain(1_000_000..1_006_000).chain(2_000_000..2_010_000))
+        .collect::<RoaringTreemap>();
     let sub = ((100_000..106_000).chain(1_100_000..1_106_000)).collect::<RoaringTreemap>();
     assert!(!sub.is_subset(&sup));
 }

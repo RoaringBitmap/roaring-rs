@@ -14,9 +14,7 @@ impl RoaringBitmap {
     /// let mut rb = RoaringBitmap::new();
     /// ```
     pub fn new() -> RoaringBitmap {
-        RoaringBitmap {
-            containers: Vec::new(),
-        }
+        RoaringBitmap { containers: Vec::new() }
     }
 
     /// Adds a value to the set.
@@ -67,10 +65,7 @@ impl RoaringBitmap {
     /// assert!(!rb.contains(4));
     /// ```
     pub fn insert_range(&mut self, range: Range<u64>) -> u64 {
-        assert!(
-            range.end <= u64::from(u32::max_value()) + 1,
-            "can't index past 2**32"
-        );
+        assert!(range.end <= u64::from(u32::max_value()) + 1, "can't index past 2**32");
         if range.is_empty() {
             return 0;
         }
@@ -79,14 +74,10 @@ impl RoaringBitmap {
         let (end_container_key, end_index) = util::split((range.end) as u32);
 
         // Find the container index for start_container_key
-        let start_i = match self
-            .containers
-            .binary_search_by_key(&start_container_key, |c| c.key)
-        {
+        let start_i = match self.containers.binary_search_by_key(&start_container_key, |c| c.key) {
             Ok(loc) => loc,
             Err(loc) => {
-                self.containers
-                    .insert(loc, Container::new(start_container_key));
+                self.containers.insert(loc, Container::new(start_container_key));
                 loc
             }
         };
@@ -219,10 +210,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.remove_range(2..4), 2);
     /// ```
     pub fn remove_range(&mut self, range: Range<u64>) -> u64 {
-        assert!(
-            range.end <= u64::from(u32::max_value()) + 1,
-            "can't index past 2**32"
-        );
+        assert!(range.end <= u64::from(u32::max_value()) + 1, "can't index past 2**32");
         if range.is_empty() {
             return 0;
         }
@@ -234,11 +222,7 @@ impl RoaringBitmap {
         while index < self.containers.len() {
             let key = self.containers[index].key;
             if key >= start_hi && key <= end_hi {
-                let a = if key == start_hi {
-                    u32::from(start_lo)
-                } else {
-                    0
-                };
+                let a = if key == start_hi { u32::from(start_lo) } else { 0 };
                 let b = if key == end_hi {
                     u32::from(end_lo) + 1 // make it exclusive
                 } else {
@@ -353,9 +337,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.min(), Some(3));
     /// ```
     pub fn min(&self) -> Option<u32> {
-        self.containers
-            .first()
-            .and_then(|tail| tail.min().map(|min| util::join(tail.key, min)))
+        self.containers.first().and_then(|tail| tail.min().map(|min| util::join(tail.key, min)))
     }
 
     /// Returns the maximum value in the set (if the set is non-empty).
@@ -373,9 +355,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.max(), Some(4));
     /// ```
     pub fn max(&self) -> Option<u32> {
-        self.containers
-            .last()
-            .and_then(|tail| tail.max().map(|max| util::join(tail.key, max)))
+        self.containers.last().and_then(|tail| tail.max().map(|max| util::join(tail.key, max)))
     }
 }
 

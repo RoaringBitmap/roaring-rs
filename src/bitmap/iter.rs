@@ -27,10 +27,7 @@ impl<'a> Iter<'a> {
             t
         }
         let size_hint = containers.iter().map(|c| c.len).sum();
-        Iter {
-            inner: containers.iter().flat_map(identity as _),
-            size_hint,
-        }
+        Iter { inner: containers.iter().flat_map(identity as _), size_hint }
     }
 }
 
@@ -40,10 +37,7 @@ impl IntoIter {
             t
         }
         let size_hint = containers.iter().map(|c| c.len).sum();
-        IntoIter {
-            inner: containers.into_iter().flat_map(identity as _),
-            size_hint,
-        }
+        IntoIter { inner: containers.into_iter().flat_map(identity as _), size_hint }
     }
 }
 

@@ -20,11 +20,7 @@ pub struct Iter<'a> {
 
 impl Container {
     pub fn new(key: u16) -> Container {
-        Container {
-            key,
-            len: 0,
-            store: Store::Array(Vec::new()),
-        }
+        Container { key, len: 0, store: Store::Array(Vec::new()) }
     }
 }
 
@@ -179,10 +175,7 @@ impl<'a> IntoIterator for &'a Container {
     type IntoIter = Iter<'a>;
 
     fn into_iter(self) -> Iter<'a> {
-        Iter {
-            key: self.key,
-            inner: (&self.store).into_iter(),
-        }
+        Iter { key: self.key, inner: (&self.store).into_iter() }
     }
 }
 
@@ -191,10 +184,7 @@ impl IntoIterator for Container {
     type IntoIter = Iter<'static>;
 
     fn into_iter(self) -> Iter<'static> {
-        Iter {
-            key: self.key,
-            inner: self.store.into_iter(),
-        }
+        Iter { key: self.key, inner: self.store.into_iter() }
     }
 }
 
