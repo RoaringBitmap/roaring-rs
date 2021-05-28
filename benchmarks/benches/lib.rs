@@ -5,7 +5,7 @@ use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
-use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
 use roaring::RoaringBitmap;
 
 fn create(c: &mut Criterion) {
@@ -332,17 +332,14 @@ fn from_sorted_iter(c: &mut Criterion) {
     let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
     let parsed_numbers = parse_dir_files(files).unwrap();
 
-    let mut group = c.benchmark_group("from_sorted_iter");
-    for (path, numbers) in parsed_numbers {
-        let numbers = numbers.unwrap();
-        let filename = path.file_name().unwrap().to_str().unwrap();
-        let name = format!("{} ({} integers)", filename, numbers.len());
-        let bench_id = BenchmarkId::from_parameter(name);
-        group.bench_with_input(bench_id, &numbers, |b, numbers| {
-            b.iter(|| RoaringBitmap::from_sorted_iter(numbers.iter().copied()));
-        });
-    }
-    group.finish();
+    c.bench_function("from_sorted_iter", |b| {
+        b.iter(|| {
+            for (_, numbers) in &parsed_numbers {
+                let numbers = numbers.as_ref().unwrap();
+                RoaringBitmap::from_sorted_iter(numbers.iter().copied());
+            }
+        })
+    });
 }
 
 fn successive_and(c: &mut Criterion) {
