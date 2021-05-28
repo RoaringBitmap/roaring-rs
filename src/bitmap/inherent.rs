@@ -365,6 +365,16 @@ impl Default for RoaringBitmap {
     }
 }
 
+impl Clone for RoaringBitmap {
+    fn clone(&self) -> Self {
+        RoaringBitmap { containers: self.containers.clone() }
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        self.containers.clone_from(&other.containers);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
