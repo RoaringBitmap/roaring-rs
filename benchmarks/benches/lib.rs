@@ -357,13 +357,17 @@ fn successive_and(c: &mut Criterion) {
     let mut group = c.benchmark_group("Successive And");
 
     group.bench_function("Successive And Assign Ref", |b| {
-        b.iter(|| {
-            let mut iter = bitmaps.iter();
-            let mut first = iter.next().unwrap().clone();
-            for bitmap in iter {
-                first &= bitmap;
-            }
-        });
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps| {
+                let mut iter = bitmaps.into_iter();
+                let mut first = iter.next().unwrap().clone();
+                for bitmap in iter {
+                    first &= bitmap;
+                }
+            },
+            BatchSize::LargeInput,
+        );
     });
 
     group.bench_function("Successive And Assign Owned", |b| {
@@ -377,11 +381,15 @@ fn successive_and(c: &mut Criterion) {
     });
 
     group.bench_function("Successive And Ref Ref", |b| {
-        b.iter(|| {
-            let mut iter = bitmaps.iter();
-            let first = iter.next().unwrap().clone();
-            black_box(iter.fold(first, |acc, x| (&acc) & x));
-        });
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps| {
+                let mut iter = bitmaps.iter();
+                let first = iter.next().unwrap().clone();
+                black_box(iter.fold(first, |acc, x| (&acc) & x));
+            },
+            BatchSize::LargeInput,
+        );
     });
 
     group.finish();
