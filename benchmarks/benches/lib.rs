@@ -372,7 +372,7 @@ fn successive_and(c: &mut Criterion) {
             |bitmaps| {
                 black_box(bitmaps.into_iter().reduce(|a, b| a & b).unwrap());
             },
-            BatchSize::SmallInput,
+            BatchSize::LargeInput,
         );
     });
 
@@ -415,7 +415,7 @@ fn successive_or(c: &mut Criterion) {
                     output |= bitmap;
                 }
             },
-            BatchSize::SmallInput,
+            BatchSize::LargeInput,
         );
     });
 
