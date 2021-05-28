@@ -10,7 +10,7 @@ publish = false
 roaring = { path = ".." }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = { version = "0.3", features = ["html_reports"] }
 quickcheck = "0.9"
 quickcheck_macros = "0.9"
 
