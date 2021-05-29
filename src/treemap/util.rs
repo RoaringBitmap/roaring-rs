@@ -14,73 +14,25 @@ mod test {
 
     #[test]
     fn test_split_u64() {
-        assert_eq!(
-            (0x0000_0000u32, 0x0000_0000u32),
-            split(0x0000_0000_0000_0000u64)
-        );
-        assert_eq!(
-            (0x0000_0000u32, 0x0000_0001u32),
-            split(0x0000_0000_0000_0001u64)
-        );
-        assert_eq!(
-            (0x0000_0000u32, 0xFFFF_FFFEu32),
-            split(0x0000_0000_FFFF_FFFEu64)
-        );
-        assert_eq!(
-            (0x0000_0000u32, 0xFFFF_FFFFu32),
-            split(0x0000_0000_FFFF_FFFFu64)
-        );
-        assert_eq!(
-            (0x0000_0001u32, 0x0000_0000u32),
-            split(0x0000_0001_0000_0000u64)
-        );
-        assert_eq!(
-            (0x0000_0001u32, 0x0000_0001u32),
-            split(0x0000_0001_0000_0001u64)
-        );
-        assert_eq!(
-            (0xFFFF_FFFFu32, 0xFFFF_FFFEu32),
-            split(0xFFFF_FFFF_FFFF_FFFEu64)
-        );
-        assert_eq!(
-            (0xFFFF_FFFFu32, 0xFFFF_FFFFu32),
-            split(0xFFFF_FFFF_FFFF_FFFFu64)
-        );
+        assert_eq!((0x0000_0000u32, 0x0000_0000u32), split(0x0000_0000_0000_0000u64));
+        assert_eq!((0x0000_0000u32, 0x0000_0001u32), split(0x0000_0000_0000_0001u64));
+        assert_eq!((0x0000_0000u32, 0xFFFF_FFFEu32), split(0x0000_0000_FFFF_FFFEu64));
+        assert_eq!((0x0000_0000u32, 0xFFFF_FFFFu32), split(0x0000_0000_FFFF_FFFFu64));
+        assert_eq!((0x0000_0001u32, 0x0000_0000u32), split(0x0000_0001_0000_0000u64));
+        assert_eq!((0x0000_0001u32, 0x0000_0001u32), split(0x0000_0001_0000_0001u64));
+        assert_eq!((0xFFFF_FFFFu32, 0xFFFF_FFFEu32), split(0xFFFF_FFFF_FFFF_FFFEu64));
+        assert_eq!((0xFFFF_FFFFu32, 0xFFFF_FFFFu32), split(0xFFFF_FFFF_FFFF_FFFFu64));
     }
 
     #[test]
     fn test_join_u64() {
-        assert_eq!(
-            0x0000_0000_0000_0000u64,
-            join(0x0000_0000u32, 0x0000_0000u32)
-        );
-        assert_eq!(
-            0x0000_0000_0000_0001u64,
-            join(0x0000_0000u32, 0x0000_0001u32)
-        );
-        assert_eq!(
-            0x0000_0000_FFFF_FFFEu64,
-            join(0x0000_0000u32, 0xFFFF_FFFEu32)
-        );
-        assert_eq!(
-            0x0000_0000_FFFF_FFFFu64,
-            join(0x0000_0000u32, 0xFFFF_FFFFu32)
-        );
-        assert_eq!(
-            0x0000_0001_0000_0000u64,
-            join(0x0000_0001u32, 0x0000_0000u32)
-        );
-        assert_eq!(
-            0x0000_0001_0000_0001u64,
-            join(0x0000_0001u32, 0x0000_0001u32)
-        );
-        assert_eq!(
-            0xFFFF_FFFF_FFFF_FFFEu64,
-            join(0xFFFF_FFFFu32, 0xFFFF_FFFEu32)
-        );
-        assert_eq!(
-            0xFFFF_FFFF_FFFF_FFFFu64,
-            join(0xFFFF_FFFFu32, 0xFFFF_FFFFu32)
-        );
+        assert_eq!(0x0000_0000_0000_0000u64, join(0x0000_0000u32, 0x0000_0000u32));
+        assert_eq!(0x0000_0000_0000_0001u64, join(0x0000_0000u32, 0x0000_0001u32));
+        assert_eq!(0x0000_0000_FFFF_FFFEu64, join(0x0000_0000u32, 0xFFFF_FFFEu32));
+        assert_eq!(0x0000_0000_FFFF_FFFFu64, join(0x0000_0000u32, 0xFFFF_FFFFu32));
+        assert_eq!(0x0000_0001_0000_0000u64, join(0x0000_0001u32, 0x0000_0000u32));
+        assert_eq!(0x0000_0001_0000_0001u64, join(0x0000_0001u32, 0x0000_0001u32));
+        assert_eq!(0xFFFF_FFFF_FFFF_FFFEu64, join(0xFFFF_FFFFu32, 0xFFFF_FFFEu32));
+        assert_eq!(0xFFFF_FFFF_FFFF_FFFFu64, join(0xFFFF_FFFFu32, 0xFFFF_FFFFu32));
     }
 }

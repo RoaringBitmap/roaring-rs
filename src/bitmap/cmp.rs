@@ -4,17 +4,11 @@ use std::slice;
 use super::container::Container;
 use crate::RoaringBitmap;
 
-struct Pairs<'a>(
-    Peekable<slice::Iter<'a, Container>>,
-    Peekable<slice::Iter<'a, Container>>,
-);
+struct Pairs<'a>(Peekable<slice::Iter<'a, Container>>, Peekable<slice::Iter<'a, Container>>);
 
 impl RoaringBitmap {
     fn pairs<'a>(&'a self, other: &'a RoaringBitmap) -> Pairs<'a> {
-        Pairs(
-            self.containers.iter().peekable(),
-            other.containers.iter().peekable(),
-        )
+        Pairs(self.containers.iter().peekable(), other.containers.iter().peekable())
     }
 
     /// Returns true if the set has no elements in common with other. This is equivalent to

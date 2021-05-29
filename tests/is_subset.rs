@@ -52,12 +52,8 @@ fn bitmap_array() {
 
 #[test]
 fn arrays_not() {
-    let sup = (0..2000)
-        .chain(1_000_000..1_002_000)
-        .collect::<RoaringBitmap>();
-    let sub = (100_000..102_000)
-        .chain(1_100_000..1_102_000)
-        .collect::<RoaringBitmap>();
+    let sup = (0..2000).chain(1_000_000..1_002_000).collect::<RoaringBitmap>();
+    let sub = (100_000..102_000).chain(1_100_000..1_102_000).collect::<RoaringBitmap>();
     assert!(!sub.is_subset(&sup));
 }
 
@@ -74,19 +70,13 @@ fn bitmaps_not() {
         .chain(1_000_000..1_006_000)
         .chain(2_000_000..2_010_000)
         .collect::<RoaringBitmap>();
-    let sub = (100_000..106_000)
-        .chain(1_100_000..1_106_000)
-        .collect::<RoaringBitmap>();
+    let sub = (100_000..106_000).chain(1_100_000..1_106_000).collect::<RoaringBitmap>();
     assert!(!sub.is_subset(&sup));
 }
 
 #[test]
 fn bitmaps() {
-    let sup = (0..1_000_000)
-        .chain(2_000_000..2_010_000)
-        .collect::<RoaringBitmap>();
-    let sub = (0..10_000)
-        .chain(500_000..510_000)
-        .collect::<RoaringBitmap>();
+    let sup = (0..1_000_000).chain(2_000_000..2_010_000).collect::<RoaringBitmap>();
+    let sub = (0..10_000).chain(500_000..510_000).collect::<RoaringBitmap>();
     assert!(sub.is_subset(&sup));
 }

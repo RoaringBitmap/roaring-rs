@@ -27,10 +27,9 @@ pub struct BitmapIter<B: Borrow<[u64; BITMAP_LENGTH]>> {
 impl Store {
     pub fn insert(&mut self, index: u16) -> bool {
         match *self {
-            Array(ref mut vec) => vec
-                .binary_search(&index)
-                .map_err(|loc| vec.insert(loc, index))
-                .is_err(),
+            Array(ref mut vec) => {
+                vec.binary_search(&index).map_err(|loc| vec.insert(loc, index)).is_err()
+            }
             Bitmap(ref mut bits) => {
                 let (key, bit) = (key(index), bit(index));
                 if bits[key] & (1 << bit) == 0 {
@@ -208,10 +207,9 @@ impl Store {
                     }
                 }
             }
-            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => bits1
-                .iter()
-                .zip(bits2.iter())
-                .all(|(&i1, &i2)| (i1 & i2) == 0),
+            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => {
+                bits1.iter().zip(bits2.iter()).all(|(&i1, &i2)| (i1 & i2) == 0)
+            }
             (&Array(ref vec), store @ &Bitmap(..)) | (store @ &Bitmap(..), &Array(ref vec)) => {
                 vec.iter().all(|&i| !store.contains(i))
             }
@@ -238,10 +236,9 @@ impl Store {
                     }
                 }
             }
-            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => bits1
-                .iter()
-                .zip(bits2.iter())
-                .all(|(&i1, &i2)| (i1 & i2) == i1),
+            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => {
+                bits1.iter().zip(bits2.iter()).all(|(&i1, &i2)| (i1 & i2) == i1)
+            }
             (&Array(ref vec), store @ &Bitmap(..)) => vec.iter().all(|&i| store.contains(i)),
             (&Bitmap(..), &Array(..)) => false,
         }
@@ -599,11 +596,7 @@ impl Clone for Store {
 
 impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
     fn new(bits: B) -> BitmapIter<B> {
-        BitmapIter {
-            key: 0,
-            bit: 0,
-            bits,
-        }
+        BitmapIter { key: 0, bit: 0, bits }
     }
 
     fn move_next(&mut self) {

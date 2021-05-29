@@ -16,9 +16,7 @@ impl RoaringTreemap {
     /// let mut rb = RoaringTreemap::new();
     /// ```
     pub fn new() -> RoaringTreemap {
-        RoaringTreemap {
-            map: BTreeMap::new(),
-        }
+        RoaringTreemap { map: BTreeMap::new() }
     }
 
     /// Adds a value to the set. Returns `true` if the value was not already present in the set.
@@ -35,10 +33,7 @@ impl RoaringTreemap {
     /// ```
     pub fn insert(&mut self, value: u64) -> bool {
         let (hi, lo) = util::split(value);
-        self.map
-            .entry(hi)
-            .or_insert_with(RoaringBitmap::new)
-            .insert(lo)
+        self.map.entry(hi).or_insert_with(RoaringBitmap::new).insert(lo)
     }
 
     /// Pushes `value` in the treemap only if it is greater than the current maximum value.
@@ -60,10 +55,7 @@ impl RoaringTreemap {
     /// ```
     pub fn push(&mut self, value: u64) -> bool {
         let (hi, lo) = util::split(value);
-        self.map
-            .entry(hi)
-            .or_insert_with(RoaringBitmap::new)
-            .push(lo)
+        self.map.entry(hi).or_insert_with(RoaringBitmap::new).push(lo)
     }
 
     /// Removes a value from the set. Returns `true` if the value was present in the set.
@@ -123,11 +115,7 @@ impl RoaringTreemap {
         let (end_hi, end_lo) = util::split(range.end - 1);
         for (&key, rb) in &mut self.map {
             if key >= start_hi && key <= end_hi {
-                let a = if key == start_hi {
-                    u64::from(start_lo)
-                } else {
-                    0
-                };
+                let a = if key == start_hi { u64::from(start_lo) } else { 0 };
                 let b = if key == end_hi {
                     u64::from(end_lo) + 1 // make it exclusive
                 } else {

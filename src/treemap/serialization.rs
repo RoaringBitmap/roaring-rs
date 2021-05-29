@@ -20,9 +20,9 @@ impl RoaringTreemap {
     /// assert_eq!(rb1, rb2);
     /// ```
     pub fn serialized_size(&self) -> usize {
-        self.map.values().fold(size_of::<u64>(), |acc, bitmap| {
-            acc + size_of::<u32>() + bitmap.serialized_size()
-        })
+        self.map
+            .values()
+            .fold(size_of::<u64>(), |acc, bitmap| acc + size_of::<u32>() + bitmap.serialized_size())
     }
 
     /// Serialize this bitmap.

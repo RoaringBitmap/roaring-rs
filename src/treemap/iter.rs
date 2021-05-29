@@ -21,10 +21,7 @@ impl<'a> Iterator for To64Iter<'a> {
 }
 
 fn to64iter<'a>(t: (&'a u32, &'a RoaringBitmap)) -> To64Iter<'a> {
-    To64Iter {
-        hi: *t.0,
-        inner: t.1.iter(),
-    }
+    To64Iter { hi: *t.0, inner: t.1.iter() }
 }
 
 struct To64IntoIter {
@@ -40,10 +37,7 @@ impl Iterator for To64IntoIter {
 }
 
 fn to64intoiter(t: (u32, RoaringBitmap)) -> To64IntoIter {
-    To64IntoIter {
-        hi: t.0,
-        inner: t.1.into_iter(),
-    }
+    To64IntoIter { hi: t.0, inner: t.1.into_iter() }
 }
 
 type InnerIter<'a> = iter::FlatMap<
@@ -73,10 +67,7 @@ impl<'a> Iter<'a> {
     fn new(map: &BTreeMap<u32, RoaringBitmap>) -> Iter {
         let size_hint: u64 = map.iter().map(|(_, r)| r.len()).sum();
         let i = map.iter().flat_map(to64iter as _);
-        Iter {
-            inner: i,
-            size_hint,
-        }
+        Iter { inner: i, size_hint }
     }
 }
 
@@ -84,10 +75,7 @@ impl IntoIter {
     fn new(map: BTreeMap<u32, RoaringBitmap>) -> IntoIter {
         let size_hint = map.iter().map(|(_, r)| r.len()).sum();
         let i = map.into_iter().flat_map(to64intoiter as _);
-        IntoIter {
-            inner: i,
-            size_hint,
-        }
+        IntoIter { inner: i, size_hint }
     }
 }
 
@@ -181,9 +169,7 @@ impl RoaringTreemap {
     /// assert_eq!(clone, original);
     /// ```
     pub fn from_bitmaps<I: IntoIterator<Item = (u32, RoaringBitmap)>>(iterator: I) -> Self {
-        RoaringTreemap {
-            map: iterator.into_iter().collect(),
-        }
+        RoaringTreemap { map: iterator.into_iter().collect() }
     }
 }
 

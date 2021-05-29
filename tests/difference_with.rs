@@ -87,9 +87,7 @@ fn arrays() {
         .chain(1_001_000..1_003_000)
         .chain(2_000_000..2_001_000)
         .collect::<RoaringBitmap>();
-    let bitmap3 = (0..1000)
-        .chain(1_000_000..1_001_000)
-        .collect::<RoaringBitmap>();
+    let bitmap3 = (0..1000).chain(1_000_000..1_001_000).collect::<RoaringBitmap>();
 
     bitmap1 -= bitmap2;
 
@@ -123,9 +121,7 @@ fn bitmaps() {
         .chain(1_006_000..1_018_000)
         .chain(2_000_000..2_010_000)
         .collect::<RoaringBitmap>();
-    let bitmap3 = (0..3000)
-        .chain(1_000_000..1_006_000)
-        .collect::<RoaringBitmap>();
+    let bitmap3 = (0..3000).chain(1_000_000..1_006_000).collect::<RoaringBitmap>();
 
     bitmap1 -= bitmap2;
 

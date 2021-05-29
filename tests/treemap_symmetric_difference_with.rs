@@ -79,14 +79,10 @@ fn bitmap_and_array_to_array() {
 
 #[test]
 fn arrays() {
-    let mut bitmap1 = ((0..2000)
-        .chain(1_000_000..1_002_000)
-        .chain(3_000_000..3_001_000))
-    .collect::<RoaringTreemap>();
-    let bitmap2 = ((1000..3000)
-        .chain(1_001_000..1_003_000)
-        .chain(2_000_000..2_000_001))
-    .collect::<RoaringTreemap>();
+    let mut bitmap1 = ((0..2000).chain(1_000_000..1_002_000).chain(3_000_000..3_001_000))
+        .collect::<RoaringTreemap>();
+    let bitmap2 = ((1000..3000).chain(1_001_000..1_003_000).chain(2_000_000..2_000_001))
+        .collect::<RoaringTreemap>();
     let bitmap3 = ((0..1000)
         .chain(1_000_000..1_001_000)
         .chain(2000..3000)
@@ -102,14 +98,10 @@ fn arrays() {
 
 #[test]
 fn bitmaps() {
-    let mut bitmap1 = ((0..6000)
-        .chain(1_000_000..1_012_000)
-        .chain(3_000_000..3_010_000))
-    .collect::<RoaringTreemap>();
-    let bitmap2 = ((3000..7000)
-        .chain(1_006_000..1_018_000)
-        .chain(2_000_000..2_010_000))
-    .collect::<RoaringTreemap>();
+    let mut bitmap1 = ((0..6000).chain(1_000_000..1_012_000).chain(3_000_000..3_010_000))
+        .collect::<RoaringTreemap>();
+    let bitmap2 = ((3000..7000).chain(1_006_000..1_018_000).chain(2_000_000..2_010_000))
+        .collect::<RoaringTreemap>();
     let bitmap3 = ((0..3000)
         .chain(1_000_000..1_006_000)
         .chain(6000..7000)
