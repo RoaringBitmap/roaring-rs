@@ -37,7 +37,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --manifest-path benchmarks/Cargo.toml
+          args: --benches --manifest-path benchmarks/Cargo.toml
 
       - uses: actions-rs/cargo@v1
         with:
