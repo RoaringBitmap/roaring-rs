@@ -265,3 +265,13 @@ impl Default for RoaringTreemap {
         RoaringTreemap::new()
     }
 }
+
+impl Clone for RoaringTreemap {
+    fn clone(&self) -> Self {
+        RoaringTreemap { map: self.map.clone() }
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        self.map.clone_from(&other.map);
+    }
+}
