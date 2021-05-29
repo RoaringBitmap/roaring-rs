@@ -74,8 +74,8 @@ fn xor() {
 }
 
 #[test]
-fn multi_or() {
-    use roaring::bitmap::MultiOps;
+fn multi_bitor() {
+    use roaring::bitmap::MultiBitOr;
 
     let a: RoaringBitmap = (1..4).collect();
     let b: RoaringBitmap = (1000..4000).collect();
@@ -83,11 +83,7 @@ fn multi_or() {
     let rbs = [a, b, c];
 
     let res1 = rbs.bitor();
-
-    let mut res2 = RoaringBitmap::default();
-    for rb in rbs.iter() {
-        res2 |= rb;
-    }
+    let res2 = rbs.iter().cloned().reduce(|a, b| a | b).unwrap_or_default();
 
     assert_eq!(res1, res2);
 }

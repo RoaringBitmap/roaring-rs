@@ -439,8 +439,8 @@ fn successive_or(c: &mut Criterion) {
     group.finish();
 }
 
-fn multi_or(c: &mut Criterion) {
-    use roaring::bitmap::MultiOps;
+fn multi_bitor(c: &mut Criterion) {
+    use roaring::bitmap::MultiBitOr;
 
     let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
     let parsed_numbers = parse_dir_files(files).unwrap();
@@ -515,6 +515,6 @@ criterion_group!(
     from_sorted_iter,
     successive_and,
     successive_or,
-    multi_or,
+    multi_bitor,
 );
 criterion_main!(benches);
