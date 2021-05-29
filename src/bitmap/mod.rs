@@ -8,13 +8,13 @@ mod util;
 mod cmp;
 mod inherent;
 mod iter;
-mod ops;
 mod multi_ops;
+mod ops;
 mod serialization;
 
 pub use self::iter::IntoIter;
 pub use self::iter::Iter;
-pub use self::multi_ops::{MultiBitOr, MultiBitAnd};
+pub use self::multi_ops::{MultiBitAnd, MultiBitOr};
 
 /// A compressed bitmap using the [Roaring bitmap compression scheme](http://roaringbitmap.org).
 ///

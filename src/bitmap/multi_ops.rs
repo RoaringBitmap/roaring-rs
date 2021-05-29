@@ -93,11 +93,7 @@ where
                         let key = mem::replace(ckey, container.key);
                         let store = mem::replace(cstore, container.store.to_bitmap());
 
-                        let mut container = Container {
-                            key,
-                            len: store.len(),
-                            store,
-                        };
+                        let mut container = Container { key, len: store.len(), store };
                         container.ensure_correct_store();
                         containers.push(container);
                     }
@@ -107,11 +103,7 @@ where
         }
 
         if let Some((key, store)) = current {
-            let mut container = Container {
-                key,
-                len: store.len(),
-                store,
-            };
+            let mut container = Container { key, len: store.len(), store };
             container.ensure_correct_store();
             containers.push(container);
         }
@@ -160,11 +152,7 @@ where
                         let key = mem::replace(ckey, container.key);
                         let store = mem::replace(cstore, into_bitmap(container.store));
 
-                        let mut container = Container {
-                            key,
-                            len: store.len(),
-                            store,
-                        };
+                        let mut container = Container { key, len: store.len(), store };
                         container.ensure_correct_store();
                         containers.push(container);
                     }
@@ -174,11 +162,7 @@ where
         }
 
         if let Some((key, store)) = current {
-            let mut container = Container {
-                key,
-                len: store.len(),
-                store,
-            };
+            let mut container = Container { key, len: store.len(), store };
             container.ensure_correct_store();
             containers.push(container);
         }
