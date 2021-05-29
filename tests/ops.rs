@@ -87,3 +87,18 @@ fn multi_bitor() {
 
     assert_eq!(res1, res2);
 }
+
+#[test]
+fn multi_bitand() {
+    use roaring::bitmap::MultiBitAnd;
+
+    let a: RoaringBitmap = (1..1400).collect();
+    let b: RoaringBitmap = (1000..4000).collect();
+    let c: RoaringBitmap = (1300..4_000_000).collect();
+    let rbs = [a, b, c];
+
+    let res1 = rbs.bitand();
+    let res2 = rbs.iter().cloned().reduce(|a, b| a & b).unwrap_or_default();
+
+    assert_eq!(res1, res2);
+}
