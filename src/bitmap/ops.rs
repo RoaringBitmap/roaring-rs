@@ -493,58 +493,112 @@ impl BitXorAssign<&RoaringBitmap> for RoaringBitmap {
     }
 }
 
-pub trait MultiOps {
+use std::collections::binary_heap::{BinaryHeap, PeekMut};
+use crate::bitmap::store::Store;
+
+struct PeekedRefContainer<'a> {
+    container: &'a Container,
+    iter: std::slice::Iter<'a, Container>,
+}
+
+impl Ord for PeekedRefContainer<'_> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.container.key.cmp(&other.container.key).reverse()
+    }
+}
+
+impl PartialOrd for PeekedRefContainer<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Eq for PeekedRefContainer<'_> {}
+
+impl PartialEq for PeekedRefContainer<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.container.key == other.container.key
+    }
+}
+
+struct PeekedContainer {
+    container: Container,
+    iter: std::vec::IntoIter<Container>,
+}
+
+impl Ord for PeekedContainer {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.container.key.cmp(&other.container.key).reverse()
+    }
+}
+
+impl PartialOrd for PeekedContainer {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Eq for PeekedContainer {}
+
+impl PartialEq for PeekedContainer {
+    fn eq(&self, other: &Self) -> bool {
+        self.container.key == other.container.key
+    }
+}
+
+pub trait MultiBitOr<Rbs>: IntoIterator<Item=Rbs> {
     fn bitor(self) -> RoaringBitmap;
 }
 
-impl MultiOps for &[RoaringBitmap] {
+impl<'a, I> MultiBitOr<&'a RoaringBitmap> for I where I: IntoIterator<Item=&'a RoaringBitmap> {
     fn bitor(self) -> RoaringBitmap {
-        use binary_heap_plus::{BinaryHeap, PeekMut};
-        use std::cmp::Reverse;
-        use std::slice::Iter;
+        let iter = self.into_iter();
+        let mut heap = BinaryHeap::with_capacity(iter.size_hint().0);
 
-        let mut heap = BinaryHeap::with_capacity_by_key(
-            self.len(),
-            |(container, _iter): &(&Container, Iter<Container>)| {
-                Reverse((container.key, container.len))
-            },
-        );
-
-        self.iter().for_each(|rb| {
+        for rb in iter {
             let mut iter = rb.containers.iter();
-            if let Some(first) = iter.next() {
-                heap.push((first, iter));
+            if let Some(container) = iter.next() {
+                heap.push(PeekedRefContainer { container, iter });
             }
-        });
+        }
 
         let mut containers = Vec::new();
         let mut current = None;
 
         while let Some(mut peek) = heap.peek_mut() {
-            let pkey = peek.0.key;
-            let container = match peek.1.next() {
-                Some(next_container) => mem::replace(&mut peek.0, next_container),
-                None => PeekMut::pop(peek).0,
+            let pkey = peek.container.key;
+            let container = match peek.iter.next() {
+                Some(next) => mem::replace(&mut peek.container, next),
+                None => PeekMut::pop(peek).container,
             };
 
             match current.as_mut() {
-                Some((ckey, cstore)) if *ckey == pkey => {
-                    *cstore |= &container.store;
-                }
                 Some((ckey, cstore)) => {
-                    let key = mem::replace(ckey, container.key);
-                    let store = mem::replace(cstore, container.store.to_bitmap());
+                    if *ckey == pkey {
+                        *cstore |= &container.store;
+                    } else {
+                        let key = mem::replace(ckey, container.key);
+                        let store = mem::replace(cstore, container.store.to_bitmap());
 
-                    let mut container = Container { key, len: store.len(), store };
-                    container.ensure_correct_store();
-                    containers.push(container);
+                        let mut container = Container {
+                            key,
+                            len: store.len(),
+                            store,
+                        };
+                        container.ensure_correct_store();
+                        containers.push(container);
+                    }
                 }
                 None => current = Some((container.key, container.store.to_bitmap())),
             }
         }
 
         if let Some((key, store)) = current {
-            let mut container = Container { key, len: store.len(), store };
+            let mut container = Container {
+                key,
+                len: store.len(),
+                store,
+            };
             container.ensure_correct_store();
             containers.push(container);
         }
@@ -553,20 +607,66 @@ impl MultiOps for &[RoaringBitmap] {
     }
 }
 
-impl MultiOps for &mut [RoaringBitmap] {
+impl<I> MultiBitOr<RoaringBitmap> for I where I: IntoIterator<Item=RoaringBitmap> {
     fn bitor(self) -> RoaringBitmap {
-        self.sort_unstable_by(|a, b| b.len().cmp(&a.len()));
-        MultiOps::bitor(&*self)
-    }
-}
-
-impl MultiOps for Vec<RoaringBitmap> {
-    fn bitor(mut self) -> RoaringBitmap {
-        self.sort_unstable_by(|a, b| b.len().cmp(&a.len()));
-        let mut iter = self.into_iter();
-        match iter.next() {
-            Some(first) => iter.fold(first, |acc, rb| acc | rb),
-            None => RoaringBitmap::default(),
+        fn into_bitmap(store: Store) -> Store {
+            match store {
+                Store::Bitmap(_) => store,
+                Store::Array(_) => store.to_bitmap(),
+            }
         }
+
+        let iter = self.into_iter();
+        let mut heap = BinaryHeap::with_capacity(iter.size_hint().0);
+
+        for rb in iter {
+            let mut iter = rb.containers.into_iter();
+            if let Some(container) = iter.next() {
+                heap.push(PeekedContainer { container, iter });
+            }
+        }
+
+        let mut containers = Vec::new();
+        let mut current = None;
+
+        while let Some(mut peek) = heap.peek_mut() {
+            let pkey = peek.container.key;
+            let container = match peek.iter.next() {
+                Some(next) => mem::replace(&mut peek.container, next),
+                None => PeekMut::pop(peek).container,
+            };
+
+            match current.as_mut() {
+                Some((ckey, cstore)) => {
+                    if *ckey == pkey {
+                        *cstore |= &container.store;
+                    } else {
+                        let key = mem::replace(ckey, container.key);
+                        let store = mem::replace(cstore, into_bitmap(container.store));
+
+                        let mut container = Container {
+                            key,
+                            len: store.len(),
+                            store,
+                        };
+                        container.ensure_correct_store();
+                        containers.push(container);
+                    }
+                }
+                None => current = Some((container.key, into_bitmap(container.store))),
+            }
+        }
+
+        if let Some((key, store)) = current {
+            let mut container = Container {
+                key,
+                len: store.len(),
+                store,
+            };
+            container.ensure_correct_store();
+            containers.push(container);
+        }
+
+        RoaringBitmap { containers }
     }
 }

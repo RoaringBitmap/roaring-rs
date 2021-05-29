@@ -13,7 +13,7 @@ mod serialization;
 
 pub use self::iter::IntoIter;
 pub use self::iter::Iter;
-pub use self::ops::MultiOps;
+pub use self::ops::MultiBitOr;
 
 /// A compressed bitmap using the [Roaring bitmap compression scheme](http://roaringbitmap.org).
 ///
