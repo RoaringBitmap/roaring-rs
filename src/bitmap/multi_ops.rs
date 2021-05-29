@@ -13,16 +13,7 @@ struct PeekedRefContainer<'a> {
 
 impl Ord for PeekedRefContainer<'_> {
     fn cmp(&self, other: &Self) -> Ordering {
-        // We want to sort the containers by their key then by their length but
-        // in reverse order because the BinaryHeap is a max heap. It means that we
-        // will get our containers with the smallest keys and smallest length first.
-        // It is more efficient for the bitand operation to get the smallest containers
-        // first and it doesn't impact the bitor operation as we transform them into bitmaps.
-        self.container
-            .key
-            .cmp(&other.container.key)
-            .then_with(|| self.container.len.cmp(&other.container.len))
-            .reverse()
+        self.container.key.cmp(&other.container.key).reverse()
     }
 }
 
@@ -36,7 +27,7 @@ impl Eq for PeekedRefContainer<'_> {}
 
 impl PartialEq for PeekedRefContainer<'_> {
     fn eq(&self, other: &Self) -> bool {
-        self.container.key == other.container.key && self.container.len == other.container.len
+        self.container.key == other.container.key
     }
 }
 
@@ -47,16 +38,7 @@ struct PeekedContainer {
 
 impl Ord for PeekedContainer {
     fn cmp(&self, other: &Self) -> Ordering {
-        // We want to sort the containers by their key then by their length but
-        // in reverse order because the BinaryHeap is a max heap. It means that we
-        // will get our containers with the smallest keys and smallest length first.
-        // It is more efficient for the bitand operation to get the smallest containers
-        // first and it doesn't impact the bitor operation as we transform them into bitmaps.
-        self.container
-            .key
-            .cmp(&other.container.key)
-            .then_with(|| self.container.len.cmp(&other.container.len))
-            .reverse()
+        self.container.key.cmp(&other.container.key).reverse()
     }
 }
 
@@ -70,7 +52,7 @@ impl Eq for PeekedContainer {}
 
 impl PartialEq for PeekedContainer {
     fn eq(&self, other: &Self) -> bool {
-        self.container.key == other.container.key && self.container.len == other.container.len
+        self.container.key == other.container.key
     }
 }
 
@@ -214,65 +196,27 @@ where
     I: IntoIterator<Item = &'a RoaringBitmap>,
 {
     fn bitand(self) -> RoaringBitmap {
-        let iter = self.into_iter();
-        let mut heap = BinaryHeap::with_capacity(iter.size_hint().0);
-
-        for rb in iter {
-            let mut iter = rb.containers.iter();
-            match iter.next() {
-                Some(container) => heap.push(PeekedRefContainer { container, iter }),
-                None => return RoaringBitmap::default(),
-            }
-        }
-
-        let length = heap.len();
-        let mut containers = Vec::new();
-        let mut current = None;
-
-        while let Some(mut peek) = heap.peek_mut() {
-            let pkey = peek.container.key;
-            let container = match peek.iter.next() {
-                Some(next) => mem::replace(&mut peek.container, next),
-                None => PeekMut::pop(peek).container,
-            };
-
-            match current.as_mut() {
-                Some((count, ckey, cstore)) => {
-                    if *ckey == pkey {
-                        *cstore &= &container.store;
-                        *count += 1;
-                    } else {
-                        let count = mem::replace(count, 1);
-                        let key = mem::replace(ckey, container.key);
-                        let store = mem::replace(cstore, container.store.clone());
-
-                        let mut container = Container {
-                            key,
-                            len: store.len(),
-                            store,
-                        };
-                        if container.len != 0 && count == length {
-                            container.ensure_correct_store();
-                            containers.push(container);
-                        }
+        let mut iter = self.into_iter();
+        match iter.next().cloned() {
+            Some(mut first) => {
+                for rb in iter {
+                    if first.is_empty() {
+                        break;
                     }
+                    first &= rb;
                 }
-                None => current = Some((1, container.key, container.store.clone())),
+                first
             }
+            None => RoaringBitmap::default(),
         }
+    }
+}
 
-        if let Some((count, key, store)) = current {
-            let mut container = Container {
-                key,
-                len: store.len(),
-                store,
-            };
-            if container.len != 0 && count == length {
-                container.ensure_correct_store();
-                containers.push(container);
-            }
-        }
-
-        RoaringBitmap { containers }
+impl<I> MultiBitAnd<RoaringBitmap> for I
+where
+    I: IntoIterator<Item = RoaringBitmap>,
+{
+    fn bitand(self) -> RoaringBitmap {
+        self.into_iter().reduce(|a, b| a & b).unwrap_or_default()
     }
 }

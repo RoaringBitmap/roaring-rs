@@ -491,6 +491,56 @@ fn multi_bitor(c: &mut Criterion) {
     });
 }
 
+fn multi_bitand(c: &mut Criterion) {
+    use roaring::bitmap::MultiBitAnd;
+
+    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
+    let parsed_numbers = parse_dir_files(files).unwrap();
+
+    let bitmaps: Vec<_> = parsed_numbers
+        .into_iter()
+        .map(|(_, r)| r.map(RoaringBitmap::from_sorted_iter).unwrap())
+        .collect();
+
+    let mut group = c.benchmark_group("Multi And");
+
+    group.bench_function("Multi And Ref", |b| {
+        b.iter(|| {
+            black_box(bitmaps.as_slice().bitand());
+        });
+    });
+
+    group.bench_function("Multi And Ref By Hand", |b| {
+        b.iter(|| {
+            let mut iter = bitmaps.iter();
+            let mut base = iter.next().cloned().unwrap();
+            for bm in iter {
+                black_box(base &= bm);
+            }
+        });
+    });
+
+    group.bench_function("Multi And Owned", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                black_box(bitmaps.bitand());
+            },
+            BatchSize::SmallInput,
+        );
+    });
+
+    group.bench_function("Multi And Owned By Hand", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                black_box(bitmaps.into_iter().reduce(|a, b| a & b).unwrap_or_default());
+            },
+            BatchSize::SmallInput,
+        );
+    });
+}
+
 criterion_group!(
     benches,
     create,
@@ -516,5 +566,6 @@ criterion_group!(
     successive_and,
     successive_or,
     multi_bitor,
+    multi_bitand,
 );
 criterion_main!(benches);
