@@ -13,6 +13,9 @@
 
 extern crate byteorder;
 
+use std::error::Error;
+use std::fmt;
+
 /// A compressed bitmap using the [Roaring bitmap compression scheme](http://roaringbitmap.org).
 pub mod bitmap;
 
@@ -21,3 +24,24 @@ pub mod treemap;
 
 pub use bitmap::RoaringBitmap;
 pub use treemap::RoaringTreemap;
+
+/// An error type that is returned when an iterator isn't sorted.
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct NonSortedIntegers {
+    valid_until: u64,
+}
+
+impl NonSortedIntegers {
+    /// Returns the number of elements that were
+    pub fn valid_until(&self) -> u64 {
+        self.valid_until
+    }
+}
+
+impl fmt::Display for NonSortedIntegers {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "integers are ordered up to the {}th element", self.valid_until())
+    }
+}
+
+impl Error for NonSortedIntegers {}

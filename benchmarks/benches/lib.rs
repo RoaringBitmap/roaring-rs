@@ -345,7 +345,7 @@ fn from_sorted_iter(c: &mut Criterion) {
         b.iter(|| {
             for (_, numbers) in &parsed_numbers {
                 let numbers = numbers.as_ref().unwrap();
-                RoaringBitmap::from_sorted_iter(numbers.iter().copied());
+                RoaringBitmap::from_sorted_iter(numbers.iter().copied()).unwrap();
             }
         })
     });

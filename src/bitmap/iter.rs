@@ -1,9 +1,9 @@
+use std::convert::identity;
 use std::iter::{self, FromIterator};
-use std::slice;
-use std::vec;
+use std::{slice, vec};
 
 use super::container::Container;
-use crate::RoaringBitmap;
+use crate::{NonSortedIntegers, RoaringBitmap};
 
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a> {
@@ -21,11 +21,8 @@ pub struct IntoIter {
     size_hint: u64,
 }
 
-impl<'a> Iter<'a> {
+impl Iter<'_> {
     fn new(containers: &[Container]) -> Iter {
-        fn identity<T>(t: T) -> T {
-            t
-        }
         let size_hint = containers.iter().map(|c| c.len).sum();
         Iter { inner: containers.iter().flat_map(identity as _), size_hint }
     }
@@ -33,15 +30,12 @@ impl<'a> Iter<'a> {
 
 impl IntoIter {
     fn new(containers: Vec<Container>) -> IntoIter {
-        fn identity<T>(t: T) -> T {
-            t
-        }
         let size_hint = containers.iter().map(|c| c.len).sum();
         IntoIter { inner: containers.into_iter().flat_map(identity as _), size_hint }
     }
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl Iterator for Iter<'_> {
     type Item = u32;
 
     fn next(&mut self) -> Option<u32> {
@@ -140,7 +134,7 @@ impl RoaringBitmap {
     /// Returns `Ok` with the requested `RoaringBitmap`, `Err` with the number of elements
     /// that were correctly appended before failure.
     ///
-    /// # Examples
+    /// # Example: Create a set from an ordered list of integers.
     ///
     /// ```rust
     /// use roaring::RoaringBitmap;
@@ -149,14 +143,22 @@ impl RoaringBitmap {
     ///
     /// assert!(rb.iter().eq(0..10));
     /// ```
+    ///
+    /// # Example: Try to create a set from a non-ordered list of integers.
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let integers = 0..10u32;
+    /// let error = RoaringBitmap::from_sorted_iter(integers.rev()).unwrap_err();
+    ///
+    /// assert_eq!(error.valid_until(), 1);
+    /// ```
     pub fn from_sorted_iter<I: IntoIterator<Item = u32>>(
         iterator: I,
-    ) -> Result<RoaringBitmap, u64> {
+    ) -> Result<RoaringBitmap, NonSortedIntegers> {
         let mut rb = RoaringBitmap::new();
-        match rb.append(iterator) {
-            Ok(_) => Ok(rb),
-            Err(count) => Err(count),
-        }
+        rb.append(iterator).map(|_| rb)
     }
 
     /// Extend the set with a sorted iterator.
@@ -178,14 +180,17 @@ impl RoaringBitmap {
     ///
     /// assert!(rb.iter().eq(0..10));
     /// ```
-    pub fn append<I: IntoIterator<Item = u32>>(&mut self, iterator: I) -> Result<u64, u64> {
+    pub fn append<I: IntoIterator<Item = u32>>(
+        &mut self,
+        iterator: I,
+    ) -> Result<u64, NonSortedIntegers> {
         let mut count = 0;
 
         for value in iterator {
             if self.push(value) {
                 count += 1;
             } else {
-                return Err(count);
+                return Err(NonSortedIntegers { valid_until: count });
             }
         }
 

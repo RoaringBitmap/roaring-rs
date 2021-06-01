@@ -5,8 +5,7 @@ use std::iter::{self, FromIterator};
 use super::util;
 use crate::bitmap::IntoIter as IntoIter32;
 use crate::bitmap::Iter as Iter32;
-use crate::RoaringBitmap;
-use crate::RoaringTreemap;
+use crate::{NonSortedIntegers, RoaringBitmap, RoaringTreemap};
 
 struct To64Iter<'a> {
     hi: u32,
@@ -228,12 +227,9 @@ impl RoaringTreemap {
     /// ```
     pub fn from_sorted_iter<I: IntoIterator<Item = u64>>(
         iterator: I,
-    ) -> Result<RoaringTreemap, u64> {
-        let mut rb = RoaringTreemap::new();
-        match rb.append(iterator) {
-            Ok(_) => Ok(rb),
-            Err(count) => Err(count),
-        }
+    ) -> Result<RoaringTreemap, NonSortedIntegers> {
+        let mut rt = RoaringTreemap::new();
+        rt.append(iterator).map(|_| rt)
     }
 
     /// Extend the set with a sorted iterator.
@@ -255,14 +251,17 @@ impl RoaringTreemap {
     ///
     /// assert!(rb.iter().eq(0..10));
     /// ```
-    pub fn append<I: IntoIterator<Item = u64>>(&mut self, iterator: I) -> Result<u64, u64> {
+    pub fn append<I: IntoIterator<Item = u64>>(
+        &mut self,
+        iterator: I,
+    ) -> Result<u64, NonSortedIntegers> {
         let mut count = 0;
 
         for value in iterator {
             if self.push(value) {
                 count += 1;
             } else {
-                return Err(count);
+                return Err(NonSortedIntegers { valid_until: count });
             }
         }
 
