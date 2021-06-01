@@ -293,19 +293,21 @@ impl BitAnd<&RoaringBitmap> for &RoaringBitmap {
         loop {
             match (iter_lhs.peek(), iter_rhs.peek()) {
                 (None, None) => break,
-                (Some(lhs), Some(rhs)) => {
-                    if lhs.key == rhs.key {
+                (Some(lhs), Some(rhs)) => match lhs.key.cmp(&rhs.key) {
+                    Ordering::Equal => {
                         let (lhs, rhs) = iter_lhs.next().zip(iter_rhs.next()).unwrap();
                         let container = BitAnd::bitand(lhs, rhs);
                         if container.len != 0 {
                             containers.push(container);
                         }
-                    } else if lhs.key < rhs.key {
+                    }
+                    Ordering::Less => {
                         iter_lhs.next().unwrap();
-                    } else {
+                    }
+                    Ordering::Greater => {
                         iter_rhs.next().unwrap();
                     }
-                }
+                },
                 (Some(_), None) => {
                     iter_lhs.next().unwrap();
                 }

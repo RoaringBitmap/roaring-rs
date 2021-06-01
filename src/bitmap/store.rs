@@ -389,12 +389,7 @@ impl BitAnd<&Store> for &Store {
                 BitAndAssign::bitand_assign(&mut rhs, self);
                 rhs
             }
-            (&Bitmap(_), &Bitmap(_)) => {
-                let mut lhs = self.clone();
-                BitAndAssign::bitand_assign(&mut lhs, rhs);
-                lhs
-            }
-            (&Array(_), &Bitmap(_)) => {
+            _ => {
                 let mut lhs = self.clone();
                 BitAndAssign::bitand_assign(&mut lhs, rhs);
                 lhs
@@ -476,17 +471,7 @@ impl Sub<&Store> for &Store {
     fn sub(self, rhs: &Store) -> Store {
         match (self, rhs) {
             (&Array(ref vec1), &Array(ref vec2)) => Array(difference_arrays(vec1, vec2)),
-            (&Bitmap(_), &Array(_)) => {
-                let mut lhs = self.clone();
-                BitOrAssign::bitor_assign(&mut lhs, rhs);
-                lhs
-            }
-            (&Bitmap(_), &Bitmap(_)) => {
-                let mut lhs = self.clone();
-                BitOrAssign::bitor_assign(&mut lhs, rhs);
-                lhs
-            }
-            (&Array(_), &Bitmap(_)) => {
+            _ => {
                 let mut lhs = self.clone();
                 BitOrAssign::bitor_assign(&mut lhs, rhs);
                 lhs
@@ -528,19 +513,14 @@ impl BitXor<&Store> for &Store {
     fn bitxor(self, rhs: &Store) -> Store {
         match (self, rhs) {
             (&Array(ref vec1), &Array(ref vec2)) => Array(symmetric_difference_arrays(vec1, vec2)),
-            (&Bitmap(_), &Array(_)) => {
-                let mut lhs = self.clone();
-                BitXorAssign::bitxor_assign(&mut lhs, rhs);
-                lhs
-            }
-            (&Bitmap(_), &Bitmap(_)) => {
-                let mut lhs = self.clone();
-                BitXorAssign::bitxor_assign(&mut lhs, rhs);
-                lhs
-            }
             (&Array(_), &Bitmap(_)) => {
                 let mut lhs = rhs.clone();
                 BitXorAssign::bitxor_assign(&mut lhs, self);
+                lhs
+            }
+            _ => {
+                let mut lhs = self.clone();
+                BitXorAssign::bitxor_assign(&mut lhs, rhs);
                 lhs
             }
         }
