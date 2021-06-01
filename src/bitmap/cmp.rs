@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::iter::Peekable;
 use std::slice;
 
@@ -32,9 +33,7 @@ impl RoaringBitmap {
     ///
     /// ```
     pub fn is_disjoint(&self, other: &Self) -> bool {
-        self.pairs(other)
-            .filter(|&(c1, c2)| c1.is_some() && c2.is_some())
-            .all(|(c1, c2)| c1.unwrap().is_disjoint(c2.unwrap()))
+        self.pairs(other).filter_map(|(c1, c2)| c1.zip(c2)).all(|(c1, c2)| c1.is_disjoint(c2))
     }
 
     /// Returns `true` if this set is a subset of `other`.
@@ -63,9 +62,7 @@ impl RoaringBitmap {
         for pair in self.pairs(other) {
             match pair {
                 (None, _) => (),
-                (_, None) => {
-                    return false;
-                }
+                (_, None) => return false,
                 (Some(c1), Some(c2)) => {
                     if !c1.is_subset(c2) {
                         return false;
@@ -107,28 +104,15 @@ impl<'a> Iterator for Pairs<'a> {
     type Item = (Option<&'a Container>, Option<&'a Container>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        enum Which {
-            Left,
-            Right,
-            Both,
-            None,
-        }
-        let which = match (self.0.peek(), self.1.peek()) {
-            (None, None) => Which::None,
-            (Some(_), None) => Which::Left,
-            (None, Some(_)) => Which::Right,
-            (Some(c1), Some(c2)) => match (c1.key, c2.key) {
-                (key1, key2) if key1 == key2 => Which::Both,
-                (key1, key2) if key1 < key2 => Which::Left,
-                (key1, key2) if key1 > key2 => Which::Right,
-                (_, _) => unreachable!(),
+        match (self.0.peek(), self.1.peek()) {
+            (None, None) => None,
+            (Some(_), None) => Some((self.0.next(), None)),
+            (None, Some(_)) => Some((None, self.1.next())),
+            (Some(c1), Some(c2)) => match c1.key.cmp(&c2.key) {
+                Ordering::Equal => Some((self.0.next(), self.1.next())),
+                Ordering::Less => Some((self.0.next(), None)),
+                Ordering::Greater => Some((None, self.1.next())),
             },
-        };
-        match which {
-            Which::Left => Some((self.0.next(), None)),
-            Which::Right => Some((None, self.1.next())),
-            Which::Both => Some((self.0.next(), self.1.next())),
-            Which::None => None,
         }
     }
 }

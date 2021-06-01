@@ -1,9 +1,9 @@
+use std::convert::identity;
 use std::iter::{self, FromIterator};
-use std::slice;
-use std::vec;
+use std::{slice, vec};
 
 use super::container::Container;
-use crate::RoaringBitmap;
+use crate::{NonSortedIntegers, RoaringBitmap};
 
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a> {
@@ -21,11 +21,8 @@ pub struct IntoIter {
     size_hint: u64,
 }
 
-impl<'a> Iter<'a> {
+impl Iter<'_> {
     fn new(containers: &[Container]) -> Iter {
-        fn identity<T>(t: T) -> T {
-            t
-        }
         let size_hint = containers.iter().map(|c| c.len).sum();
         Iter { inner: containers.iter().flat_map(identity as _), size_hint }
     }
@@ -33,15 +30,12 @@ impl<'a> Iter<'a> {
 
 impl IntoIter {
     fn new(containers: Vec<Container>) -> IntoIter {
-        fn identity<T>(t: T) -> T {
-            t
-        }
         let size_hint = containers.iter().map(|c| c.len).sum();
         IntoIter { inner: containers.into_iter().flat_map(identity as _), size_hint }
     }
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl Iterator for Iter<'_> {
     type Item = u32;
 
     fn next(&mut self) -> Option<u32> {
@@ -131,30 +125,50 @@ impl Extend<u32> for RoaringBitmap {
 }
 
 impl RoaringBitmap {
-    /// Create the set from a sorted iterator. Values **must** be sorted.
+    /// Create the set from a sorted iterator. Values must be sorted and deduplicated.
     ///
-    /// This method can be faster than `from_iter` because it skips the binary searches.
+    /// The values of the iterator must be ordered and strictly greater than the greatest value
+    /// in the set. If a value in the iterator doesn't satisfy this requirement, it is not added
+    /// and the append operation is stopped.
     ///
-    /// # Examples
+    /// Returns `Ok` with the requested `RoaringBitmap`, `Err` with the number of elements
+    /// that were correctly appended before failure.
+    ///
+    /// # Example: Create a set from an ordered list of integers.
     ///
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb = RoaringBitmap::from_sorted_iter(0..10);
+    /// let mut rb = RoaringBitmap::from_sorted_iter(0..10).unwrap();
     ///
-    /// assert_eq!(rb.iter().collect::<Vec<u32>>(), (0..10).collect::<Vec<u32>>());
+    /// assert!(rb.iter().eq(0..10));
     /// ```
-    pub fn from_sorted_iter<I: IntoIterator<Item = u32>>(iterator: I) -> RoaringBitmap {
+    ///
+    /// # Example: Try to create a set from a non-ordered list of integers.
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let integers = 0..10u32;
+    /// let error = RoaringBitmap::from_sorted_iter(integers.rev()).unwrap_err();
+    ///
+    /// assert_eq!(error.valid_until(), 1);
+    /// ```
+    pub fn from_sorted_iter<I: IntoIterator<Item = u32>>(
+        iterator: I,
+    ) -> Result<RoaringBitmap, NonSortedIntegers> {
         let mut rb = RoaringBitmap::new();
-        rb.append(iterator);
-        rb
+        rb.append(iterator).map(|_| rb)
     }
 
     /// Extend the set with a sorted iterator.
-    /// All value of the iterator **must** be strictly bigger than the max element
-    /// contained in the set.
     ///
-    /// This method can be faster than `extend` because it skips the binary searches.
+    /// The values of the iterator must be ordered and strictly greater than the greatest value
+    /// in the set. If a value in the iterator doesn't satisfy this requirement, it is not added
+    /// and the append operation is stopped.
+    ///
+    /// Returns `Ok` with the number of elements appended to the set, `Err` with
+    /// the number of elements we effectively appended before an error occurred.
     ///
     /// # Examples
     ///
@@ -162,13 +176,24 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     ///
     /// let mut rb = RoaringBitmap::new();
-    /// rb.append(0..10);
+    /// assert_eq!(rb.append(0..10), Ok(10));
     ///
-    /// assert_eq!(rb.iter().collect::<Vec<u32>>(), (0..10).collect::<Vec<u32>>());
+    /// assert!(rb.iter().eq(0..10));
     /// ```
-    pub fn append<I: IntoIterator<Item = u32>>(&mut self, iterator: I) {
+    pub fn append<I: IntoIterator<Item = u32>>(
+        &mut self,
+        iterator: I,
+    ) -> Result<u64, NonSortedIntegers> {
+        let mut count = 0;
+
         for value in iterator {
-            self.push(value);
+            if self.push(value) {
+                count += 1;
+            } else {
+                return Err(NonSortedIntegers { valid_until: count });
+            }
         }
+
+        Ok(count)
     }
 }
