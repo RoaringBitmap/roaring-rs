@@ -133,12 +133,12 @@ impl Extend<u32> for RoaringBitmap {
 impl RoaringBitmap {
     /// Create the set from a sorted iterator. Values must be sorted and deduplicated.
     ///
-    /// The values of the iterator must be ordered and strictly bigger than the biggest value
-    /// in the set. If a value in this iterator doesn't follow this rule it is not added
+    /// The values of the iterator must be ordered and strictly greater than the greatest value
+    /// in the set. If a value in the iterator doesn't satisfy this requirement, it is not added
     /// and the append operation is stopped.
     ///
     /// Returns `Ok` with the requested `RoaringBitmap`, `Err` with the number of elements
-    /// we tried to append before an error occurred.
+    /// that were correctly appended before failure.
     ///
     /// # Examples
     ///
@@ -161,8 +161,8 @@ impl RoaringBitmap {
 
     /// Extend the set with a sorted iterator.
     ///
-    /// The values of the iterator must be ordered and strictly bigger than the biggest value
-    /// in the set. If a value in this iterator doesn't follow this rule it is not added
+    /// The values of the iterator must be ordered and strictly greater than the greatest value
+    /// in the set. If a value in the iterator doesn't satisfy this requirement, it is not added
     /// and the append operation is stopped.
     ///
     /// Returns `Ok` with the number of elements appended to the set, `Err` with
