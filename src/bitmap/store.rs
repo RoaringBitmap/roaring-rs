@@ -1,5 +1,5 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, SubAssign};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 use std::{borrow::Borrow, ops::Range};
 use std::{mem, slice, vec};
 
@@ -304,6 +304,31 @@ impl Store {
     }
 }
 
+impl BitOr<&Store> for &Store {
+    type Output = Store;
+
+    fn bitor(self, rhs: &Store) -> Store {
+        match (self, rhs) {
+            (&Array(ref vec1), &Array(ref vec2)) => Array(union_arrays(vec1, vec2)),
+            (&Bitmap(_), &Array(_)) => {
+                let mut lhs = self.clone();
+                BitOrAssign::bitor_assign(&mut lhs, rhs);
+                lhs
+            }
+            (&Bitmap(_), &Bitmap(_)) => {
+                let mut lhs = self.clone();
+                BitOrAssign::bitor_assign(&mut lhs, rhs);
+                lhs
+            }
+            (&Array(_), &Bitmap(_)) => {
+                let mut rhs = rhs.clone();
+                BitOrAssign::bitor_assign(&mut rhs, self);
+                rhs
+            }
+        }
+    }
+}
+
 impl BitOrAssign<Store> for Store {
     fn bitor_assign(&mut self, mut rhs: Store) {
         match (self, &mut rhs) {
@@ -348,6 +373,26 @@ impl BitOrAssign<&Store> for Store {
             (this @ &mut Array(..), &Bitmap(..)) => {
                 *this = this.to_bitmap();
                 BitOrAssign::bitor_assign(this, rhs);
+            }
+        }
+    }
+}
+
+impl BitAnd<&Store> for &Store {
+    type Output = Store;
+
+    fn bitand(self, rhs: &Store) -> Store {
+        match (self, rhs) {
+            (&Array(ref vec1), &Array(ref vec2)) => Array(intersect_arrays(vec1, vec2)),
+            (&Bitmap(_), &Array(_)) => {
+                let mut rhs = rhs.clone();
+                BitAndAssign::bitand_assign(&mut rhs, self);
+                rhs
+            }
+            _ => {
+                let mut lhs = self.clone();
+                BitAndAssign::bitand_assign(&mut lhs, rhs);
+                lhs
             }
         }
     }
@@ -420,6 +465,21 @@ impl BitAndAssign<&Store> for Store {
     }
 }
 
+impl Sub<&Store> for &Store {
+    type Output = Store;
+
+    fn sub(self, rhs: &Store) -> Store {
+        match (self, rhs) {
+            (&Array(ref vec1), &Array(ref vec2)) => Array(difference_arrays(vec1, vec2)),
+            _ => {
+                let mut lhs = self.clone();
+                BitOrAssign::bitor_assign(&mut lhs, rhs);
+                lhs
+            }
+        }
+    }
+}
+
 impl SubAssign<&Store> for Store {
     fn sub_assign(&mut self, rhs: &Store) {
         match (self, rhs) {
@@ -442,6 +502,26 @@ impl SubAssign<&Store> for Store {
             }
             (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
                 vec.retain(|x| !store.contains(*x));
+            }
+        }
+    }
+}
+
+impl BitXor<&Store> for &Store {
+    type Output = Store;
+
+    fn bitxor(self, rhs: &Store) -> Store {
+        match (self, rhs) {
+            (&Array(ref vec1), &Array(ref vec2)) => Array(symmetric_difference_arrays(vec1, vec2)),
+            (&Array(_), &Bitmap(_)) => {
+                let mut lhs = rhs.clone();
+                BitXorAssign::bitxor_assign(&mut lhs, self);
+                lhs
+            }
+            _ => {
+                let mut lhs = self.clone();
+                BitXorAssign::bitxor_assign(&mut lhs, rhs);
+                lhs
             }
         }
     }
@@ -663,14 +743,100 @@ fn union_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
         match a.cmp(&b) {
             Less => {
                 out.push(*a);
-                i += 1
+                i += 1;
             }
             Greater => {
                 out.push(*b);
-                j += 1
+                j += 1;
             }
             Equal => {
                 out.push(*a);
+                i += 1;
+                j += 1;
+            }
+        }
+    }
+
+    // Store remaining elements of the arrays
+    out.extend_from_slice(&arr1[i..]);
+    out.extend_from_slice(&arr2[j..]);
+
+    out
+}
+
+#[inline]
+fn intersect_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
+    let mut out = Vec::new();
+
+    // Traverse both arrays
+    let mut i = 0;
+    let mut j = 0;
+    while i < arr1.len() && j < arr2.len() {
+        let a = unsafe { arr1.get_unchecked(i) };
+        let b = unsafe { arr2.get_unchecked(j) };
+        match a.cmp(&b) {
+            Less => i += 1,
+            Greater => j += 1,
+            Equal => {
+                out.push(*a);
+                i += 1;
+                j += 1;
+            }
+        }
+    }
+
+    out
+}
+
+#[inline]
+fn difference_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
+    let mut out = Vec::new();
+
+    // Traverse both arrays
+    let mut i = 0;
+    let mut j = 0;
+    while i < arr1.len() && j < arr2.len() {
+        let a = unsafe { arr1.get_unchecked(i) };
+        let b = unsafe { arr2.get_unchecked(j) };
+        match a.cmp(&b) {
+            Less => {
+                out.push(*a);
+                i += 1;
+            }
+            Greater => j += 1,
+            Equal => {
+                i += 1;
+                j += 1;
+            }
+        }
+    }
+
+    // Store remaining elements of the left array
+    out.extend_from_slice(&arr1[i..]);
+
+    out
+}
+
+#[inline]
+fn symmetric_difference_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
+    let mut out = Vec::new();
+
+    // Traverse both arrays
+    let mut i = 0;
+    let mut j = 0;
+    while i < arr1.len() && j < arr2.len() {
+        let a = unsafe { arr1.get_unchecked(i) };
+        let b = unsafe { arr2.get_unchecked(j) };
+        match a.cmp(&b) {
+            Less => {
+                out.push(*a);
+                i += 1;
+            }
+            Greater => {
+                out.push(*b);
+                j += 1;
+            }
+            Equal => {
                 i += 1;
                 j += 1;
             }

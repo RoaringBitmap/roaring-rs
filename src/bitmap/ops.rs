@@ -191,11 +191,18 @@ impl BitOr<&RoaringBitmap> for &RoaringBitmap {
 
     /// An `union` between two sets.
     fn bitor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        if self.len() <= rhs.len() {
-            BitOr::bitor(rhs.clone(), self)
-        } else {
-            BitOr::bitor(self.clone(), rhs)
+        let mut containers = Vec::new();
+
+        for pair in Pairs::new(&self.containers, &rhs.containers) {
+            match pair {
+                (Some(lhs), None) => containers.push(lhs.clone()),
+                (None, Some(rhs)) => containers.push(rhs.clone()),
+                (Some(lhs), Some(rhs)) => containers.push(BitOr::bitor(lhs, rhs)),
+                (None, None) => break,
+            }
         }
+
+        RoaringBitmap { containers }
     }
 }
 
@@ -264,11 +271,18 @@ impl BitAnd<&RoaringBitmap> for &RoaringBitmap {
 
     /// An `intersection` between two sets.
     fn bitand(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        if rhs.len() < self.len() {
-            BitAnd::bitand(self.clone(), rhs)
-        } else {
-            BitAnd::bitand(rhs.clone(), self)
+        let mut containers = Vec::new();
+
+        for pair in Pairs::new(&self.containers, &rhs.containers) {
+            if let (Some(lhs), Some(rhs)) = pair {
+                let container = BitAnd::bitand(lhs, rhs);
+                if container.len != 0 {
+                    containers.push(container);
+                }
+            }
         }
+
+        RoaringBitmap { containers }
     }
 }
 
@@ -336,7 +350,7 @@ impl Sub<RoaringBitmap> for &RoaringBitmap {
 
     /// A `difference` between two sets.
     fn sub(self, rhs: RoaringBitmap) -> RoaringBitmap {
-        Sub::sub(self.clone(), rhs)
+        Sub::sub(self, &rhs)
     }
 }
 
@@ -345,7 +359,23 @@ impl Sub<&RoaringBitmap> for &RoaringBitmap {
 
     /// A `difference` between two sets.
     fn sub(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        Sub::sub(self.clone(), rhs)
+        let mut containers = Vec::new();
+
+        for pair in Pairs::new(&self.containers, &rhs.containers) {
+            match pair {
+                (Some(lhs), None) => containers.push(lhs.clone()),
+                (None, Some(_)) => (),
+                (Some(lhs), Some(rhs)) => {
+                    let container = Sub::sub(lhs, rhs);
+                    if container.len != 0 {
+                        containers.push(container);
+                    }
+                }
+                (None, None) => break,
+            }
+        }
+
+        RoaringBitmap { containers }
     }
 }
 
@@ -405,11 +435,23 @@ impl BitXor<&RoaringBitmap> for &RoaringBitmap {
 
     /// A `symmetric difference` between two sets.
     fn bitxor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        if self.len() < rhs.len() {
-            BitXor::bitxor(self, rhs.clone())
-        } else {
-            BitXor::bitxor(self.clone(), rhs)
+        let mut containers = Vec::new();
+
+        for pair in Pairs::new(&self.containers, &rhs.containers) {
+            match pair {
+                (Some(lhs), None) => containers.push(lhs.clone()),
+                (None, Some(rhs)) => containers.push(rhs.clone()),
+                (Some(lhs), Some(rhs)) => {
+                    let container = BitXor::bitxor(lhs, rhs);
+                    if container.len != 0 {
+                        containers.push(container);
+                    }
+                }
+                (None, None) => break,
+            }
         }
+
+        RoaringBitmap { containers }
     }
 }
 
