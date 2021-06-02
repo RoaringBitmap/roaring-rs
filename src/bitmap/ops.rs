@@ -1,10 +1,10 @@
-use std::cmp::Ordering;
 use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
 use retain_mut::RetainMut;
 
 use crate::bitmap::container::Container;
+use crate::bitmap::Pairs;
 use crate::RoaringBitmap;
 
 impl RoaringBitmap {
@@ -416,38 +416,17 @@ impl BitXor<&RoaringBitmap> for &RoaringBitmap {
 impl BitXorAssign<RoaringBitmap> for RoaringBitmap {
     /// A `symmetric difference` between two sets.
     fn bitxor_assign(&mut self, rhs: RoaringBitmap) {
-        let mut left = mem::take(&mut self.containers).into_iter().peekable();
-        let mut right = rhs.containers.into_iter().peekable();
-
-        loop {
-            match (left.peek(), right.peek()) {
-                (None, None) => break,
-                (Some(_), None) => {
-                    self.containers.extend(left);
-                    break;
-                }
-                (None, Some(_)) => {
-                    self.containers.extend(right);
-                    break;
-                }
-                (Some(l), Some(r)) => match l.key.cmp(&r.key) {
-                    Ordering::Equal => {
-                        let mut lhs = left.next().unwrap();
-                        let rhs = right.next().unwrap();
-                        BitXorAssign::bitxor_assign(&mut lhs, rhs);
-                        if lhs.len != 0 {
-                            self.containers.push(lhs);
-                        }
-                    }
-                    Ordering::Less => {
-                        let lhs = left.next().unwrap();
+        for pair in Pairs::new(mem::take(&mut self.containers), rhs.containers) {
+            match pair {
+                (Some(mut lhs), Some(rhs)) => {
+                    BitXorAssign::bitxor_assign(&mut lhs, rhs);
+                    if lhs.len != 0 {
                         self.containers.push(lhs);
                     }
-                    Ordering::Greater => {
-                        let rhs = right.next().unwrap();
-                        self.containers.push(rhs);
-                    }
-                },
+                }
+                (Some(lhs), None) => self.containers.push(lhs),
+                (None, Some(rhs)) => self.containers.push(rhs),
+                (None, None) => break,
             }
         }
     }
@@ -456,38 +435,17 @@ impl BitXorAssign<RoaringBitmap> for RoaringBitmap {
 impl BitXorAssign<&RoaringBitmap> for RoaringBitmap {
     /// A `symmetric difference` between two sets.
     fn bitxor_assign(&mut self, rhs: &RoaringBitmap) {
-        let mut left = mem::take(&mut self.containers).into_iter().peekable();
-        let mut right = rhs.containers.iter().peekable();
-
-        loop {
-            match (left.peek(), right.peek()) {
-                (None, None) => break,
-                (Some(_), None) => {
-                    self.containers.extend(left);
-                    break;
-                }
-                (None, Some(_)) => {
-                    self.containers.extend(right.cloned());
-                    break;
-                }
-                (Some(l), Some(r)) => match l.key.cmp(&r.key) {
-                    Ordering::Equal => {
-                        let mut lhs = left.next().unwrap();
-                        let rhs = right.next().unwrap();
-                        BitXorAssign::bitxor_assign(&mut lhs, rhs);
-                        if lhs.len != 0 {
-                            self.containers.push(lhs);
-                        }
-                    }
-                    Ordering::Less => {
-                        let lhs = left.next().unwrap();
+        for pair in Pairs::new(mem::take(&mut self.containers), &rhs.containers) {
+            match pair {
+                (Some(mut lhs), Some(rhs)) => {
+                    BitXorAssign::bitxor_assign(&mut lhs, rhs);
+                    if lhs.len != 0 {
                         self.containers.push(lhs);
                     }
-                    Ordering::Greater => {
-                        let rhs = right.next().unwrap();
-                        self.containers.push(rhs.clone());
-                    }
-                },
+                }
+                (Some(lhs), None) => self.containers.push(lhs),
+                (None, Some(rhs)) => self.containers.push(rhs.clone()),
+                (None, None) => break,
             }
         }
     }
