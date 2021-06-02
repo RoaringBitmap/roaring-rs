@@ -1,16 +1,11 @@
+use std::borrow::Borrow;
+use std::cmp::Ordering;
 use std::iter::Peekable;
-use std::slice;
 
 use super::container::Container;
 use crate::RoaringBitmap;
 
-struct Pairs<'a>(Peekable<slice::Iter<'a, Container>>, Peekable<slice::Iter<'a, Container>>);
-
 impl RoaringBitmap {
-    fn pairs<'a>(&'a self, other: &'a RoaringBitmap) -> Pairs<'a> {
-        Pairs(self.containers.iter().peekable(), other.containers.iter().peekable())
-    }
-
     /// Returns true if the set has no elements in common with other. This is equivalent to
     /// checking for an empty intersection.
     ///
@@ -32,9 +27,9 @@ impl RoaringBitmap {
     ///
     /// ```
     pub fn is_disjoint(&self, other: &Self) -> bool {
-        self.pairs(other)
-            .filter(|&(c1, c2)| c1.is_some() && c2.is_some())
-            .all(|(c1, c2)| c1.unwrap().is_disjoint(c2.unwrap()))
+        Pairs::new(&self.containers, &other.containers)
+            .filter_map(|(c1, c2)| c1.zip(c2))
+            .all(|(c1, c2)| c1.is_disjoint(c2))
     }
 
     /// Returns `true` if this set is a subset of `other`.
@@ -60,12 +55,10 @@ impl RoaringBitmap {
     /// assert_eq!(rb1.is_subset(&rb2), false);
     /// ```
     pub fn is_subset(&self, other: &Self) -> bool {
-        for pair in self.pairs(other) {
+        for pair in Pairs::new(&self.containers, &other.containers) {
             match pair {
                 (None, _) => (),
-                (_, None) => {
-                    return false;
-                }
+                (_, None) => return false,
                 (Some(c1), Some(c2)) => {
                     if !c1.is_subset(c2) {
                         return false;
@@ -103,32 +96,57 @@ impl RoaringBitmap {
     }
 }
 
-impl<'a> Iterator for Pairs<'a> {
-    type Item = (Option<&'a Container>, Option<&'a Container>);
+/// An helping Iterator over pairs of containers.
+///
+/// Returns the smallest container according to its key
+/// or both if the key is the same. It is useful when you need
+/// to iterate over two containers to do operations on them.
+pub struct Pairs<I, J, L, R>
+where
+    I: Iterator<Item = L>,
+    J: Iterator<Item = R>,
+    L: Borrow<Container>,
+    R: Borrow<Container>,
+{
+    left: Peekable<I>,
+    right: Peekable<J>,
+}
+
+impl<I, J, L, R> Pairs<I, J, L, R>
+where
+    I: Iterator<Item = L>,
+    J: Iterator<Item = R>,
+    L: Borrow<Container>,
+    R: Borrow<Container>,
+{
+    pub fn new<A, B>(left: A, right: B) -> Pairs<I, J, L, R>
+    where
+        A: IntoIterator<Item = L, IntoIter = I>,
+        B: IntoIterator<Item = R, IntoIter = J>,
+    {
+        Pairs { left: left.into_iter().peekable(), right: right.into_iter().peekable() }
+    }
+}
+
+impl<I, J, L, R> Iterator for Pairs<I, J, L, R>
+where
+    I: Iterator<Item = L>,
+    J: Iterator<Item = R>,
+    L: Borrow<Container>,
+    R: Borrow<Container>,
+{
+    type Item = (Option<L>, Option<R>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        enum Which {
-            Left,
-            Right,
-            Both,
-            None,
-        }
-        let which = match (self.0.peek(), self.1.peek()) {
-            (None, None) => Which::None,
-            (Some(_), None) => Which::Left,
-            (None, Some(_)) => Which::Right,
-            (Some(c1), Some(c2)) => match (c1.key, c2.key) {
-                (key1, key2) if key1 == key2 => Which::Both,
-                (key1, key2) if key1 < key2 => Which::Left,
-                (key1, key2) if key1 > key2 => Which::Right,
-                (_, _) => unreachable!(),
+        match (self.left.peek(), self.right.peek()) {
+            (None, None) => None,
+            (Some(_), None) => Some((self.left.next(), None)),
+            (None, Some(_)) => Some((None, self.right.next())),
+            (Some(c1), Some(c2)) => match c1.borrow().key.cmp(&c2.borrow().key) {
+                Ordering::Equal => Some((self.left.next(), self.right.next())),
+                Ordering::Less => Some((self.left.next(), None)),
+                Ordering::Greater => Some((None, self.right.next())),
             },
-        };
-        match which {
-            Which::Left => Some((self.0.next(), None)),
-            Which::Right => Some((None, self.1.next())),
-            Which::Both => Some((self.0.next(), self.1.next())),
-            Which::None => None,
         }
     }
 }

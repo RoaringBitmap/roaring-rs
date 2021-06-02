@@ -11,6 +11,7 @@ mod iter;
 mod ops;
 mod serialization;
 
+use self::cmp::Pairs;
 pub use self::iter::IntoIter;
 pub use self::iter::Iter;
 
