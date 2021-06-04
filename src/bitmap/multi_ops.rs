@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::collections::binary_heap::{BinaryHeap, PeekMut};
 use std::mem;
@@ -6,53 +7,28 @@ use crate::bitmap::container::Container;
 use crate::bitmap::store::Store;
 use crate::RoaringBitmap;
 
-struct PeekedRefContainer<'a> {
-    container: &'a Container,
-    iter: std::slice::Iter<'a, Container>,
+struct PeekedContainer<C, I> {
+    container: C,
+    iter: I,
 }
 
-impl Ord for PeekedRefContainer<'_> {
+impl<C: Borrow<Container>, I> Ord for PeekedContainer<C, I> {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.container.key.cmp(&other.container.key).reverse()
+        self.container.borrow().key.cmp(&other.container.borrow().key).reverse()
     }
 }
 
-impl PartialOrd for PeekedRefContainer<'_> {
+impl<C: Borrow<Container>, I> PartialOrd for PeekedContainer<C, I> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Eq for PeekedRefContainer<'_> {}
+impl<C: Borrow<Container>, I> Eq for PeekedContainer<C, I> {}
 
-impl PartialEq for PeekedRefContainer<'_> {
+impl<C: Borrow<Container>, I> PartialEq for PeekedContainer<C, I> {
     fn eq(&self, other: &Self) -> bool {
-        self.container.key == other.container.key
-    }
-}
-
-struct PeekedContainer {
-    container: Container,
-    iter: std::vec::IntoIter<Container>,
-}
-
-impl Ord for PeekedContainer {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.container.key.cmp(&other.container.key).reverse()
-    }
-}
-
-impl PartialOrd for PeekedContainer {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Eq for PeekedContainer {}
-
-impl PartialEq for PeekedContainer {
-    fn eq(&self, other: &Self) -> bool {
-        self.container.key == other.container.key
+        self.container.borrow().key == other.container.borrow().key
     }
 }
 
@@ -71,7 +47,7 @@ where
         for rb in iter {
             let mut iter = rb.containers.iter();
             if let Some(container) = iter.next() {
-                heap.push(PeekedRefContainer { container, iter });
+                heap.push(PeekedContainer { container, iter });
             }
         }
 
