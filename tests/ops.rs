@@ -1,4 +1,6 @@
-extern crate roaring;
+use std::ops::Range;
+
+use quickcheck_macros::quickcheck;
 use roaring::RoaringBitmap;
 
 #[test]
@@ -88,6 +90,24 @@ fn multi_bitor() {
     assert_eq!(res1, res2);
 }
 
+#[quickcheck]
+fn qc_multi_bitor(values: Vec<Range<u32>>) {
+    use roaring::bitmap::MultiBitOr;
+
+    let bitmaps: Vec<RoaringBitmap> = values.into_iter().map(|ints| ints.collect()).collect();
+
+    // do the multi union by hand
+    let mut byhand = RoaringBitmap::default();
+    for rb in &bitmaps {
+        byhand |= rb;
+    }
+
+    // do it by using the MultiBitOr helper
+    let helped = bitmaps.as_slice().bitor();
+
+    assert_eq!(byhand, helped);
+}
+
 #[test]
 fn multi_bitand() {
     use roaring::bitmap::MultiBitAnd;
@@ -101,4 +121,19 @@ fn multi_bitand() {
     let res2 = rbs.iter().cloned().reduce(|a, b| a & b).unwrap_or_default();
 
     assert_eq!(res1, res2);
+}
+
+#[quickcheck]
+fn qc_multi_bitand(values: Vec<Range<u32>>) {
+    use roaring::bitmap::MultiBitAnd;
+
+    let bitmaps: Vec<RoaringBitmap> = values.into_iter().map(|ints| ints.collect()).collect();
+
+    // do the multi union by hand
+    let byhand = bitmaps.iter().cloned().reduce(|a, b| a & b).unwrap_or_default();
+
+    // do it by using the MultiBitAnd helper
+    let helped = bitmaps.bitand();
+
+    assert_eq!(byhand, helped);
 }
