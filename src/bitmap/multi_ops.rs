@@ -177,6 +177,18 @@ where
     I: IntoIterator<Item = RoaringBitmap>,
 {
     fn bitand(self) -> RoaringBitmap {
-        self.into_iter().reduce(|a, b| a & b).unwrap_or_default()
+        let mut iter = self.into_iter();
+        match iter.next() {
+            Some(mut first) => {
+                for rb in iter {
+                    if first.is_empty() {
+                        break;
+                    }
+                    first &= rb;
+                }
+                first
+            }
+            None => RoaringBitmap::default(),
+        }
     }
 }
