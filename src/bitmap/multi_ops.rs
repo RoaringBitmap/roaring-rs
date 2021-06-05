@@ -192,3 +192,39 @@ where
         }
     }
 }
+
+pub trait MultiBitXor<Rbs>: IntoIterator<Item = Rbs> {
+    fn bitxor(self) -> RoaringBitmap;
+}
+
+impl<'a, I> MultiBitXor<&'a RoaringBitmap> for I
+where
+    I: IntoIterator<Item = &'a RoaringBitmap>,
+{
+    fn bitxor(self) -> RoaringBitmap {
+        let mut iter = self.into_iter();
+        match iter.next().cloned() {
+            Some(mut first) => {
+                iter.for_each(|rb| first ^= rb);
+                first
+            }
+            None => RoaringBitmap::default(),
+        }
+    }
+}
+
+impl<I> MultiBitXor<RoaringBitmap> for I
+where
+    I: IntoIterator<Item = RoaringBitmap>,
+{
+    fn bitxor(self) -> RoaringBitmap {
+        let mut iter = self.into_iter();
+        match iter.next() {
+            Some(mut first) => {
+                iter.for_each(|rb| first ^= rb);
+                first
+            }
+            None => RoaringBitmap::default(),
+        }
+    }
+}
