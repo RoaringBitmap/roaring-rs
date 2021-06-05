@@ -228,3 +228,39 @@ where
         }
     }
 }
+
+pub trait MultiSub<Rbs>: IntoIterator<Item = Rbs> {
+    fn sub(self) -> RoaringBitmap;
+}
+
+impl<'a, I> MultiSub<&'a RoaringBitmap> for I
+where
+    I: IntoIterator<Item = &'a RoaringBitmap>,
+{
+    fn sub(self) -> RoaringBitmap {
+        let mut iter = self.into_iter();
+        match iter.next().cloned() {
+            Some(mut first) => {
+                iter.for_each(|rb| first -= rb);
+                first
+            }
+            None => RoaringBitmap::default(),
+        }
+    }
+}
+
+impl<I> MultiSub<RoaringBitmap> for I
+where
+    I: IntoIterator<Item = RoaringBitmap>,
+{
+    fn sub(self) -> RoaringBitmap {
+        let mut iter = self.into_iter();
+        match iter.next() {
+            Some(mut first) => {
+                iter.for_each(|rb| first -= rb);
+                first
+            }
+            None => RoaringBitmap::default(),
+        }
+    }
+}

@@ -167,3 +167,33 @@ fn qc_multi_bitxor(values: Vec<Range<u32>>) {
 
     assert_eq!(byhand, helped);
 }
+
+#[test]
+fn multi_sub() {
+    use roaring::bitmap::MultiSub;
+
+    let a: RoaringBitmap = (1..1400).collect();
+    let b: RoaringBitmap = (1000..4000).collect();
+    let c: RoaringBitmap = (1300..4_000_000).collect();
+    let rbs = [a, b, c];
+
+    let res1 = rbs.sub();
+    let res2 = rbs.iter().cloned().reduce(|a, b| a - b).unwrap_or_default();
+
+    assert_eq!(res1, res2);
+}
+
+#[quickcheck]
+fn qc_multi_sub(values: Vec<Range<u32>>) {
+    use roaring::bitmap::MultiSub;
+
+    let bitmaps: Vec<RoaringBitmap> = values.into_iter().map(|ints| ints.collect()).collect();
+
+    // do the multi union by hand
+    let byhand = bitmaps.iter().cloned().reduce(|a, b| a - b).unwrap_or_default();
+
+    // do it by using the MultiSub helper
+    let helped = bitmaps.sub();
+
+    assert_eq!(byhand, helped);
+}
