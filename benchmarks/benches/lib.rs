@@ -448,6 +448,208 @@ fn successive_or(c: &mut Criterion) {
     group.finish();
 }
 
+fn multi_bitor(c: &mut Criterion) {
+    use roaring::bitmap::MultiBitOr;
+
+    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
+    let parsed_numbers = parse_dir_files(files).unwrap();
+
+    let bitmaps: Vec<_> = parsed_numbers
+        .into_iter()
+        .map(|(_, r)| r.map(RoaringBitmap::from_sorted_iter).unwrap())
+        .collect();
+
+    let mut group = c.benchmark_group("Multi Or");
+
+    group.bench_function("Multi Or Ref", |b| {
+        b.iter(|| {
+            black_box(bitmaps.as_slice().bitor());
+        });
+    });
+
+    group.bench_function("Multi Or Ref By Hand", |b| {
+        b.iter(|| {
+            let mut base = RoaringBitmap::default();
+            for bm in &bitmaps {
+                black_box(base |= bm);
+            }
+        });
+    });
+
+    group.bench_function("Multi Or Owned", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                black_box(bitmaps.bitor());
+            },
+            BatchSize::SmallInput,
+        );
+    });
+
+    group.bench_function("Multi Or Owned By Hand", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                let mut base = RoaringBitmap::default();
+                for bm in bitmaps {
+                    black_box(base |= bm);
+                }
+            },
+            BatchSize::SmallInput,
+        );
+    });
+}
+
+fn multi_bitand(c: &mut Criterion) {
+    use roaring::bitmap::MultiBitAnd;
+
+    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
+    let parsed_numbers = parse_dir_files(files).unwrap();
+
+    let bitmaps: Vec<_> = parsed_numbers
+        .into_iter()
+        .map(|(_, r)| r.map(RoaringBitmap::from_sorted_iter).unwrap())
+        .collect();
+
+    let mut group = c.benchmark_group("Multi And");
+
+    group.bench_function("Multi And Ref", |b| {
+        b.iter(|| {
+            black_box(bitmaps.as_slice().bitand());
+        });
+    });
+
+    group.bench_function("Multi And Ref By Hand", |b| {
+        b.iter(|| {
+            let mut iter = bitmaps.iter();
+            let mut base = iter.next().cloned().unwrap();
+            for bm in iter {
+                black_box(base &= bm);
+            }
+        });
+    });
+
+    group.bench_function("Multi And Owned", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                black_box(bitmaps.bitand());
+            },
+            BatchSize::SmallInput,
+        );
+    });
+
+    group.bench_function("Multi And Owned By Hand", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                black_box(bitmaps.into_iter().reduce(|a, b| a & b).unwrap_or_default());
+            },
+            BatchSize::SmallInput,
+        );
+    });
+}
+
+fn multi_bitxor(c: &mut Criterion) {
+    use roaring::bitmap::MultiBitXor;
+
+    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
+    let parsed_numbers = parse_dir_files(files).unwrap();
+
+    let bitmaps: Vec<_> = parsed_numbers
+        .into_iter()
+        .map(|(_, r)| r.map(RoaringBitmap::from_sorted_iter).unwrap())
+        .collect();
+
+    let mut group = c.benchmark_group("Multi Xor");
+
+    group.bench_function("Multi Xor Ref", |b| {
+        b.iter(|| {
+            black_box(bitmaps.as_slice().bitxor());
+        });
+    });
+
+    group.bench_function("Multi Xor Ref By Hand", |b| {
+        b.iter(|| {
+            let mut iter = bitmaps.iter();
+            let mut base = iter.next().cloned().unwrap();
+            for bm in iter {
+                black_box(base ^= bm);
+            }
+        });
+    });
+
+    group.bench_function("Multi Xor Owned", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                black_box(bitmaps.bitxor());
+            },
+            BatchSize::SmallInput,
+        );
+    });
+
+    group.bench_function("Multi Xor Owned By Hand", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                black_box(bitmaps.into_iter().reduce(|a, b| a ^ b).unwrap_or_default());
+            },
+            BatchSize::SmallInput,
+        );
+    });
+}
+
+fn multi_sub(c: &mut Criterion) {
+    use roaring::bitmap::MultiSub;
+
+    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
+    let parsed_numbers = parse_dir_files(files).unwrap();
+
+    let bitmaps: Vec<_> = parsed_numbers
+        .into_iter()
+        .map(|(_, r)| r.map(RoaringBitmap::from_sorted_iter).unwrap())
+        .collect();
+
+    let mut group = c.benchmark_group("Multi Sub");
+
+    group.bench_function("Multi Sub Ref", |b| {
+        b.iter(|| {
+            black_box(bitmaps.as_slice().sub());
+        });
+    });
+
+    group.bench_function("Multi Sub Ref By Hand", |b| {
+        b.iter(|| {
+            let mut iter = bitmaps.iter();
+            let mut base = iter.next().cloned().unwrap();
+            for bm in iter {
+                black_box(base -= bm);
+            }
+        });
+    });
+
+    group.bench_function("Multi Sub Owned", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                black_box(bitmaps.sub());
+            },
+            BatchSize::SmallInput,
+        );
+    });
+
+    group.bench_function("Multi Sub Owned By Hand", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                black_box(bitmaps.into_iter().reduce(|a, b| a - b).unwrap_or_default());
+            },
+            BatchSize::SmallInput,
+        );
+    });
+}
+
 criterion_group!(
     benches,
     create,
@@ -473,5 +675,9 @@ criterion_group!(
     from_sorted_iter,
     successive_and,
     successive_or,
+    multi_bitor,
+    multi_bitand,
+    multi_bitxor,
+    multi_sub,
 );
 criterion_main!(benches);
