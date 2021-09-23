@@ -1,3 +1,5 @@
+use std::ops::{Bound, RangeBounds, RangeInclusive};
+
 /// Returns the container key and the index
 /// in this container for a given integer.
 #[inline]
@@ -10,6 +12,31 @@ pub fn split(value: u32) -> (u16, u16) {
 #[inline]
 pub fn join(high: u16, low: u16) -> u32 {
     (u32::from(high) << 16) + u32::from(low)
+}
+
+/// Convert a `RangeBounds` object to `RangeInclusive<u32>`,
+/// and return if the range is empty.
+fn convert_range_to_inclusive<R>(range: R) -> (RangeInclusive<u32>, bool)
+where
+    R: RangeBounds<u32>,
+{
+    if let Bound::Excluded(0) = range.end_bound() {
+        return (0..=0, true);
+    }
+    let start: u32 = match range.start_bound() {
+        Bound::Included(&i) => i,
+        Bound::Unbounded => 0,
+        _ => panic!("Should never be called (insert_range start with Excluded)"),
+    };
+    let end: u32 = match range.end_bound() {
+        Bound::Included(&i) => i,
+        Bound::Excluded(&i) => i - 1,
+        Bound::Unbounded => u32::MAX,
+    };
+    if end < start {
+        return (0..=0, true);
+    }
+    (start..=end, false)
 }
 
 #[cfg(test)]

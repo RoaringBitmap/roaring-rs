@@ -1,5 +1,5 @@
 use std::collections::btree_map::{BTreeMap, Entry};
-use std::ops::{Range, RangeInclusive};
+use std::ops::{Bound, Range, RangeBounds, RangeInclusive};
 
 use crate::RoaringBitmap;
 use crate::RoaringTreemap;
@@ -88,7 +88,7 @@ impl RoaringTreemap {
         }
     }
 
-    /// Removes a range of values from the set.
+    /// Removes a range of values.
     /// Returns the number of removed values.
     ///
     /// # Examples
@@ -101,33 +101,53 @@ impl RoaringTreemap {
     /// rb.insert(3);
     /// assert_eq!(rb.remove_range(2..4), 2);
     /// ```
-    pub fn remove_range(&mut self, range: Range<u64>) -> u64 {
-        if range.start == range.end {
+    pub fn remove_range<R>(&mut self, range: R) -> u64
+    where
+        R: RangeBounds<u64>,
+    {
+        // Get Range's inclusive start and end point.
+        let mut start: u64 = match range.start_bound() {
+            Bound::Included(&i) => i,
+            Bound::Unbounded => 0,
+            _ => panic!("Should never be called (remove_range start with Excluded)"),
+        };
+        let end: u64 = match range.end_bound() {
+            Bound::Included(&i) => i,
+            Bound::Excluded(0) => {
+                // Make this range empty with start > end
+                start = u64::MAX;
+                0
+            }
+            Bound::Excluded(&i) => i - 1,
+            Bound::Unbounded => u64::MAX,
+        };
+        let start = start;
+
+        if end < start {
             return 0;
         }
+
+        let (start_container_key, start_index) = util::split(start);
+        let (end_container_key, end_index) = util::split(end);
+
         let mut keys_to_remove = Vec::new();
         let mut removed = 0;
-        // inclusive bounds for start and end
-        let (start_hi, start_lo) = util::split(range.start);
-        let (end_hi, end_lo) = util::split(range.end - 1);
+
         for (&key, rb) in &mut self.map {
-            if key >= start_hi && key <= end_hi {
-                let start = if key == start_hi { start_lo } else { 0 };
-                let end = if key == end_hi {
-                    end_lo
+            if key >= start_container_key && key <= end_container_key {
+                let a = if key == start_container_key {
+                    start_index
+                } else {
+                    0
+                };
+                let b = if key == end_container_key {
+                    end_index
                 } else {
                     u32::max_value()
                 };
-                let range = RangeInclusive::new(start, end);
-
-                if key != start_hi && key != end_lo {
-                    removed += rb.len();
+                removed += rb.remove_range(a..=b);
+                if rb.is_empty() {
                     keys_to_remove.push(key);
-                } else {
-                    removed += rb.remove_range(range);
-                    if rb.is_empty() {
-                        keys_to_remove.push(key);
-                    }
                 }
             }
         }
