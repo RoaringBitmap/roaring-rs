@@ -1,7 +1,5 @@
 use std::fmt;
-use std::ops::{
-    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
-};
+use std::ops::RangeInclusive;
 
 use super::store::{self, Store};
 use super::util;

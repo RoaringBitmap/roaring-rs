@@ -1,5 +1,5 @@
 use std::collections::btree_map::{BTreeMap, Entry};
-use std::ops::{Bound, Range, RangeBounds, RangeInclusive};
+use std::ops::RangeBounds;
 
 use crate::RoaringBitmap;
 use crate::RoaringTreemap;
@@ -113,27 +113,13 @@ impl RoaringTreemap {
     where
         R: RangeBounds<u64>,
     {
-        // Get Range's inclusive start and end point.
-        let mut start: u64 = match range.start_bound() {
-            Bound::Included(&i) => i,
-            Bound::Unbounded => 0,
-            _ => panic!("Should never be called (remove_range start with Excluded)"),
-        };
-        let end: u64 = match range.end_bound() {
-            Bound::Included(&i) => i,
-            Bound::Excluded(0) => {
-                // Make this range empty with start > end
-                start = u64::MAX;
-                0
-            }
-            Bound::Excluded(&i) => i - 1,
-            Bound::Unbounded => u64::MAX,
-        };
-        let start = start;
-
-        if end < start {
+        let (range, is_empty) = util::convert_range_to_inclusive(range);
+        if is_empty {
             return 0;
         }
+
+        let start = *range.start();
+        let end = *range.end();
 
         let (start_container_key, start_index) = util::split(start);
         let (end_container_key, end_index) = util::split(end);

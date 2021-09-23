@@ -1,3 +1,5 @@
+use std::ops::{Bound, RangeBounds, RangeInclusive};
+
 #[inline]
 pub fn split(value: u64) -> (u32, u32) {
     ((value >> 32) as u32, value as u32)
@@ -6,6 +8,31 @@ pub fn split(value: u64) -> (u32, u32) {
 #[inline]
 pub fn join(high: u32, low: u32) -> u64 {
     (u64::from(high) << 32) | u64::from(low)
+}
+
+/// Convert a `RangeBounds<u64>` object to `RangeInclusive<u64>`,
+/// and return if the range is empty.
+pub fn convert_range_to_inclusive<R>(range: R) -> (RangeInclusive<u64>, bool)
+where
+    R: RangeBounds<u64>,
+{
+    if let Bound::Excluded(0) = range.end_bound() {
+        return (0..=0, true);
+    }
+    let start: u64 = match range.start_bound() {
+        Bound::Included(&i) => i,
+        Bound::Unbounded => 0,
+        _ => panic!("Should never be called (insert_range start with Excluded)"),
+    };
+    let end: u64 = match range.end_bound() {
+        Bound::Included(&i) => i,
+        Bound::Excluded(&i) => i - 1,
+        Bound::Unbounded => u64::MAX,
+    };
+    if end < start {
+        return (0..=0, true);
+    }
+    (start..=end, false)
 }
 
 #[cfg(test)]

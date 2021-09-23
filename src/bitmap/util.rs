@@ -14,9 +14,9 @@ pub fn join(high: u16, low: u16) -> u32 {
     (u32::from(high) << 16) + u32::from(low)
 }
 
-/// Convert a `RangeBounds` object to `RangeInclusive<u32>`,
+/// Convert a `RangeBounds<u32>` object to `RangeInclusive<u32>`,
 /// and return if the range is empty.
-fn convert_range_to_inclusive<R>(range: R) -> (RangeInclusive<u32>, bool)
+pub fn convert_range_to_inclusive<R>(range: R) -> (RangeInclusive<u32>, bool)
 where
     R: RangeBounds<u32>,
 {
