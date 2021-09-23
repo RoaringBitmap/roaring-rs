@@ -1,4 +1,7 @@
-use std::{fmt, ops::Range};
+use std::fmt;
+use std::ops::{
+    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
+};
 
 use super::store::{self, Store};
 use super::util;
@@ -38,13 +41,7 @@ impl Container {
         }
     }
 
-    pub fn insert_range(&mut self, range: Range<u16>) -> u64 {
-        // If the range is larger than the array limit, skip populating the
-        // array to then have to convert it to a bitmap anyway.
-        if matches!(self.store, Store::Array(_)) && range.end - range.start > ARRAY_LIMIT as u16 {
-            self.store = self.store.to_bitmap()
-        }
-
+    pub fn insert_range(&mut self, range: RangeInclusive<u16>) -> u64 {
         let inserted = self.store.insert_range(range);
         self.len += inserted;
         self.ensure_correct_store();
@@ -68,12 +65,8 @@ impl Container {
         }
     }
 
-    pub fn remove_range(&mut self, start: u32, end: u32) -> u64 {
-        debug_assert!(start <= end);
-        if start == end {
-            return 0;
-        }
-        let result = self.store.remove_range(start, end);
+    pub fn remove_range(&mut self, range: RangeInclusive<u16>) -> u64 {
+        let result = self.store.remove_range(range);
         self.len -= result;
         self.ensure_correct_store();
         result
