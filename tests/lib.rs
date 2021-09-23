@@ -1,4 +1,5 @@
 extern crate roaring;
+
 use roaring::RoaringBitmap;
 
 #[test]
@@ -39,7 +40,7 @@ fn remove_range() {
     for (i, &a) in ranges.iter().enumerate() {
         for &b in &ranges[i..] {
             let mut bitmap = (0..=65536).collect::<RoaringBitmap>();
-            assert_eq!(bitmap.remove_range(u64::from(a)..u64::from(b)), u64::from(b - a));
+            assert_eq!(bitmap.remove_range(a..b), u64::from(b - a));
             assert_eq!(bitmap, (0..a).chain(b..=65536).collect::<RoaringBitmap>());
         }
     }

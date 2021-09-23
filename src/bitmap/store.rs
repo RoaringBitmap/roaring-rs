@@ -73,7 +73,7 @@ impl Store {
                 // they're all being added to the set.
                 let dropped = vec.splice(pos_start..pos_end, start..=end);
 
-                u64::from(end - start + 1) - dropped.len() as u64
+                end as u64 - start as u64 + 1 - dropped.len() as u64
             }
             Bitmap(ref mut bits) => {
                 let (start_key, start_bit) = (key(start), bit(start));
@@ -112,7 +112,7 @@ impl Store {
                 existed += (bits[end_key] & mask).count_ones();
                 bits[end_key] |= mask;
 
-                u64::from(end - start + 1) - u64::from(existed)
+                end as u64 - start as u64 + 1 - existed as u64
             }
         }
     }
@@ -899,7 +899,7 @@ mod tests {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
         // Insert a range with start > end.
-        let new = store.insert_range(6..1);
+        let new = store.insert_range(6..=1);
         assert_eq!(new, 0);
 
         assert_eq!(as_vec(store), vec![1, 2, 8, 9]);
@@ -909,7 +909,7 @@ mod tests {
     fn test_array_insert_range() {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
-        let new = store.insert_range(4..6);
+        let new = store.insert_range(4..=5);
         assert_eq!(new, 2);
 
         assert_eq!(as_vec(store), vec![1, 2, 4, 5, 8, 9]);
@@ -919,7 +919,7 @@ mod tests {
     fn test_array_insert_range_left_overlap() {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
-        let new = store.insert_range(2..6);
+        let new = store.insert_range(2..=5);
         assert_eq!(new, 3);
 
         assert_eq!(as_vec(store), vec![1, 2, 3, 4, 5, 8, 9]);
@@ -929,7 +929,7 @@ mod tests {
     fn test_array_insert_range_right_overlap() {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
-        let new = store.insert_range(4..9);
+        let new = store.insert_range(4..=8);
         assert_eq!(new, 4);
 
         assert_eq!(as_vec(store), vec![1, 2, 4, 5, 6, 7, 8, 9]);
@@ -939,7 +939,7 @@ mod tests {
     fn test_array_insert_range_full_overlap() {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
-        let new = store.insert_range(1..10);
+        let new = store.insert_range(1..=9);
         assert_eq!(new, 5);
 
         assert_eq!(as_vec(store), vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
@@ -952,7 +952,7 @@ mod tests {
         let mut store = store.to_bitmap();
 
         // Insert a range with start > end.
-        let new = store.insert_range(6..1);
+        let new = store.insert_range(6..=1);
         assert_eq!(new, 0);
 
         assert_eq!(as_vec(store), vec![1, 2, 8, 9]);
@@ -963,7 +963,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 3, 62, 63]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(1..63);
+        let new = store.insert_range(1..=62);
         assert_eq!(new, 58);
 
         assert_eq!(as_vec(store), (1..64).collect::<Vec<_>>());
@@ -974,7 +974,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 130]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(4..129);
+        let new = store.insert_range(4..=128);
         assert_eq!(new, 125);
 
         let mut want = vec![1, 2];
@@ -989,7 +989,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 130]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(1..129);
+        let new = store.insert_range(1..=128);
         assert_eq!(new, 126);
 
         let mut want = Vec::new();
@@ -1004,7 +1004,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 130]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(4..133);
+        let new = store.insert_range(4..=132);
         assert_eq!(new, 128);
 
         let mut want = vec![1, 2];
@@ -1018,7 +1018,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 130]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(1..135);
+        let new = store.insert_range(1..=134);
         assert_eq!(new, 131);
 
         let mut want = Vec::new();
