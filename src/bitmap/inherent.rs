@@ -470,4 +470,41 @@ mod tests {
 
         assert_eq!(b.containers.len(), 0);
     }
+
+    #[test]
+    fn test_insert_remove_range_multi_container() {
+        let mut bitmap = RoaringBitmap::new();
+        assert_eq!(
+            bitmap.insert_range(0..((1_u32 << 16) + 1)),
+            (1_u64 << 16) + 1
+        );
+        assert_eq!(bitmap.containers.len(), 2);
+        assert_eq!(bitmap.containers[0].key, 0);
+        assert_eq!(bitmap.containers[1].key, 1);
+        assert_eq!(
+            bitmap.insert_range(0..((1_u32 << 16) + 1)),
+            0
+        );
+
+        assert!(bitmap.insert((1_u32 << 16) * 4));
+        assert_eq!(bitmap.containers.len(), 3);
+        assert_eq!(bitmap.containers[2].key, 4);
+
+        assert_eq!(
+            bitmap.remove_range(((1_u32 << 16) * 3)..=((1_u32 << 16) * 4)),
+            1
+        );
+        assert_eq!(bitmap.containers.len(), 2);
+    }
+
+    #[test]
+    fn insert_range_single() {
+        let mut bitmap = RoaringBitmap::new();
+        assert_eq!(
+            bitmap.insert_range((1_u32 << 16)..(2_u32 << 16)),
+            1_u64 << 16
+        );
+        assert_eq!(bitmap.containers.len(), 1);
+        assert_eq!(bitmap.containers[0].key, 1);
+    }
 }
