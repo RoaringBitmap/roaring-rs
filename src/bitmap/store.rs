@@ -1,9 +1,10 @@
-use std::{mem, slice, vec};
 use std::borrow::Borrow;
 use std::cmp::Ordering::{Equal, Greater, Less};
+use std::mem;
 use std::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
 };
+use std::{slice, vec};
 
 use self::Store::{Array, Bitmap};
 
@@ -82,11 +83,7 @@ impl Store {
                 // MSB > start_bit > end_bit > LSB
                 if start_key == end_key {
                     // Set the end_bit -> LSB to 1
-                    let mut mask = if end_bit == 63 {
-                        u64::MAX
-                    } else {
-                        (1 << (end_bit + 1)) - 1
-                    };
+                    let mut mask = if end_bit == 63 { u64::MAX } else { (1 << (end_bit + 1)) - 1 };
                     // Set MSB -> start_bit to 1
                     mask &= !((1 << start_bit) - 1);
 
@@ -112,11 +109,7 @@ impl Store {
                 }
 
                 // Set the end bits in the last chunk (MSB -> end_bit)
-                let mask = if end_bit == 63 {
-                    u64::MAX
-                } else {
-                    (1 << (end_bit + 1)) - 1
-                };
+                let mask = if end_bit == 63 { u64::MAX } else { (1 << (end_bit + 1)) - 1 };
                 existed += (bits[end_key] & mask).count_ones();
                 bits[end_key] |= mask;
 
@@ -907,7 +900,7 @@ mod tests {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
         // Insert a range with start > end.
-        let new = store.insert_range(6..1);
+        let new = store.insert_range(6..=1);
         assert_eq!(new, 0);
 
         assert_eq!(as_vec(store), vec![1, 2, 8, 9]);
@@ -917,7 +910,7 @@ mod tests {
     fn test_array_insert_range() {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
-        let new = store.insert_range(4..6);
+        let new = store.insert_range(4..=5);
         assert_eq!(new, 2);
 
         assert_eq!(as_vec(store), vec![1, 2, 4, 5, 8, 9]);
@@ -927,7 +920,7 @@ mod tests {
     fn test_array_insert_range_left_overlap() {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
-        let new = store.insert_range(2..6);
+        let new = store.insert_range(2..=5);
         assert_eq!(new, 3);
 
         assert_eq!(as_vec(store), vec![1, 2, 3, 4, 5, 8, 9]);
@@ -937,7 +930,7 @@ mod tests {
     fn test_array_insert_range_right_overlap() {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
-        let new = store.insert_range(4..9);
+        let new = store.insert_range(4..=8);
         assert_eq!(new, 4);
 
         assert_eq!(as_vec(store), vec![1, 2, 4, 5, 6, 7, 8, 9]);
@@ -947,7 +940,7 @@ mod tests {
     fn test_array_insert_range_full_overlap() {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
-        let new = store.insert_range(1..10);
+        let new = store.insert_range(1..=9);
         assert_eq!(new, 5);
 
         assert_eq!(as_vec(store), vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
@@ -960,7 +953,7 @@ mod tests {
         let mut store = store.to_bitmap();
 
         // Insert a range with start > end.
-        let new = store.insert_range(6..1);
+        let new = store.insert_range(6..=1);
         assert_eq!(new, 0);
 
         assert_eq!(as_vec(store), vec![1, 2, 8, 9]);
@@ -971,7 +964,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 3, 62, 63]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(1..63);
+        let new = store.insert_range(1..=62);
         assert_eq!(new, 58);
 
         assert_eq!(as_vec(store), (1..64).collect::<Vec<_>>());
@@ -982,7 +975,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 130]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(4..129);
+        let new = store.insert_range(4..=128);
         assert_eq!(new, 125);
 
         let mut want = vec![1, 2];
@@ -997,7 +990,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 130]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(1..129);
+        let new = store.insert_range(1..=128);
         assert_eq!(new, 126);
 
         let mut want = Vec::new();
@@ -1012,7 +1005,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 130]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(4..133);
+        let new = store.insert_range(4..=132);
         assert_eq!(new, 128);
 
         let mut want = vec![1, 2];
@@ -1026,7 +1019,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 130]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(1..135);
+        let new = store.insert_range(1..=134);
         assert_eq!(new, 131);
 
         let mut want = Vec::new();

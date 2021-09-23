@@ -1,4 +1,4 @@
-use std::ops::{Bound, RangeBounds, RangeInclusive};
+use std::ops::RangeBounds;
 
 use crate::RoaringBitmap;
 
@@ -76,7 +76,7 @@ impl RoaringBitmap {
     where
         R: RangeBounds<u32>,
     {
-        let (range, is_empty) = convert_range_to_inclusive(range);
+        let (range, is_empty) = util::convert_range_to_inclusive(range);
         if is_empty {
             return 0;
         }
@@ -201,7 +201,7 @@ impl RoaringBitmap {
     where
         R: RangeBounds<u32>,
     {
-        let (range, is_empty) = convert_range_to_inclusive(range);
+        let (range, is_empty) = util::convert_range_to_inclusive(range);
         if is_empty {
             return 0;
         }
@@ -376,13 +376,15 @@ mod tests {
     use super::*;
 
     #[quickcheck]
-    fn qc_insert_range(r: Range<u32>, checks: Vec<u32>) {
+    fn insert_range(r: Range<u32>, checks: Vec<u32>) {
+        let r: Range<u32> = u32::from(r.start)..u32::from(r.end);
+
         let mut b = RoaringBitmap::new();
         let inserted = b.insert_range(r.clone());
         if r.end > r.start {
-            assert_eq!(inserted as u32, r.end - r.start);
+            assert_eq!(inserted, r.end as u64 - r.start as u64);
         } else {
-            assert_eq!(inserted as u32, 0);
+            assert_eq!(inserted, 0);
         }
 
         // Assert all values in the range are present
@@ -394,18 +396,16 @@ mod tests {
         for i in checks {
             let bitmap_has = b.contains(i);
             let range_has = r.contains(&i);
-            assert!(
-                bitmap_has == range_has,
+            assert_eq!(
+                bitmap_has, range_has,
                 "value {} in bitmap={} and range={}",
-                i,
-                bitmap_has,
-                range_has,
+                i, bitmap_has, range_has
             );
         }
     }
 
     #[test]
-    fn test_insert_range_same_container() {
+    fn test_insert_remove_range_same_container() {
         let mut b = RoaringBitmap::new();
         let inserted = b.insert_range(1..5);
         assert_eq!(inserted, 4);
@@ -413,48 +413,61 @@ mod tests {
         for i in 1..5 {
             assert!(b.contains(i));
         }
+
+        let removed = b.remove_range(2..10);
+        assert_eq!(removed, 3);
+        assert!(b.contains(1));
+        for i in 2..5 {
+            assert!(!b.contains(i));
+        }
     }
 
     #[test]
-    fn test_insert_range_pre_populated() {
+    fn test_insert_remove_range_pre_populated() {
         let mut b = RoaringBitmap::new();
         let inserted = b.insert_range(1..20_000);
         assert_eq!(inserted, 19_999);
 
+        let removed = b.remove_range(10_000..21_000);
+        assert_eq!(removed, 10_000);
+
         let inserted = b.insert_range(1..20_000);
-        assert_eq!(inserted, 0);
+        assert_eq!(inserted, 10_000);
     }
 
     #[test]
-    fn test_insert_max_u32() {
+    fn test_insert_full() {
         let mut b = RoaringBitmap::new();
-        let inserted = b.insert(u32::MAX);
-        // We are allowed to add u32::MAX
-        assert!(inserted);
+        let inserted = b.insert_range(0..=u32::MAX);
+        assert_eq!(inserted, u32::MAX as u64 + 1);
     }
 
     #[test]
-    fn test_insert_range_zero_inclusive() {
+    fn test_insert_remove_across_container() {
         let mut b = RoaringBitmap::new();
-        let inserted = b.insert_range(0..=0);
-        // `insert_range(value..=value)` appears equivalent to `insert(value)`
+        let inserted = b.insert_range(u16::MAX as u32..=u16::MAX as u32 + 1);
+        assert_eq!(inserted, 2);
+
+        assert_eq!(b.containers.len(), 2);
+
+        let removed = b.remove_range(u16::MAX as u32 + 1..=u16::MAX as u32 + 1);
+        assert_eq!(removed, 1);
+
+        assert_eq!(b.containers.len(), 1);
+    }
+
+    #[test]
+    fn test_insert_remove_single_element() {
+        let mut b = RoaringBitmap::new();
+        let inserted = b.insert_range(u16::MAX as u32 + 1..=u16::MAX as u32 + 1);
         assert_eq!(inserted, 1);
-        assert!(b.contains(0), "does not contain {}", 0);
-    }
 
-    #[test]
-    fn test_insert_range_max_u32_inclusive() {
-        let mut b = RoaringBitmap::new();
-        let inserted = b.insert_range(u32::MAX..=u32::MAX);
-        // But not equivalent for u32::MAX
-        assert_eq!(inserted, 1); // Fails - left: 0, right: 1
-        assert!(b.contains(u32::MAX), "does not contain {}", u32::MAX);
-    }
+        assert_eq!(b.containers[0].len, 1);
+        assert_eq!(b.containers.len(), 1);
 
-    #[test]
-    fn test_insert_all_u32() {
-        let mut b = RoaringBitmap::new();
-        let inserted = b.insert_range(0..u32::MAX); // Largest possible range seemingly allowed
-        assert_eq!(inserted, u32::MAX as u64); // Still not bigger than u32::MAX
+        let removed = b.remove_range(u16::MAX as u32 + 1..=u16::MAX as u32 + 1);
+        assert_eq!(removed, 1);
+
+        assert_eq!(b.containers.len(), 0);
     }
 }
