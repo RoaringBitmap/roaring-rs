@@ -76,13 +76,13 @@ impl RoaringBitmap {
     where
         R: RangeBounds<u32>,
     {
-        let (range, is_empty) = util::convert_range_to_inclusive(range);
-        if is_empty {
+        let (start, end);
+        if let Some(range) = util::convert_range_to_inclusive(range) {
+            start = *range.start();
+            end = *range.end();
+        } else {
             return 0;
         }
-
-        let start = *range.start();
-        let end = *range.end();
 
         let (start_container_key, start_index) = util::split(start);
         let (end_container_key, end_index) = util::split(end);
@@ -207,13 +207,13 @@ impl RoaringBitmap {
     where
         R: RangeBounds<u32>,
     {
-        let (range, is_empty) = util::convert_range_to_inclusive(range);
-        if is_empty {
+        let (start, end);
+        if let Some(range) = util::convert_range_to_inclusive(range) {
+            start = *range.start();
+            end = *range.end();
+        } else {
             return 0;
         }
-
-        let start = *range.start();
-        let end = *range.end();
 
         let (start_container_key, start_index) = util::split(start);
         let (end_container_key, end_index) = util::split(end);
@@ -376,8 +376,7 @@ mod tests {
     use super::*;
 
     #[quickcheck]
-    fn insert_range(r: Range<u32>, checks: Vec<u32>) {
-        let r: Range<u32> = u32::from(r.start)..u32::from(r.end);
+    fn qc_insert_range(r: Range<u32>, checks: Vec<u32>) {
 
         let mut b = RoaringBitmap::new();
         let inserted = b.insert_range(r.clone());
@@ -436,10 +435,11 @@ mod tests {
     }
 
     #[test]
-    fn test_insert_full() {
+    fn test_insert_max_u32() {
         let mut b = RoaringBitmap::new();
-        let inserted = b.insert_range(0..=u32::MAX);
-        assert_eq!(inserted, u32::MAX as u64 + 1);
+        let inserted = b.insert(u32::MAX);
+        // We are allowed to add u32::MAX
+        assert!(inserted);
     }
 
     #[test]
@@ -481,10 +481,7 @@ mod tests {
         assert_eq!(bitmap.containers.len(), 2);
         assert_eq!(bitmap.containers[0].key, 0);
         assert_eq!(bitmap.containers[1].key, 1);
-        assert_eq!(
-            bitmap.insert_range(0..((1_u32 << 16) + 1)),
-            0
-        );
+        assert_eq!(bitmap.insert_range(0..((1_u32 << 16) + 1)), 0);
 
         assert!(bitmap.insert((1_u32 << 16) * 4));
         assert_eq!(bitmap.containers.len(), 3);
