@@ -105,13 +105,13 @@ impl RoaringTreemap {
     where
         R: RangeBounds<u64>,
     {
-        let (range, is_empty) = util::convert_range_to_inclusive(range);
-        if is_empty {
+        let (start, end);
+        if let Some(range) = util::convert_range_to_inclusive(range) {
+            start = *range.start();
+            end = *range.end();
+        } else {
             return 0;
         }
-
-        let start = *range.start();
-        let end = *range.end();
 
         let (start_container_key, start_index) = util::split(start);
         let (end_container_key, end_index) = util::split(end);

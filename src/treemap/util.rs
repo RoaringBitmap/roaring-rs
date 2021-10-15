@@ -11,13 +11,12 @@ pub fn join(high: u32, low: u32) -> u64 {
 }
 
 /// Convert a `RangeBounds<u64>` object to `RangeInclusive<u64>`,
-/// and return if the range is empty.
-pub fn convert_range_to_inclusive<R>(range: R) -> (RangeInclusive<u64>, bool)
+pub fn convert_range_to_inclusive<R>(range: R) -> Option<RangeInclusive<u64>>
 where
     R: RangeBounds<u64>,
 {
     if let Bound::Excluded(0) = range.end_bound() {
-        return (0..=0, true);
+        return None;
     }
     let start: u64 = match range.start_bound() {
         Bound::Included(&i) => i,
@@ -30,9 +29,9 @@ where
         Bound::Unbounded => u64::MAX,
     };
     if end < start {
-        return (0..=0, true);
+        return None;
     }
-    (start..=end, false)
+    Some(start..=end)
 }
 
 #[cfg(test)]
