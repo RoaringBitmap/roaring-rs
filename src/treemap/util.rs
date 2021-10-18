@@ -15,16 +15,15 @@ pub fn convert_range_to_inclusive<R>(range: R) -> Option<RangeInclusive<u64>>
 where
     R: RangeBounds<u64>,
 {
-    if let Bound::Excluded(0) = range.end_bound() {
-        return None;
-    }
     let start: u64 = match range.start_bound() {
         Bound::Included(&i) => i,
+        Bound::Excluded(&u64::MAX) => return None,
+        Bound::Excluded(&i) => i + 1,
         Bound::Unbounded => 0,
-        _ => panic!("Should never be called (insert_range start with Excluded)"),
     };
     let end: u64 = match range.end_bound() {
         Bound::Included(&i) => i,
+        Bound::Excluded(&0) => return None,
         Bound::Excluded(&i) => i - 1,
         Bound::Unbounded => u64::MAX,
     };
@@ -36,7 +35,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::{join, split};
+    use super::{join, split, convert_range_to_inclusive};
 
     #[test]
     fn test_split_u64() {
@@ -60,5 +59,14 @@ mod test {
         assert_eq!(0x0000_0001_0000_0001u64, join(0x0000_0001u32, 0x0000_0001u32));
         assert_eq!(0xFFFF_FFFF_FFFF_FFFEu64, join(0xFFFF_FFFFu32, 0xFFFF_FFFEu32));
         assert_eq!(0xFFFF_FFFF_FFFF_FFFFu64, join(0xFFFF_FFFFu32, 0xFFFF_FFFFu32));
+    }
+
+    #[test]
+    fn test_convert_range_to_inclusive() {
+        assert_eq!(Some(1..=5), convert_range_to_inclusive(1..6));
+        assert_eq!(Some(1..=u64::MAX), convert_range_to_inclusive(1..));
+        assert_eq!(Some(0..=u64::MAX), convert_range_to_inclusive(..));
+        assert_eq!(None, convert_range_to_inclusive(5..5));
+        assert_eq!(Some(16..=16), convert_range_to_inclusive(16..=16))
     }
 }
