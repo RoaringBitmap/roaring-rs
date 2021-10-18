@@ -201,13 +201,10 @@ impl RoaringBitmap {
     where
         R: RangeBounds<u32>,
     {
-        let (start, end);
-        if let Some(range) = util::convert_range_to_inclusive(range) {
-            start = *range.start();
-            end = *range.end();
-        } else {
-            return 0;
-        }
+        let (start, end) = match util::convert_range_to_inclusive(range) {
+            Some(range) => (*range.start(), *range.end()),
+            None => return 0,
+        };
 
         let (start_container_key, start_index) = util::split(start);
         let (end_container_key, end_index) = util::split(end);
@@ -377,7 +374,6 @@ mod tests {
 
     #[quickcheck]
     fn qc_insert_range(r: Range<u32>, checks: Vec<u32>) {
-
         let mut b = RoaringBitmap::new();
         let inserted = b.insert_range(r.clone());
         if r.end > r.start {
