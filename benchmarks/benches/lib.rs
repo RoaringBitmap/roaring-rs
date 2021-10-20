@@ -223,7 +223,7 @@ fn remove_range_bitmap(c: &mut Criterion) {
 fn insert_range_bitmap(c: &mut Criterion) {
     for &size in &[10, 100, 1_000, 5_000, 10_000, 20_000] {
         let mut group = c.benchmark_group("insert_range");
-        group.throughput(criterion::Throughput::Elements(size));
+        group.throughput(criterion::Throughput::Elements(size as u64));
         group.bench_function(format!("from_empty_{}", size), |b| {
             let bm = RoaringBitmap::new();
             b.iter_batched(
