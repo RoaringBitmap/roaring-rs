@@ -381,7 +381,7 @@ impl BitOrAssign<&Store> for Store {
         match (self, rhs) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
                 let this = mem::take(vec1);
-                *vec1 = union_arrays(&this, &vec2);
+                *vec1 = union_arrays(&this, vec2);
             }
             (this @ &mut Bitmap(..), &Array(ref vec)) => {
                 vec.iter().for_each(|index| {
@@ -763,7 +763,7 @@ fn union_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
     while i < arr1.len() && j < arr2.len() {
         let a = unsafe { arr1.get_unchecked(i) };
         let b = unsafe { arr2.get_unchecked(j) };
-        match a.cmp(&b) {
+        match a.cmp(b) {
             Less => {
                 out.push(*a);
                 i += 1;
@@ -797,7 +797,7 @@ fn intersect_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
     while i < arr1.len() && j < arr2.len() {
         let a = unsafe { arr1.get_unchecked(i) };
         let b = unsafe { arr2.get_unchecked(j) };
-        match a.cmp(&b) {
+        match a.cmp(b) {
             Less => i += 1,
             Greater => j += 1,
             Equal => {
@@ -821,7 +821,7 @@ fn difference_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
     while i < arr1.len() && j < arr2.len() {
         let a = unsafe { arr1.get_unchecked(i) };
         let b = unsafe { arr2.get_unchecked(j) };
-        match a.cmp(&b) {
+        match a.cmp(b) {
             Less => {
                 out.push(*a);
                 i += 1;
@@ -850,7 +850,7 @@ fn symmetric_difference_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
     while i < arr1.len() && j < arr2.len() {
         let a = unsafe { arr1.get_unchecked(i) };
         let b = unsafe { arr2.get_unchecked(j) };
-        match a.cmp(&b) {
+        match a.cmp(b) {
             Less => {
                 out.push(*a);
                 i += 1;
