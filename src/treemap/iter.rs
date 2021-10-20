@@ -88,10 +88,10 @@ impl<'a> Iterator for Iter<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.size_hint < usize::max_value() as u64 {
+        if self.size_hint < usize::MAX as u64 {
             (self.size_hint as usize, Some(self.size_hint as usize))
         } else {
-            (usize::max_value(), None)
+            (usize::MAX, None)
         }
     }
 }
@@ -105,10 +105,10 @@ impl Iterator for IntoIter {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.size_hint < usize::max_value() as u64 {
+        if self.size_hint < usize::MAX as u64 {
             (self.size_hint as usize, Some(self.size_hint as usize))
         } else {
-            (usize::max_value(), None)
+            (usize::MAX, None)
         }
     }
 }

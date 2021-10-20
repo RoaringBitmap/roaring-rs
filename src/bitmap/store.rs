@@ -1,11 +1,15 @@
+use std::borrow::Borrow;
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
-use std::{borrow::Borrow, ops::Range};
-use std::{mem, slice, vec};
+use std::mem;
+use std::ops::{
+    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
+};
+use std::{slice, vec};
+
+use self::Store::{Array, Bitmap};
 
 const BITMAP_LENGTH: usize = 1024;
 
-use self::Store::{Array, Bitmap};
 pub enum Store {
     Array(Vec<u16>),
     Bitmap(Box<[u64; BITMAP_LENGTH]>),
@@ -42,40 +46,51 @@ impl Store {
         }
     }
 
-    pub fn insert_range(&mut self, range: Range<u16>) -> u64 {
+    pub fn insert_range(&mut self, range: RangeInclusive<u16>) -> u64 {
         // A Range is defined as being of size 0 if start >= end.
         if range.is_empty() {
             return 0;
         }
 
+        let start = *range.start();
+        let end = *range.end();
+
         match *self {
             Array(ref mut vec) => {
-                // Figure out the starting/ending position in the vec
-                let pos_start = vec.binary_search(&range.start).unwrap_or_else(|x| x);
-                let pos_end = vec.binary_search(&range.end).unwrap_or_else(|x| x);
+                // Figure out the starting/ending position in the vec.
+                let pos_start = vec.binary_search(&start).unwrap_or_else(|x| x);
+                let pos_end = vec
+                    .binary_search_by(|p| {
+                        // binary search the right most position when equals
+                        match p.cmp(&end) {
+                            Greater => Greater,
+                            _ => Less,
+                        }
+                    })
+                    .unwrap_or_else(|x| x);
 
                 // Overwrite the range in the middle - there's no need to take
                 // into account any existing elements between start and end, as
                 // they're all being added to the set.
-                let dropped = vec.splice(pos_start..pos_end, range.clone());
+                let dropped = vec.splice(pos_start..pos_end, start..=end);
 
-                u64::from(range.end - range.start) - dropped.len() as u64
+                end as u64 - start as u64 + 1 - dropped.len() as u64
             }
             Bitmap(ref mut bits) => {
-                let (start_key, start_bit) = (key(range.start), bit(range.start));
-                let (end_key, end_bit) = (key(range.end), bit(range.end));
+                let (start_key, start_bit) = (key(start), bit(start));
+                let (end_key, end_bit) = (key(end), bit(end));
 
+                // MSB > start_bit > end_bit > LSB
                 if start_key == end_key {
                     // Set the end_bit -> LSB to 1
-                    let mut mask = (1 << end_bit) - 1;
-                    // Set start_bit -> LSB to 0
+                    let mut mask = if end_bit == 63 { u64::MAX } else { (1 << (end_bit + 1)) - 1 };
+                    // Set MSB -> start_bit to 1
                     mask &= !((1 << start_bit) - 1);
-                    // Leaving end_bit -> start_bit set to 1
 
                     let existed = (bits[start_key] & mask).count_ones();
                     bits[start_key] |= mask;
 
-                    return u64::from(range.end - range.start) - u64::from(existed);
+                    return u64::from(end - start + 1) - u64::from(existed);
                 }
 
                 // Mask off the left-most bits (MSB -> start_bit)
@@ -94,11 +109,11 @@ impl Store {
                 }
 
                 // Set the end bits in the last chunk (MSB -> end_bit)
-                let mask = (1 << end_bit) - 1;
+                let mask = if end_bit == 63 { u64::MAX } else { (1 << (end_bit + 1)) - 1 };
                 existed += (bits[end_key] & mask).count_ones();
                 bits[end_key] |= mask;
 
-                u64::from(range.end - range.start) - u64::from(existed)
+                end as u64 - start as u64 + 1 - existed as u64
             }
         }
     }
@@ -136,28 +151,36 @@ impl Store {
         }
     }
 
-    pub fn remove_range(&mut self, start: u32, end: u32) -> u64 {
-        debug_assert!(start < end, "caller must ensure start < end");
+    pub fn remove_range(&mut self, range: RangeInclusive<u16>) -> u64 {
+        if range.is_empty() {
+            return 0;
+        }
+
+        let start = *range.start();
+        let end = *range.end();
+
         match *self {
             Array(ref mut vec) => {
-                let a = vec.binary_search(&(start as u16)).unwrap_or_else(|e| e);
-                let b = if end > u32::from(u16::max_value()) {
-                    vec.len()
-                } else {
-                    vec.binary_search(&(end as u16)).unwrap_or_else(|e| e)
-                };
-                vec.drain(a..b);
-                (b - a) as u64
+                // Figure out the starting/ending position in the vec.
+                let pos_start = vec.binary_search(&start).unwrap_or_else(|x| x);
+                let pos_end = vec
+                    .binary_search_by(|p| {
+                        // binary search the right most position when equals
+                        match p.cmp(&end) {
+                            Greater => Greater,
+                            _ => Less,
+                        }
+                    })
+                    .unwrap_or_else(|x| x);
+                vec.drain(pos_start..pos_end);
+                (pos_end - pos_start) as u64
             }
             Bitmap(ref mut bits) => {
-                let start_key = key(start as u16) as usize;
-                let start_bit = bit(start as u16) as u32;
-                // end_key is inclusive
-                let end_key = key((end - 1) as u16) as usize;
-                let end_bit = bit(end as u16) as u32;
+                let (start_key, start_bit) = (key(start), bit(start));
+                let (end_key, end_bit) = (key(end), bit(end));
 
                 if start_key == end_key {
-                    let mask = (!0u64 << start_bit) & (!0u64).wrapping_shr(64 - end_bit);
+                    let mask = (u64::MAX << start_bit) & (u64::MAX >> (63 - end_bit));
                     let removed = (bits[start_key] & mask).count_ones();
                     bits[start_key] &= !mask;
                     return u64::from(removed);
@@ -165,8 +188,8 @@ impl Store {
 
                 let mut removed = 0;
                 // start key bits
-                removed += (bits[start_key] & (!0u64 << start_bit)).count_ones();
-                bits[start_key] &= !(!0u64 << start_bit);
+                removed += (bits[start_key] & (u64::MAX << start_bit)).count_ones();
+                bits[start_key] &= !(u64::MAX << start_bit);
                 // counts bits in between
                 for word in &bits[start_key + 1..end_key] {
                     removed += word.count_ones();
@@ -179,8 +202,8 @@ impl Store {
                     *word = 0;
                 }
                 // end key bits
-                removed += (bits[end_key] & (!0u64).wrapping_shr(64 - end_bit)).count_ones();
-                bits[end_key] &= !(!0u64).wrapping_shr(64 - end_bit);
+                removed += (bits[end_key] & (u64::MAX >> (63 - end_bit))).count_ones();
+                bits[end_key] &= !(u64::MAX >> (63 - end_bit));
                 u64::from(removed)
             }
         }
@@ -358,7 +381,7 @@ impl BitOrAssign<&Store> for Store {
         match (self, rhs) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
                 let this = mem::take(vec1);
-                *vec1 = union_arrays(&this, &vec2);
+                *vec1 = union_arrays(&this, vec2);
             }
             (this @ &mut Bitmap(..), &Array(ref vec)) => {
                 vec.iter().for_each(|index| {
@@ -740,7 +763,7 @@ fn union_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
     while i < arr1.len() && j < arr2.len() {
         let a = unsafe { arr1.get_unchecked(i) };
         let b = unsafe { arr2.get_unchecked(j) };
-        match a.cmp(&b) {
+        match a.cmp(b) {
             Less => {
                 out.push(*a);
                 i += 1;
@@ -774,7 +797,7 @@ fn intersect_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
     while i < arr1.len() && j < arr2.len() {
         let a = unsafe { arr1.get_unchecked(i) };
         let b = unsafe { arr2.get_unchecked(j) };
-        match a.cmp(&b) {
+        match a.cmp(b) {
             Less => i += 1,
             Greater => j += 1,
             Equal => {
@@ -798,7 +821,7 @@ fn difference_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
     while i < arr1.len() && j < arr2.len() {
         let a = unsafe { arr1.get_unchecked(i) };
         let b = unsafe { arr2.get_unchecked(j) };
-        match a.cmp(&b) {
+        match a.cmp(b) {
             Less => {
                 out.push(*a);
                 i += 1;
@@ -827,7 +850,7 @@ fn symmetric_difference_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
     while i < arr1.len() && j < arr2.len() {
         let a = unsafe { arr1.get_unchecked(i) };
         let b = unsafe { arr2.get_unchecked(j) };
-        match a.cmp(&b) {
+        match a.cmp(b) {
             Less => {
                 out.push(*a);
                 i += 1;
@@ -877,7 +900,7 @@ mod tests {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
         // Insert a range with start > end.
-        let new = store.insert_range(6..1);
+        let new = store.insert_range(6..=1);
         assert_eq!(new, 0);
 
         assert_eq!(as_vec(store), vec![1, 2, 8, 9]);
@@ -887,7 +910,7 @@ mod tests {
     fn test_array_insert_range() {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
-        let new = store.insert_range(4..6);
+        let new = store.insert_range(4..=5);
         assert_eq!(new, 2);
 
         assert_eq!(as_vec(store), vec![1, 2, 4, 5, 8, 9]);
@@ -897,7 +920,7 @@ mod tests {
     fn test_array_insert_range_left_overlap() {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
-        let new = store.insert_range(2..6);
+        let new = store.insert_range(2..=5);
         assert_eq!(new, 3);
 
         assert_eq!(as_vec(store), vec![1, 2, 3, 4, 5, 8, 9]);
@@ -907,7 +930,7 @@ mod tests {
     fn test_array_insert_range_right_overlap() {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
-        let new = store.insert_range(4..9);
+        let new = store.insert_range(4..=8);
         assert_eq!(new, 4);
 
         assert_eq!(as_vec(store), vec![1, 2, 4, 5, 6, 7, 8, 9]);
@@ -917,7 +940,7 @@ mod tests {
     fn test_array_insert_range_full_overlap() {
         let mut store = Store::Array(vec![1, 2, 8, 9]);
 
-        let new = store.insert_range(1..10);
+        let new = store.insert_range(1..=9);
         assert_eq!(new, 5);
 
         assert_eq!(as_vec(store), vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
@@ -930,7 +953,7 @@ mod tests {
         let mut store = store.to_bitmap();
 
         // Insert a range with start > end.
-        let new = store.insert_range(6..1);
+        let new = store.insert_range(6..=1);
         assert_eq!(new, 0);
 
         assert_eq!(as_vec(store), vec![1, 2, 8, 9]);
@@ -941,7 +964,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 3, 62, 63]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(1..63);
+        let new = store.insert_range(1..=62);
         assert_eq!(new, 58);
 
         assert_eq!(as_vec(store), (1..64).collect::<Vec<_>>());
@@ -952,7 +975,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 130]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(4..129);
+        let new = store.insert_range(4..=128);
         assert_eq!(new, 125);
 
         let mut want = vec![1, 2];
@@ -967,7 +990,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 130]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(1..129);
+        let new = store.insert_range(1..=128);
         assert_eq!(new, 126);
 
         let mut want = Vec::new();
@@ -982,7 +1005,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 130]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(4..133);
+        let new = store.insert_range(4..=132);
         assert_eq!(new, 128);
 
         let mut want = vec![1, 2];
@@ -996,7 +1019,7 @@ mod tests {
         let store = Store::Array(vec![1, 2, 130]);
         let mut store = store.to_bitmap();
 
-        let new = store.insert_range(1..135);
+        let new = store.insert_range(1..=134);
         assert_eq!(new, 131);
 
         let mut want = Vec::new();
