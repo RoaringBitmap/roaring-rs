@@ -180,7 +180,7 @@ impl Store {
                 let (end_key, end_bit) = (key(end), bit(end));
 
                 if start_key == end_key {
-                    let mask = (!0u64 << start_bit) & (!0u64 >> (63 - end_bit));
+                    let mask = (u64::MAX << start_bit) & (u64::MAX >> (63 - end_bit));
                     let removed = (bits[start_key] & mask).count_ones();
                     bits[start_key] &= !mask;
                     return u64::from(removed);
@@ -188,8 +188,8 @@ impl Store {
 
                 let mut removed = 0;
                 // start key bits
-                removed += (bits[start_key] & (!0u64 << start_bit)).count_ones();
-                bits[start_key] &= !(!0u64 << start_bit);
+                removed += (bits[start_key] & (u64::MAX << start_bit)).count_ones();
+                bits[start_key] &= !(u64::MAX << start_bit);
                 // counts bits in between
                 for word in &bits[start_key + 1..end_key] {
                     removed += word.count_ones();
@@ -202,8 +202,8 @@ impl Store {
                     *word = 0;
                 }
                 // end key bits
-                removed += (bits[end_key] & (!0u64 >> (63 - end_bit))).count_ones();
-                bits[end_key] &= !(!0u64 >> (63 - end_bit));
+                removed += (bits[end_key] & (u64::MAX >> (63 - end_bit))).count_ones();
+                bits[end_key] &= !(u64::MAX >> (63 - end_bit));
                 u64::from(removed)
             }
         }
