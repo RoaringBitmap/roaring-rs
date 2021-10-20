@@ -118,16 +118,8 @@ impl RoaringTreemap {
 
         for (&key, rb) in &mut self.map {
             if key >= start_container_key && key <= end_container_key {
-                let a = if key == start_container_key {
-                    start_index
-                } else {
-                    0
-                };
-                let b = if key == end_container_key {
-                    end_index
-                } else {
-                    u32::max_value()
-                };
+                let a = if key == start_container_key { start_index } else { 0 };
+                let b = if key == end_container_key { end_index } else { u32::MAX };
                 removed += rb.remove_range(a..=b);
                 if rb.is_empty() {
                     keys_to_remove.push(key);

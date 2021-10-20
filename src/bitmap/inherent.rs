@@ -214,16 +214,8 @@ impl RoaringBitmap {
         while index < self.containers.len() {
             let key = self.containers[index].key;
             if key >= start_container_key && key <= end_container_key {
-                let a = if key == start_container_key {
-                    start_index
-                } else {
-                    0
-                };
-                let b = if key == end_container_key {
-                    end_index
-                } else {
-                    u16::max_value()
-                };
+                let a = if key == start_container_key { start_index } else { 0 };
+                let b = if key == end_container_key { end_index } else { u16::MAX };
                 removed += self.containers[index].remove_range(a..=b);
                 if self.containers[index].len == 0 {
                     self.containers.remove(index);
@@ -470,10 +462,7 @@ mod tests {
     #[test]
     fn test_insert_remove_range_multi_container() {
         let mut bitmap = RoaringBitmap::new();
-        assert_eq!(
-            bitmap.insert_range(0..((1_u32 << 16) + 1)),
-            (1_u64 << 16) + 1
-        );
+        assert_eq!(bitmap.insert_range(0..((1_u32 << 16) + 1)), (1_u64 << 16) + 1);
         assert_eq!(bitmap.containers.len(), 2);
         assert_eq!(bitmap.containers[0].key, 0);
         assert_eq!(bitmap.containers[1].key, 1);
@@ -483,20 +472,14 @@ mod tests {
         assert_eq!(bitmap.containers.len(), 3);
         assert_eq!(bitmap.containers[2].key, 4);
 
-        assert_eq!(
-            bitmap.remove_range(((1_u32 << 16) * 3)..=((1_u32 << 16) * 4)),
-            1
-        );
+        assert_eq!(bitmap.remove_range(((1_u32 << 16) * 3)..=((1_u32 << 16) * 4)), 1);
         assert_eq!(bitmap.containers.len(), 2);
     }
 
     #[test]
     fn insert_range_single() {
         let mut bitmap = RoaringBitmap::new();
-        assert_eq!(
-            bitmap.insert_range((1_u32 << 16)..(2_u32 << 16)),
-            1_u64 << 16
-        );
+        assert_eq!(bitmap.insert_range((1_u32 << 16)..(2_u32 << 16)), 1_u64 << 16);
         assert_eq!(bitmap.containers.len(), 1);
         assert_eq!(bitmap.containers[0].key, 1);
     }

@@ -35,7 +35,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::{join, split, convert_range_to_inclusive};
+    use super::{convert_range_to_inclusive, join, split};
 
     #[test]
     fn test_split_u64() {
