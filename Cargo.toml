@@ -15,7 +15,7 @@ edition = "2018"
 license = "MIT/Apache-2.0"
 
 [dependencies]
-bytemuck = "1.5.1"
+bytemuck = "1.7.2"
 byteorder = "1.0"
 retain_mut = "0.1.2"
 
