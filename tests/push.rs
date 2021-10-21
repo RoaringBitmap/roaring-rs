@@ -6,7 +6,7 @@ use std::iter::FromIterator;
 macro_rules! test_from_sorted_iter {
     ($values: expr, $class: ty) => {{
         let rb1 = <$class>::from_iter($values.clone());
-        let rb2 = <$class>::from_sorted_iter($values);
+        let rb2 = <$class>::from_sorted_iter($values).unwrap();
 
         for (x, y) in rb1.iter().zip(rb2.iter()) {
             assert_eq!(x, y);
@@ -22,11 +22,11 @@ macro_rules! test_from_sorted_iter {
 #[test]
 fn append() {
     test_from_sorted_iter!((0..1_000_000).map(|x| 13 * x).collect::<Vec<u32>>(), RoaringBitmap);
-    test_from_sorted_iter!(vec![1, 2, 4, 5, 5, 7, 8, 8, 9], RoaringBitmap);
+    test_from_sorted_iter!(vec![1, 2, 4, 5, 7, 8, 9], RoaringBitmap);
 }
 
 #[test]
 fn append_tree() {
     test_from_sorted_iter!((0..1_000_000).map(|x| 13 * x).collect::<Vec<u64>>(), RoaringTreemap);
-    test_from_sorted_iter!(vec![1, 2, 4, 5, 5, 7, 8, 8, 9], RoaringTreemap);
+    test_from_sorted_iter!(vec![1, 2, 4, 5, 7, 8, 9], RoaringTreemap);
 }
