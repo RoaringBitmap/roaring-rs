@@ -1,6 +1,6 @@
 [package]
 name = "roaring"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Wim Looman <wim@nemo157.com>", "Kerollmops <kero@meilisearch.com>"]
 description = "http://roaringbitmap.org: A better compressed bitset - pure Rust implementation "
 
@@ -15,9 +15,9 @@ edition = "2018"
 license = "MIT/Apache-2.0"
 
 [dependencies]
-bytemuck = "1.5.1"
-byteorder = "1.0"
-retain_mut = "0.1.2"
+bytemuck = "1.7.2"
+byteorder = "1.4.3"
+retain_mut = "0.1.4"
 
 [dev-dependencies]
 quickcheck = "0.9"
