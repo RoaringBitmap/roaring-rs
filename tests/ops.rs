@@ -37,8 +37,8 @@ fn and() {
 
 #[test]
 fn sub() {
-    let mut rb1 = (1..4).collect::<RoaringBitmap>();
-    let rb2 = (3..6).collect::<RoaringBitmap>();
+    let mut rb1 = (1..4000).collect::<RoaringBitmap>();
+    let rb2 = (3..5000).collect::<RoaringBitmap>();
     let rb3 = (1..3).collect::<RoaringBitmap>();
 
     assert_eq!(rb3, &rb1 - &rb2);

@@ -496,7 +496,7 @@ impl Sub<&Store> for &Store {
             (&Array(ref vec1), &Array(ref vec2)) => Array(difference_arrays(vec1, vec2)),
             _ => {
                 let mut lhs = self.clone();
-                BitOrAssign::bitor_assign(&mut lhs, rhs);
+                SubAssign::sub_assign(&mut lhs, rhs);
                 lhs
             }
         }
