@@ -11,9 +11,9 @@ use new features at any time.
 
 ## Developing
 
-This project uses [clippy][], [rustfmt][], and denies warnings in CI builds. To ensure your
+This project uses [Clippy][], [rustfmt][], and denies warnings in CI builds. To ensure your
 changes will be accepted please check them with `cargo clippy` (available via
-`cargo install clippy` on nightly rust) before submitting a pull request (along
+`cargo install clippy` on nightly Rust) before submitting a pull request (along
 with `cargo test` as usual).
 
 ### Benchmarking
@@ -24,15 +24,15 @@ by using a set of [real-world datasets][]. It is also advised to run the benchma
 a bare-metal machine, running them on the base branch and then on the contribution PR
 branch to better see the changes.
 
-Those benchmarks are designed on top of the criterion library,
+Those benchmarks are designed on top of the Criterion library,
 you can read more about it [on the User guide][].
 
 ## License
 
 Licensed under either of
 
- * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+ * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or https://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT) or https://opensource.org/licenses/MIT)
 
 at your option.
 
@@ -47,15 +47,15 @@ additional terms or conditions.
 [release-badge]: https://img.shields.io/github/release/Nemo157/roaring-rs.svg?style=flat-square
 [cargo]: https://crates.io/crates/roaring
 [docs-badge]: https://img.shields.io/badge/API-docs-blue.svg?style=flat-square
-[docs]: https://nemo157.com/roaring-rs/
+[docs]: https://docs.rs/roaring
 [rust-version-badge]: https://img.shields.io/badge/rust-latest%20stable-blue.svg?style=flat-square
-[rust-version]: .travis.yml#L5
+[rust-version]: https://github.com/RoaringBitmap/roaring-rs#rust-version-policy
 
-[Rust]: https://rust-lang.org
-[Roaring bitmap]: http://roaringbitmap.org
+[Rust]: https://www.rust-lang.org/
+[Roaring bitmap]: https://roaringbitmap.org/
 [roaring-java]: https://github.com/lemire/RoaringBitmap
 [roaring-paper]: https://arxiv.org/pdf/1402.6407v4
-[clippy]: https://github.com/rust-lang/rust-clippy
+[Clippy]: https://github.com/rust-lang/rust-clippy
 [rustfmt]: https://github.com/rust-lang/rustfmt
 
 [real-world datasets]: https://github.com/RoaringBitmap/real-roaring-datasets
