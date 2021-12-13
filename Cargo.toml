@@ -2,9 +2,9 @@
 name = "roaring"
 version = "0.8.1"
 authors = ["Wim Looman <wim@nemo157.com>", "Kerollmops <kero@meilisearch.com>"]
-description = "http://roaringbitmap.org: A better compressed bitset - pure Rust implementation "
+description = "https://roaringbitmap.org: A better compressed bitset - pure Rust implementation "
 
-documentation = "https://docs.rs/roaring-rs"
+documentation = "https://docs.rs/roaring"
 repository = "https://github.com/Roaringbitmap/roaring-rs"
 
 readme = "README.md"
