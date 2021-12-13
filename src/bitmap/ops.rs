@@ -294,7 +294,7 @@ impl BitAndAssign<RoaringBitmap> for RoaringBitmap {
             mem::swap(self, &mut rhs);
         }
 
-        self.containers.retain_mut(|cont| {
+        RetainMut::retain_mut(&mut self.containers, |cont| {
             let key = cont.key;
             match rhs.containers.binary_search_by_key(&key, |c| c.key) {
                 Ok(loc) => {
@@ -312,7 +312,7 @@ impl BitAndAssign<RoaringBitmap> for RoaringBitmap {
 impl BitAndAssign<&RoaringBitmap> for RoaringBitmap {
     /// An `intersection` between two sets.
     fn bitand_assign(&mut self, rhs: &RoaringBitmap) {
-        self.containers.retain_mut(|cont| {
+        RetainMut::retain_mut(&mut self.containers, |cont| {
             let key = cont.key;
             match rhs.containers.binary_search_by_key(&key, |c| c.key) {
                 Ok(loc) => {
@@ -389,7 +389,7 @@ impl SubAssign<RoaringBitmap> for RoaringBitmap {
 impl SubAssign<&RoaringBitmap> for RoaringBitmap {
     /// A `difference` between two sets.
     fn sub_assign(&mut self, rhs: &RoaringBitmap) {
-        self.containers.retain_mut(|cont| {
+        RetainMut::retain_mut(&mut self.containers, |cont| {
             match rhs.containers.binary_search_by_key(&cont.key, |c| c.key) {
                 Ok(loc) => {
                     SubAssign::sub_assign(cont, &rhs.containers[loc]);
