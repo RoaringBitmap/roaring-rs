@@ -245,17 +245,52 @@ fn insert_range_bitmap(c: &mut Criterion) {
 }
 
 fn iter(c: &mut Criterion) {
-    c.bench_function("iter", |b| {
+    c.bench_function("iter bitmap 1..10_000", |b| {
         let bitmap: RoaringBitmap = (1..10_000).collect();
+        b.iter(|| {
+            bitmap.iter().for_each(|i| { black_box(i); });
+        });
+    });
+
+    c.bench_function("iter bitmap sparse", |b| {
+        let bitmap: RoaringBitmap = (0..1<<16).step_by(61).collect();
+        b.iter(|| {
+            bitmap.iter().for_each(|i| { black_box(i); });
+        });
+    });
+
+    c.bench_function("iter bitmap dense", |b| {
+        let bitmap: RoaringBitmap = (0..1<<16).step_by(2).collect();
+        b.iter(|| {
+            bitmap.iter().for_each(|i| { black_box(i); });
+        });
+    });
+
+    c.bench_function("iter bitmap minimal", |b| {
+        let bitmap: RoaringBitmap = (0..4096).collect();
+        b.iter(|| {
+            bitmap.iter().for_each(|i| { black_box(i); });
+        });
+    });
+
+    c.bench_function("iter bitmap full", |b| {
+        let bitmap: RoaringBitmap = (0..1<<16).collect();
+        b.iter(|| {
+            bitmap.iter().for_each(|i| { black_box(i); });
+        });
+    });
+
+    c.bench_function("iter parsed", |b| {
+        let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
+        let parsed_numbers = parse_dir_files(files).unwrap();
+
+        let bitmaps: Vec<_> = parsed_numbers
+            .into_iter()
+            .map(|(_, r)| r.map(|iter| RoaringBitmap::from_sorted_iter(iter).unwrap()).unwrap())
+            .collect();
 
         b.iter(|| {
-            let mut sum: u32 = 0;
-
-            for (_, element) in bitmap.iter().enumerate() {
-                sum += element;
-            }
-
-            assert_eq!(sum, 49_995_000);
+            bitmaps.iter().flat_map(|bitmap| bitmap.iter()).for_each(|i| { black_box(i); });
         });
     });
 }
