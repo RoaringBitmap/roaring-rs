@@ -1,7 +1,11 @@
 extern crate roaring;
-use roaring::RoaringBitmap;
 
 use std::iter::FromIterator;
+use std::ops::Range;
+
+use quickcheck_macros::quickcheck;
+
+use roaring::RoaringBitmap;
 
 #[test]
 fn array() {
@@ -47,4 +51,17 @@ fn bitmaps() {
 
     assert_eq!(clone, original);
     assert_eq!(clone2, original);
+}
+
+#[quickcheck]
+fn qc_iter(values: Vec<u32>) {
+    let expected = {
+        let mut vec = values.clone();
+        vec.sort();
+        vec.dedup();
+        vec
+    };
+
+    let b = RoaringBitmap::from_iter(values.into_iter());
+    assert_eq!(b.iter().collect::<Vec<u32>>(), expected);
 }
