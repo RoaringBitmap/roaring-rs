@@ -711,14 +711,14 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
             if self.value == 0 {
                 self.key += 1;
                 if self.key >= BITMAP_LENGTH {
-                    return None
+                    return None;
                 }
                 self.value = unsafe { *self.bits.borrow().get_unchecked(self.key) };
                 continue;
             }
             let lsb = self.value.trailing_zeros() as usize;
             self.value &= u64::MAX << lsb << 1;
-            return Some((64 * self.key + lsb) as u16)
+            return Some((64 * self.key + lsb) as u16);
         }
     }
 
