@@ -2,17 +2,17 @@
 name = "roaring"
 version = "0.8.1"
 authors = ["Wim Looman <wim@nemo157.com>", "Kerollmops <kero@meilisearch.com>"]
-description = "https://roaringbitmap.org: A better compressed bitset - pure Rust implementation "
+description = "https://roaringbitmap.org: A better compressed bitset - pure Rust implementation"
 
 documentation = "https://docs.rs/roaring"
-repository = "https://github.com/Roaringbitmap/roaring-rs"
+repository = "https://github.com/RoaringBitmap/roaring-rs"
 
 readme = "README.md"
 keywords = ["roaring", "data-structure", "bitmap"]
 categories = ["data-structures"]
 edition = "2018"
 
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 bytemuck = "1.7.2"
