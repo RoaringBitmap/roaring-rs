@@ -5,11 +5,13 @@ mod util;
 
 // Order of these modules matters as it determines the `impl` blocks order in
 // the docs
+mod bitmap_8k;
 mod cmp;
 mod inherent;
 mod iter;
 mod ops;
 mod serialization;
+mod sorted_u16_vec;
 
 use self::cmp::Pairs;
 pub use self::iter::IntoIter;

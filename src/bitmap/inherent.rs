@@ -169,7 +169,7 @@ impl RoaringBitmap {
         match self.containers.binary_search_by_key(&key, |c| c.key) {
             Ok(loc) => {
                 if self.containers[loc].remove(index) {
-                    if self.containers[loc].len == 0 {
+                    if self.containers[loc].len() == 0 {
                         self.containers.remove(loc);
                     }
                     true
@@ -214,7 +214,7 @@ impl RoaringBitmap {
                 let a = if key == start_container_key { start_index } else { 0 };
                 let b = if key == end_container_key { end_index } else { u16::MAX };
                 removed += self.containers[index].remove_range(a..=b);
-                if self.containers[index].len == 0 {
+                if self.containers[index].len() == 0 {
                     self.containers.remove(index);
                     continue;
                 }
@@ -297,7 +297,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.len(), 2);
     /// ```
     pub fn len(&self) -> u64 {
-        self.containers.iter().map(|container| container.len).sum()
+        self.containers.iter().map(|container| container.len()).sum()
     }
 
     /// Returns the minimum value in the set (if the set is non-empty).
@@ -447,7 +447,7 @@ mod tests {
         let inserted = b.insert_range(u16::MAX as u32 + 1..=u16::MAX as u32 + 1);
         assert_eq!(inserted, 1);
 
-        assert_eq!(b.containers[0].len, 1);
+        assert_eq!(b.containers[0].len(), 1);
         assert_eq!(b.containers.len(), 1);
 
         let removed = b.remove_range(u16::MAX as u32 + 1..=u16::MAX as u32 + 1);

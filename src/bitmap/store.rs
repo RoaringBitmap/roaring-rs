@@ -1,5 +1,5 @@
-use std::borrow::Borrow;
-use std::cmp::Ordering::{Equal, Greater, Less};
+use crate::bitmap::bitmap_8k::{Bitmap8K, BitmapIter, BITMAP_LENGTH};
+use crate::bitmap::sorted_u16_vec::SortedU16Vec;
 use std::mem;
 use std::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
@@ -8,11 +8,10 @@ use std::{slice, vec};
 
 use self::Store::{Array, Bitmap};
 
-const BITMAP_LENGTH: usize = 1024;
-
+#[derive(Clone)]
 pub enum Store {
-    Array(Vec<u16>),
-    Bitmap(Box<[u64; BITMAP_LENGTH]>),
+    Array(SortedU16Vec),
+    Bitmap(Bitmap8K),
 }
 
 pub enum Iter<'a> {
@@ -22,27 +21,11 @@ pub enum Iter<'a> {
     BitmapOwned(BitmapIter<Box<[u64; BITMAP_LENGTH]>>),
 }
 
-pub struct BitmapIter<B: Borrow<[u64; BITMAP_LENGTH]>> {
-    key: usize,
-    bit: usize,
-    bits: B,
-}
-
 impl Store {
     pub fn insert(&mut self, index: u16) -> bool {
         match *self {
-            Array(ref mut vec) => {
-                vec.binary_search(&index).map_err(|loc| vec.insert(loc, index)).is_err()
-            }
-            Bitmap(ref mut bits) => {
-                let (key, bit) = (key(index), bit(index));
-                if bits[key] & (1 << bit) == 0 {
-                    bits[key] |= 1 << bit;
-                    true
-                } else {
-                    false
-                }
-            }
+            Array(ref mut vec) => vec.insert(index),
+            Bitmap(ref mut bits) => bits.insert(index),
         }
     }
 
@@ -52,69 +35,9 @@ impl Store {
             return 0;
         }
 
-        let start = *range.start();
-        let end = *range.end();
-
         match *self {
-            Array(ref mut vec) => {
-                // Figure out the starting/ending position in the vec.
-                let pos_start = vec.binary_search(&start).unwrap_or_else(|x| x);
-                let pos_end = vec
-                    .binary_search_by(|p| {
-                        // binary search the right most position when equals
-                        match p.cmp(&end) {
-                            Greater => Greater,
-                            _ => Less,
-                        }
-                    })
-                    .unwrap_or_else(|x| x);
-
-                // Overwrite the range in the middle - there's no need to take
-                // into account any existing elements between start and end, as
-                // they're all being added to the set.
-                let dropped = vec.splice(pos_start..pos_end, start..=end);
-
-                end as u64 - start as u64 + 1 - dropped.len() as u64
-            }
-            Bitmap(ref mut bits) => {
-                let (start_key, start_bit) = (key(start), bit(start));
-                let (end_key, end_bit) = (key(end), bit(end));
-
-                // MSB > start_bit > end_bit > LSB
-                if start_key == end_key {
-                    // Set the end_bit -> LSB to 1
-                    let mut mask = if end_bit == 63 { u64::MAX } else { (1 << (end_bit + 1)) - 1 };
-                    // Set MSB -> start_bit to 1
-                    mask &= !((1 << start_bit) - 1);
-
-                    let existed = (bits[start_key] & mask).count_ones();
-                    bits[start_key] |= mask;
-
-                    return u64::from(end - start + 1) - u64::from(existed);
-                }
-
-                // Mask off the left-most bits (MSB -> start_bit)
-                let mask = !((1 << start_bit) - 1);
-
-                // Keep track of the number of bits that were already set to
-                // return how many new bits were set later
-                let mut existed = (bits[start_key] & mask).count_ones();
-
-                bits[start_key] |= mask;
-
-                // Set the full blocks, tracking the number of set bits
-                for i in (start_key + 1)..end_key {
-                    existed += bits[i].count_ones();
-                    bits[i] = u64::MAX;
-                }
-
-                // Set the end bits in the last chunk (MSB -> end_bit)
-                let mask = if end_bit == 63 { u64::MAX } else { (1 << (end_bit + 1)) - 1 };
-                existed += (bits[end_key] & mask).count_ones();
-                bits[end_key] |= mask;
-
-                end as u64 - start as u64 + 1 - existed as u64
-            }
+            Array(ref mut vec) => vec.insert_range(range),
+            Bitmap(ref mut bits) => bits.insert_range(range),
         }
     }
 
@@ -122,32 +45,16 @@ impl Store {
     ///
     /// Returns whether `index` was effectively pushed.
     pub fn push(&mut self, index: u16) -> bool {
-        if self.max().map_or(true, |max| max < index) {
-            match self {
-                Array(vec) => vec.push(index),
-                Bitmap(bits) => {
-                    let (key, bit) = (key(index), bit(index));
-                    bits[key] |= 1 << bit;
-                }
-            }
-            true
-        } else {
-            false
+        match self {
+            Array(vec) => vec.push(index),
+            Bitmap(bits) => bits.push(index),
         }
     }
 
     pub fn remove(&mut self, index: u16) -> bool {
         match *self {
-            Array(ref mut vec) => vec.binary_search(&index).map(|loc| vec.remove(loc)).is_ok(),
-            Bitmap(ref mut bits) => {
-                let (key, bit) = (key(index), bit(index));
-                if bits[key] & (1 << bit) != 0 {
-                    bits[key] &= !(1 << bit);
-                    true
-                } else {
-                    false
-                }
-            }
+            Array(ref mut vec) => vec.remove(index),
+            Bitmap(ref mut bits) => bits.remove(index),
         }
     }
 
@@ -156,173 +63,56 @@ impl Store {
             return 0;
         }
 
-        let start = *range.start();
-        let end = *range.end();
-
         match *self {
-            Array(ref mut vec) => {
-                // Figure out the starting/ending position in the vec.
-                let pos_start = vec.binary_search(&start).unwrap_or_else(|x| x);
-                let pos_end = vec
-                    .binary_search_by(|p| {
-                        // binary search the right most position when equals
-                        match p.cmp(&end) {
-                            Greater => Greater,
-                            _ => Less,
-                        }
-                    })
-                    .unwrap_or_else(|x| x);
-                vec.drain(pos_start..pos_end);
-                (pos_end - pos_start) as u64
-            }
-            Bitmap(ref mut bits) => {
-                let (start_key, start_bit) = (key(start), bit(start));
-                let (end_key, end_bit) = (key(end), bit(end));
-
-                if start_key == end_key {
-                    let mask = (u64::MAX << start_bit) & (u64::MAX >> (63 - end_bit));
-                    let removed = (bits[start_key] & mask).count_ones();
-                    bits[start_key] &= !mask;
-                    return u64::from(removed);
-                }
-
-                let mut removed = 0;
-                // start key bits
-                removed += (bits[start_key] & (u64::MAX << start_bit)).count_ones();
-                bits[start_key] &= !(u64::MAX << start_bit);
-                // counts bits in between
-                for word in &bits[start_key + 1..end_key] {
-                    removed += word.count_ones();
-                    // When popcnt is available zeroing in this loop is faster,
-                    // but we opt to perform reasonably on most cpus by zeroing after.
-                    // By doing that the compiler uses simd to count ones.
-                }
-                // do zeroing outside the loop
-                for word in &mut bits[start_key + 1..end_key] {
-                    *word = 0;
-                }
-                // end key bits
-                removed += (bits[end_key] & (u64::MAX >> (63 - end_bit))).count_ones();
-                bits[end_key] &= !(u64::MAX >> (63 - end_bit));
-                u64::from(removed)
-            }
+            Array(ref mut vec) => vec.remove_range(range),
+            Bitmap(ref mut bits) => bits.remove_range(range),
         }
     }
 
     pub fn contains(&self, index: u16) -> bool {
         match *self {
-            Array(ref vec) => vec.binary_search(&index).is_ok(),
-            Bitmap(ref bits) => bits[key(index)] & (1 << bit(index)) != 0,
+            Array(ref vec) => vec.contains(index),
+            Bitmap(ref bits) => bits.contains(index),
         }
     }
 
-    pub fn is_disjoint<'a>(&'a self, other: &'a Self) -> bool {
+    pub fn is_disjoint(&self, other: &Self) -> bool {
         match (self, other) {
-            (&Array(ref vec1), &Array(ref vec2)) => {
-                let (mut i1, mut i2) = (vec1.iter(), vec2.iter());
-                let (mut value1, mut value2) = (i1.next(), i2.next());
-                loop {
-                    match value1.and_then(|v1| value2.map(|v2| v1.cmp(v2))) {
-                        None => return true,
-                        Some(Equal) => return false,
-                        Some(Less) => value1 = i1.next(),
-                        Some(Greater) => value2 = i2.next(),
-                    }
-                }
-            }
-            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => {
-                bits1.iter().zip(bits2.iter()).all(|(&i1, &i2)| (i1 & i2) == 0)
-            }
-            (&Array(ref vec), store @ &Bitmap(..)) | (store @ &Bitmap(..), &Array(ref vec)) => {
-                vec.iter().all(|&i| !store.contains(i))
+            (&Array(ref vec1), &Array(ref vec2)) => vec1.is_disjoint(vec2),
+            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => bits1.is_disjoint(bits2),
+            (&Array(ref vec), &Bitmap(ref bits)) | (&Bitmap(ref bits), &Array(ref vec)) => {
+                vec.iter().all(|&i| !bits.contains(i))
             }
         }
     }
 
     pub fn is_subset(&self, other: &Self) -> bool {
         match (self, other) {
-            (&Array(ref vec1), &Array(ref vec2)) => {
-                let (mut i1, mut i2) = (vec1.iter(), vec2.iter());
-                let (mut value1, mut value2) = (i1.next(), i2.next());
-                loop {
-                    match (value1, value2) {
-                        (None, _) => return true,
-                        (Some(..), None) => return false,
-                        (Some(v1), Some(v2)) => match v1.cmp(v2) {
-                            Equal => {
-                                value1 = i1.next();
-                                value2 = i2.next();
-                            }
-                            Less => return false,
-                            Greater => value2 = i2.next(),
-                        },
-                    }
-                }
-            }
-            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => {
-                bits1.iter().zip(bits2.iter()).all(|(&i1, &i2)| (i1 & i2) == i1)
-            }
-            (&Array(ref vec), store @ &Bitmap(..)) => vec.iter().all(|&i| store.contains(i)),
+            (&Array(ref vec1), &Array(ref vec2)) => vec1.is_subset(vec2),
+            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => bits1.is_subset(bits2),
+            (&Array(ref vec), &Bitmap(ref bits)) => vec.iter().all(|&i| bits.contains(i)),
             (&Bitmap(..), &Array(..)) => false,
-        }
-    }
-
-    pub fn to_array(&self) -> Self {
-        match *self {
-            Array(..) => panic!("Cannot convert array to array"),
-            Bitmap(ref bits) => {
-                let mut vec = Vec::new();
-                for (index, mut bit) in bits.iter().cloned().enumerate() {
-                    while bit != 0 {
-                        vec.push((u64::trailing_zeros(bit) + (64 * index as u32)) as u16);
-                        bit &= bit - 1;
-                    }
-                }
-                Array(vec)
-            }
-        }
-    }
-
-    pub fn to_bitmap(&self) -> Self {
-        match *self {
-            Array(ref vec) => {
-                let mut bits = Box::new([0; BITMAP_LENGTH]);
-                for &index in vec {
-                    bits[key(index)] |= 1 << bit(index);
-                }
-                Bitmap(bits)
-            }
-            Bitmap(..) => panic!("Cannot convert bitmap to bitmap"),
         }
     }
 
     pub fn len(&self) -> u64 {
         match *self {
-            Array(ref vec) => vec.len() as u64,
-            Bitmap(ref bits) => bits.iter().map(|bit| u64::from(bit.count_ones())).sum(),
+            Array(ref vec) => vec.len(),
+            Bitmap(ref bits) => bits.len(),
         }
     }
 
     pub fn min(&self) -> Option<u16> {
         match *self {
-            Array(ref vec) => vec.first().copied(),
-            Bitmap(ref bits) => bits
-                .iter()
-                .enumerate()
-                .find(|&(_, &bit)| bit != 0)
-                .map(|(index, bit)| (index * 64 + (bit.trailing_zeros() as usize)) as u16),
+            Array(ref vec) => vec.min(),
+            Bitmap(ref bits) => bits.min(),
         }
     }
 
     pub fn max(&self) -> Option<u16> {
         match *self {
-            Array(ref vec) => vec.last().copied(),
-            Bitmap(ref bits) => bits
-                .iter()
-                .enumerate()
-                .rev()
-                .find(|&(_, &bit)| bit != 0)
-                .map(|(index, bit)| (index * 64 + (63 - bit.leading_zeros() as usize)) as u16),
+            Array(ref vec) => vec.max(),
+            Bitmap(ref bits) => bits.max(),
         }
     }
 }
@@ -332,18 +122,18 @@ impl BitOr<&Store> for &Store {
 
     fn bitor(self, rhs: &Store) -> Store {
         match (self, rhs) {
-            (&Array(ref vec1), &Array(ref vec2)) => Array(union_arrays(vec1, vec2)),
-            (&Bitmap(_), &Array(_)) => {
+            (&Array(ref vec1), &Array(ref vec2)) => Array(BitOr::bitor(vec1, vec2)),
+            (&Bitmap(..), &Array(..)) => {
                 let mut lhs = self.clone();
                 BitOrAssign::bitor_assign(&mut lhs, rhs);
                 lhs
             }
-            (&Bitmap(_), &Bitmap(_)) => {
+            (&Bitmap(..), &Bitmap(..)) => {
                 let mut lhs = self.clone();
                 BitOrAssign::bitor_assign(&mut lhs, rhs);
                 lhs
             }
-            (&Array(_), &Bitmap(_)) => {
+            (&Array(..), &Bitmap(..)) => {
                 let mut rhs = rhs.clone();
                 BitOrAssign::bitor_assign(&mut rhs, self);
                 rhs
@@ -356,17 +146,13 @@ impl BitOrAssign<Store> for Store {
     fn bitor_assign(&mut self, mut rhs: Store) {
         match (self, &mut rhs) {
             (&mut Array(ref mut vec1), &mut Array(ref vec2)) => {
-                *vec1 = union_arrays(vec1, vec2);
+                *vec1 = BitOr::bitor(&*vec1, vec2);
             }
-            (this @ &mut Bitmap(..), &mut Array(ref vec)) => {
-                vec.iter().for_each(|index| {
-                    this.insert(*index);
-                });
+            (&mut Bitmap(ref mut bits1), &mut Array(ref vec2)) => {
+                BitOrAssign::bitor_assign(bits1, vec2);
             }
             (&mut Bitmap(ref mut bits1), &mut Bitmap(ref bits2)) => {
-                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
-                    BitOrAssign::bitor_assign(index1, index2);
-                }
+                BitOrAssign::bitor_assign(bits1, bits2);
             }
             (this @ &mut Array(..), &mut Bitmap(..)) => {
                 mem::swap(this, &mut rhs);
@@ -381,21 +167,18 @@ impl BitOrAssign<&Store> for Store {
         match (self, rhs) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
                 let this = mem::take(vec1);
-                *vec1 = union_arrays(&this, vec2);
+                *vec1 = BitOr::bitor(&this, vec2);
             }
-            (this @ &mut Bitmap(..), &Array(ref vec)) => {
-                vec.iter().for_each(|index| {
-                    this.insert(*index);
-                });
+            (&mut Bitmap(ref mut bits1), &Array(ref vec2)) => {
+                BitOrAssign::bitor_assign(bits1, vec2);
             }
             (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
-                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
-                    BitOrAssign::bitor_assign(index1, index2);
-                }
+                BitOrAssign::bitor_assign(bits1, bits2);
             }
-            (this @ &mut Array(..), &Bitmap(..)) => {
-                *this = this.to_bitmap();
-                BitOrAssign::bitor_assign(this, rhs);
+            (this @ &mut Array(..), &Bitmap(ref bits2)) => {
+                let mut lhs: Store = Bitmap(bits2.clone());
+                BitOrAssign::bitor_assign(&mut lhs, &*this);
+                *this = lhs;
             }
         }
     }
@@ -406,8 +189,8 @@ impl BitAnd<&Store> for &Store {
 
     fn bitand(self, rhs: &Store) -> Store {
         match (self, rhs) {
-            (&Array(ref vec1), &Array(ref vec2)) => Array(intersect_arrays(vec1, vec2)),
-            (&Bitmap(_), &Array(_)) => {
+            (&Array(ref vec1), &Array(ref vec2)) => Array(BitAnd::bitand(vec1, vec2)),
+            (&Bitmap(..), &Array(..)) => {
                 let mut rhs = rhs.clone();
                 BitAndAssign::bitand_assign(&mut rhs, self);
                 rhs
@@ -425,24 +208,17 @@ impl BitAndAssign<Store> for Store {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn bitand_assign(&mut self, mut rhs: Store) {
         match (self, &mut rhs) {
-            (&mut Array(ref mut lhs), &mut Array(ref mut rhs)) => {
-                if rhs.len() < lhs.len() {
-                    mem::swap(lhs, rhs);
+            (&mut Array(ref mut vec1), &mut Array(ref mut vec2)) => {
+                if vec2.len() < vec1.len() {
+                    mem::swap(vec1, vec2);
                 }
-
-                let mut i = 0;
-                lhs.retain(|x| {
-                    i += rhs.iter().skip(i).position(|y| y >= x).unwrap_or(rhs.len());
-                    rhs.get(i).map_or(false, |y| x == y)
-                });
+                BitAndAssign::bitand_assign(vec1, &*vec2);
             }
             (&mut Bitmap(ref mut bits1), &mut Bitmap(ref bits2)) => {
-                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
-                    BitAndAssign::bitand_assign(index1, index2);
-                }
+                BitAndAssign::bitand_assign(bits1, bits2);
             }
-            (&mut Array(ref mut vec), store @ &mut Bitmap(..)) => {
-                vec.retain(|x| store.contains(*x));
+            (&mut Array(ref mut vec1), &mut Bitmap(ref bits2)) => {
+                BitAndAssign::bitand_assign(vec1, bits2);
             }
             (this @ &mut Bitmap(..), &mut Array(..)) => {
                 mem::swap(this, &mut rhs);
@@ -457,27 +233,20 @@ impl BitAndAssign<&Store> for Store {
     fn bitand_assign(&mut self, rhs: &Store) {
         match (self, rhs) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
-                let (mut lhs, rhs) = if vec1.len() <= vec2.len() {
-                    (mem::take(vec1), vec2.as_slice())
+                let (mut lhs, rhs) = if vec2.len() < vec1.len() {
+                    (vec2.clone(), &*vec1)
                 } else {
-                    (vec2.clone(), vec1.as_slice())
+                    (mem::take(vec1), vec2)
                 };
 
-                let mut i = 0;
-                lhs.retain(|x| {
-                    i += rhs.iter().skip(i).position(|y| y >= x).unwrap_or(rhs.len());
-                    rhs.get(i).map_or(false, |y| x == y)
-                });
-
+                BitAndAssign::bitand_assign(&mut lhs, rhs);
                 *vec1 = lhs;
             }
             (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
-                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
-                    BitAndAssign::bitand_assign(index1, index2);
-                }
+                BitAndAssign::bitand_assign(bits1, bits2);
             }
-            (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
-                vec.retain(|x| store.contains(*x));
+            (&mut Array(ref mut vec1), &Bitmap(ref bits2)) => {
+                BitAndAssign::bitand_assign(vec1, bits2);
             }
             (this @ &mut Bitmap(..), &Array(..)) => {
                 let mut new = rhs.clone();
@@ -493,7 +262,7 @@ impl Sub<&Store> for &Store {
 
     fn sub(self, rhs: &Store) -> Store {
         match (self, rhs) {
-            (&Array(ref vec1), &Array(ref vec2)) => Array(difference_arrays(vec1, vec2)),
+            (&Array(ref vec1), &Array(ref vec2)) => Array(Sub::sub(vec1, vec2)),
             _ => {
                 let mut lhs = self.clone();
                 SubAssign::sub_assign(&mut lhs, rhs);
@@ -506,25 +275,17 @@ impl Sub<&Store> for &Store {
 impl SubAssign<&Store> for Store {
     fn sub_assign(&mut self, rhs: &Store) {
         match (self, rhs) {
-            (&mut Array(ref mut lhs), &Array(ref rhs)) => {
-                let mut i = 0;
-                lhs.retain(|x| {
-                    i += rhs.iter().skip(i).position(|y| y >= x).unwrap_or(rhs.len());
-                    rhs.get(i).map_or(true, |y| x != y)
-                });
+            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
+                SubAssign::sub_assign(vec1, vec2);
             }
-            (ref mut this @ &mut Bitmap(..), &Array(ref vec2)) => {
-                vec2.iter().for_each(|index| {
-                    this.remove(*index);
-                });
+            (&mut Bitmap(ref mut bits1), &Array(ref vec2)) => {
+                SubAssign::sub_assign(bits1, vec2);
             }
             (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
-                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
-                    *index1 &= !*index2;
-                }
+                SubAssign::sub_assign(bits1, bits2);
             }
-            (&mut Array(ref mut vec), store @ &Bitmap(..)) => {
-                vec.retain(|x| !store.contains(*x));
+            (&mut Array(ref mut vec1), &Bitmap(ref bits2)) => {
+                SubAssign::sub_assign(vec1, bits2);
             }
         }
     }
@@ -535,8 +296,8 @@ impl BitXor<&Store> for &Store {
 
     fn bitxor(self, rhs: &Store) -> Store {
         match (self, rhs) {
-            (&Array(ref vec1), &Array(ref vec2)) => Array(symmetric_difference_arrays(vec1, vec2)),
-            (&Array(_), &Bitmap(_)) => {
+            (&Array(ref vec1), &Array(ref vec2)) => Array(BitXor::bitxor(vec1, vec2)),
+            (&Array(..), &Bitmap(..)) => {
                 let mut lhs = rhs.clone();
                 BitXorAssign::bitxor_assign(&mut lhs, self);
                 lhs
@@ -555,44 +316,13 @@ impl BitXorAssign<Store> for Store {
         // TODO improve this function
         match (self, &mut rhs) {
             (&mut Array(ref mut vec1), &mut Array(ref mut vec2)) => {
-                let mut i1 = 0usize;
-                let mut iter2 = vec2.iter();
-                let mut current2 = iter2.next();
-                while i1 < vec1.len() {
-                    match current2.map(|c2| vec1[i1].cmp(c2)) {
-                        None => break,
-                        Some(Less) => {
-                            i1 += 1;
-                        }
-                        Some(Greater) => {
-                            vec1.insert(i1, *current2.unwrap());
-                            i1 += 1;
-                            current2 = iter2.next();
-                        }
-                        Some(Equal) => {
-                            vec1.remove(i1);
-                            current2 = iter2.next();
-                        }
-                    }
-                }
-                if let Some(current) = current2 {
-                    vec1.push(*current);
-                    vec1.extend(iter2.cloned());
-                }
+                BitXorAssign::bitxor_assign(vec1, vec2);
             }
-            (ref mut this @ &mut Bitmap(..), &mut Array(ref mut vec2)) => {
-                for index in vec2 {
-                    if this.contains(*index) {
-                        this.remove(*index);
-                    } else {
-                        this.insert(*index);
-                    }
-                }
+            (&mut Bitmap(ref mut bits1), &mut Array(ref mut vec2)) => {
+                BitXorAssign::bitxor_assign(bits1, &*vec2);
             }
-            (&mut Bitmap(ref mut bits1), &mut Bitmap(ref mut bits2)) => {
-                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
-                    BitXorAssign::bitxor_assign(index1, index2);
-                }
+            (&mut Bitmap(ref mut bits1), &mut Bitmap(ref bits2)) => {
+                BitXorAssign::bitxor_assign(bits1, bits2);
             }
             (this @ &mut Array(..), &mut Bitmap(..)) => {
                 mem::swap(this, &mut rhs);
@@ -606,44 +336,13 @@ impl BitXorAssign<&Store> for Store {
     fn bitxor_assign(&mut self, rhs: &Store) {
         match (self, rhs) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
-                let mut i1 = 0usize;
-                let mut iter2 = vec2.iter();
-                let mut current2 = iter2.next();
-                while i1 < vec1.len() {
-                    match current2.map(|c2| vec1[i1].cmp(c2)) {
-                        None => break,
-                        Some(Less) => {
-                            i1 += 1;
-                        }
-                        Some(Greater) => {
-                            vec1.insert(i1, *current2.unwrap());
-                            i1 += 1;
-                            current2 = iter2.next();
-                        }
-                        Some(Equal) => {
-                            vec1.remove(i1);
-                            current2 = iter2.next();
-                        }
-                    }
-                }
-                if let Some(current) = current2 {
-                    vec1.push(*current);
-                    vec1.extend(iter2.cloned());
-                }
+                BitXorAssign::bitxor_assign(vec1, vec2);
             }
-            (ref mut this @ &mut Bitmap(..), &Array(ref vec2)) => {
-                for index in vec2.iter() {
-                    if this.contains(*index) {
-                        this.remove(*index);
-                    } else {
-                        this.insert(*index);
-                    }
-                }
+            (&mut Bitmap(ref mut bits1), &Array(ref vec2)) => {
+                BitXorAssign::bitxor_assign(bits1, vec2);
             }
             (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
-                for (index1, index2) in bits1.iter_mut().zip(bits2.iter()) {
-                    BitXorAssign::bitxor_assign(index1, index2);
-                }
+                BitXorAssign::bitxor_assign(bits1, bits2);
             }
             (this @ &mut Array(..), &Bitmap(..)) => {
                 let mut new = rhs.clone();
@@ -660,7 +359,7 @@ impl<'a> IntoIterator for &'a Store {
     fn into_iter(self) -> Iter<'a> {
         match *self {
             Array(ref vec) => Iter::Array(vec.iter()),
-            Bitmap(ref bits) => Iter::BitmapBorrowed(BitmapIter::new(&**bits)),
+            Bitmap(ref bits) => Iter::BitmapBorrowed(bits.iter()),
         }
     }
 }
@@ -671,7 +370,7 @@ impl IntoIterator for Store {
     fn into_iter(self) -> Iter<'static> {
         match self {
             Array(vec) => Iter::Vec(vec.into_iter()),
-            Bitmap(bits) => Iter::BitmapOwned(BitmapIter::new(bits)),
+            Bitmap(bits) => Iter::BitmapOwned(bits.into_iter()),
         }
     }
 }
@@ -681,57 +380,11 @@ impl PartialEq for Store {
         match (self, other) {
             (&Array(ref vec1), &Array(ref vec2)) => vec1 == vec2,
             (&Bitmap(ref bits1), &Bitmap(ref bits2)) => {
-                bits1.iter().zip(bits2.iter()).all(|(i1, i2)| i1 == i2)
+                bits1.len() == bits2.len()
+                    && bits1.iter().zip(bits2.iter()).all(|(i1, i2)| i1 == i2)
             }
             _ => false,
         }
-    }
-}
-
-impl Clone for Store {
-    fn clone(&self) -> Self {
-        match *self {
-            Array(ref vec) => Array(vec.clone()),
-            Bitmap(ref bits) => Bitmap(Box::new(**bits)),
-        }
-    }
-}
-
-impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
-    fn new(bits: B) -> BitmapIter<B> {
-        BitmapIter { key: 0, bit: 0, bits }
-    }
-
-    fn move_next(&mut self) {
-        self.bit += 1;
-        if self.bit == 64 {
-            self.bit = 0;
-            self.key += 1;
-        }
-    }
-}
-
-impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
-    type Item = u16;
-
-    fn next(&mut self) -> Option<u16> {
-        loop {
-            if self.key == BITMAP_LENGTH {
-                return None;
-            } else if (unsafe { self.bits.borrow().get_unchecked(self.key) } & (1u64 << self.bit))
-                != 0
-            {
-                let result = Some((self.key * 64 + self.bit) as u16);
-                self.move_next();
-                return result;
-            } else {
-                self.move_next();
-            }
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        panic!("Should never be called (roaring::Iter caches the size_hint itself)")
     }
 }
 
@@ -749,282 +402,5 @@ impl<'a> Iterator for Iter<'a> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         panic!("Should never be called (roaring::Iter caches the size_hint itself)")
-    }
-}
-
-#[inline]
-fn union_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
-    let len = (arr1.len() + arr2.len()).min(4096);
-    let mut out = Vec::with_capacity(len);
-
-    // Traverse both arrays
-    let mut i = 0;
-    let mut j = 0;
-    while i < arr1.len() && j < arr2.len() {
-        let a = unsafe { arr1.get_unchecked(i) };
-        let b = unsafe { arr2.get_unchecked(j) };
-        match a.cmp(b) {
-            Less => {
-                out.push(*a);
-                i += 1;
-            }
-            Greater => {
-                out.push(*b);
-                j += 1;
-            }
-            Equal => {
-                out.push(*a);
-                i += 1;
-                j += 1;
-            }
-        }
-    }
-
-    // Store remaining elements of the arrays
-    out.extend_from_slice(&arr1[i..]);
-    out.extend_from_slice(&arr2[j..]);
-
-    out
-}
-
-#[inline]
-fn intersect_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
-    let mut out = Vec::new();
-
-    // Traverse both arrays
-    let mut i = 0;
-    let mut j = 0;
-    while i < arr1.len() && j < arr2.len() {
-        let a = unsafe { arr1.get_unchecked(i) };
-        let b = unsafe { arr2.get_unchecked(j) };
-        match a.cmp(b) {
-            Less => i += 1,
-            Greater => j += 1,
-            Equal => {
-                out.push(*a);
-                i += 1;
-                j += 1;
-            }
-        }
-    }
-
-    out
-}
-
-#[inline]
-fn difference_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
-    let mut out = Vec::new();
-
-    // Traverse both arrays
-    let mut i = 0;
-    let mut j = 0;
-    while i < arr1.len() && j < arr2.len() {
-        let a = unsafe { arr1.get_unchecked(i) };
-        let b = unsafe { arr2.get_unchecked(j) };
-        match a.cmp(b) {
-            Less => {
-                out.push(*a);
-                i += 1;
-            }
-            Greater => j += 1,
-            Equal => {
-                i += 1;
-                j += 1;
-            }
-        }
-    }
-
-    // Store remaining elements of the left array
-    out.extend_from_slice(&arr1[i..]);
-
-    out
-}
-
-#[inline]
-fn symmetric_difference_arrays(arr1: &[u16], arr2: &[u16]) -> Vec<u16> {
-    let mut out = Vec::new();
-
-    // Traverse both arrays
-    let mut i = 0;
-    let mut j = 0;
-    while i < arr1.len() && j < arr2.len() {
-        let a = unsafe { arr1.get_unchecked(i) };
-        let b = unsafe { arr2.get_unchecked(j) };
-        match a.cmp(b) {
-            Less => {
-                out.push(*a);
-                i += 1;
-            }
-            Greater => {
-                out.push(*b);
-                j += 1;
-            }
-            Equal => {
-                i += 1;
-                j += 1;
-            }
-        }
-    }
-
-    // Store remaining elements of the arrays
-    out.extend_from_slice(&arr1[i..]);
-    out.extend_from_slice(&arr2[j..]);
-
-    out
-}
-
-#[inline]
-fn key(index: u16) -> usize {
-    index as usize / 64
-}
-
-#[inline]
-fn bit(index: u16) -> usize {
-    index as usize % 64
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn as_vec(s: Store) -> Vec<u16> {
-        if let Store::Array(v) = s {
-            return v;
-        }
-        as_vec(s.to_array())
-    }
-
-    #[test]
-    #[allow(clippy::reversed_empty_ranges)]
-    fn test_array_insert_invalid_range() {
-        let mut store = Store::Array(vec![1, 2, 8, 9]);
-
-        // Insert a range with start > end.
-        let new = store.insert_range(6..=1);
-        assert_eq!(new, 0);
-
-        assert_eq!(as_vec(store), vec![1, 2, 8, 9]);
-    }
-
-    #[test]
-    fn test_array_insert_range() {
-        let mut store = Store::Array(vec![1, 2, 8, 9]);
-
-        let new = store.insert_range(4..=5);
-        assert_eq!(new, 2);
-
-        assert_eq!(as_vec(store), vec![1, 2, 4, 5, 8, 9]);
-    }
-
-    #[test]
-    fn test_array_insert_range_left_overlap() {
-        let mut store = Store::Array(vec![1, 2, 8, 9]);
-
-        let new = store.insert_range(2..=5);
-        assert_eq!(new, 3);
-
-        assert_eq!(as_vec(store), vec![1, 2, 3, 4, 5, 8, 9]);
-    }
-
-    #[test]
-    fn test_array_insert_range_right_overlap() {
-        let mut store = Store::Array(vec![1, 2, 8, 9]);
-
-        let new = store.insert_range(4..=8);
-        assert_eq!(new, 4);
-
-        assert_eq!(as_vec(store), vec![1, 2, 4, 5, 6, 7, 8, 9]);
-    }
-
-    #[test]
-    fn test_array_insert_range_full_overlap() {
-        let mut store = Store::Array(vec![1, 2, 8, 9]);
-
-        let new = store.insert_range(1..=9);
-        assert_eq!(new, 5);
-
-        assert_eq!(as_vec(store), vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    }
-
-    #[test]
-    #[allow(clippy::reversed_empty_ranges)]
-    fn test_bitmap_insert_invalid_range() {
-        let store = Store::Array(vec![1, 2, 8, 9]);
-        let mut store = store.to_bitmap();
-
-        // Insert a range with start > end.
-        let new = store.insert_range(6..=1);
-        assert_eq!(new, 0);
-
-        assert_eq!(as_vec(store), vec![1, 2, 8, 9]);
-    }
-
-    #[test]
-    fn test_bitmap_insert_same_key_overlap() {
-        let store = Store::Array(vec![1, 2, 3, 62, 63]);
-        let mut store = store.to_bitmap();
-
-        let new = store.insert_range(1..=62);
-        assert_eq!(new, 58);
-
-        assert_eq!(as_vec(store), (1..64).collect::<Vec<_>>());
-    }
-
-    #[test]
-    fn test_bitmap_insert_range() {
-        let store = Store::Array(vec![1, 2, 130]);
-        let mut store = store.to_bitmap();
-
-        let new = store.insert_range(4..=128);
-        assert_eq!(new, 125);
-
-        let mut want = vec![1, 2];
-        want.extend(4..129);
-        want.extend(&[130]);
-
-        assert_eq!(as_vec(store), want);
-    }
-
-    #[test]
-    fn test_bitmap_insert_range_left_overlap() {
-        let store = Store::Array(vec![1, 2, 130]);
-        let mut store = store.to_bitmap();
-
-        let new = store.insert_range(1..=128);
-        assert_eq!(new, 126);
-
-        let mut want = Vec::new();
-        want.extend(1..129);
-        want.extend(&[130]);
-
-        assert_eq!(as_vec(store), want);
-    }
-
-    #[test]
-    fn test_bitmap_insert_range_right_overlap() {
-        let store = Store::Array(vec![1, 2, 130]);
-        let mut store = store.to_bitmap();
-
-        let new = store.insert_range(4..=132);
-        assert_eq!(new, 128);
-
-        let mut want = vec![1, 2];
-        want.extend(4..133);
-
-        assert_eq!(as_vec(store), want);
-    }
-
-    #[test]
-    fn test_bitmap_insert_range_full_overlap() {
-        let store = Store::Array(vec![1, 2, 130]);
-        let mut store = store.to_bitmap();
-
-        let new = store.insert_range(1..=134);
-        assert_eq!(new, 131);
-
-        let mut want = Vec::new();
-        want.extend(1..135);
-
-        assert_eq!(as_vec(store), want);
     }
 }
