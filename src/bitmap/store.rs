@@ -717,7 +717,7 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
                 continue;
             }
             let lsb = self.value.trailing_zeros() as usize;
-            self.value &= u64::MAX << lsb << 1;
+            self.value &= u64::MAX << 1 << lsb;
             return Some((64 * self.key + lsb) as u16);
         }
     }
