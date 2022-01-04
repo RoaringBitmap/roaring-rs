@@ -1,7 +1,6 @@
 extern crate roaring;
 
 use std::iter::FromIterator;
-use std::ops::Range;
 
 use quickcheck_macros::quickcheck;
 
