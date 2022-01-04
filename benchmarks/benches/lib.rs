@@ -248,35 +248,45 @@ fn iter(c: &mut Criterion) {
     c.bench_function("iter bitmap 1..10_000", |b| {
         let bitmap: RoaringBitmap = (1..10_000).collect();
         b.iter(|| {
-            bitmap.iter().for_each(|i| { black_box(i); });
+            bitmap.iter().for_each(|i| {
+                black_box(i);
+            });
         });
     });
 
     c.bench_function("iter bitmap sparse", |b| {
-        let bitmap: RoaringBitmap = (0..1<<16).step_by(61).collect();
+        let bitmap: RoaringBitmap = (0..1 << 16).step_by(61).collect();
         b.iter(|| {
-            bitmap.iter().for_each(|i| { black_box(i); });
+            bitmap.iter().for_each(|i| {
+                black_box(i);
+            });
         });
     });
 
     c.bench_function("iter bitmap dense", |b| {
-        let bitmap: RoaringBitmap = (0..1<<16).step_by(2).collect();
+        let bitmap: RoaringBitmap = (0..1 << 16).step_by(2).collect();
         b.iter(|| {
-            bitmap.iter().for_each(|i| { black_box(i); });
+            bitmap.iter().for_each(|i| {
+                black_box(i);
+            });
         });
     });
 
     c.bench_function("iter bitmap minimal", |b| {
         let bitmap: RoaringBitmap = (0..4096).collect();
         b.iter(|| {
-            bitmap.iter().for_each(|i| { black_box(i); });
+            bitmap.iter().for_each(|i| {
+                black_box(i);
+            });
         });
     });
 
     c.bench_function("iter bitmap full", |b| {
-        let bitmap: RoaringBitmap = (0..1<<16).collect();
+        let bitmap: RoaringBitmap = (0..1 << 16).collect();
         b.iter(|| {
-            bitmap.iter().for_each(|i| { black_box(i); });
+            bitmap.iter().for_each(|i| {
+                black_box(i);
+            });
         });
     });
 
@@ -290,7 +300,9 @@ fn iter(c: &mut Criterion) {
             .collect();
 
         b.iter(|| {
-            bitmaps.iter().flat_map(|bitmap| bitmap.iter()).for_each(|i| { black_box(i); });
+            bitmaps.iter().flat_map(|bitmap| bitmap.iter()).for_each(|i| {
+                black_box(i);
+            });
         });
     });
 }
