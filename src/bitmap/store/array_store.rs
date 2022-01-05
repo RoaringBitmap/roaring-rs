@@ -168,6 +168,13 @@ impl ArrayStore {
         self.vec.last().copied()
     }
 
+    pub fn rank(&self, index: u16) -> u64 {
+        match self.vec.binary_search(&index) {
+            Ok(i) => i as u64 + 1,
+            Err(i) => i as u64,
+        }
+    }
+
     pub fn iter(&self) -> std::slice::Iter<u16> {
         self.vec.iter()
     }

@@ -104,6 +104,10 @@ impl Container {
         self.store.max()
     }
 
+    pub fn rank(&self, index: u16) -> u64 {
+        self.store.rank(index)
+    }
+
     pub(crate) fn ensure_correct_store(&mut self) {
         match &self.store {
             Store::Bitmap(ref bits) => {

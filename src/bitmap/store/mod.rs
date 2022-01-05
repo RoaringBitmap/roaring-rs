@@ -138,6 +138,13 @@ impl Store {
             Bitmap(ref bits) => bits.max(),
         }
     }
+
+    pub fn rank(&self, index: u16) -> u64 {
+        match self {
+            Array(vec) => vec.rank(index),
+            Bitmap(bits) => bits.rank(index),
+        }
+    }
 }
 
 impl Default for Store {
