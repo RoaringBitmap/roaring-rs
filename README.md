@@ -11,10 +11,17 @@ use new features at any time.
 
 ## Developing
 
-This project uses [Clippy][], [rustfmt][], and denies warnings in CI builds. To ensure your
-changes will be accepted please check them with `cargo clippy` (available via
-`cargo install clippy` on nightly Rust) before submitting a pull request (along
-with `cargo test` as usual).
+This project uses [Clippy][], [rustfmt][], and denies warnings in CI builds. Available via
+`rustup component add clippy rustfmt`.
+
+To ensure your changes will be accepted please check them with:
+```
+cargo fmt -- --check
+cargo fmt --manifest-path benchmarks/Cargo.toml -- --check
+cargo clippy --all-targets -- -D warnings
+```
+
+In addition, ensure all tests are passing with `cargo test`
 
 ### Benchmarking
 
