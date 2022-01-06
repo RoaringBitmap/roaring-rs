@@ -12,7 +12,7 @@ use new features at any time.
 ## Developing
 
 This project uses [Clippy][], [rustfmt][], and denies warnings in CI builds. Available via
-`rustup component add clippy` and `rustup component add rustfmt`.
+`rustup component add clippy rustfmt`.
 
 To ensure your changes will be accepted please check them with:
 ```
