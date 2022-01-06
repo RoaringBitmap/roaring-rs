@@ -356,7 +356,6 @@ impl BitXorAssign<&Self> for SortedU16Vec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bitmap::store::Store::Array;
 
     fn into_vec(s: Store) -> Vec<u16> {
         match s {
@@ -366,10 +365,10 @@ mod tests {
     }
 
     fn into_bitmap_store(s: Store) -> Store {
-        return match s {
+        match s {
             Store::Array(vec) => vec.to_bitmap_store(),
             Bitmap(..) => s,
-        };
+        }
     }
 
     #[test]
