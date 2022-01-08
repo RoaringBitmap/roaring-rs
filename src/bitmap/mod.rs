@@ -15,6 +15,7 @@ mod serialization;
 
 use self::cmp::Pairs;
 pub use self::iter::IntoIter;
+pub use self::iter::IntoRevIter;
 pub use self::iter::Iter;
 
 /// A compressed bitmap using the [Roaring bitmap compression scheme](https://roaringbitmap.org/).

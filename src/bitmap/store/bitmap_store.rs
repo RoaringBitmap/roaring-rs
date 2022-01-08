@@ -247,6 +247,10 @@ impl BitmapStore {
         BitmapIter::new(self.bits)
     }
 
+    pub fn into_rev_iter(self) -> BitmapRevIter<Box<[u64; BITMAP_LENGTH]>> {
+        BitmapRevIter::new(self.len, self.bits)
+    }
+
     pub fn as_array(&self) -> &[u64; BITMAP_LENGTH] {
         &self.bits
     }
@@ -319,6 +323,50 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
             self.value &= self.value - 1;
             return Some((64 * self.key + index) as u16);
         }
+    }
+}
+
+pub struct BitmapRevIter<B: Borrow<[u64; BITMAP_LENGTH]>> {
+    key: usize,
+    value: u64,
+    len: u64,
+    bits: B,
+}
+
+impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapRevIter<B> {
+    fn new(len: u64, bits: B) -> BitmapRevIter<B> {
+        BitmapRevIter { key: BITMAP_LENGTH - 1, value: bits.borrow()[BITMAP_LENGTH - 1], len, bits }
+    }
+}
+
+impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapRevIter<B> {
+    type Item = u16;
+
+    fn next(&mut self) -> Option<u16> {
+        loop {
+            if self.value == 0 {
+                if self.key == 0 {
+                    return None;
+                }
+                self.key -= 1;
+                self.value = unsafe { *self.bits.borrow().get_unchecked(self.key) };
+                continue;
+            }
+            let index_from_left = self.value.leading_zeros() as usize;
+            let index = 63 - index_from_left;
+            self.value &= !(1 << index);
+            return Some((64 * self.key + index) as u16);
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.len as usize, Some(self.len as usize))
+    }
+}
+
+impl<B: Borrow<[u64; BITMAP_LENGTH]>> ExactSizeIterator for BitmapRevIter<B> {
+    fn len(&self) -> usize {
+        self.len as usize
     }
 }
 

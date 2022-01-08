@@ -61,3 +61,17 @@ proptest! {
         assert!(values.into_iter().eq(bitmap.into_iter()));
     }
 }
+
+#[test]
+fn rev_iter() {
+    use roaring::RoaringBitmap;
+
+    let input: Vec<u32> = (1..3).chain(1_000_000..1_012_003).chain(2_000_001..2_000_003).collect();
+
+    let expected = input.clone().into_iter().rev().collect::<Vec<_>>();
+    let bitmap = input.into_iter().collect::<RoaringBitmap>();
+
+    let iter = bitmap.into_rev_iter().collect::<Vec<_>>();
+
+    assert_eq!(iter, expected);
+}
