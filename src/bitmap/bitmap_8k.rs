@@ -243,7 +243,7 @@ pub fn bit(index: u16) -> usize {
 }
 
 #[inline]
-fn op_bitmaps(bits1: &mut Bitmap8K, bits2: &Bitmap8K, op: fn(&mut u64, u64)) {
+fn op_bitmaps(bits1: &mut Bitmap8K, bits2: &Bitmap8K, op: impl Fn(&mut u64, u64)) {
     bits1.len = 0;
     for (index1, &index2) in bits1.bits.iter_mut().zip(bits2.bits.iter()) {
         op(index1, index2);
