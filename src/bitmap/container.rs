@@ -57,6 +57,14 @@ impl Container {
         }
     }
 
+    /// Push `index` at the end of the container.
+    /// It is up to the caller to have validated index > self.max()
+    pub(crate) fn push_unchecked(&mut self, index: u16) {
+        self.store.push_unchecked(index);
+        self.len += 1;
+        self.ensure_correct_store();
+    }
+
     pub fn remove(&mut self, index: u16) -> bool {
         if self.store.remove(index) {
             self.len -= 1;

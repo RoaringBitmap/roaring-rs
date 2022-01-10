@@ -136,6 +136,18 @@ impl Store {
         }
     }
 
+    /// Push `index` at the end of the store.
+    /// It is up to the caller to have validated index > self.max()
+    pub(crate) fn push_unchecked(&mut self, index: u16) {
+        match self {
+            Array(vec) => vec.push(index),
+            Bitmap(bits) => {
+                let (key, bit) = (key(index), bit(index));
+                bits[key] |= 1 << bit;
+            }
+        }
+    }
+
     pub fn remove(&mut self, index: u16) -> bool {
         match *self {
             Array(ref mut vec) => vec.binary_search(&index).map(|loc| vec.remove(loc)).is_ok(),

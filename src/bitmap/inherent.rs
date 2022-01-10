@@ -151,6 +151,21 @@ impl RoaringBitmap {
         }
     }
 
+    /// Pushes `value` in the bitmap only if it is greater than the current maximum value.
+    /// It is up to the caller to have validated index > self.max()
+    pub(crate) fn push_unchecked(&mut self, value: u32) {
+        let (key, index) = util::split(value);
+
+        match self.containers.last_mut() {
+            Some(container) if container.key == key => container.push_unchecked(index),
+            _otherwise => {
+                let mut container = Container::new(key);
+                container.push_unchecked(index);
+                self.containers.push(container);
+            }
+        }
+    }
+
     /// Removes a value from the set. Returns `true` if the value was present in the set.
     ///
     /// # Examples
