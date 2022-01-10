@@ -13,6 +13,10 @@ pub struct Bitmap8K {
 
 impl Bitmap8K {
     pub fn new(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> Bitmap8K {
+        if cfg!(debug_assertions) {
+            let expected_len = bits.iter().map(|v| v.count_ones() as u64).sum();
+            assert_eq!(len, expected_len, "len {} != expected {}", len, expected_len);
+        }
         Bitmap8K { len, bits }
     }
 

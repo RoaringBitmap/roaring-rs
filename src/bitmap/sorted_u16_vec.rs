@@ -15,6 +15,13 @@ impl SortedU16Vec {
     }
 
     pub fn from_vec(vec: Vec<u16>) -> SortedU16Vec {
+        if cfg!(debug_assertions) {
+            let mut clone = vec.clone();
+            clone.sort_unstable();
+            clone.dedup();
+            assert_eq!(vec.len(), clone.len(), "vec has duplicate values");
+            assert_eq!(vec, clone, "vec not sorted");
+        }
         SortedU16Vec { vec }
     }
 
