@@ -152,7 +152,7 @@ impl RoaringBitmap {
     }
 
     /// Pushes `value` in the bitmap only if it is greater than the current maximum value.
-    /// It is up to the caller to have validated index > self.max()
+    /// It is up to the caller to have validated value > self.max()
     pub(crate) fn push_unchecked(&mut self, value: u32) {
         let (key, index) = util::split(value);
 
