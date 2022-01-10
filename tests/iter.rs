@@ -1,7 +1,11 @@
 extern crate roaring;
-use roaring::RoaringBitmap;
 
+use std::collections::BTreeSet;
 use std::iter::FromIterator;
+
+use quickcheck_macros::quickcheck;
+
+use roaring::RoaringBitmap;
 
 #[test]
 fn array() {
@@ -47,4 +51,11 @@ fn bitmaps() {
 
     assert_eq!(clone, original);
     assert_eq!(clone2, original);
+}
+
+#[quickcheck]
+fn qc_iter(values: BTreeSet<u32>) {
+    let bitmap = RoaringBitmap::from_sorted_iter(values.iter().cloned()).unwrap();
+    // Iterator::eq != PartialEq::eq - cannot use assert_eq macro
+    assert!(values.into_iter().eq(bitmap.into_iter()));
 }

@@ -194,21 +194,13 @@ impl Bitmap8K {
 
 pub struct BitmapIter<B: Borrow<[u64; BITMAP_LENGTH]>> {
     key: usize,
-    bit: usize,
+    value: u64,
     bits: B,
 }
 
 impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
     fn new(bits: B) -> BitmapIter<B> {
-        BitmapIter { key: 0, bit: 0, bits }
-    }
-
-    fn move_next(&mut self) {
-        self.bit += 1;
-        if self.bit == 64 {
-            self.bit = 0;
-            self.key += 1;
-        }
+        BitmapIter { key: 0, value: bits.borrow()[0], bits }
     }
 }
 
@@ -217,17 +209,17 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
 
     fn next(&mut self) -> Option<u16> {
         loop {
-            if self.key == BITMAP_LENGTH {
-                return None;
-            } else if (unsafe { self.bits.borrow().get_unchecked(self.key) } & (1u64 << self.bit))
-                != 0
-            {
-                let result = Some((self.key * 64 + self.bit) as u16);
-                self.move_next();
-                return result;
-            } else {
-                self.move_next();
+            if self.value == 0 {
+                self.key += 1;
+                if self.key >= BITMAP_LENGTH {
+                    return None;
+                }
+                self.value = unsafe { *self.bits.borrow().get_unchecked(self.key) };
+                continue;
             }
+            let index = self.value.trailing_zeros() as usize;
+            self.value &= self.value - 1;
+            return Some((64 * self.key + index) as u16);
         }
     }
 
