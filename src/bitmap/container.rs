@@ -57,8 +57,13 @@ impl Container {
         }
     }
 
-    /// Push `index` at the end of the container.
+    ///
+    /// Pushes `index` in the container only if it is greater than the current maximum value.
     /// It is up to the caller to have validated index > self.max()
+    ///
+    /// # Panics
+    ///
+    /// If debug_assertions enabled and index is > self.max()
     pub(crate) fn push_unchecked(&mut self, index: u16) {
         self.store.push_unchecked(index);
         self.len += 1;

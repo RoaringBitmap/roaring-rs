@@ -136,9 +136,19 @@ impl Store {
         }
     }
 
-    /// Push `index` at the end of the store.
-    /// It is up to the caller to have validated index > self.max()
+    ///
+    /// Pushes `index` in the store only if it is greater than the current maximum value.
+    /// It is up to the caller to have validated value > self.max()
+    ///
+    /// # Panics
+    ///
+    /// If debug_assertions enabled and value is > self.max()
     pub(crate) fn push_unchecked(&mut self, index: u16) {
+        if cfg!(debug_assertions) {
+            if let Some(max) = self.max() {
+                assert!(index > max, "container max >= index")
+            }
+        }
         match self {
             Array(vec) => vec.push(index),
             Bitmap(bits) => {

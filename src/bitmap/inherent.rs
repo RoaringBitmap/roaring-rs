@@ -151,13 +151,21 @@ impl RoaringBitmap {
         }
     }
 
+    ///
     /// Pushes `value` in the bitmap only if it is greater than the current maximum value.
-    /// It is up to the caller to have validated value > self.max()
+    /// It is up to the caller to have validated index > self.max()
+    ///
+    /// # Panics
+    ///
+    /// If debug_assertions enabled and index is > self.max()
     pub(crate) fn push_unchecked(&mut self, value: u32) {
         let (key, index) = util::split(value);
 
         match self.containers.last_mut() {
             Some(container) if container.key == key => container.push_unchecked(index),
+            Some(container) if cfg!(debug_assertions) && container.key > key => {
+                panic!("last container key > key of value")
+            }
             _otherwise => {
                 let mut container = Container::new(key);
                 container.push_unchecked(index);
