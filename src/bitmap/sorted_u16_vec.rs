@@ -138,7 +138,7 @@ impl SortedU16Vec {
         for &index in self.iter() {
             bits[key(index)] |= 1 << bit(index);
         }
-        Bitmap(Bitmap8K::new(len, bits))
+        Bitmap(Bitmap8K::from_unchecked(len, bits))
     }
 
     pub fn len(&self) -> u64 {

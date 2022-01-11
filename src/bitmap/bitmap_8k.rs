@@ -1,6 +1,7 @@
 use crate::bitmap::sorted_u16_vec::SortedU16Vec;
 use crate::bitmap::store::Store;
 use std::borrow::Borrow;
+use std::fmt::{Display, Formatter};
 use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
 pub const BITMAP_LENGTH: usize = 1024;
@@ -12,12 +13,33 @@ pub struct Bitmap8K {
 }
 
 impl Bitmap8K {
-    pub fn new(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> Bitmap8K {
-        if cfg!(debug_assertions) {
-            let expected_len = bits.iter().map(|v| v.count_ones() as u64).sum();
-            assert_eq!(len, expected_len, "len {} != expected {}", len, expected_len);
+    pub fn new() -> Bitmap8K {
+        Bitmap8K { len: 0, bits: Box::new([0; BITMAP_LENGTH]) }
+    }
+
+    pub fn try_from(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> Result<Bitmap8K, Error> {
+        let actual_len = bits.iter().map(|v| v.count_ones() as u64).sum();
+        if len != actual_len {
+            Err(Error { kind: ErrorKind::Cardinality { expected: len, actual: actual_len } })
+        } else {
+            Ok(Bitmap8K { len, bits })
         }
-        Bitmap8K { len, bits }
+    }
+
+    ///
+    /// Create a new Bitmap8K from a given len and bits array
+    /// It is up to the caller to ensure len == cardinality of bits
+    /// Favor `try_from` for cases in which this invariants should be checked
+    ///
+    /// # Panics
+    ///
+    /// When debug_assertions are enabled and the above invariant is not met
+    pub fn from_unchecked(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> Bitmap8K {
+        if cfg!(debug_assertions) {
+            Bitmap8K::try_from(len, bits).unwrap()
+        } else {
+            Bitmap8K { len, bits }
+        }
     }
 
     pub fn insert(&mut self, index: u16) -> bool {
@@ -191,6 +213,34 @@ impl Bitmap8K {
         &self.bits
     }
 }
+
+impl Default for Bitmap8K {
+    fn default() -> Self {
+        Bitmap8K::new()
+    }
+}
+
+#[derive(Debug)]
+pub struct Error {
+    kind: ErrorKind,
+}
+
+#[derive(Debug)]
+pub enum ErrorKind {
+    Cardinality { expected: u64, actual: u64 },
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self.kind {
+            ErrorKind::Cardinality { expected, actual } => {
+                write!(f, "Expected cardinality was {} but was {}", expected, actual)
+            }
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 pub struct BitmapIter<B: Borrow<[u64; BITMAP_LENGTH]>> {
     key: usize,

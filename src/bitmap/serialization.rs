@@ -162,7 +162,9 @@ impl RoaringBitmap {
                 let mut values = Box::new([0; 1024]);
                 reader.read_exact(cast_slice_mut(&mut values[..]))?;
                 values.iter_mut().for_each(|n| *n = u64::from_le(*n));
-                Store::Bitmap(Bitmap8K::new(len, values))
+                let bitmap = Bitmap8K::try_from(len, values)
+                    .map_err(|e| io::Error::new(ErrorKind::InvalidData, e))?;
+                Store::Bitmap(bitmap)
             };
 
             containers.push(Container { key, store });
