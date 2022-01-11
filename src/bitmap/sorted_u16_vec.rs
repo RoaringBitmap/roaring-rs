@@ -215,7 +215,7 @@ impl TryFrom<Vec<u16>> for SortedU16Vec {
             }
         }
 
-        Ok(SortedU16Vec { vec: value })
+        Ok(SortedU16Vec { vec })
     }
 }
 
