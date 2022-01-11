@@ -209,7 +209,7 @@ impl TryFrom<Vec<u16>> for SortedU16Vec {
                 match cur.cmp(prev) {
                     Ordering::Less => return Err(Error { index: i, kind: ErrorKind::OutOfOrder }),
                     Ordering::Equal => return Err(Error { index: i, kind: ErrorKind::Duplicate }),
-                    Ordering::Greater => {}
+                    Ordering::Greater => (),
                 }
                 prev = cur;
             }
