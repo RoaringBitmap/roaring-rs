@@ -1,11 +1,12 @@
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use std::convert::TryInto;
 use std::io;
+use std::io::ErrorKind;
 
 use super::container::Container;
 use super::store::Store;
 use crate::bitmap::bitmap_8k::Bitmap8K;
-use crate::bitmap::sorted_u16_vec::SortedU16Vec;
 use crate::RoaringBitmap;
 
 const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
@@ -154,7 +155,9 @@ impl RoaringBitmap {
                 let mut values = vec![0; len as usize];
                 reader.read_exact(cast_slice_mut(&mut values))?;
                 values.iter_mut().for_each(|n| *n = u16::from_le(*n));
-                Store::Array(SortedU16Vec::from_vec(values))
+                let array =
+                    values.try_into().map_err(|e| io::Error::new(ErrorKind::InvalidData, e))?;
+                Store::Array(array)
             } else {
                 let mut values = Box::new([0; 1024]);
                 reader.read_exact(cast_slice_mut(&mut values[..]))?;

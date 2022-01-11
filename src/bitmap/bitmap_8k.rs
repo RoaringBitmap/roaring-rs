@@ -155,7 +155,7 @@ impl Bitmap8K {
                 bit &= bit - 1;
             }
         }
-        Store::Array(SortedU16Vec::from_vec(vec))
+        Store::Array(SortedU16Vec::from_vec_unchecked(vec))
     }
 
     pub fn len(&self) -> u64 {
