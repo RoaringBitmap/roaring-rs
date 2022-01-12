@@ -1,28 +1,28 @@
-use crate::bitmap::sorted_u16_vec::SortedU16Vec;
-use crate::bitmap::store::Store;
 use std::borrow::Borrow;
 use std::fmt::{Display, Formatter};
 use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
+use super::ArrayStore;
+
 pub const BITMAP_LENGTH: usize = 1024;
 
 #[derive(Clone)]
-pub struct Bitmap8K {
+pub struct BitmapStore {
     len: u64,
     bits: Box<[u64; BITMAP_LENGTH]>,
 }
 
-impl Bitmap8K {
-    pub fn new() -> Bitmap8K {
-        Bitmap8K { len: 0, bits: Box::new([0; BITMAP_LENGTH]) }
+impl BitmapStore {
+    pub fn new() -> BitmapStore {
+        BitmapStore { len: 0, bits: Box::new([0; BITMAP_LENGTH]) }
     }
 
-    pub fn try_from(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> Result<Bitmap8K, Error> {
+    pub fn try_from(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> Result<BitmapStore, Error> {
         let actual_len = bits.iter().map(|v| v.count_ones() as u64).sum();
         if len != actual_len {
             Err(Error { kind: ErrorKind::Cardinality { expected: len, actual: actual_len } })
         } else {
-            Ok(Bitmap8K { len, bits })
+            Ok(BitmapStore { len, bits })
         }
     }
 
@@ -34,11 +34,11 @@ impl Bitmap8K {
     /// # Panics
     ///
     /// When debug_assertions are enabled and the above invariant is not met
-    pub fn from_unchecked(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> Bitmap8K {
+    pub fn from_unchecked(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> BitmapStore {
         if cfg!(debug_assertions) {
-            Bitmap8K::try_from(len, bits).unwrap()
+            BitmapStore::try_from(len, bits).unwrap()
         } else {
-            Bitmap8K { len, bits }
+            BitmapStore { len, bits }
         }
     }
 
@@ -161,7 +161,7 @@ impl Bitmap8K {
         self.bits[key(index)] & (1 << bit(index)) != 0
     }
 
-    pub fn is_disjoint(&self, other: &Bitmap8K) -> bool {
+    pub fn is_disjoint(&self, other: &BitmapStore) -> bool {
         self.bits.iter().zip(other.bits.iter()).all(|(&i1, &i2)| (i1 & i2) == 0)
     }
 
@@ -169,7 +169,7 @@ impl Bitmap8K {
         self.bits.iter().zip(other.bits.iter()).all(|(&i1, &i2)| (i1 & i2) == i1)
     }
 
-    pub fn to_array_store(&self) -> Store {
+    pub fn to_array_store(&self) -> ArrayStore {
         let mut vec = Vec::with_capacity(self.len as usize);
         for (index, mut bit) in self.bits.iter().cloned().enumerate() {
             while bit != 0 {
@@ -177,7 +177,7 @@ impl Bitmap8K {
                 bit &= bit - 1;
             }
         }
-        Store::Array(SortedU16Vec::from_vec_unchecked(vec))
+        ArrayStore::from_vec_unchecked(vec)
     }
 
     pub fn len(&self) -> u64 {
@@ -214,9 +214,9 @@ impl Bitmap8K {
     }
 }
 
-impl Default for Bitmap8K {
+impl Default for BitmapStore {
     fn default() -> Self {
-        Bitmap8K::new()
+        BitmapStore::new()
     }
 }
 
@@ -289,7 +289,7 @@ pub fn bit(index: u16) -> usize {
 }
 
 #[inline]
-fn op_bitmaps(bits1: &mut Bitmap8K, bits2: &Bitmap8K, op: impl Fn(&mut u64, u64)) {
+fn op_bitmaps(bits1: &mut BitmapStore, bits2: &BitmapStore, op: impl Fn(&mut u64, u64)) {
     bits1.len = 0;
     for (index1, &index2) in bits1.bits.iter_mut().zip(bits2.bits.iter()) {
         op(index1, index2);
@@ -297,14 +297,14 @@ fn op_bitmaps(bits1: &mut Bitmap8K, bits2: &Bitmap8K, op: impl Fn(&mut u64, u64)
     }
 }
 
-impl BitOrAssign<&Self> for Bitmap8K {
+impl BitOrAssign<&Self> for BitmapStore {
     fn bitor_assign(&mut self, rhs: &Self) {
         op_bitmaps(self, rhs, BitOrAssign::bitor_assign);
     }
 }
 
-impl BitOrAssign<&SortedU16Vec> for Bitmap8K {
-    fn bitor_assign(&mut self, rhs: &SortedU16Vec) {
+impl BitOrAssign<&ArrayStore> for BitmapStore {
+    fn bitor_assign(&mut self, rhs: &ArrayStore) {
         for &index in rhs.iter() {
             let (key, bit) = (key(index), bit(index));
             let old_w = self.bits[key];
@@ -315,20 +315,20 @@ impl BitOrAssign<&SortedU16Vec> for Bitmap8K {
     }
 }
 
-impl BitAndAssign<&Self> for Bitmap8K {
+impl BitAndAssign<&Self> for BitmapStore {
     fn bitand_assign(&mut self, rhs: &Self) {
         op_bitmaps(self, rhs, BitAndAssign::bitand_assign);
     }
 }
 
-impl SubAssign<&Self> for Bitmap8K {
+impl SubAssign<&Self> for BitmapStore {
     fn sub_assign(&mut self, rhs: &Self) {
         op_bitmaps(self, rhs, |l, r| *l &= !r);
     }
 }
 
-impl SubAssign<&SortedU16Vec> for Bitmap8K {
-    fn sub_assign(&mut self, rhs: &SortedU16Vec) {
+impl SubAssign<&ArrayStore> for BitmapStore {
+    fn sub_assign(&mut self, rhs: &ArrayStore) {
         for &index in rhs.iter() {
             let (key, bit) = (key(index), bit(index));
             let old_w = self.bits[key];
@@ -339,14 +339,14 @@ impl SubAssign<&SortedU16Vec> for Bitmap8K {
     }
 }
 
-impl BitXorAssign<&Self> for Bitmap8K {
+impl BitXorAssign<&Self> for BitmapStore {
     fn bitxor_assign(&mut self, rhs: &Self) {
         op_bitmaps(self, rhs, BitXorAssign::bitxor_assign);
     }
 }
 
-impl BitXorAssign<&SortedU16Vec> for Bitmap8K {
-    fn bitxor_assign(&mut self, rhs: &SortedU16Vec) {
+impl BitXorAssign<&ArrayStore> for BitmapStore {
+    fn bitxor_assign(&mut self, rhs: &ArrayStore) {
         let mut len = self.len as i64;
         for &index in rhs.iter() {
             let (key, bit) = (key(index), bit(index));

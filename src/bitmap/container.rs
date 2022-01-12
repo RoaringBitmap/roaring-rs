@@ -1,4 +1,3 @@
-use crate::bitmap::sorted_u16_vec::SortedU16Vec;
 use std::fmt;
 use std::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
@@ -22,7 +21,7 @@ pub struct Iter<'a> {
 
 impl Container {
     pub fn new(key: u16) -> Container {
-        Container { key, store: Store::Array(SortedU16Vec::new()) }
+        Container { key, store: Store::new() }
     }
 }
 
@@ -97,12 +96,12 @@ impl Container {
         match &self.store {
             Store::Bitmap(ref bits) => {
                 if bits.len() <= ARRAY_LIMIT {
-                    self.store = bits.to_array_store()
+                    self.store = Store::Array(bits.to_array_store())
                 }
             }
             Store::Array(ref vec) => {
                 if vec.len() as u64 > ARRAY_LIMIT {
-                    self.store = vec.to_bitmap_store()
+                    self.store = Store::Bitmap(vec.to_bitmap_store())
                 }
             }
         };

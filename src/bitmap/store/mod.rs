@@ -1,17 +1,22 @@
-use crate::bitmap::bitmap_8k::{Bitmap8K, BitmapIter, BITMAP_LENGTH};
-use crate::bitmap::sorted_u16_vec::SortedU16Vec;
+mod array_store;
+mod bitmap_store;
+
 use std::mem;
 use std::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
 };
 use std::{slice, vec};
 
+use self::bitmap_store::BITMAP_LENGTH;
 use self::Store::{Array, Bitmap};
+
+pub use self::array_store::ArrayStore;
+pub use self::bitmap_store::{BitmapIter, BitmapStore};
 
 #[derive(Clone)]
 pub enum Store {
-    Array(SortedU16Vec),
-    Bitmap(Bitmap8K),
+    Array(ArrayStore),
+    Bitmap(BitmapStore),
 }
 
 pub enum Iter<'a> {
@@ -22,6 +27,10 @@ pub enum Iter<'a> {
 }
 
 impl Store {
+    pub fn new() -> Store {
+        Store::Array(ArrayStore::new())
+    }
+
     pub fn insert(&mut self, index: u16) -> bool {
         match *self {
             Array(ref mut vec) => vec.insert(index),
@@ -114,6 +123,12 @@ impl Store {
             Array(ref vec) => vec.max(),
             Bitmap(ref bits) => bits.max(),
         }
+    }
+}
+
+impl Default for Store {
+    fn default() -> Self {
+        Store::new()
     }
 }
 

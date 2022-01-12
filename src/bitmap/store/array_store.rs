@@ -1,20 +1,19 @@
-use crate::bitmap::bitmap_8k::{bit, key, Bitmap8K, BITMAP_LENGTH};
-use crate::bitmap::store::Store;
-use crate::bitmap::store::Store::Bitmap;
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{Display, Formatter};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign};
 
+use super::bitmap_store::{bit, key, BitmapStore, BITMAP_LENGTH};
+
 #[derive(Clone, Eq, PartialEq)]
-pub struct SortedU16Vec {
+pub struct ArrayStore {
     vec: Vec<u16>,
 }
 
-impl SortedU16Vec {
-    pub fn new() -> SortedU16Vec {
-        SortedU16Vec { vec: vec![] }
+impl ArrayStore {
+    pub fn new() -> ArrayStore {
+        ArrayStore { vec: vec![] }
     }
 
     ///
@@ -25,11 +24,11 @@ impl SortedU16Vec {
     /// # Panics
     ///
     /// When debug_assertions are enabled and the above invariants are not met
-    pub fn from_vec_unchecked(vec: Vec<u16>) -> SortedU16Vec {
+    pub fn from_vec_unchecked(vec: Vec<u16>) -> ArrayStore {
         if cfg!(debug_assertions) {
             vec.try_into().unwrap()
         } else {
-            SortedU16Vec { vec }
+            ArrayStore { vec }
         }
     }
 
@@ -131,14 +130,14 @@ impl SortedU16Vec {
         }
     }
 
-    pub fn to_bitmap_store(&self) -> Store {
+    pub fn to_bitmap_store(&self) -> BitmapStore {
         let mut bits = Box::new([0; BITMAP_LENGTH]);
         let len = self.len() as u64;
 
         for &index in self.iter() {
             bits[key(index)] |= 1 << bit(index);
         }
-        Bitmap(Bitmap8K::from_unchecked(len, bits))
+        BitmapStore::from_unchecked(len, bits)
     }
 
     pub fn len(&self) -> u64 {
@@ -166,9 +165,9 @@ impl SortedU16Vec {
     }
 }
 
-impl Default for SortedU16Vec {
+impl Default for ArrayStore {
     fn default() -> Self {
-        SortedU16Vec::new()
+        ArrayStore::new()
     }
 }
 
@@ -199,7 +198,7 @@ impl Display for Error {
 
 impl std::error::Error for Error {}
 
-impl TryFrom<Vec<u16>> for SortedU16Vec {
+impl TryFrom<Vec<u16>> for ArrayStore {
     type Error = Error;
 
     fn try_from(value: Vec<u16>) -> Result<Self, Self::Error> {
@@ -215,12 +214,12 @@ impl TryFrom<Vec<u16>> for SortedU16Vec {
             }
         }
 
-        Ok(SortedU16Vec { vec })
+        Ok(ArrayStore { vec: value })
     }
 }
 
-impl BitOr<Self> for &SortedU16Vec {
-    type Output = SortedU16Vec;
+impl BitOr<Self> for &ArrayStore {
+    type Output = ArrayStore;
 
     fn bitor(self, rhs: Self) -> Self::Output {
         let mut vec = {
@@ -255,12 +254,12 @@ impl BitOr<Self> for &SortedU16Vec {
         vec.extend_from_slice(&self.vec[i..]);
         vec.extend_from_slice(&rhs.vec[j..]);
 
-        SortedU16Vec { vec }
+        ArrayStore { vec }
     }
 }
 
-impl BitAnd<Self> for &SortedU16Vec {
-    type Output = SortedU16Vec;
+impl BitAnd<Self> for &ArrayStore {
+    type Output = ArrayStore;
 
     fn bitand(self, rhs: Self) -> Self::Output {
         let mut vec = Vec::new();
@@ -282,11 +281,11 @@ impl BitAnd<Self> for &SortedU16Vec {
             }
         }
 
-        SortedU16Vec { vec }
+        ArrayStore { vec }
     }
 }
 
-impl BitAndAssign<&Self> for SortedU16Vec {
+impl BitAndAssign<&Self> for ArrayStore {
     fn bitand_assign(&mut self, rhs: &Self) {
         let mut i = 0;
         self.vec.retain(|x| {
@@ -296,14 +295,14 @@ impl BitAndAssign<&Self> for SortedU16Vec {
     }
 }
 
-impl BitAndAssign<&Bitmap8K> for SortedU16Vec {
-    fn bitand_assign(&mut self, rhs: &Bitmap8K) {
+impl BitAndAssign<&BitmapStore> for ArrayStore {
+    fn bitand_assign(&mut self, rhs: &BitmapStore) {
         self.vec.retain(|x| rhs.contains(*x));
     }
 }
 
-impl Sub<Self> for &SortedU16Vec {
-    type Output = SortedU16Vec;
+impl Sub<Self> for &ArrayStore {
+    type Output = ArrayStore;
 
     fn sub(self, rhs: Self) -> Self::Output {
         let mut vec = Vec::new();
@@ -330,11 +329,11 @@ impl Sub<Self> for &SortedU16Vec {
         // Store remaining elements of the left array
         vec.extend_from_slice(&self.vec[i..]);
 
-        SortedU16Vec { vec }
+        ArrayStore { vec }
     }
 }
 
-impl SubAssign<&Self> for SortedU16Vec {
+impl SubAssign<&Self> for ArrayStore {
     fn sub_assign(&mut self, rhs: &Self) {
         let mut i = 0;
         self.vec.retain(|x| {
@@ -344,14 +343,14 @@ impl SubAssign<&Self> for SortedU16Vec {
     }
 }
 
-impl SubAssign<&Bitmap8K> for SortedU16Vec {
-    fn sub_assign(&mut self, rhs: &Bitmap8K) {
+impl SubAssign<&BitmapStore> for ArrayStore {
+    fn sub_assign(&mut self, rhs: &BitmapStore) {
         self.vec.retain(|x| !rhs.contains(*x));
     }
 }
 
-impl BitXor<Self> for &SortedU16Vec {
-    type Output = SortedU16Vec;
+impl BitXor<Self> for &ArrayStore {
+    type Output = ArrayStore;
 
     fn bitxor(self, rhs: Self) -> Self::Output {
         let mut vec = Vec::new();
@@ -382,11 +381,11 @@ impl BitXor<Self> for &SortedU16Vec {
         vec.extend_from_slice(&self.vec[i..]);
         vec.extend_from_slice(&rhs.vec[j..]);
 
-        SortedU16Vec { vec }
+        ArrayStore { vec }
     }
 }
 
-impl BitXorAssign<&Self> for SortedU16Vec {
+impl BitXorAssign<&Self> for ArrayStore {
     fn bitxor_assign(&mut self, rhs: &Self) {
         let mut i1 = 0usize;
         let mut iter2 = rhs.vec.iter();
@@ -418,25 +417,26 @@ impl BitXorAssign<&Self> for SortedU16Vec {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bitmap::store::Store;
 
     fn into_vec(s: Store) -> Vec<u16> {
         match s {
             Store::Array(vec) => vec.vec,
-            Store::Bitmap(bits) => into_vec(bits.to_array_store()),
+            Store::Bitmap(bits) => bits.to_array_store().vec,
         }
     }
 
     fn into_bitmap_store(s: Store) -> Store {
         match s {
-            Store::Array(vec) => vec.to_bitmap_store(),
-            Bitmap(..) => s,
+            Store::Array(vec) => Store::Bitmap(vec.to_bitmap_store()),
+            Store::Bitmap(..) => s,
         }
     }
 
     #[test]
     #[allow(clippy::reversed_empty_ranges)]
     fn test_array_insert_invalid_range() {
-        let mut store = Store::Array(SortedU16Vec::from_vec_unchecked(vec![1, 2, 8, 9]));
+        let mut store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 8, 9]));
 
         // Insert a range with start > end.
         let new = store.insert_range(6..=1);
@@ -447,7 +447,7 @@ mod tests {
 
     #[test]
     fn test_array_insert_range() {
-        let mut store = Store::Array(SortedU16Vec::from_vec_unchecked(vec![1, 2, 8, 9]));
+        let mut store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 8, 9]));
 
         let new = store.insert_range(4..=5);
         assert_eq!(new, 2);
@@ -457,7 +457,7 @@ mod tests {
 
     #[test]
     fn test_array_insert_range_left_overlap() {
-        let mut store = Store::Array(SortedU16Vec::from_vec_unchecked(vec![1, 2, 8, 9]));
+        let mut store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 8, 9]));
 
         let new = store.insert_range(2..=5);
         assert_eq!(new, 3);
@@ -467,7 +467,7 @@ mod tests {
 
     #[test]
     fn test_array_insert_range_right_overlap() {
-        let mut store = Store::Array(SortedU16Vec::from_vec_unchecked(vec![1, 2, 8, 9]));
+        let mut store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 8, 9]));
 
         let new = store.insert_range(4..=8);
         assert_eq!(new, 4);
@@ -477,7 +477,7 @@ mod tests {
 
     #[test]
     fn test_array_insert_range_full_overlap() {
-        let mut store = Store::Array(SortedU16Vec::from_vec_unchecked(vec![1, 2, 8, 9]));
+        let mut store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 8, 9]));
 
         let new = store.insert_range(1..=9);
         assert_eq!(new, 5);
@@ -488,7 +488,7 @@ mod tests {
     #[test]
     #[allow(clippy::reversed_empty_ranges)]
     fn test_bitmap_insert_invalid_range() {
-        let store = Store::Array(SortedU16Vec::from_vec_unchecked(vec![1, 2, 8, 9]));
+        let store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 8, 9]));
         let mut store = into_bitmap_store(store);
 
         // Insert a range with start > end.
@@ -500,7 +500,7 @@ mod tests {
 
     #[test]
     fn test_bitmap_insert_same_key_overlap() {
-        let store = Store::Array(SortedU16Vec::from_vec_unchecked(vec![1, 2, 3, 62, 63]));
+        let store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 3, 62, 63]));
         let mut store = into_bitmap_store(store);
 
         let new = store.insert_range(1..=62);
@@ -511,7 +511,7 @@ mod tests {
 
     #[test]
     fn test_bitmap_insert_range() {
-        let store = Store::Array(SortedU16Vec::from_vec_unchecked(vec![1, 2, 130]));
+        let store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 130]));
         let mut store = into_bitmap_store(store);
 
         let new = store.insert_range(4..=128);
@@ -526,7 +526,7 @@ mod tests {
 
     #[test]
     fn test_bitmap_insert_range_left_overlap() {
-        let store = Store::Array(SortedU16Vec::from_vec_unchecked(vec![1, 2, 130]));
+        let store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 130]));
         let mut store = into_bitmap_store(store);
 
         let new = store.insert_range(1..=128);
@@ -541,7 +541,7 @@ mod tests {
 
     #[test]
     fn test_bitmap_insert_range_right_overlap() {
-        let store = Store::Array(SortedU16Vec::from_vec_unchecked(vec![1, 2, 130]));
+        let store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 130]));
         let mut store = into_bitmap_store(store);
 
         let new = store.insert_range(4..=132);
@@ -555,7 +555,7 @@ mod tests {
 
     #[test]
     fn test_bitmap_insert_range_full_overlap() {
-        let store = Store::Array(SortedU16Vec::from_vec_unchecked(vec![1, 2, 130]));
+        let store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 130]));
         let mut store = into_bitmap_store(store);
 
         let new = store.insert_range(1..=134);
