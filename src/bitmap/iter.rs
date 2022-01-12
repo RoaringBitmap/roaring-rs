@@ -187,30 +187,26 @@ impl RoaringBitmap {
         // Name shadowed to prevent accidentally referencing the param
         let mut iterator = iterator.into_iter();
 
-        let mut prev: u32 = match iterator.next() {
-            None => return Ok(0),
-            Some(first) => {
-                if let Some(max) = self.max() {
-                    if first <= max {
-                        return Err(NonSortedIntegers { valid_until: 0 });
-                    }
-                }
-
-                first
+        let mut prev = match (iterator.next(), self.max()) {
+            (None, _) => return Ok(0),
+            (Some(first), Some(max)) if first <= max => {
+                return Err(NonSortedIntegers { valid_until: 0 })
             }
+            (Some(first), _) => first,
         };
 
-        self.insert(prev);
-        let mut count = 1;
+        // It is now guaranteed that so long as the values of the iterator are
+        // monotonically increasing they must also be the greatest in the set.
 
-        // It is now guaranteed that so long as the values are iterator are monotonically
-        // increasing they must also be the greatest in the set.
+        self.push_unchecked(prev);
+
+        let mut count = 1;
 
         for value in iterator {
             if value <= prev {
                 return Err(NonSortedIntegers { valid_until: count });
             } else {
-                self.insert(value);
+                self.push_unchecked(value);
                 prev = value;
                 count += 1;
             }

@@ -60,6 +60,20 @@ impl Store {
         }
     }
 
+    ///
+    /// Pushes `index` at the end of the store.
+    /// It is up to the caller to have validated index > self.max()
+    ///
+    /// # Panics
+    ///
+    /// If debug_assertions enabled and index is > self.max()
+    pub(crate) fn push_unchecked(&mut self, index: u16) {
+        match self {
+            Array(vec) => vec.push_unchecked(index),
+            Bitmap(bits) => bits.push_unchecked(index),
+        }
+    }
+
     pub fn remove(&mut self, index: u16) -> bool {
         match *self {
             Array(ref mut vec) => vec.remove(index),

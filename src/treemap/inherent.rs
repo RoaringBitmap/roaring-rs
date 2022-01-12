@@ -58,6 +58,30 @@ impl RoaringTreemap {
         self.map.entry(hi).or_insert_with(RoaringBitmap::new).push(lo)
     }
 
+    ///
+    /// Pushes `value` in the treemap only if it is greater than the current maximum value.
+    /// It is up to the caller to have validated index > self.max()
+    ///
+    /// # Panics
+    ///
+    /// If debug_assertions enabled and index is > self.max()
+    pub(crate) fn push_unchecked(&mut self, value: u64) {
+        let (hi, lo) = util::split(value);
+        // BTreeMap last_mut not stabilized see https://github.com/rust-lang/rust/issues/62924
+        match self.map.iter_mut().next_back() {
+            Some((&key, bitmap)) if key == hi => bitmap.push_unchecked(lo),
+            Some((&key, _)) if cfg!(debug_assertions) && key > hi => {
+                panic!("last bitmap key > key of value")
+            }
+            _otherwise => {
+                // The tree is empty
+                let mut rb = RoaringBitmap::new();
+                rb.push_unchecked(lo);
+                self.map.insert(hi, rb);
+            }
+        }
+    }
+
     /// Removes a value from the set. Returns `true` if the value was present in the set.
     ///
     /// # Examples

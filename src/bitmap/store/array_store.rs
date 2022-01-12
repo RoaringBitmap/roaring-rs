@@ -70,6 +70,22 @@ impl ArrayStore {
         }
     }
 
+    ///
+    /// Pushes `index` at the end of the store.
+    /// It is up to the caller to have validated index > self.max()
+    ///
+    /// # Panics
+    ///
+    /// If debug_assertions enabled and index is > self.max()
+    pub(crate) fn push_unchecked(&mut self, index: u16) {
+        if cfg!(debug_assertions) {
+            if let Some(max) = self.max() {
+                assert!(index > max, "store max >= index")
+            }
+        }
+        self.vec.push(index);
+    }
+
     pub fn remove(&mut self, index: u16) -> bool {
         self.vec.binary_search(&index).map(|loc| self.vec.remove(loc)).is_ok()
     }

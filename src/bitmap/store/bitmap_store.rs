@@ -108,6 +108,22 @@ impl BitmapStore {
         }
     }
 
+    ///
+    /// Pushes `index` at the end of the store.
+    /// It is up to the caller to have validated index > self.max()
+    ///
+    /// # Panics
+    ///
+    /// If debug_assertions enabled and index is > self.max()
+    pub(crate) fn push_unchecked(&mut self, index: u16) {
+        if cfg!(debug_assertions) {
+            if let Some(max) = self.max() {
+                assert!(index > max, "store max >= index")
+            }
+        }
+        self.insert(index);
+    }
+
     pub fn remove(&mut self, index: u16) -> bool {
         let (key, bit) = (key(index), bit(index));
         let old_w = self.bits[key];

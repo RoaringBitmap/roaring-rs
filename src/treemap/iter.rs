@@ -255,13 +255,28 @@ impl RoaringTreemap {
         &mut self,
         iterator: I,
     ) -> Result<u64, NonSortedIntegers> {
-        let mut count = 0;
+        let mut iterator = iterator.into_iter();
+        let mut prev = match (iterator.next(), self.max()) {
+            (None, _) => return Ok(0),
+            (Some(first), Some(max)) if first <= max => {
+                return Err(NonSortedIntegers { valid_until: 0 })
+            }
+            (Some(first), _) => first,
+        };
 
+        // It is now guaranteed that so long as the values of the iterator are
+        // monotonically increasing they must also be the greatest in the set.
+
+        self.push_unchecked(prev);
+
+        let mut count = 1;
         for value in iterator {
-            if self.push(value) {
-                count += 1;
-            } else {
+            if value <= prev {
                 return Err(NonSortedIntegers { valid_until: count });
+            } else {
+                self.push_unchecked(value);
+                prev = value;
+                count += 1;
             }
         }
 
