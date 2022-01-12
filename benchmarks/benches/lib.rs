@@ -5,8 +5,8 @@ use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
-use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
-use roaring::RoaringBitmap;
+use criterion::{black_box, criterion_group, criterion_main, BatchSize, Bencher, Criterion};
+use roaring::{IterExt, RoaringBitmap};
 
 fn create(c: &mut Criterion) {
     c.bench_function("create", |b| {
@@ -495,6 +495,126 @@ fn successive_or(c: &mut Criterion) {
     group.finish();
 }
 
+fn iter_or(c: &mut Criterion) {
+    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
+    let parsed_numbers = parse_dir_files(files).unwrap();
+
+    let bitmaps: Vec<_> = parsed_numbers
+        .into_iter()
+        .map(|(_, r)| r.map(|iter| RoaringBitmap::from_sorted_iter(iter).unwrap()).unwrap())
+        .collect();
+
+    let mut group = c.benchmark_group("Iter Or");
+
+    group.bench_function("Ref", |b| {
+        b.iter(|| {
+            black_box(bitmaps.as_slice().or());
+        });
+    });
+
+    group.bench_function("Owned", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                black_box(bitmaps.or());
+            },
+            BatchSize::SmallInput,
+        );
+    });
+
+    group.finish();
+}
+
+fn iter_and(c: &mut Criterion) {
+    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
+    let parsed_numbers = parse_dir_files(files).unwrap();
+
+    let bitmaps: Vec<_> = parsed_numbers
+        .into_iter()
+        .map(|(_, r)| r.map(|iter| RoaringBitmap::from_sorted_iter(iter).unwrap()).unwrap())
+        .collect();
+
+    let mut group = c.benchmark_group("Iter And");
+
+    group.bench_function("Ref", |b| {
+        b.iter(|| {
+            black_box(bitmaps.as_slice().and());
+        });
+    });
+
+    group.bench_function("Owned", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                black_box(bitmaps.and());
+            },
+            BatchSize::SmallInput,
+        );
+    });
+
+    group.finish();
+}
+
+fn iter_xor(c: &mut Criterion) {
+    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
+    let parsed_numbers = parse_dir_files(files).unwrap();
+
+    let bitmaps: Vec<_> = parsed_numbers
+        .into_iter()
+        .map(|(_, r)| r.map(|iter| RoaringBitmap::from_sorted_iter(iter).unwrap()).unwrap())
+        .collect();
+
+    let mut group = c.benchmark_group("Iter Xor");
+
+    group.bench_function("Ref", |b| {
+        b.iter(|| {
+            black_box(bitmaps.as_slice().xor());
+        });
+    });
+
+    group.bench_function("Owned", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                black_box(bitmaps.xor());
+            },
+            BatchSize::SmallInput,
+        );
+    });
+
+    group.finish();
+}
+
+fn iter_sub(c: &mut Criterion) {
+    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
+    let parsed_numbers = parse_dir_files(files).unwrap();
+
+    let bitmaps: Vec<_> = parsed_numbers
+        .into_iter()
+        .map(|(_, r)| r.map(|iter| RoaringBitmap::from_sorted_iter(iter).unwrap()).unwrap())
+        .collect();
+
+    let mut group = c.benchmark_group("Iter Sub");
+
+    group.bench_function("Ref", |b| {
+        b.iter(|| {
+            black_box(bitmaps.as_slice().sub());
+        });
+    });
+
+    group.bench_function("Owned", |b| {
+        b.iter_batched(
+            || bitmaps.clone(),
+            |bitmaps: Vec<RoaringBitmap>| {
+                black_box(bitmaps.sub());
+            },
+            BatchSize::SmallInput,
+        );
+    });
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     create,
@@ -520,5 +640,10 @@ criterion_group!(
     from_sorted_iter,
     successive_and,
     successive_or,
+    iter_or,
+    iter_and,
+    iter_xor,
+    iter_sub,
 );
-criterion_main!(benches);
+
+criterion_group!(benches, iter_or, iter_and, iter_xor, iter_sub,);

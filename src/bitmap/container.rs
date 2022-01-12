@@ -104,7 +104,7 @@ impl Container {
         self.store.max()
     }
 
-    fn ensure_correct_store(&mut self) {
+    pub(crate) fn ensure_correct_store(&mut self) {
         match &self.store {
             Store::Bitmap(ref bits) => {
                 if bits.len() <= ARRAY_LIMIT {
