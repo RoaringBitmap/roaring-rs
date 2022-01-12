@@ -11,7 +11,6 @@ const ARRAY_LIMIT: u64 = 4096;
 #[derive(PartialEq, Clone)]
 pub struct Container {
     pub key: u16,
-    pub len: u64,
     pub store: Store,
 }
 
@@ -22,14 +21,17 @@ pub struct Iter<'a> {
 
 impl Container {
     pub fn new(key: u16) -> Container {
-        Container { key, len: 0, store: Store::Array(Vec::new()) }
+        Container { key, store: Store::new() }
     }
 }
 
 impl Container {
+    pub fn len(&self) -> u64 {
+        self.store.len()
+    }
+
     pub fn insert(&mut self, index: u16) -> bool {
         if self.store.insert(index) {
-            self.len += 1;
             self.ensure_correct_store();
             true
         } else {
@@ -39,7 +41,6 @@ impl Container {
 
     pub fn insert_range(&mut self, range: RangeInclusive<u16>) -> u64 {
         let inserted = self.store.insert_range(range);
-        self.len += inserted;
         self.ensure_correct_store();
         inserted
     }
@@ -49,7 +50,6 @@ impl Container {
     /// Returns whether the `index` was effectively pushed.
     pub fn push(&mut self, index: u16) -> bool {
         if self.store.push(index) {
-            self.len += 1;
             self.ensure_correct_store();
             true
         } else {
@@ -66,13 +66,11 @@ impl Container {
     /// If debug_assertions enabled and index is > self.max()
     pub(crate) fn push_unchecked(&mut self, index: u16) {
         self.store.push_unchecked(index);
-        self.len += 1;
         self.ensure_correct_store();
     }
 
     pub fn remove(&mut self, index: u16) -> bool {
         if self.store.remove(index) {
-            self.len -= 1;
             self.ensure_correct_store();
             true
         } else {
@@ -82,7 +80,6 @@ impl Container {
 
     pub fn remove_range(&mut self, range: RangeInclusive<u16>) -> u64 {
         let result = self.store.remove_range(range);
-        self.len -= result;
         self.ensure_correct_store();
         result
     }
@@ -96,7 +93,7 @@ impl Container {
     }
 
     pub fn is_subset(&self, other: &Self) -> bool {
-        self.len <= other.len && self.store.is_subset(&other.store)
+        self.len() <= other.len() && self.store.is_subset(&other.store)
     }
 
     pub fn min(&self) -> Option<u16> {
@@ -108,14 +105,18 @@ impl Container {
     }
 
     fn ensure_correct_store(&mut self) {
-        let new_store = match (&self.store, self.len) {
-            (store @ &Store::Bitmap(..), len) if len <= ARRAY_LIMIT => Some(store.to_array()),
-            (store @ &Store::Array(..), len) if len > ARRAY_LIMIT => Some(store.to_bitmap()),
-            _ => None,
+        match &self.store {
+            Store::Bitmap(ref bits) => {
+                if bits.len() <= ARRAY_LIMIT {
+                    self.store = Store::Array(bits.to_array_store())
+                }
+            }
+            Store::Array(ref vec) => {
+                if vec.len() as u64 > ARRAY_LIMIT {
+                    self.store = Store::Bitmap(vec.to_bitmap_store())
+                }
+            }
         };
-        if let Some(new_store) = new_store {
-            self.store = new_store;
-        }
     }
 }
 
@@ -124,7 +125,7 @@ impl BitOr<&Container> for &Container {
 
     fn bitor(self, rhs: &Container) -> Container {
         let store = BitOr::bitor(&self.store, &rhs.store);
-        let mut container = Container { key: self.key, len: store.len(), store };
+        let mut container = Container { key: self.key, store };
         container.ensure_correct_store();
         container
     }
@@ -133,7 +134,6 @@ impl BitOr<&Container> for &Container {
 impl BitOrAssign<Container> for Container {
     fn bitor_assign(&mut self, rhs: Container) {
         BitOrAssign::bitor_assign(&mut self.store, rhs.store);
-        self.len = self.store.len();
         self.ensure_correct_store();
     }
 }
@@ -141,7 +141,6 @@ impl BitOrAssign<Container> for Container {
 impl BitOrAssign<&Container> for Container {
     fn bitor_assign(&mut self, rhs: &Container) {
         BitOrAssign::bitor_assign(&mut self.store, &rhs.store);
-        self.len = self.store.len();
         self.ensure_correct_store();
     }
 }
@@ -151,7 +150,7 @@ impl BitAnd<&Container> for &Container {
 
     fn bitand(self, rhs: &Container) -> Container {
         let store = BitAnd::bitand(&self.store, &rhs.store);
-        let mut container = Container { key: self.key, len: store.len(), store };
+        let mut container = Container { key: self.key, store };
         container.ensure_correct_store();
         container
     }
@@ -160,7 +159,6 @@ impl BitAnd<&Container> for &Container {
 impl BitAndAssign<Container> for Container {
     fn bitand_assign(&mut self, rhs: Container) {
         BitAndAssign::bitand_assign(&mut self.store, rhs.store);
-        self.len = self.store.len();
         self.ensure_correct_store();
     }
 }
@@ -168,7 +166,6 @@ impl BitAndAssign<Container> for Container {
 impl BitAndAssign<&Container> for Container {
     fn bitand_assign(&mut self, rhs: &Container) {
         BitAndAssign::bitand_assign(&mut self.store, &rhs.store);
-        self.len = self.store.len();
         self.ensure_correct_store();
     }
 }
@@ -178,7 +175,7 @@ impl Sub<&Container> for &Container {
 
     fn sub(self, rhs: &Container) -> Container {
         let store = Sub::sub(&self.store, &rhs.store);
-        let mut container = Container { key: self.key, len: store.len(), store };
+        let mut container = Container { key: self.key, store };
         container.ensure_correct_store();
         container
     }
@@ -187,7 +184,6 @@ impl Sub<&Container> for &Container {
 impl SubAssign<&Container> for Container {
     fn sub_assign(&mut self, rhs: &Container) {
         SubAssign::sub_assign(&mut self.store, &rhs.store);
-        self.len = self.store.len();
         self.ensure_correct_store();
     }
 }
@@ -197,7 +193,7 @@ impl BitXor<&Container> for &Container {
 
     fn bitxor(self, rhs: &Container) -> Container {
         let store = BitXor::bitxor(&self.store, &rhs.store);
-        let mut container = Container { key: self.key, len: store.len(), store };
+        let mut container = Container { key: self.key, store };
         container.ensure_correct_store();
         container
     }
@@ -206,7 +202,6 @@ impl BitXor<&Container> for &Container {
 impl BitXorAssign<Container> for Container {
     fn bitxor_assign(&mut self, rhs: Container) {
         BitXorAssign::bitxor_assign(&mut self.store, rhs.store);
-        self.len = self.store.len();
         self.ensure_correct_store();
     }
 }
@@ -214,7 +209,6 @@ impl BitXorAssign<Container> for Container {
 impl BitXorAssign<&Container> for Container {
     fn bitxor_assign(&mut self, rhs: &Container) {
         BitXorAssign::bitxor_assign(&mut self.store, &rhs.store);
-        self.len = self.store.len();
         self.ensure_correct_store();
     }
 }
@@ -249,6 +243,6 @@ impl<'a> Iterator for Iter<'a> {
 
 impl fmt::Debug for Container {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        format!("Container<{:?} @ {:?}>", self.len, self.key).fmt(formatter)
+        format!("Container<{:?} @ {:?}>", self.len(), self.key).fmt(formatter)
     }
 }

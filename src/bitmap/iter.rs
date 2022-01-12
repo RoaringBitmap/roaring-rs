@@ -23,14 +23,14 @@ pub struct IntoIter {
 
 impl Iter<'_> {
     fn new(containers: &[Container]) -> Iter {
-        let size_hint = containers.iter().map(|c| c.len).sum();
+        let size_hint = containers.iter().map(|c| c.len()).sum();
         Iter { inner: containers.iter().flat_map(identity as _), size_hint }
     }
 }
 
 impl IntoIter {
     fn new(containers: Vec<Container>) -> IntoIter {
-        let size_hint = containers.iter().map(|c| c.len).sum();
+        let size_hint = containers.iter().map(|c| c.len()).sum();
         IntoIter { inner: containers.into_iter().flat_map(identity as _), size_hint }
     }
 }
