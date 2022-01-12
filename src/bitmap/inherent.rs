@@ -152,7 +152,7 @@ impl RoaringBitmap {
     }
 
     ///
-    /// Pushes `value` in the bitmap only if it is greater than the current maximum value.
+    /// Pushes `value` at the end of the bitmap.
     /// It is up to the caller to have validated index > self.max()
     ///
     /// # Panics
