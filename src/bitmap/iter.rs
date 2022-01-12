@@ -199,6 +199,7 @@ impl RoaringBitmap {
         // monotonically increasing they must also be the greatest in the set.
 
         self.push_unchecked(prev);
+
         let mut count = 1;
 
         for value in iterator {
