@@ -58,7 +58,7 @@ impl Container {
     }
 
     ///
-    /// Pushes `index` in the container only if it is greater than the current maximum value.
+    /// Pushes `index` at the end of the container.
     /// It is up to the caller to have validated index > self.max()
     ///
     /// # Panics
