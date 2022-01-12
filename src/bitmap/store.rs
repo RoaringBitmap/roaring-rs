@@ -137,7 +137,7 @@ impl Store {
     }
 
     ///
-    /// Pushes `index` in the store only if it is greater than the current maximum value.
+    /// Pushes `index` at the end of the store.
     /// It is up to the caller to have validated value > self.max()
     ///
     /// # Panics
