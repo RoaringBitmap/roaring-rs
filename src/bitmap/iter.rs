@@ -195,8 +195,8 @@ impl RoaringBitmap {
             (Some(first), _) => first,
         };
 
-        // It is now guaranteed that so long as the values are iterator are monotonically
-        // increasing they must also be the greatest in the set.
+        // It is now guaranteed that so long as the values of the iterator are
+        // monotonically increasing they must also be the greatest in the set.
 
         self.push_unchecked(prev);
         let mut count = 1;
