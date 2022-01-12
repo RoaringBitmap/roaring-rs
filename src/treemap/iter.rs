@@ -255,9 +255,7 @@ impl RoaringTreemap {
         &mut self,
         iterator: I,
     ) -> Result<u64, NonSortedIntegers> {
-        // Name shadowed to prevent accidentally referencing the param
         let mut iterator = iterator.into_iter();
-
         let mut prev = match (iterator.next(), self.max()) {
             (None, _) => return Ok(0),
             (Some(first), Some(max)) if first <= max => {
