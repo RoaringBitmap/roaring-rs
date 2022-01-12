@@ -1,6 +1,7 @@
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use std::io;
+use std::convert::TryFrom;
+use std::io::{self, Error, ErrorKind};
 
 use super::container::Container;
 use crate::bitmap::store::{ArrayStore, BitmapStore, Store};
@@ -99,8 +100,9 @@ impl RoaringBitmap {
     }
 
     /// Deserialize a bitmap into memory from [the standard Roaring on-disk
-    /// format][format].  This is compatible with the official C/C++, Java and
-    /// Go implementations.
+    /// format][format]. This is compatible with the official C/C++, Java and
+    /// Go implementations. This method checks that most of the internal values
+    /// are valid.
     ///
     /// [format]: https://github.com/RoaringBitmap/RoaringFormatSpec
     ///
@@ -116,20 +118,67 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
-    pub fn deserialize_from<R: io::Read>(mut reader: R) -> io::Result<RoaringBitmap> {
+    pub fn deserialize_from<R: io::Read>(reader: R) -> io::Result<RoaringBitmap> {
+        RoaringBitmap::deserialize_with_fn_from(
+            reader,
+            |vec| ArrayStore::try_from(vec).map_err(|e| Error::new(ErrorKind::InvalidData, e)),
+            |len, b| {
+                BitmapStore::try_from(len, b).map_err(|e| Error::new(ErrorKind::InvalidData, e))
+            },
+        )
+    }
+
+    /// Deserialize a bitmap into memory from [the standard Roaring on-disk
+    /// format][format].This is compatible with the official C/C++, Java and
+    /// Go implementations. This method is faster than the `deserialize_from`
+    /// as it doesn't check the validity of the stores bringing possible
+    /// invalid states to your program.
+    ///
+    /// [format]: https://github.com/RoaringBitmap/RoaringFormatSpec
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = (1..4).collect();
+    /// let mut bytes = vec![];
+    /// rb1.serialize_into(&mut bytes).unwrap();
+    /// let rb2 = RoaringBitmap::deserialize_unchecked_from(&bytes[..]).unwrap();
+    ///
+    /// assert_eq!(rb1, rb2);
+    /// ```
+    pub fn deserialize_unchecked_from<R: io::Read>(reader: R) -> io::Result<RoaringBitmap> {
+        RoaringBitmap::deserialize_with_fn_from(
+            reader,
+            |vec| Ok(ArrayStore::from_vec_unchecked(vec)),
+            |len, b| Ok(BitmapStore::from_unchecked(len, b)),
+        )
+    }
+
+    fn deserialize_with_fn_from<R, AF, BF>(
+        mut reader: R,
+        create_array: AF,
+        create_bitmap: BF,
+    ) -> io::Result<RoaringBitmap>
+    where
+        R: io::Read,
+        AF: Fn(Vec<u16>) -> io::Result<ArrayStore>,
+        BF: Fn(u64, Box<[u64; 1024]>) -> io::Result<BitmapStore>,
+    {
         let (size, has_offsets) = {
             let cookie = reader.read_u32::<LittleEndian>()?;
             if cookie == SERIAL_COOKIE_NO_RUNCONTAINER {
                 (reader.read_u32::<LittleEndian>()? as usize, true)
             } else if (cookie as u16) == SERIAL_COOKIE {
-                return Err(io::Error::new(io::ErrorKind::Other, "run containers are unsupported"));
+                return Err(Error::new(ErrorKind::Other, "run containers are unsupported"));
             } else {
-                return Err(io::Error::new(io::ErrorKind::Other, "unknown cookie value"));
+                return Err(Error::new(ErrorKind::Other, "unknown cookie value"));
             }
         };
 
         if size > u16::MAX as usize + 1 {
-            return Err(io::Error::new(io::ErrorKind::Other, "size is greater than supported"));
+            return Err(Error::new(ErrorKind::Other, "size is greater than supported"));
         }
 
         let mut description_bytes = vec![0u8; size * 4];
@@ -152,12 +201,12 @@ impl RoaringBitmap {
                 let mut values = vec![0; len as usize];
                 reader.read_exact(cast_slice_mut(&mut values))?;
                 values.iter_mut().for_each(|n| *n = u16::from_le(*n));
-                Store::Array(ArrayStore::from_vec_unchecked(values))
+                Store::Array(create_array(values)?)
             } else {
                 let mut values = Box::new([0; 1024]);
                 reader.read_exact(cast_slice_mut(&mut values[..]))?;
                 values.iter_mut().for_each(|n| *n = u64::from_le(*n));
-                Store::Bitmap(BitmapStore::from_unchecked(len, values))
+                Store::Bitmap(create_bitmap(len, values)?)
             };
 
             containers.push(Container { key, store });
