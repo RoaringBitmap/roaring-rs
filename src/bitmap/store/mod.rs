@@ -161,6 +161,13 @@ impl Store {
             Bitmap(bits) => bits.select(n),
         }
     }
+
+    pub(crate) fn to_bitmap(&self) -> Store {
+        match self {
+            Array(arr) => Bitmap(arr.to_bitmap_store()),
+            Bitmap(_) => self.clone(),
+        }
+    }
 }
 
 impl Default for Store {
