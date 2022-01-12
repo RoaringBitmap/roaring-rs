@@ -3,7 +3,7 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io;
 
 use super::container::Container;
-use super::store::Store;
+use crate::bitmap::store::{ArrayStore, BitmapStore, Store};
 use crate::RoaringBitmap;
 
 const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
@@ -32,7 +32,7 @@ impl RoaringBitmap {
             .containers
             .iter()
             .map(|container| match container.store {
-                Store::Array(ref values) => 8 + values.len() * 2,
+                Store::Array(ref values) => 8 + values.len() as usize * 2,
                 Store::Bitmap(..) => 8 + 8 * 1024,
             })
             .sum();
@@ -64,7 +64,7 @@ impl RoaringBitmap {
 
         for container in &self.containers {
             writer.write_u16::<LittleEndian>(container.key)?;
-            writer.write_u16::<LittleEndian>((container.len - 1) as u16)?;
+            writer.write_u16::<LittleEndian>((container.len() - 1) as u16)?;
         }
 
         let mut offset = 8 + 8 * self.containers.len() as u32;
@@ -83,12 +83,12 @@ impl RoaringBitmap {
         for container in &self.containers {
             match container.store {
                 Store::Array(ref values) => {
-                    for &value in values {
+                    for &value in values.iter() {
                         writer.write_u16::<LittleEndian>(value)?;
                     }
                 }
-                Store::Bitmap(ref values) => {
-                    for &value in values.iter() {
+                Store::Bitmap(ref bits) => {
+                    for &value in bits.as_array() {
                         writer.write_u64::<LittleEndian>(value)?;
                     }
                 }
@@ -152,15 +152,15 @@ impl RoaringBitmap {
                 let mut values = vec![0; len as usize];
                 reader.read_exact(cast_slice_mut(&mut values))?;
                 values.iter_mut().for_each(|n| *n = u16::from_le(*n));
-                Store::Array(values)
+                Store::Array(ArrayStore::from_vec_unchecked(values))
             } else {
                 let mut values = Box::new([0; 1024]);
                 reader.read_exact(cast_slice_mut(&mut values[..]))?;
                 values.iter_mut().for_each(|n| *n = u64::from_le(*n));
-                Store::Bitmap(values)
+                Store::Bitmap(BitmapStore::from_unchecked(len, values))
             };
 
-            containers.push(Container { key, len, store });
+            containers.push(Container { key, store });
         }
 
         Ok(RoaringBitmap { containers })
