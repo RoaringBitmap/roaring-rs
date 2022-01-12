@@ -2,7 +2,7 @@ use std::collections::btree_map::Entry;
 use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
-use crate::RoaringTreemap;
+use crate::{IterExt, RoaringTreemap};
 
 impl RoaringTreemap {
     /// Computes the len of the union with the specified other treemap without creating a new
@@ -396,5 +396,51 @@ impl BitXorAssign<&RoaringTreemap> for RoaringTreemap {
                 }
             }
         }
+    }
+}
+
+impl<I> IterExt<RoaringTreemap> for I
+where
+    I: IntoIterator<Item = RoaringTreemap>,
+{
+    type Bitmap = RoaringTreemap;
+
+    fn or(self) -> Self::Bitmap {
+        todo!()
+    }
+
+    fn and(self) -> Self::Bitmap {
+        todo!()
+    }
+
+    fn sub(self) -> Self::Bitmap {
+        todo!()
+    }
+
+    fn xor(self) -> Self::Bitmap {
+        todo!()
+    }
+}
+
+impl<'a, I> IterExt<&'a RoaringTreemap> for I
+where
+    I: IntoIterator<Item = &'a RoaringTreemap>,
+{
+    type Bitmap = RoaringTreemap;
+
+    fn or(self) -> Self::Bitmap {
+        todo!()
+    }
+
+    fn and(self) -> Self::Bitmap {
+        todo!()
+    }
+
+    fn sub(self) -> Self::Bitmap {
+        todo!()
+    }
+
+    fn xor(self) -> Self::Bitmap {
+        todo!()
     }
 }
