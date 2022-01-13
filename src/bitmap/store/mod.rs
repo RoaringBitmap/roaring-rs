@@ -430,6 +430,22 @@ impl<'a> Iterator for Iter<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        panic!("Should never be called (roaring::Iter caches the size_hint itself)")
+        match self {
+            Iter::Array(inner) => inner.size_hint(),
+            Iter::Vec(inner) => inner.size_hint(),
+            Iter::BitmapBorrowed(inner) => inner.size_hint(),
+            Iter::BitmapOwned(inner) => inner.size_hint(),
+        }
+    }
+}
+
+impl<'a> ExactSizeIterator for Iter<'a> {
+    fn len(&self) -> usize {
+        match self {
+            Iter::Array(inner) => inner.len(),
+            Iter::Vec(inner) => inner.len(),
+            Iter::BitmapBorrowed(inner) => inner.len(),
+            Iter::BitmapOwned(inner) => inner.len(),
+        }
     }
 }

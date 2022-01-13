@@ -218,11 +218,11 @@ impl BitmapStore {
     }
 
     pub fn iter(&self) -> BitmapIter<&[u64; BITMAP_LENGTH]> {
-        BitmapIter::new(&self.bits)
+        BitmapIter::new(self.len, &self.bits)
     }
 
     pub fn into_iter(self) -> BitmapIter<Box<[u64; BITMAP_LENGTH]>> {
-        BitmapIter::new(self.bits)
+        BitmapIter::new(self.len, self.bits)
     }
 
     pub fn as_array(&self) -> &[u64; BITMAP_LENGTH] {
@@ -261,12 +261,13 @@ impl std::error::Error for Error {}
 pub struct BitmapIter<B: Borrow<[u64; BITMAP_LENGTH]>> {
     key: usize,
     value: u64,
+    len: u64,
     bits: B,
 }
 
 impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
-    fn new(bits: B) -> BitmapIter<B> {
-        BitmapIter { key: 0, value: bits.borrow()[0], bits }
+    fn new(len: u64, bits: B) -> BitmapIter<B> {
+        BitmapIter { key: 0, value: bits.borrow()[0], len, bits }
     }
 }
 
@@ -278,6 +279,7 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
             if self.value == 0 {
                 self.key += 1;
                 if self.key >= BITMAP_LENGTH {
+                    debug_assert!(self.len == 0);
                     return None;
                 }
                 self.value = unsafe { *self.bits.borrow().get_unchecked(self.key) };
@@ -285,12 +287,19 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
             }
             let index = self.value.trailing_zeros() as usize;
             self.value &= self.value - 1;
+            self.len -= 1;
             return Some((64 * self.key + index) as u16);
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        panic!("Should never be called (roaring::Iter caches the size_hint itself)")
+        (self.len as usize, Some(self.len as usize))
+    }
+}
+
+impl<B: Borrow<[u64; BITMAP_LENGTH]>> ExactSizeIterator for BitmapIter<B> {
+    fn len(&self) -> usize {
+        self.len as usize
     }
 }
 

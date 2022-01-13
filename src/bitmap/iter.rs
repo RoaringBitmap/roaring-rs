@@ -52,6 +52,13 @@ impl Iterator for Iter<'_> {
     }
 }
 
+#[cfg(target_pointer_width = "64")]
+impl ExactSizeIterator for Iter<'_> {
+    fn len(&self) -> usize {
+        self.size_hint as usize
+    }
+}
+
 impl Iterator for IntoIter {
     type Item = u32;
 
@@ -66,6 +73,13 @@ impl Iterator for IntoIter {
         } else {
             (usize::MAX, None)
         }
+    }
+}
+
+#[cfg(target_pointer_width = "64")]
+impl ExactSizeIterator for IntoIter {
+    fn len(&self) -> usize {
+        self.size_hint as usize
     }
 }
 
