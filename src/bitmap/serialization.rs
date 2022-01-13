@@ -101,7 +101,7 @@ impl RoaringBitmap {
 
     /// Deserialize a bitmap into memory from [the standard Roaring on-disk
     /// format][format]. This is compatible with the official C/C++, Java and
-    /// Go implementations. This method checks that most of the internal values
+    /// Go implementations. This method checks that all of the internal values
     /// are valid.
     ///
     /// [format]: https://github.com/RoaringBitmap/RoaringFormatSpec

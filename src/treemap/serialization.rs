@@ -54,7 +54,7 @@ impl RoaringTreemap {
     /// Deserialize a bitmap into memory.
     ///
     /// This is compatible with the official C/C++, Java and Go implementations.
-    /// This method checks that most of the internal values are valid.
+    /// This method checks that all of the internal values are valid.
     ///
     /// # Examples
     ///
