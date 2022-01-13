@@ -237,7 +237,13 @@ impl<'a> Iterator for Iter<'a> {
         self.inner.next().map(|i| util::join(self.key, i))
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
-        panic!("Should never be called (roaring::Iter caches the size_hint itself)")
+        self.inner.size_hint()
+    }
+}
+
+impl<'a> ExactSizeIterator for Iter<'a> {
+    fn len(&self) -> usize {
+        self.inner.len()
     }
 }
 
