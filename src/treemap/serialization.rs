@@ -82,38 +82,4 @@ impl RoaringTreemap {
 
         Ok(s)
     }
-
-    /// Deserialize a bitmap into memory.
-    ///
-    /// This is compatible with the official C/C++, Java and Go implementations.
-    /// This method is faster than the `deserialize_from`
-    /// as it doesn't check the validity of the stores bringing possible
-    /// invalid states to your program.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use roaring::RoaringTreemap;
-    ///
-    /// let rb1: RoaringTreemap = (1..4).collect();
-    /// let mut bytes = vec![];
-    /// rb1.serialize_into(&mut bytes).unwrap();
-    /// let rb2 = RoaringTreemap::deserialize_from(&bytes[..]).unwrap();
-    ///
-    /// assert_eq!(rb1, rb2);
-    /// ```
-    pub fn deserialize_unchecked_from<R: io::Read>(mut reader: R) -> io::Result<Self> {
-        let size = reader.read_u64::<LittleEndian>()?;
-
-        let mut s = Self::new();
-
-        for _ in 0..size {
-            let key = reader.read_u32::<LittleEndian>()?;
-            let bitmap = RoaringBitmap::deserialize_unchecked_from(&mut reader)?;
-
-            s.map.insert(key, bitmap);
-        }
-
-        Ok(s)
-    }
 }
