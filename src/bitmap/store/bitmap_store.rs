@@ -6,7 +6,7 @@ use super::ArrayStore;
 
 pub const BITMAP_LENGTH: usize = 1024;
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct BitmapStore {
     len: u64,
     bits: Box<[u64; BITMAP_LENGTH]>,
@@ -27,7 +27,7 @@ impl BitmapStore {
     }
 
     ///
-    /// Create a new Bitmap8K from a given len and bits array
+    /// Create a new BitmapStore from a given len and bits array
     /// It is up to the caller to ensure len == cardinality of bits
     /// Favor `try_from` for cases in which this invariants should be checked
     ///

@@ -378,36 +378,41 @@ impl Clone for RoaringBitmap {
 
 #[cfg(test)]
 mod tests {
-    use std::ops::Range;
-
-    use quickcheck_macros::quickcheck;
+    use proptest::collection::vec;
+    use proptest::prelude::*;
 
     use super::*;
 
-    #[quickcheck]
-    fn qc_insert_range(r: Range<u32>, checks: Vec<u32>) {
-        let mut b = RoaringBitmap::new();
-        let inserted = b.insert_range(r.clone());
-        if r.end > r.start {
-            assert_eq!(inserted, r.end as u64 - r.start as u64);
-        } else {
-            assert_eq!(inserted, 0);
-        }
+    proptest! {
+        #[test]
+        fn insert_range(
+            lo in 0u32..=65535, hi in 65536u32..=131071,
+            checks in vec(0u32..=262143, 1000)
+        ){
+            let r = lo..hi;
+            let mut b = RoaringBitmap::new();
+            let inserted = b.insert_range(r.clone());
+            if r.end > r.start {
+                assert_eq!(inserted, r.end as u64 - r.start as u64);
+            } else {
+                assert_eq!(inserted, 0);
+            }
 
-        // Assert all values in the range are present
-        for i in r.clone() {
-            assert!(b.contains(i as u32), "does not contain {}", i);
-        }
+            // Assert all values in the range are present
+            for i in r.clone() {
+                assert!(b.contains(i as u32), "does not contain {}", i);
+            }
 
-        // Run the check values looking for any false positives
-        for i in checks {
-            let bitmap_has = b.contains(i);
-            let range_has = r.contains(&i);
-            assert_eq!(
-                bitmap_has, range_has,
-                "value {} in bitmap={} and range={}",
-                i, bitmap_has, range_has
-            );
+            // Run the check values looking for any false positives
+            for i in checks {
+                let bitmap_has = b.contains(i);
+                let range_has = r.contains(&i);
+                assert_eq!(
+                    bitmap_has, range_has,
+                    "value {} in bitmap={} and range={}",
+                    i, bitmap_has, range_has
+                );
+            }
         }
     }
 
