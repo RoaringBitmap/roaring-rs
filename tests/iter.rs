@@ -1,9 +1,9 @@
 extern crate roaring;
 
-use std::collections::BTreeSet;
+use proptest::arbitrary::any;
+use proptest::collection::btree_set;
+use proptest::proptest;
 use std::iter::FromIterator;
-
-use quickcheck_macros::quickcheck;
 
 use roaring::RoaringBitmap;
 
@@ -53,9 +53,11 @@ fn bitmaps() {
     assert_eq!(clone2, original);
 }
 
-#[quickcheck]
-fn qc_iter(values: BTreeSet<u32>) {
-    let bitmap = RoaringBitmap::from_sorted_iter(values.iter().cloned()).unwrap();
-    // Iterator::eq != PartialEq::eq - cannot use assert_eq macro
-    assert!(values.into_iter().eq(bitmap.into_iter()));
+proptest! {
+    #[test]
+    fn iter(values in btree_set(any::<u32>(), ..=10_000)) {
+        let bitmap = RoaringBitmap::from_sorted_iter(values.iter().cloned()).unwrap();
+        // Iterator::eq != PartialEq::eq - cannot use assert_eq macro
+        assert!(values.into_iter().eq(bitmap.into_iter()));
+    }
 }

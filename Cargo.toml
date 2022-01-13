@@ -20,5 +20,4 @@ byteorder = "1.4.3"
 retain_mut = "0.1.4"
 
 [dev-dependencies]
-quickcheck = "0.9"
-quickcheck_macros = "0.9"
+proptest = { version = "1.0.0" }
