@@ -1,5 +1,6 @@
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use std::convert::TryFrom;
 use std::io;
 
 use super::container::Container;
@@ -99,8 +100,9 @@ impl RoaringBitmap {
     }
 
     /// Deserialize a bitmap into memory from [the standard Roaring on-disk
-    /// format][format].  This is compatible with the official C/C++, Java and
-    /// Go implementations.
+    /// format][format]. This is compatible with the official C/C++, Java and
+    /// Go implementations. This method checks that all of the internal values
+    /// are valid.
     ///
     /// [format]: https://github.com/RoaringBitmap/RoaringFormatSpec
     ///
@@ -152,12 +154,16 @@ impl RoaringBitmap {
                 let mut values = vec![0; len as usize];
                 reader.read_exact(cast_slice_mut(&mut values))?;
                 values.iter_mut().for_each(|n| *n = u16::from_le(*n));
-                Store::Array(ArrayStore::from_vec_unchecked(values))
+                let array = ArrayStore::try_from(values)
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                Store::Array(array)
             } else {
                 let mut values = Box::new([0; 1024]);
                 reader.read_exact(cast_slice_mut(&mut values[..]))?;
                 values.iter_mut().for_each(|n| *n = u64::from_le(*n));
-                Store::Bitmap(BitmapStore::from_unchecked(len, values))
+                let bitmap = BitmapStore::try_from(len, values)
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                Store::Bitmap(bitmap)
             };
 
             containers.push(Container { key, store });
