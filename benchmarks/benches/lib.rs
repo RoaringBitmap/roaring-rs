@@ -1,6 +1,7 @@
 mod datasets_paths;
 
 use std::cmp::Reverse;
+use std::convert::TryInto;
 use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
@@ -104,7 +105,7 @@ fn rank(c: &mut Criterion) {
         .map(|(_, r)| {
             r.map(|iter| {
                 let bitmap = RoaringBitmap::from_sorted_iter(iter).unwrap();
-                let len = bitmap.len();
+                let len: u32 = bitmap.len().try_into().expect("len <= u32::MAX");
                 (bitmap, len)
             })
             .unwrap()
@@ -118,7 +119,7 @@ fn rank(c: &mut Criterion) {
         b.iter(|| {
             for (bitmap, len) in bitmaps.iter() {
                 for i in (0..*len).step_by(100) {
-                    black_box(bitmap.rank(1 << i));
+                    black_box(bitmap.rank(i));
                 }
             }
         });
