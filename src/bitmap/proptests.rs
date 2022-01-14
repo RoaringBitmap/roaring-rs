@@ -124,7 +124,6 @@ mod test {
 
     proptest! {
         #[test]
-
         fn unions_are_idempotent(a in RoaringBitmap::arbitrary()) {
             prop_assert_eq!(&a | &a, a);
         }
