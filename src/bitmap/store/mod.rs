@@ -32,9 +32,9 @@ impl Store {
     }
 
     pub fn insert(&mut self, index: u16) -> bool {
-        match *self {
-            Array(ref mut vec) => vec.insert(index),
-            Bitmap(ref mut bits) => bits.insert(index),
+        match self {
+            Array(vec) => vec.insert(index),
+            Bitmap(bits) => bits.insert(index),
         }
     }
 
@@ -44,9 +44,9 @@ impl Store {
             return 0;
         }
 
-        match *self {
-            Array(ref mut vec) => vec.insert_range(range),
-            Bitmap(ref mut bits) => bits.insert_range(range),
+        match self {
+            Array(vec) => vec.insert_range(range),
+            Bitmap(bits) => bits.insert_range(range),
         }
     }
 
@@ -75,9 +75,9 @@ impl Store {
     }
 
     pub fn remove(&mut self, index: u16) -> bool {
-        match *self {
-            Array(ref mut vec) => vec.remove(index),
-            Bitmap(ref mut bits) => bits.remove(index),
+        match self {
+            Array(vec) => vec.remove(index),
+            Bitmap(bits) => bits.remove(index),
         }
     }
 
@@ -86,24 +86,24 @@ impl Store {
             return 0;
         }
 
-        match *self {
-            Array(ref mut vec) => vec.remove_range(range),
-            Bitmap(ref mut bits) => bits.remove_range(range),
+        match self {
+            Array(vec) => vec.remove_range(range),
+            Bitmap(bits) => bits.remove_range(range),
         }
     }
 
     pub fn contains(&self, index: u16) -> bool {
-        match *self {
-            Array(ref vec) => vec.contains(index),
-            Bitmap(ref bits) => bits.contains(index),
+        match self {
+            Array(vec) => vec.contains(index),
+            Bitmap(bits) => bits.contains(index),
         }
     }
 
     pub fn is_disjoint(&self, other: &Self) -> bool {
         match (self, other) {
-            (&Array(ref vec1), &Array(ref vec2)) => vec1.is_disjoint(vec2),
-            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => bits1.is_disjoint(bits2),
-            (&Array(ref vec), &Bitmap(ref bits)) | (&Bitmap(ref bits), &Array(ref vec)) => {
+            (Array(vec1), Array(vec2)) => vec1.is_disjoint(vec2),
+            (Bitmap(bits1), Bitmap(bits2)) => bits1.is_disjoint(bits2),
+            (Array(vec), Bitmap(bits)) | (Bitmap(bits), Array(vec)) => {
                 vec.iter().all(|&i| !bits.contains(i))
             }
         }
@@ -111,31 +111,31 @@ impl Store {
 
     pub fn is_subset(&self, other: &Self) -> bool {
         match (self, other) {
-            (&Array(ref vec1), &Array(ref vec2)) => vec1.is_subset(vec2),
-            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => bits1.is_subset(bits2),
-            (&Array(ref vec), &Bitmap(ref bits)) => vec.iter().all(|&i| bits.contains(i)),
-            (&Bitmap(..), &Array(..)) => false,
+            (Array(vec1), Array(vec2)) => vec1.is_subset(vec2),
+            (Bitmap(bits1), Bitmap(bits2)) => bits1.is_subset(bits2),
+            (Array(vec), Bitmap(bits)) => vec.iter().all(|&i| bits.contains(i)),
+            (Bitmap(..), &Array(..)) => false,
         }
     }
 
     pub fn len(&self) -> u64 {
-        match *self {
-            Array(ref vec) => vec.len(),
-            Bitmap(ref bits) => bits.len(),
+        match self {
+            Array(vec) => vec.len(),
+            Bitmap(bits) => bits.len(),
         }
     }
 
     pub fn min(&self) -> Option<u16> {
-        match *self {
-            Array(ref vec) => vec.min(),
-            Bitmap(ref bits) => bits.min(),
+        match self {
+            Array(vec) => vec.min(),
+            Bitmap(bits) => bits.min(),
         }
     }
 
     pub fn max(&self) -> Option<u16> {
-        match *self {
-            Array(ref vec) => vec.max(),
-            Bitmap(ref bits) => bits.max(),
+        match self {
+            Array(vec) => vec.max(),
+            Bitmap(bits) => bits.max(),
         }
     }
 }
@@ -386,9 +386,9 @@ impl<'a> IntoIterator for &'a Store {
     type Item = u16;
     type IntoIter = Iter<'a>;
     fn into_iter(self) -> Iter<'a> {
-        match *self {
-            Array(ref vec) => Iter::Array(vec.iter()),
-            Bitmap(ref bits) => Iter::BitmapBorrowed(bits.iter()),
+        match self {
+            Array(vec) => Iter::Array(vec.iter()),
+            Bitmap(bits) => Iter::BitmapBorrowed(bits.iter()),
         }
     }
 }
@@ -407,8 +407,8 @@ impl IntoIterator for Store {
 impl PartialEq for Store {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (&Array(ref vec1), &Array(ref vec2)) => vec1 == vec2,
-            (&Bitmap(ref bits1), &Bitmap(ref bits2)) => {
+            (Array(vec1), Array(vec2)) => vec1 == vec2,
+            (Bitmap(bits1), Bitmap(bits2)) => {
                 bits1.len() == bits2.len()
                     && bits1.iter().zip(bits2.iter()).all(|(i1, i2)| i1 == i2)
             }
@@ -421,11 +421,11 @@ impl<'a> Iterator for Iter<'a> {
     type Item = u16;
 
     fn next(&mut self) -> Option<u16> {
-        match *self {
-            Iter::Array(ref mut inner) => inner.next().cloned(),
-            Iter::Vec(ref mut inner) => inner.next(),
-            Iter::BitmapBorrowed(ref mut inner) => inner.next(),
-            Iter::BitmapOwned(ref mut inner) => inner.next(),
+        match self {
+            Iter::Array(inner) => inner.next().cloned(),
+            Iter::Vec(inner) => inner.next(),
+            Iter::BitmapBorrowed(inner) => inner.next(),
+            Iter::BitmapOwned(inner) => inner.next(),
         }
     }
 
