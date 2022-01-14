@@ -189,13 +189,11 @@ mod test {
         #[test]
         fn existence_of_joins(a in RoaringBitmap::arbitrary(), b in RoaringBitmap::arbitrary()) {
             prop_assert!(a.is_subset(&(&a | &b)));
-
         }
 
         #[test]
         fn existence_of_meets(a in RoaringBitmap::arbitrary(), b in RoaringBitmap::arbitrary()) {
             prop_assert!(&(&a & &b).is_subset(&a));
-
         }
     }
 
