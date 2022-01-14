@@ -2,9 +2,7 @@ mod array_store;
 mod bitmap_store;
 
 use std::mem;
-use std::ops::{
-    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
-};
+use std::ops::{BitAnd, BitAndAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign};
 use std::{slice, vec};
 
 use self::bitmap_store::BITMAP_LENGTH;
@@ -143,73 +141,6 @@ impl Store {
 impl Default for Store {
     fn default() -> Self {
         Store::new()
-    }
-}
-
-impl BitOr<&Store> for &Store {
-    type Output = Store;
-
-    fn bitor(self, rhs: &Store) -> Store {
-        match (self, rhs) {
-            (&Array(ref vec1), &Array(ref vec2)) => Array(BitOr::bitor(vec1, vec2)),
-            (&Bitmap(..), &Array(..)) => {
-                let mut lhs = self.clone();
-                BitOrAssign::bitor_assign(&mut lhs, rhs);
-                lhs
-            }
-            (&Bitmap(..), &Bitmap(..)) => {
-                let mut lhs = self.clone();
-                BitOrAssign::bitor_assign(&mut lhs, rhs);
-                lhs
-            }
-            (&Array(..), &Bitmap(..)) => {
-                let mut rhs = rhs.clone();
-                BitOrAssign::bitor_assign(&mut rhs, self);
-                rhs
-            }
-        }
-    }
-}
-
-impl BitOrAssign<Store> for Store {
-    fn bitor_assign(&mut self, mut rhs: Store) {
-        match (self, &mut rhs) {
-            (&mut Array(ref mut vec1), &mut Array(ref vec2)) => {
-                *vec1 = BitOr::bitor(&*vec1, vec2);
-            }
-            (&mut Bitmap(ref mut bits1), &mut Array(ref vec2)) => {
-                BitOrAssign::bitor_assign(bits1, vec2);
-            }
-            (&mut Bitmap(ref mut bits1), &mut Bitmap(ref bits2)) => {
-                BitOrAssign::bitor_assign(bits1, bits2);
-            }
-            (this @ &mut Array(..), &mut Bitmap(..)) => {
-                mem::swap(this, &mut rhs);
-                BitOrAssign::bitor_assign(this, rhs);
-            }
-        }
-    }
-}
-
-impl BitOrAssign<&Store> for Store {
-    fn bitor_assign(&mut self, rhs: &Store) {
-        match (self, rhs) {
-            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
-                let this = mem::take(vec1);
-                *vec1 = BitOr::bitor(&this, vec2);
-            }
-            (&mut Bitmap(ref mut bits1), &Array(ref vec2)) => {
-                BitOrAssign::bitor_assign(bits1, vec2);
-            }
-            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
-                BitOrAssign::bitor_assign(bits1, bits2);
-            }
-            (this @ &mut Array(..), &Bitmap(ref bits2)) => {
-                let mut lhs: Store = Bitmap(bits2.clone());
-                BitOrAssign::bitor_assign(&mut lhs, &*this);
-                *this = lhs;
-            }
-        }
     }
 }
 

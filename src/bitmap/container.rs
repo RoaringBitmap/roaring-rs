@@ -3,7 +3,8 @@ use std::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
 };
 
-use super::store::{self, Store};
+use crate::bitmap::store::{self, Store, Store::*};
+
 use super::util;
 
 const ARRAY_LIMIT: u64 = 4096;
@@ -124,7 +125,24 @@ impl BitOr<&Container> for &Container {
     type Output = Container;
 
     fn bitor(self, rhs: &Container) -> Container {
-        let store = BitOr::bitor(&self.store, &rhs.store);
+        let store = match (&self.store, &rhs.store) {
+            (Array(vec1), Array(vec2)) => Array(vec1 | vec2),
+            (Bitmap(bits1), Array(vec2)) => {
+                let mut bits1 = bits1.clone();
+                bits1 |= vec2;
+                Bitmap(bits1)
+            }
+            (Bitmap(bits1), Bitmap(bits2)) => {
+                let mut bits1 = bits1.clone();
+                bits1 |= bits2;
+                Bitmap(bits1)
+            }
+            (Array(vec1), Bitmap(bits2)) => {
+                let mut bits2 = bits2.clone();
+                bits2 |= vec1;
+                Bitmap(bits2)
+            }
+        };
         let mut container = Container { key: self.key, store };
         container.ensure_correct_store();
         container
@@ -133,14 +151,43 @@ impl BitOr<&Container> for &Container {
 
 impl BitOrAssign<Container> for Container {
     fn bitor_assign(&mut self, rhs: Container) {
-        BitOrAssign::bitor_assign(&mut self.store, rhs.store);
+        match (&mut self.store, rhs.store) {
+            (Array(ref vec1), Array(ref vec2)) => {
+                self.store = Array(vec1 | vec2);
+            }
+            (Bitmap(bits1), Array(ref vec2)) => {
+                *bits1 |= vec2;
+            }
+            (Bitmap(bits1), Bitmap(ref bits2)) => {
+                *bits1 |= bits2;
+            }
+            (Array(ref vec1), Bitmap(mut bits2)) => {
+                bits2 |= vec1;
+                self.store = Bitmap(bits2);
+            }
+        }
         self.ensure_correct_store();
     }
 }
 
 impl BitOrAssign<&Container> for Container {
     fn bitor_assign(&mut self, rhs: &Container) {
-        BitOrAssign::bitor_assign(&mut self.store, &rhs.store);
+        match (&mut self.store, &rhs.store) {
+            (Array(ref vec1), Array(vec2)) => {
+                self.store = Array(vec1 | vec2);
+            }
+            (Bitmap(bits1), Array(vec2)) => {
+                *bits1 |= vec2;
+            }
+            (Bitmap(bits1), Bitmap(bits2)) => {
+                *bits1 |= bits2;
+            }
+            (Array(ref vec1), Bitmap(bits2)) => {
+                let mut bits2 = bits2.clone();
+                bits2 |= vec1;
+                self.store = Bitmap(bits2);
+            }
+        }
         self.ensure_correct_store();
     }
 }
