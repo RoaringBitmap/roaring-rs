@@ -1,6 +1,7 @@
 mod datasets_paths;
 
 use std::cmp::Reverse;
+use std::convert::TryInto;
 use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
@@ -90,6 +91,37 @@ fn len(c: &mut Criterion) {
 
         b.iter(|| {
             black_box(bitmap.len());
+        });
+    });
+}
+
+fn rank(c: &mut Criterion) {
+    let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
+    let parsed_numbers = parse_dir_files(files).unwrap();
+
+    // Cache len to prevent len calculation from effecting benchmark
+    let bitmaps: Vec<_> = parsed_numbers
+        .into_iter()
+        .map(|(_, r)| {
+            r.map(|iter| {
+                let bitmap = RoaringBitmap::from_sorted_iter(iter).unwrap();
+                let len: u32 = bitmap.len().try_into().expect("len <= u32::MAX");
+                (bitmap, len)
+            })
+            .unwrap()
+        })
+        .collect();
+
+    // Rank all multiples of 100 < bitmap.len()
+    // Mupliplier chosen arbitrarily, but should be sure not to rank many values > len()
+    // Doing so would degenerate into benchmarking len()
+    c.bench_function("rank", |b| {
+        b.iter(|| {
+            for (bitmap, len) in bitmaps.iter() {
+                for i in (0..*len).step_by(100) {
+                    black_box(bitmap.rank(i));
+                }
+            }
         });
     });
 }
@@ -501,6 +533,7 @@ criterion_group!(
     insert,
     contains,
     len,
+    rank,
     and,
     intersect_with,
     or,

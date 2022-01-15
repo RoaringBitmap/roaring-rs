@@ -217,6 +217,13 @@ impl BitmapStore {
             .map(|(index, bit)| (index * 64 + (63 - bit.leading_zeros() as usize)) as u16)
     }
 
+    pub fn rank(&self, index: u16) -> u64 {
+        let (key, bit) = (key(index), bit(index));
+
+        self.bits[..key].iter().map(|v| v.count_ones() as u64).sum::<u64>()
+            + (self.bits[key] << (63 - bit)).count_ones() as u64
+    }
+
     pub fn iter(&self) -> BitmapIter<&[u64; BITMAP_LENGTH]> {
         BitmapIter::new(self.len, &self.bits)
     }

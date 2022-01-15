@@ -358,6 +358,38 @@ impl RoaringBitmap {
     pub fn max(&self) -> Option<u32> {
         self.containers.last().and_then(|tail| tail.max().map(|max| util::join(tail.key, max)))
     }
+
+    /// Returns the number of integers that are <= value. rank(u32::MAX) == len()
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// assert_eq!(rb.rank(0), 0);
+    ///
+    /// rb.insert(3);
+    /// rb.insert(4);
+    /// assert_eq!(rb.rank(3), 1);
+    /// assert_eq!(rb.rank(10), 2)
+    /// ```
+    pub fn rank(&self, value: u32) -> u64 {
+        // if len becomes cached for RoaringBitmap: return len if len > value
+
+        let (key, index) = util::split(value);
+
+        match self.containers.binary_search_by_key(&key, |c| c.key) {
+            Ok(i) => {
+                // For optimal locality of reference:
+                //  * container[i] should be a cache hit after binary search, rank it first
+                //  * sum in reverse to avoid cache misses near i
+                unsafe { self.containers.get_unchecked(i) }.rank(index)
+                    + self.containers[..i].iter().rev().map(|c| c.len()).sum::<u64>()
+            }
+            Err(i) => self.containers[..i].iter().map(|c| c.len()).sum(),
+        }
+    }
 }
 
 impl Default for RoaringBitmap {

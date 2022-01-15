@@ -276,6 +276,33 @@ impl RoaringTreemap {
             .find(|&(_, rb)| rb.max().is_some())
             .map(|(k, rb)| util::join(*k, rb.max().unwrap()))
     }
+
+    /// Returns the number of integers that are <= value. rank(u64::MAX) == len()
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let mut rb = RoaringTreemap::new();
+    /// assert_eq!(rb.rank(0), 0);
+    ///
+    /// rb.insert(3);
+    /// rb.insert(4);
+    /// assert_eq!(rb.rank(3), 1);
+    /// assert_eq!(rb.rank(10), 2)
+    /// ```
+    pub fn rank(&self, value: u64) -> u64 {
+        // if len becomes cached for RoaringTreemap: return len if len > value
+
+        let (hi, lo) = util::split(value);
+        let mut iter = self.map.range(..=hi).rev();
+
+        iter.next()
+            .map(|(&k, bitmap)| if k == hi { bitmap.rank(lo) } else { bitmap.len() })
+            .unwrap_or(0)
+            + iter.map(|(_, bitmap)| bitmap.len()).sum::<u64>()
+    }
 }
 
 impl Default for RoaringTreemap {
