@@ -21,3 +21,6 @@ retain_mut = "0.1.4"
 
 [dev-dependencies]
 proptest = { version = "1.0.0" }
+
+[profile.test]
+opt-level = 2
