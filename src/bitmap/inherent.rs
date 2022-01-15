@@ -384,7 +384,7 @@ impl RoaringBitmap {
                 // For optimal locality of reference:
                 //  * container[i] should be a cache hit after binary search, rank it first
                 //  * sum in reverse to avoid cache misses near i
-                unsafe { &self.containers.get_unchecked(i) }.rank(index)
+                unsafe { self.containers.get_unchecked(i) }.rank(index)
                     + self.containers[..i].iter().rev().map(|c| c.len()).sum::<u64>()
             }
             Err(i) => self.containers[..i].iter().map(|c| c.len()).sum(),
