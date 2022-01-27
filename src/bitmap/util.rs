@@ -73,4 +73,11 @@ mod test {
         assert_eq!(None, convert_range_to_inclusive(5..5));
         assert_eq!(Some(16..=16), convert_range_to_inclusive(16..=16))
     }
+
+    #[cfg(feature = "simd")]
+    #[test]
+    fn test_simd_conditional_compilation() {
+        use simd::Simd;
+        assert_eq!(Simd::splat(0), Simd::from_array([0u32, 0, 0, 0]));
+    }
 }

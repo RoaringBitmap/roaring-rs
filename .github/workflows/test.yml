@@ -36,8 +36,20 @@ jobs:
 
       - uses: actions-rs/cargo@v1
         with:
+          toolchain: nightly
+          command: test
+          args: --all-features
+
+      - uses: actions-rs/cargo@v1
+        with:
           command: test
           args: --benches --manifest-path benchmarks/Cargo.toml
+
+      - uses: actions-rs/cargo@v1
+        with:
+          toolchain: nightly
+          command: test
+          args: --all-features --benches --manifest-path benchmarks/Cargo.toml
 
       - uses: actions-rs/cargo@v1
         with:

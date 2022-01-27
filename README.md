@@ -67,3 +67,8 @@ additional terms or conditions.
 
 [real-world datasets]: https://github.com/RoaringBitmap/real-roaring-datasets
 [on the user guide]: https://bheisler.github.io/criterion.rs/book/user_guide/user_guide.html
+
+## Experimental features
+
+The `simd` feature is in active development. It has not been tested. If you would like to build with `simd` note that
+`std::simd` is only in rust nightly.

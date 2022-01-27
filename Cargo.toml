@@ -18,6 +18,7 @@ license = "MIT OR Apache-2.0"
 bytemuck = "1.7.2"
 byteorder = "1.4.3"
 retain_mut = "0.1.4"
+simd = { git = "https://github.com/rust-lang/portable-simd", package = "core_simd", optional = true }
 
 [dev-dependencies]
 proptest = { version = "1.0.0" }
