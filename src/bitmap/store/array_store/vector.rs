@@ -4,7 +4,7 @@
 //! Prior work: Schlegel et al., Fast Sorted-Set Intersection using SIMD Instructions
 //!
 //! Rust port notes:
-//! The x86 PCMPESTRM instruction been replaced with a simple vector or-shift
+//! The x86 PCMPESTRM instruction has been replaced with a simple vector or-shift
 //! While several more instructions, this is what is available through LLVM intrinsics
 //! and is portable.
 
