@@ -528,7 +528,11 @@ mod test {
             prop_assert_eq!(&a, &b);
             prop_assert!(a.is_subset(&b) && b.is_subset(&a));
 
-            b.insert(a.max().unwrap_or(0) + 1);
+            // Flip one bit
+            let mut c = RoaringBitmap::new();
+            c.insert(0);
+            b ^= c;
+
             prop_assert_ne!(&a, &b);
             prop_assert!(!(a.is_subset(&b) && b.is_subset(&a)));
         }
