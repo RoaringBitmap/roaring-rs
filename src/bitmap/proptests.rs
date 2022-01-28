@@ -1,6 +1,5 @@
 #[cfg(test)]
 #[allow(clippy::eq_op)] // Allow equal expressions as operands
-#[allow(clippy::redundant_clone)] // Intentional cloning to call operators owned
 mod test {
     use crate::RoaringBitmap;
     use proptest::prelude::*;
@@ -722,9 +721,9 @@ mod test {
                 a_or_c |= c.clone();
 
                 let mut x = b_sub_a;
-                x -= c.clone();
+                x -= c;
 
-                let mut y = b.clone();
+                let mut y = b;
                 y -= a_or_c.clone();
 
                 prop_assert_eq!(x, y);
@@ -781,8 +780,8 @@ mod test {
             }
 
             { // op assign own
-                let mut x = a.clone();
-                x -= u.clone();
+                let mut x = a;
+                x -= u;
 
                 prop_assert_eq!(x, empty_set());
             }
