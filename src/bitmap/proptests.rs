@@ -1,5 +1,6 @@
 #[cfg(test)]
 #[allow(clippy::eq_op)] // Allow equal expressions as operands
+#[allow(clippy::redundant_clone)] // Intentional cloning to call operators owned
 mod test {
     use crate::RoaringBitmap;
     use proptest::prelude::*;
@@ -449,6 +450,9 @@ mod test {
     //
     // PROPOSITION 9: For any universe U and subsets A, B, and C of U,
     // the following identities hold:
+    // Note: I dont have good names for these identities. If somebody could give them good names
+    // and split each triplet of ref-ref, owned-ref, and owned-owned: I will happily buy them
+    // a very large but finite number of beers.
 
     proptest! {
         #[test]
@@ -464,15 +468,129 @@ mod test {
                 (&c - &a) | (&c - &b)
             );
 
+            { // op assign ref
+                let mut a_and_b = a.clone();
+                a_and_b &= &b;
+
+                let mut c_sub_a = c.clone();
+                c_sub_a -= &a;
+
+                let mut c_sub_b = c.clone();
+                c_sub_b -= &b;
+
+                let mut x = c.clone();
+                x -= &a_and_b;
+
+                let mut y = c_sub_a;
+                y |= &c_sub_b;
+
+                prop_assert_eq!(x, y);
+            }
+
+            { // op assign own
+                let mut a_and_b = a.clone();
+                a_and_b &= b.clone();
+
+                let mut c_sub_a = c.clone();
+                c_sub_a -= a.clone();
+
+                let mut c_sub_b = c.clone();
+                c_sub_b -= b.clone();
+
+                let mut x = c.clone();
+                x -= a_and_b.clone();
+
+                let mut y = c_sub_a;
+                y |= c_sub_b.clone();
+
+                prop_assert_eq!(x, y);
+            }
+
             prop_assert_eq!(
                 &c - (&a | &b),
                 (&c - &a) & (&c - &b)
             );
 
+            { // op assign ref
+                let mut a_or_b = a.clone();
+                a_or_b |= &b;
+
+                let mut c_sub_a = c.clone();
+                c_sub_a -= &a;
+
+                let mut c_sub_b = c.clone();
+                c_sub_b -= &b;
+
+                let mut x = c.clone();
+                x -= &a_or_b;
+
+                let mut y = c_sub_a;
+                y &= &c_sub_b;
+
+                prop_assert_eq!(x, y);
+            }
+
+            { // op assign own
+                let mut a_or_b = a.clone();
+                a_or_b |= b.clone();
+
+                let mut c_sub_a = c.clone();
+                c_sub_a -= a.clone();
+
+                let mut c_sub_b = c.clone();
+                c_sub_b -= b.clone();
+
+                let mut x = c.clone();
+                x -= a_or_b.clone();
+
+                let mut y = c_sub_a;
+                y &= c_sub_b.clone();
+
+                prop_assert_eq!(x, y);
+            }
+
             prop_assert_eq!(
                 &c - (&b - &a),
                 (&a & &c) | (&c - &b)
             );
+
+            { // op assign ref
+                let mut b_sub_a = b.clone();
+                b_sub_a -= &b;
+
+                let mut a_and_c = c.clone();
+                a_and_c &= &c;
+
+                let mut c_sub_b = c.clone();
+                c_sub_b -= &b;
+
+                let mut x = c.clone();
+                x -= &b_sub_a;
+
+                let mut y = a_and_c;
+                y |= &c_sub_b;
+
+                prop_assert_eq!(x, y);
+            }
+
+            { // op assign own
+                let mut b_sub_a = b.clone();
+                b_sub_a -= b.clone();
+
+                let mut a_and_c = c.clone();
+                a_and_c &= c.clone();
+
+                let mut c_sub_b = c.clone();
+                c_sub_b -= b.clone();
+
+                let mut x = c.clone();
+                x -= b_sub_a.clone();
+
+                let mut y = a_and_c;
+                y |= c_sub_b.clone();
+
+                prop_assert_eq!(x, y);
+            }
 
             {
                 let x = (&b - &a) & &c;
@@ -484,30 +602,190 @@ mod test {
                 prop_assert_eq!(&z, &x);
             }
 
+            { // op assign ref
+                let mut b_sub_a = b.clone();
+                b_sub_a -= &a;
+
+                let mut b_and_c = b.clone();
+                b_and_c &= &c;
+
+                let mut c_sub_a = c.clone();
+                c_sub_a -= &a;
+
+                let mut x = b_sub_a;
+                x &= &c;
+
+                let mut y = b_and_c;
+                y -= &a;
+
+                let mut z = c_sub_a;
+                z &= &b;
+
+                prop_assert_eq!(&x, &y);
+                prop_assert_eq!(&y, &z);
+                prop_assert_eq!(&z, &x);
+            }
+
+            { // op assign own
+                let mut b_sub_a = b.clone();
+                b_sub_a -= a.clone();
+
+                let mut b_and_c = b.clone();
+                b_and_c &= c.clone();
+
+                let mut c_sub_a = c.clone();
+                c_sub_a -= a.clone();
+
+                let mut x = b_sub_a;
+                x &= c.clone();
+
+                let mut y = b_and_c;
+                y -= a.clone();
+
+                let mut z = c_sub_a;
+                z &= b.clone();
+
+                prop_assert_eq!(&x, &y);
+                prop_assert_eq!(&y, &z);
+                prop_assert_eq!(&z, &x);
+            }
+
             prop_assert_eq!(
                 (&b - &a) | &c,
                 (&b | &c) - (&a - &c)
             );
+
+            { // op assign ref
+                let mut  b_sub_a = b.clone();
+                b_sub_a -= &a;
+
+                let mut b_or_c = b.clone();
+                b_or_c |= &c;
+
+                let mut a_sub_c = a.clone();
+                a_sub_c -= &c;
+
+                let mut x = b_sub_a;
+                x |= &c;
+
+                let mut y = b_or_c;
+                y -= &a_sub_c;
+
+                prop_assert_eq!(x, y);
+            }
+
+            { // op assign own
+                let mut  b_sub_a = b.clone();
+                b_sub_a -= a.clone();
+
+                let mut b_or_c = b.clone();
+                b_or_c |= c.clone();
+
+                let mut a_sub_c = a.clone();
+                a_sub_c -= c.clone();
+
+                let mut x = b_sub_a;
+                x |= c.clone();
+
+                let mut y = b_or_c;
+                y -= a_sub_c.clone();
+
+                prop_assert_eq!(x, y);
+            }
 
             prop_assert_eq!(
                 (&b - &a) - &c,
                 &b - (&a | &c)
             );
 
+            { // op assign ref
+                let mut  b_sub_a = b.clone();
+                b_sub_a -= &a;
+
+                let mut a_or_c = a.clone();
+                a_or_c |= &c;
+
+                let mut x = b_sub_a;
+                x -= &c;
+
+                let mut y = b.clone();
+                y -= &a_or_c;
+
+                prop_assert_eq!(x, y);
+            }
+
+            { // op assign ref
+                let mut  b_sub_a = b.clone();
+                b_sub_a -= a.clone();
+
+                let mut a_or_c = a.clone();
+                a_or_c |= c.clone();
+
+                let mut x = b_sub_a;
+                x -= c.clone();
+
+                let mut y = b.clone();
+                y -= a_or_c.clone();
+
+                prop_assert_eq!(x, y);
+            }
+
             prop_assert_eq!(
                 &a - &a,
                 empty_set()
             );
+
+            { // op assign ref
+                let mut x = a.clone();
+                x -= &a;
+
+                prop_assert_eq!(x, empty_set());
+            }
+
+            { // op assign own
+                let mut x = a.clone();
+                x -= a.clone();
+
+                prop_assert_eq!(x, empty_set());
+            }
 
              prop_assert_eq!(
                 empty_set() - &a,
                 empty_set()
             );
 
+            { // op assign ref
+            let mut x = empty_set();
+            x -= &a;
+
+            prop_assert_eq!(x, empty_set());
+        }
+
+        { // op assign own
+                let mut x = empty_set();
+                x -= a.clone();
+
+                prop_assert_eq!(x, empty_set());
+            }
+
             prop_assert_eq!(
                 &a - &u,
                 empty_set()
             );
+
+            { // op assign ref
+                let mut x = a.clone();
+                x -= &u;
+
+                prop_assert_eq!(x, empty_set());
+            }
+
+            { // op assign own
+                let mut x = a.clone();
+                x -= u.clone();
+
+                prop_assert_eq!(x, empty_set());
+            }
         }
     }
 
