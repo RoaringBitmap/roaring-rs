@@ -1,8 +1,17 @@
+/// This visitor pattern allows mutliple different algorithms to be written over the same data
+/// For example: vectorized algorithms can pass a visitor off to a scalar algorithm to finish off
+/// a tail that is not a multiple of the vector width.
+///
+/// Perhaps more importantly: it separates the set algorithms from the operations performed on
+/// their results. Future work can utilize the exiting algorithms to trivially implement
+/// computing the cardinality of an operation without materializng a new bitmap.
 pub trait BinaryOperationVisitor {
     fn visit_scalar(&mut self, value: u16);
     fn visit_slice(&mut self, values: &[u16]);
 }
 
+/// A simple visitor that stores the computation result to a Vec
+/// accessible by calling `into_inner()`
 pub struct VecWriter {
     vec: Vec<u16>,
 }
