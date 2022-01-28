@@ -1,14 +1,10 @@
 //! Scalar arithmetic binary set operations on [ArrayStore]'s inner types
 
+use crate::bitmap::store::array_store::visitor::BinaryOperationVisitor;
 use std::cmp::Ordering::*;
 
 #[inline]
-pub fn or(lhs: &[u16], rhs: &[u16]) -> Vec<u16> {
-    let mut vec = {
-        let capacity = (lhs.len() + rhs.len()).min(4096);
-        Vec::with_capacity(capacity)
-    };
-
+pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
     // Traverse both arrays
     let mut i = 0;
     let mut j = 0;
@@ -17,15 +13,15 @@ pub fn or(lhs: &[u16], rhs: &[u16]) -> Vec<u16> {
         let b = unsafe { rhs.get_unchecked(j) };
         match a.cmp(b) {
             Less => {
-                vec.push(*a);
+                visitor.visit_scalar(*a);
                 i += 1;
             }
             Greater => {
-                vec.push(*b);
+                visitor.visit_scalar(*b);
                 j += 1;
             }
             Equal => {
-                vec.push(*a);
+                visitor.visit_scalar(*a);
                 i += 1;
                 j += 1;
             }
@@ -33,16 +29,12 @@ pub fn or(lhs: &[u16], rhs: &[u16]) -> Vec<u16> {
     }
 
     // Store remaining elements of the arrays
-    vec.extend_from_slice(&lhs[i..]);
-    vec.extend_from_slice(&rhs[j..]);
-
-    vec
+    visitor.visit_slice(&lhs[i..]);
+    visitor.visit_slice(&rhs[j..]);
 }
 
 #[inline]
-pub fn and(lhs: &[u16], rhs: &[u16]) -> Vec<u16> {
-    let mut vec = Vec::new();
-
+pub fn and(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
     // Traverse both arrays
     let mut i = 0;
     let mut j = 0;
@@ -53,20 +45,16 @@ pub fn and(lhs: &[u16], rhs: &[u16]) -> Vec<u16> {
             Less => i += 1,
             Greater => j += 1,
             Equal => {
-                vec.push(*a);
+                visitor.visit_scalar(*a);
                 i += 1;
                 j += 1;
             }
         }
     }
-
-    vec
 }
 
 #[inline]
-pub fn sub(lhs: &[u16], rhs: &[u16]) -> Vec<u16> {
-    let mut vec = Vec::new();
-
+pub fn sub(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
     // Traverse both arrays
     let mut i = 0;
     let mut j = 0;
@@ -75,7 +63,7 @@ pub fn sub(lhs: &[u16], rhs: &[u16]) -> Vec<u16> {
         let b = unsafe { rhs.get_unchecked(j) };
         match a.cmp(b) {
             Less => {
-                vec.push(*a);
+                visitor.visit_scalar(*a);
                 i += 1;
             }
             Greater => j += 1,
@@ -87,14 +75,11 @@ pub fn sub(lhs: &[u16], rhs: &[u16]) -> Vec<u16> {
     }
 
     // Store remaining elements of the left array
-    vec.extend_from_slice(&lhs[i..]);
-    vec
+    visitor.visit_slice(&lhs[i..]);
 }
 
 #[inline]
-pub fn xor(lhs: &[u16], rhs: &[u16]) -> Vec<u16> {
-    let mut vec = Vec::new();
-
+pub fn xor(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
     // Traverse both arrays
     let mut i = 0;
     let mut j = 0;
@@ -103,11 +88,11 @@ pub fn xor(lhs: &[u16], rhs: &[u16]) -> Vec<u16> {
         let b = unsafe { rhs.get_unchecked(j) };
         match a.cmp(b) {
             Less => {
-                vec.push(*a);
+                visitor.visit_scalar(*a);
                 i += 1;
             }
             Greater => {
-                vec.push(*b);
+                visitor.visit_scalar(*b);
                 j += 1;
             }
             Equal => {
@@ -118,8 +103,6 @@ pub fn xor(lhs: &[u16], rhs: &[u16]) -> Vec<u16> {
     }
 
     // Store remaining elements of the arrays
-    vec.extend_from_slice(&lhs[i..]);
-    vec.extend_from_slice(&rhs[j..]);
-
-    vec
+    visitor.visit_slice(&lhs[i..]);
+    visitor.visit_slice(&rhs[j..]);
 }
