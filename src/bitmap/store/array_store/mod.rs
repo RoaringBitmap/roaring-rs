@@ -329,6 +329,9 @@ impl BitXor<Self> for &ArrayStore {
         #[allow(clippy::suspicious_arithmetic_impl)]
         let capacity = self.vec.len() + rhs.vec.len();
         let mut visitor = VecWriter::new(capacity);
+        #[cfg(feature = "simd")]
+        vector::xor(self.as_slice(), rhs.as_slice(), &mut visitor);
+        #[cfg(not(feature = "simd"))]
         scalar::xor(self.as_slice(), rhs.as_slice(), &mut visitor);
         ArrayStore::from_vec_unchecked(visitor.into_inner())
     }

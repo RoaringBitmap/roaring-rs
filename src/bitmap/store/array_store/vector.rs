@@ -11,7 +11,7 @@
 #![cfg(feature = "simd")]
 
 use super::scalar;
-use simd::{simd_swizzle, u16x8, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
+use simd::{mask16x8, simd_swizzle, u16x8, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
 
 // a one-pass SSE union algorithm
 pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
@@ -31,7 +31,7 @@ pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
     }
 
     #[inline]
-    fn handle_vectors(old: u16x8, new: u16x8, f: impl FnOnce(u16x8, u8)) {
+    fn handle_vector(old: u16x8, new: u16x8, f: impl FnOnce(u16x8, u8)) {
         let tmp: u16x8 = Shr1::swizzle2(new, old);
         let mask = 255 - tmp.lanes_eq(new).to_bitmask()[0];
         f(new, mask);
@@ -51,7 +51,7 @@ pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
 
     let mut i = 1;
     let mut j = 1;
-    handle_vectors(Simd::splat(u16::MAX), v_min, |v, m| visitor.visit_vector(v, m));
+    handle_vector(Simd::splat(u16::MAX), v_min, |v, m| visitor.visit_vector(v, m));
     let mut v_prev: u16x8 = v_min;
     if (i < len1) && (j < len2) {
         let mut v: u16x8;
@@ -76,11 +76,11 @@ pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
                 }
             }
             [v_min, v_max] = simd_merge(v, v_max);
-            handle_vectors(v_prev, v_min, |v, m| visitor.visit_vector(v, m));
+            handle_vector(v_prev, v_min, |v, m| visitor.visit_vector(v, m));
             v_prev = v_min;
         }
         [v_min, v_max] = simd_merge(v, v_max);
-        handle_vectors(v_prev, v_min, |v, m| visitor.visit_vector(v, m));
+        handle_vector(v_prev, v_min, |v, m| visitor.visit_vector(v, m));
         v_prev = v_min;
     }
 
@@ -92,7 +92,7 @@ pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
     // copy the small end on a tmp buffer
     let mut buffer: [u16; 16] = [0; 16];
     let mut rem = 0;
-    handle_vectors(v_prev, v_max, |v, m| {
+    handle_vector(v_prev, v_max, |v, m| {
         store(swizzle_to_front(v, m), buffer.as_mut_slice());
         rem = m.count_ones() as usize;
     });
@@ -149,6 +149,125 @@ pub fn and(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
 
     // intersect the tail using scalar intersection
     scalar::and(&lhs[i..], &rhs[j..], visitor);
+}
+
+// a one-pass SSE xor algorithm
+pub fn xor(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
+    /// De-duplicates `slice` in place, removing _both_ duplicates
+    /// Returns the end index of the xor-ed slice.
+    /// elements after the return value are not guaranteed to be unique or in order
+    #[inline]
+    fn xor_slice(slice: &mut [u16]) -> usize {
+        let mut pos: usize = 1;
+        for i in 1..slice.len() {
+            if slice[i] != slice[i - 1] {
+                slice[pos] = slice[i];
+                pos += 1;
+            } else {
+                pos -= 1; // it is identical to previous, delete it
+            }
+        }
+        pos
+    }
+
+    // write vector new, while omitting repeated values assuming that previously
+    // written vector was "old"
+    #[inline]
+    fn handle_vector(old: u16x8, new: u16x8, f: impl FnOnce(u16x8, u8)) {
+        let tmp1: u16x8 = Shr2::swizzle2(new, old);
+        let tmp2: u16x8 = Shr1::swizzle2(new, old);
+        let eq_l: mask16x8 = tmp2.lanes_eq(tmp1);
+        let eq_r: mask16x8 = tmp2.lanes_eq(new);
+        let eq_l_or_r: mask16x8 = eq_l | eq_r;
+        let mask: u8 = eq_l_or_r.to_bitmask()[0];
+        f(tmp2, 255 - mask);
+    }
+
+    if (lhs.len() < 8) || (rhs.len() < 8) {
+        scalar::xor(lhs, rhs, visitor);
+        return;
+    }
+
+    let len1: usize = lhs.len() / 8;
+    let len2: usize = rhs.len() / 8;
+
+    let v_a: u16x8 = load(lhs);
+    let v_b: u16x8 = load(rhs);
+    let [mut v_min, mut v_max] = simd_merge(v_a, v_b);
+
+    let mut i = 1;
+    let mut j = 1;
+    handle_vector(Simd::splat(u16::MAX), v_min, |v, m| visitor.visit_vector(v, m));
+    let mut v_prev: u16x8 = v_min;
+    if (i < len1) && (j < len2) {
+        let mut v: u16x8;
+        let mut cur_a: u16 = lhs[8 * i];
+        let mut cur_b: u16 = rhs[8 * j];
+        loop {
+            if cur_a <= cur_b {
+                v = load(&lhs[8 * i..]);
+                i += 1;
+                if i < len1 {
+                    cur_a = lhs[8 * i];
+                } else {
+                    break;
+                }
+            } else {
+                v = load(&rhs[8 * j..]);
+                j += 1;
+                if j < len2 {
+                    cur_b = rhs[8 * j];
+                } else {
+                    break;
+                }
+            }
+            [v_min, v_max] = simd_merge(v, v_max);
+            handle_vector(v_prev, v_min, |v, m| visitor.visit_vector(v, m));
+            v_prev = v_min;
+        }
+        [v_min, v_max] = simd_merge(v, v_max);
+        handle_vector(v_prev, v_min, |v, m| visitor.visit_vector(v, m));
+        v_prev = v_min;
+    }
+
+    debug_assert!(i == len1 || j == len2);
+
+    // we finish the rest off using a scalar algorithm
+    // could be improved?
+    // conditionally stores the last value of laststore as well as all but the
+    // last value of vecMax,
+    let mut buffer: [u16; 17] = [0; 17];
+    // remaining size
+    let mut rem = 0;
+    handle_vector(v_prev, v_max, |v, m| {
+        store(swizzle_to_front(v, m), buffer.as_mut_slice());
+        rem = m.count_ones() as usize;
+    });
+
+    let arr_max = v_max.as_array();
+    let vec7 = arr_max[7];
+    let vec6 = arr_max[6];
+    if vec6 != vec7 {
+        buffer[rem] = vec7;
+        rem += 1;
+    }
+
+    let (tail_a, tail_b, tail_len) = if i == len1 {
+        (&lhs[8 * i..], &rhs[8 * j..], lhs.len() - 8 * len1)
+    } else {
+        (&rhs[8 * j..], &lhs[8 * i..], rhs.len() - 8 * len2)
+    };
+
+    buffer[rem..rem + tail_len].copy_from_slice(tail_a);
+    rem += tail_len;
+
+    if rem == 0 {
+        visitor.visit_slice(tail_b)
+    } else {
+        buffer[..rem as usize].sort_unstable();
+        rem = xor_slice(&mut buffer[..rem]);
+        scalar::xor(&buffer[..rem], tail_b, visitor);
+    }
 }
 
 pub fn sub(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
@@ -364,6 +483,10 @@ where
 
 /// Move the values in `val` with the corresponding index in `bitmask`
 /// set to the front of the return vector, preserving their order.
+///
+/// This had to be implemented as a jump table to be portable,
+/// as LLVM swizzle intrinsic only supports swizzle by a const
+/// value. https://github.com/rust-lang/portable-simd/issues/11
 ///
 /// The values in the return vector after index bitmask.count_ones() is unspecified.
 ///
