@@ -1,3 +1,5 @@
+mod scalar;
+
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::convert::{TryFrom, TryInto};
@@ -24,6 +26,7 @@ impl ArrayStore {
     /// # Panics
     ///
     /// When debug_assertions are enabled and the above invariants are not met
+    #[inline]
     pub fn from_vec_unchecked(vec: Vec<u16>) -> ArrayStore {
         if cfg!(debug_assertions) {
             vec.try_into().unwrap()
@@ -245,39 +248,7 @@ impl BitOr<Self> for &ArrayStore {
     type Output = ArrayStore;
 
     fn bitor(self, rhs: Self) -> Self::Output {
-        let mut vec = {
-            let capacity = (self.vec.len() + rhs.vec.len()).min(4096);
-            Vec::with_capacity(capacity)
-        };
-
-        // Traverse both arrays
-        let mut i = 0;
-        let mut j = 0;
-        while i < self.vec.len() && j < rhs.vec.len() {
-            let a = unsafe { self.vec.get_unchecked(i) };
-            let b = unsafe { rhs.vec.get_unchecked(j) };
-            match a.cmp(b) {
-                Less => {
-                    vec.push(*a);
-                    i += 1;
-                }
-                Greater => {
-                    vec.push(*b);
-                    j += 1;
-                }
-                Equal => {
-                    vec.push(*a);
-                    i += 1;
-                    j += 1;
-                }
-            }
-        }
-
-        // Store remaining elements of the arrays
-        vec.extend_from_slice(&self.vec[i..]);
-        vec.extend_from_slice(&rhs.vec[j..]);
-
-        ArrayStore { vec }
+        ArrayStore::from_vec_unchecked(scalar::or(self.as_slice(), rhs.as_slice()))
     }
 }
 
@@ -285,26 +256,7 @@ impl BitAnd<Self> for &ArrayStore {
     type Output = ArrayStore;
 
     fn bitand(self, rhs: Self) -> Self::Output {
-        let mut vec = Vec::new();
-
-        // Traverse both arrays
-        let mut i = 0;
-        let mut j = 0;
-        while i < self.vec.len() && j < rhs.vec.len() {
-            let a = unsafe { self.vec.get_unchecked(i) };
-            let b = unsafe { rhs.vec.get_unchecked(j) };
-            match a.cmp(b) {
-                Less => i += 1,
-                Greater => j += 1,
-                Equal => {
-                    vec.push(*a);
-                    i += 1;
-                    j += 1;
-                }
-            }
-        }
-
-        ArrayStore { vec }
+        ArrayStore::from_vec_unchecked(scalar::and(self.as_slice(), rhs.as_slice()))
     }
 }
 
@@ -329,31 +281,7 @@ impl Sub<Self> for &ArrayStore {
     type Output = ArrayStore;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        let mut vec = Vec::new();
-
-        // Traverse both arrays
-        let mut i = 0;
-        let mut j = 0;
-        while i < self.vec.len() && j < rhs.vec.len() {
-            let a = unsafe { self.vec.get_unchecked(i) };
-            let b = unsafe { rhs.vec.get_unchecked(j) };
-            match a.cmp(b) {
-                Less => {
-                    vec.push(*a);
-                    i += 1;
-                }
-                Greater => j += 1,
-                Equal => {
-                    i += 1;
-                    j += 1;
-                }
-            }
-        }
-
-        // Store remaining elements of the left array
-        vec.extend_from_slice(&self.vec[i..]);
-
-        ArrayStore { vec }
+        ArrayStore::from_vec_unchecked(scalar::sub(self.as_slice(), rhs.as_slice()))
     }
 }
 
@@ -377,35 +305,7 @@ impl BitXor<Self> for &ArrayStore {
     type Output = ArrayStore;
 
     fn bitxor(self, rhs: Self) -> Self::Output {
-        let mut vec = Vec::new();
-
-        // Traverse both arrays
-        let mut i = 0;
-        let mut j = 0;
-        while i < self.vec.len() && j < rhs.vec.len() {
-            let a = unsafe { self.vec.get_unchecked(i) };
-            let b = unsafe { rhs.vec.get_unchecked(j) };
-            match a.cmp(b) {
-                Less => {
-                    vec.push(*a);
-                    i += 1;
-                }
-                Greater => {
-                    vec.push(*b);
-                    j += 1;
-                }
-                Equal => {
-                    i += 1;
-                    j += 1;
-                }
-            }
-        }
-
-        // Store remaining elements of the arrays
-        vec.extend_from_slice(&self.vec[i..]);
-        vec.extend_from_slice(&rhs.vec[j..]);
-
-        ArrayStore { vec }
+        ArrayStore::from_vec_unchecked(scalar::xor(self.as_slice(), rhs.as_slice()))
     }
 }
 
