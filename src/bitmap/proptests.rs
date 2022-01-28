@@ -638,10 +638,10 @@ mod test {
                 c_sub_b -= b.clone();
 
                 let mut x = c.clone();
-                x -= a_and_b.clone();
+                x -= a_and_b;
 
                 let mut y = c_sub_a;
-                y |= c_sub_b.clone();
+                y |= c_sub_b;
 
                 prop_assert_eq!(x, y);
             }
@@ -681,10 +681,10 @@ mod test {
                 c_sub_b -= b.clone();
 
                 let mut x = c.clone();
-                x -= a_or_b.clone();
+                x -= a_or_b;
 
                 let mut y = c_sub_a;
-                y &= c_sub_b.clone();
+                y &= c_sub_b;
 
                 prop_assert_eq!(x, y);
             }
@@ -724,10 +724,10 @@ mod test {
                 c_sub_b -= b.clone();
 
                 let mut x = c.clone();
-                x -= b_sub_a.clone();
+                x -= b_sub_a;
 
                 let mut y = a_and_c;
-                y |= c_sub_b.clone();
+                y |= c_sub_b;
 
                 prop_assert_eq!(x, y);
             }
@@ -828,7 +828,7 @@ mod test {
                 x |= c.clone();
 
                 let mut y = b_or_c;
-                y -= a_sub_c.clone();
+                y -= a_sub_c;
 
                 prop_assert_eq!(x, y);
             }
@@ -865,7 +865,7 @@ mod test {
                 x -= c;
 
                 let mut y = b;
-                y -= a_or_c.clone();
+                y -= a_or_c;
 
                 prop_assert_eq!(x, y);
             }
@@ -972,7 +972,7 @@ mod test {
                 a_xor_c ^= c;
 
                 let mut tri = a_xor_b;
-                tri ^= b_xor_c.clone();
+                tri ^= b_xor_c;
 
                 prop_assert_eq!(tri, a_xor_c);
             }
@@ -1065,7 +1065,7 @@ mod test {
                 b_sub_a -= a.clone();
 
                 let mut y = a_sub_b;
-                y |= b_sub_a.clone();
+                y |= b_sub_a;
 
                 prop_assert_eq!(x, y);
             }
@@ -1102,7 +1102,7 @@ mod test {
                 a_and_b &= b;
 
                 let mut y = a_or_b;
-                y -= a_and_b.clone();
+                y -= a_and_b;
 
                 prop_assert_eq!(x, y);
             }
