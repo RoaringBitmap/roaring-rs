@@ -1,3 +1,6 @@
+#[cfg(feature = "simd")]
+use crate::bitmap::store::array_store::vector::swizzle_to_front;
+
 /// This visitor pattern allows multiple different algorithms to be written over the same data
 /// For example: vectorized algorithms can pass a visitor off to a scalar algorithm to finish off
 /// a tail that is not a multiple of the vector width.
@@ -6,6 +9,8 @@
 /// their results. Future work can utilize the exiting algorithms to trivially implement
 /// computing the cardinality of an operation without materializng a new bitmap.
 pub trait BinaryOperationVisitor {
+    #[cfg(feature = "simd")]
+    fn visit_vector(&mut self, value: simd::u16x8, mask: u8);
     fn visit_scalar(&mut self, value: u16);
     fn visit_slice(&mut self, values: &[u16]);
 }
@@ -31,6 +36,20 @@ impl VecWriter {
 }
 
 impl BinaryOperationVisitor for VecWriter {
+    #[cfg(feature = "simd")]
+    fn visit_vector(&mut self, value: simd::u16x8, mask: u8) {
+        let result = swizzle_to_front(value, mask);
+
+        // This idiom is better than subslicing result, as it compiles down to an unaligned vector
+        // store instr.
+        // A more straightforward, but unsafe way would be ptr::write_unaligned and Vec::set_len
+        // Writing a vector at once is why the vectorized algorithms do not operate in place
+        // first write the entire vector
+        self.vec.extend_from_slice(&result.as_array()[..]);
+        // next truncate the masked out values
+        self.vec.truncate(self.vec.len() - (result.lanes() - mask.count_ones() as usize));
+    }
+
     fn visit_scalar(&mut self, value: u16) {
         self.vec.push(value)
     }
