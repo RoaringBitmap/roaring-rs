@@ -9,6 +9,7 @@
 
 #![cfg_attr(feature = "simd", feature(portable_simd))]
 #![warn(missing_docs)]
+#![warn(unsafe_op_in_unsafe_fn)]
 #![warn(variant_size_differences)]
 #![allow(unknown_lints)] // For clippy
 
