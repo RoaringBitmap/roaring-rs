@@ -70,7 +70,7 @@ pub fn sub(lhs: &[u16], rhs: &[u16]) -> Vec<u16> {
     // Traverse both arrays
     let mut i = 0;
     let mut j = 0;
-    while i < rhs.len() && j < rhs.len() {
+    while i < lhs.len() && j < rhs.len() {
         let a = unsafe { lhs.get_unchecked(i) };
         let b = unsafe { rhs.get_unchecked(j) };
         match a.cmp(b) {
