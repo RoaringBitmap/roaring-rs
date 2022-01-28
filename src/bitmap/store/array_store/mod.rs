@@ -286,6 +286,7 @@ impl Sub<Self> for &ArrayStore {
 }
 
 impl SubAssign<&Self> for ArrayStore {
+    #[allow(clippy::suspicious_op_assign_impl)]
     fn sub_assign(&mut self, rhs: &Self) {
         let mut i = 0;
         self.vec.retain(|x| {
