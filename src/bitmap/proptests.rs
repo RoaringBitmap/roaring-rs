@@ -450,8 +450,8 @@ mod test {
     // PROPOSITION 9: For any universe U and subsets A, B, and C of U,
     // the following identities hold:
     // Note: I dont have good names for these identities. If somebody could give them good names
-    // and split each triplet of ref-ref, owned-ref, and owned-owned: I will happily buy them
-    // a very large but finite number of beers.
+    // and split each triplet of ref-ref, owned-ref, and owned-owned into a separate test:
+    // I will happily buy them a very large but finite number of beers.
 
     proptest! {
         #[test]
