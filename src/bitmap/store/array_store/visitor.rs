@@ -1,4 +1,4 @@
-/// This visitor pattern allows mutliple different algorithms to be written over the same data
+/// This visitor pattern allows multiple different algorithms to be written over the same data
 /// For example: vectorized algorithms can pass a visitor off to a scalar algorithm to finish off
 /// a tail that is not a multiple of the vector width.
 ///
