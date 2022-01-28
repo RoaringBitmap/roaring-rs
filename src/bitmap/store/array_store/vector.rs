@@ -46,6 +46,80 @@ pub fn and(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
     // intersect the tail using scalar intersection
     scalar::and(&lhs[i..], &rhs[j..], visitor);
 }
+
+pub fn sub(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
+    // we handle the degenerate cases
+    if lhs.is_empty() {
+        return;
+    } else if rhs.is_empty() {
+        visitor.visit_slice(lhs);
+        return;
+    }
+
+    let st_a = (lhs.len() / u16x8::LANES) * u16x8::LANES;
+    let st_b = (rhs.len() / u16x8::LANES) * u16x8::LANES;
+
+    let mut i = 0;
+    let mut j = 0;
+    if (i < st_a) && (j < st_b) {
+        let mut v_a: u16x8 = load(&lhs[i..]);
+        let mut v_b: u16x8 = load(&rhs[j..]);
+        // we have a running mask which indicates which values from a have been
+        // spotted in b, these don't get written out.
+        let mut runningmask_a_found_in_b: u8 = 0;
+        loop {
+            // a_found_in_b will contain a mask indicate for each entry in A
+            // whether it is seen in B
+            let a_found_in_b: u8 = matrix_cmp(v_a, v_b).to_bitmask()[0];
+            runningmask_a_found_in_b |= a_found_in_b;
+            // we always compare the last values of A and B
+            let a_max: u16 = lhs[i + u16x8::LANES - 1];
+            let b_max: u16 = rhs[j + u16x8::LANES - 1];
+            if a_max <= b_max {
+                // Ok. In this code path, we are ready to write our v_a
+                // because there is no need to read more from B, they will
+                // all be large values.
+                let bitmask_belongs_to_difference = runningmask_a_found_in_b ^ 0xFF;
+                visitor.visit_vector(v_a, bitmask_belongs_to_difference);
+                i += u16x8::LANES;
+                if i == st_a {
+                    break;
+                }
+                runningmask_a_found_in_b = 0;
+                v_a = load(&lhs[i..]);
+            }
+            if b_max <= a_max {
+                // in this code path, the current v_b has become useless
+                j += u16x8::LANES;
+                if j == st_b {
+                    break;
+                }
+                v_b = load(&rhs[j..]);
+            }
+        }
+
+        debug_assert!(i == st_a || j == st_b);
+
+        // End of main vectorized loop
+        // At this point either i_a == st_a, which is the end of the vectorized processing,
+        // or i_b == st_b and we are not done processing the vector...
+        // so we need to finish it off.
+        if i < st_a {
+            let mut buffer: [u16; 8] = [0; 8]; // buffer to do a masked load
+            buffer[..rhs.len() - j].copy_from_slice(&rhs[j..]);
+            v_b = Simd::from_array(buffer);
+            let a_found_in_b: u8 = matrix_cmp(v_a, v_b).to_bitmask()[0];
+            runningmask_a_found_in_b |= a_found_in_b;
+            let bitmask_belongs_to_difference: u8 = runningmask_a_found_in_b ^ 0xFF;
+            visitor.visit_vector(v_a, bitmask_belongs_to_difference);
+            i += u16x8::LANES;
+        }
+    }
+
+    // do the tail using scalar code
+    scalar::sub(&lhs[i..], &rhs[j..], visitor);
+}
+
 /// compute the min for each lane in `a` and `b`
 #[inline]
 fn lanes_min<U, const LANES: usize>(lhs: Simd<U, LANES>, rhs: Simd<U, LANES>) -> Simd<U, LANES>

@@ -294,6 +294,9 @@ impl Sub<Self> for &ArrayStore {
 
     fn sub(self, rhs: Self) -> Self::Output {
         let mut visitor = VecWriter::new(self.vec.len());
+        #[cfg(feature = "simd")]
+        vector::sub(self.as_slice(), rhs.as_slice(), &mut visitor);
+        #[cfg(not(feature = "simd"))]
         scalar::sub(self.as_slice(), rhs.as_slice(), &mut visitor);
         ArrayStore::from_vec_unchecked(visitor.into_inner())
     }
