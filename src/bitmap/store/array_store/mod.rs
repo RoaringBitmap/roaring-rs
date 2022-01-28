@@ -309,6 +309,7 @@ impl BitAnd<Self> for &ArrayStore {
 }
 
 impl BitAndAssign<&Self> for ArrayStore {
+    #[allow(clippy::suspicious_op_assign_impl)]
     fn bitand_assign(&mut self, rhs: &Self) {
         let mut i = 0;
         self.vec.retain(|x| {
