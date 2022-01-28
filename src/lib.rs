@@ -7,6 +7,7 @@
 //! [roaring-java]: https://github.com/lemire/RoaringBitmap
 //! [roaring-paper]: https://arxiv.org/pdf/1402.6407v4
 
+#![cfg_attr(feature = "simd", feature(portable_simd))]
 #![warn(missing_docs)]
 #![warn(variant_size_differences)]
 #![allow(unknown_lints)] // For clippy
