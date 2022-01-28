@@ -3,6 +3,9 @@ on:
     branches:
       - staging
       - trying
+  pull_request:
+    branches:
+      - master
 
 name: Continuous integration
 
