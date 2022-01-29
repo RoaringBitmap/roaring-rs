@@ -1,4 +1,5 @@
 mod scalar;
+mod vector;
 mod visitor;
 
 use crate::bitmap::store::array_store::visitor::VecWriter;
@@ -251,8 +252,11 @@ impl BitOr<Self> for &ArrayStore {
 
     fn bitor(self, rhs: Self) -> Self::Output {
         #[allow(clippy::suspicious_arithmetic_impl)]
-        let capacity = (self.vec.len() + rhs.vec.len()).min(4096);
+        let capacity = self.vec.len() + rhs.vec.len();
         let mut visitor = VecWriter::new(capacity);
+        #[cfg(feature = "simd")]
+        vector::or(self.as_slice(), rhs.as_slice(), &mut visitor);
+        #[cfg(not(feature = "simd"))]
         scalar::or(self.as_slice(), rhs.as_slice(), &mut visitor);
         ArrayStore::from_vec_unchecked(visitor.into_inner())
     }
@@ -263,6 +267,9 @@ impl BitAnd<Self> for &ArrayStore {
 
     fn bitand(self, rhs: Self) -> Self::Output {
         let mut visitor = VecWriter::new(self.vec.len().min(rhs.vec.len()));
+        #[cfg(feature = "simd")]
+        vector::and(self.as_slice(), rhs.as_slice(), &mut visitor);
+        #[cfg(not(feature = "simd"))]
         scalar::and(self.as_slice(), rhs.as_slice(), &mut visitor);
         ArrayStore::from_vec_unchecked(visitor.into_inner())
     }
@@ -290,6 +297,9 @@ impl Sub<Self> for &ArrayStore {
 
     fn sub(self, rhs: Self) -> Self::Output {
         let mut visitor = VecWriter::new(self.vec.len());
+        #[cfg(feature = "simd")]
+        vector::sub(self.as_slice(), rhs.as_slice(), &mut visitor);
+        #[cfg(not(feature = "simd"))]
         scalar::sub(self.as_slice(), rhs.as_slice(), &mut visitor);
         ArrayStore::from_vec_unchecked(visitor.into_inner())
     }
@@ -317,8 +327,11 @@ impl BitXor<Self> for &ArrayStore {
 
     fn bitxor(self, rhs: Self) -> Self::Output {
         #[allow(clippy::suspicious_arithmetic_impl)]
-        let capacity = (self.vec.len() + rhs.vec.len()).min(4096);
+        let capacity = self.vec.len() + rhs.vec.len();
         let mut visitor = VecWriter::new(capacity);
+        #[cfg(feature = "simd")]
+        vector::xor(self.as_slice(), rhs.as_slice(), &mut visitor);
+        #[cfg(not(feature = "simd"))]
         scalar::xor(self.as_slice(), rhs.as_slice(), &mut visitor);
         ArrayStore::from_vec_unchecked(visitor.into_inner())
     }
