@@ -45,6 +45,31 @@ impl RoaringBitmap {
         BitOrAssign::bitor_assign(self, other)
     }
 
+    /// Computes the len of the unions with the specified other bitmap without creating a new bitmap
+    /// This is faster and more space efficient for use cases
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = (1..4).collect();
+    /// let rb2: RoaringBitmap = (3..5).collect();
+    ///
+    ///
+    /// assert_eq!(rb1.union_len(&rb2), (rb1 | rb2).len());
+    /// ```
+    pub fn union_len(&self, other: &RoaringBitmap) -> u64 {
+        Pairs::new(&self.containers, &other.containers)
+            .map(|pair| match pair {
+                (Some(lhs), None) => lhs.len(),
+                (None, Some(rhs)) => rhs.len(),
+                (Some(lhs), Some(rhs)) => lhs.union_len(rhs),
+                (None, None) => unreachable!(),
+            })
+            .sum()
+    }
+
     /// Intersects in-place with the specified other bitmap.
     ///
     /// # Examples

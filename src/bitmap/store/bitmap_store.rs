@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::fmt::{Display, Formatter};
-use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
+use std::ops::{BitAndAssign, BitOr, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
 use super::ArrayStore;
 
@@ -224,6 +224,23 @@ impl BitmapStore {
             + (self.bits[key] << (63 - bit)).count_ones() as u64
     }
 
+    pub fn union_len_bitmap(&self, other: &BitmapStore) -> u64 {
+        op_len_bitmap(self, other, BitOr::bitor)
+    }
+
+    pub fn union_len_array(&self, other: &ArrayStore) -> u64 {
+        self.len
+            + other
+                .iter()
+                .map(|&index| {
+                    let (key, bit) = (key(index), bit(index));
+                    let old_w = self.bits[key];
+                    let new_w = old_w | 1 << bit;
+                    (old_w ^ new_w) >> bit
+                })
+                .sum::<u64>()
+    }
+
     pub fn iter(&self) -> BitmapIter<&[u64; BITMAP_LENGTH]> {
         BitmapIter::new(self.len, &self.bits)
     }
@@ -327,6 +344,11 @@ fn op_bitmaps(bits1: &mut BitmapStore, bits2: &BitmapStore, op: impl Fn(&mut u64
         op(index1, index2);
         bits1.len += index1.count_ones() as u64;
     }
+}
+
+#[inline]
+fn op_len_bitmap(bits1: &BitmapStore, bits2: &BitmapStore, op: impl Fn(u64, u64) -> u64) -> u64 {
+    bits1.bits.iter().zip(bits2.bits.iter()).map(|(&a, &b)| op(a, b).count_ones() as u64).sum()
 }
 
 impl BitOrAssign<&Self> for BitmapStore {
