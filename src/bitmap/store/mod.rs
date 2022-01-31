@@ -145,6 +145,13 @@ impl Store {
             Bitmap(bits) => bits.rank(index),
         }
     }
+
+    pub fn select(&self, n: u16) -> Option<u16> {
+        match self {
+            Array(vec) => vec.select(n),
+            Bitmap(bits) => bits.select(n),
+        }
+    }
 }
 
 impl Default for Store {

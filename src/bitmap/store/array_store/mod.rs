@@ -181,6 +181,10 @@ impl ArrayStore {
         }
     }
 
+    pub fn select(&self, n: u16) -> Option<u16> {
+        self.vec.get(n as usize).cloned()
+    }
+
     pub fn iter(&self) -> std::slice::Iter<u16> {
         self.vec.iter()
     }

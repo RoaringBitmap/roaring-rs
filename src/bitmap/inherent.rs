@@ -390,6 +390,41 @@ impl RoaringBitmap {
             Err(i) => self.containers[..i].iter().map(|c| c.len()).sum(),
         }
     }
+
+    /// Returns the nth integer in the bitmap (if the set is non-empty)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// assert_eq!(rb.select(0), None);
+    ///
+    /// rb.insert(0);
+    /// rb.insert(10);
+    /// rb.insert(100);
+    ///
+    /// assert_eq!(rb.select(0), Some(0));
+    /// assert_eq!(rb.select(1), Some(10));
+    /// assert_eq!(rb.select(2), Some(100));
+    /// ```
+    pub fn select(&self, n: u32) -> Option<u32> {
+        let mut n = n as u64;
+
+        for container in &self.containers {
+            let len = container.len();
+            if len > n {
+                return container
+                    .store
+                    .select(n as u16)
+                    .map(|index| util::join(container.key, index));
+            }
+            n -= len;
+        }
+
+        None
+    }
 }
 
 impl Default for RoaringBitmap {
