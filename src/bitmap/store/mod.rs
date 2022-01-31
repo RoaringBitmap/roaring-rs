@@ -147,9 +147,9 @@ impl Store {
     }
 
     pub fn select(&self, n: u16) -> Option<u16> {
-        match *self {
-            Array(ref vec) => vec.select(n),
-            Bitmap(ref bits) => bits.select(n),
+        match self {
+            Array(vec) => vec.select(n),
+            Bitmap(bits) => bits.select(n),
         }
     }
 }
