@@ -1,13 +1,33 @@
-mod datasets_paths;
-
 use std::cmp::Reverse;
-use std::convert::TryInto;
-use std::num::ParseIntError;
-use std::path::{Path, PathBuf};
-use std::{fs, io};
+use std::fs;
+use std::fs::File;
+use std::io::BufReader;
+use std::path::Path;
 
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
+use itertools::Itertools;
+
 use roaring::RoaringBitmap;
+
+mod datasets_paths;
+
+const DICT: &[u8] = include_bytes!("../datasets/dictionary");
+
+fn deserialize_bitmaps(subdir: &str) -> Vec<RoaringBitmap> {
+    let path_str = format!("datasets/{}", subdir);
+    let path = Path::new(path_str.as_str());
+    fs::read_dir(path)
+        .expect("the directory was read")
+        .map(|r| r.expect("the dir entry was read"))
+        .sorted_unstable_by_key(|dir_entry| dir_entry.file_name())
+        .map(|dir_entry| {
+            let file = File::open(dir_entry.path()).expect("the file opened");
+            let buffer = BufReader::new(file);
+            let decoder = zstd::Decoder::with_dictionary(buffer, DICT).expect("a decoder");
+            RoaringBitmap::deserialize_from(decoder).expect("a deserialized bitmap")
+        })
+        .collect()
+}
 
 fn create(c: &mut Criterion) {
     c.bench_function("create", |b| {
@@ -97,23 +117,19 @@ fn len(c: &mut Criterion) {
 
 fn rank(c: &mut Criterion) {
     let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
-    let parsed_numbers = parse_dir_files(files).unwrap();
+    let bitmaps = deserialize_bitmaps(files);
 
     // Cache len to prevent len calculation from effecting benchmark
-    let bitmaps: Vec<_> = parsed_numbers
+    let bitmaps: Vec<_> = bitmaps
         .into_iter()
-        .map(|(_, r)| {
-            r.map(|iter| {
-                let bitmap = RoaringBitmap::from_sorted_iter(iter).unwrap();
-                let len: u32 = bitmap.len().try_into().expect("len <= u32::MAX");
-                (bitmap, len)
-            })
-            .unwrap()
+        .map(|bitmap| {
+            let len = bitmap.len() as u32;
+            (bitmap, len)
         })
         .collect();
 
     // Rank all multiples of 100 < bitmap.len()
-    // Mupliplier chosen arbitrarily, but should be sure not to rank many values > len()
+    // Multiplier chosen arbitrarily, but should be sure not to rank many values > len()
     // Doing so would degenerate into benchmarking len()
     c.bench_function("rank", |b| {
         b.iter(|| {
@@ -324,12 +340,7 @@ fn iter(c: &mut Criterion) {
 
     c.bench_function("iter parsed", |b| {
         let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
-        let parsed_numbers = parse_dir_files(files).unwrap();
-
-        let bitmaps: Vec<_> = parsed_numbers
-            .into_iter()
-            .map(|(_, r)| r.map(|iter| RoaringBitmap::from_sorted_iter(iter).unwrap()).unwrap())
-            .collect();
+        let bitmaps = deserialize_bitmaps(files);
 
         b.iter(|| {
             bitmaps.iter().flat_map(|bitmap| bitmap.iter()).for_each(|i| {
@@ -402,28 +413,14 @@ fn serialized_size(c: &mut Criterion) {
     });
 }
 
-fn extract_integers<A: AsRef<str>>(content: A) -> Result<Vec<u32>, ParseIntError> {
-    content.as_ref().split(',').map(|s| s.trim().parse()).collect()
-}
-
-// Parse every file into a vector of integer.
-fn parse_dir_files<A: AsRef<Path>>(
-    files: A,
-) -> io::Result<Vec<(PathBuf, Result<Vec<u32>, ParseIntError>)>> {
-    fs::read_dir(files)?
-        .map(|r| r.and_then(|e| fs::read_to_string(e.path()).map(|r| (e.path(), r))))
-        .map(|r| r.map(|(p, c)| (p, extract_integers(c))))
-        .collect()
-}
-
 fn from_sorted_iter(c: &mut Criterion) {
     let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
-    let parsed_numbers = parse_dir_files(files).unwrap();
+    let bitmaps = deserialize_bitmaps(files);
+    let dataset_numbers: Vec<Vec<u32>> = bitmaps.iter().map(|bm| bm.iter().collect()).collect();
 
     c.bench_function("from_sorted_iter", |b| {
         b.iter(|| {
-            for (_, numbers) in &parsed_numbers {
-                let numbers = numbers.as_ref().unwrap();
+            for numbers in &dataset_numbers {
                 RoaringBitmap::from_sorted_iter(numbers.iter().copied()).unwrap();
             }
         })
@@ -432,12 +429,7 @@ fn from_sorted_iter(c: &mut Criterion) {
 
 fn successive_and(c: &mut Criterion) {
     let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
-    let parsed_numbers = parse_dir_files(files).unwrap();
-
-    let mut bitmaps: Vec<_> = parsed_numbers
-        .into_iter()
-        .map(|(_, r)| r.map(|iter| RoaringBitmap::from_sorted_iter(iter).unwrap()).unwrap())
-        .collect();
+    let mut bitmaps = deserialize_bitmaps(files);
 
     // biggest bitmaps first.
     bitmaps.sort_unstable_by_key(|b| Reverse(b.len()));
@@ -485,12 +477,7 @@ fn successive_and(c: &mut Criterion) {
 
 fn successive_or(c: &mut Criterion) {
     let files = self::datasets_paths::WIKILEAKS_NOQUOTES_SRT;
-    let parsed_numbers = parse_dir_files(files).unwrap();
-
-    let bitmaps: Vec<_> = parsed_numbers
-        .into_iter()
-        .map(|(_, r)| r.map(|iter| RoaringBitmap::from_sorted_iter(iter).unwrap()).unwrap())
-        .collect();
+    let bitmaps = deserialize_bitmaps(files);
 
     let mut group = c.benchmark_group("Successive Or");
     group.bench_function("Successive Or Assign Ref", |b| {
