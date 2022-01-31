@@ -152,12 +152,39 @@ impl ArrayStore {
         }
     }
 
+    pub fn intersection_len(&self, other: &Self) -> u64 {
+        let mut visitor = CardinalityCounter::new();
+        #[cfg(feature = "simd")]
+        vector::and(self.as_slice(), other.as_slice(), &mut visitor);
+        #[cfg(not(feature = "simd"))]
+        scalar::and(self.as_slice(), other.as_slice(), &mut visitor);
+        visitor.into_inner()
+    }
+
     pub fn union_len(&self, other: &Self) -> u64 {
         let mut visitor = CardinalityCounter::new();
         #[cfg(feature = "simd")]
         vector::or(self.as_slice(), other.as_slice(), &mut visitor);
         #[cfg(not(feature = "simd"))]
         scalar::or(self.as_slice(), other.as_slice(), &mut visitor);
+        visitor.into_inner()
+    }
+
+    pub fn difference_len(&self, other: &Self) -> u64 {
+        let mut visitor = CardinalityCounter::new();
+        #[cfg(feature = "simd")]
+        vector::sub(self.as_slice(), other.as_slice(), &mut visitor);
+        #[cfg(not(feature = "simd"))]
+        scalar::sub(self.as_slice(), other.as_slice(), &mut visitor);
+        visitor.into_inner()
+    }
+
+    pub fn symmetric_difference_len(&self, other: &Self) -> u64 {
+        let mut visitor = CardinalityCounter::new();
+        #[cfg(feature = "simd")]
+        vector::xor(self.as_slice(), other.as_slice(), &mut visitor);
+        #[cfg(not(feature = "simd"))]
+        scalar::xor(self.as_slice(), other.as_slice(), &mut visitor);
         visitor.into_inner()
     }
 

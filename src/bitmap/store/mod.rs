@@ -118,12 +118,39 @@ impl Store {
         }
     }
 
+    pub fn intersection_len(&self, other: &Self) -> u64 {
+        match (self, other) {
+            (Array(vec1), Array(vec2)) => vec1.intersection_len(vec2),
+            (Bitmap(bits1), Bitmap(bits2)) => bits1.intersection_len_bitmap(bits2),
+            (Array(vec), Bitmap(bits)) => bits.intersection_len_array(vec),
+            (Bitmap(bits), Array(vec)) => bits.intersection_len_array(vec),
+        }
+    }
+
     pub fn union_len(&self, other: &Self) -> u64 {
         match (self, other) {
             (Array(vec1), Array(vec2)) => vec1.union_len(vec2),
             (Bitmap(bits1), Bitmap(bits2)) => bits1.union_len_bitmap(bits2),
             (Array(vec), Bitmap(bits)) => bits.union_len_array(vec),
             (Bitmap(bits), Array(vec)) => bits.union_len_array(vec),
+        }
+    }
+
+    pub fn difference_len(&self, other: &Self) -> u64 {
+        match (self, other) {
+            (Array(vec1), Array(vec2)) => vec1.difference_len(vec2),
+            (Bitmap(bits1), Bitmap(bits2)) => bits1.difference_len_bitmap(bits2),
+            (Array(vec), Bitmap(bits)) => bits.difference_len_array(vec),
+            (Bitmap(bits), Array(vec)) => bits.difference_len_array(vec),
+        }
+    }
+
+    pub fn symmetric_difference_len(&self, other: &Self) -> u64 {
+        match (self, other) {
+            (Array(vec1), Array(vec2)) => vec1.symmetric_difference_len(vec2),
+            (Bitmap(bits1), Bitmap(bits2)) => bits1.symmetric_difference_len_bitmap(bits2),
+            (Array(vec), Bitmap(bits)) => bits.symmetric_difference_len_array(vec),
+            (Bitmap(bits), Array(vec)) => bits.symmetric_difference_len_array(vec),
         }
     }
 

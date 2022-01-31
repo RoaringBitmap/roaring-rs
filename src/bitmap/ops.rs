@@ -45,31 +45,6 @@ impl RoaringBitmap {
         BitOrAssign::bitor_assign(self, other)
     }
 
-    /// Computes the len of the unions with the specified other bitmap without creating a new bitmap
-    /// This is faster and more space efficient for use cases
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use roaring::RoaringBitmap;
-    ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (3..5).collect();
-    ///
-    ///
-    /// assert_eq!(rb1.union_len(&rb2), (rb1 | rb2).len());
-    /// ```
-    pub fn union_len(&self, other: &RoaringBitmap) -> u64 {
-        Pairs::new(&self.containers, &other.containers)
-            .map(|pair| match pair {
-                (Some(lhs), None) => lhs.len(),
-                (None, Some(rhs)) => rhs.len(),
-                (Some(lhs), Some(rhs)) => lhs.union_len(rhs),
-                (None, None) => unreachable!(),
-            })
-            .sum()
-    }
-
     /// Intersects in-place with the specified other bitmap.
     ///
     /// # Examples
@@ -179,6 +154,117 @@ impl RoaringBitmap {
     )]
     pub fn symmetric_difference_with(&mut self, other: &RoaringBitmap) {
         BitXorAssign::bitxor_assign(self, other)
+    }
+
+    /// Computes the len of the intersection with the specified other bitmap without creating a
+    /// new bitmap.
+    ///
+    /// This is faster and more space efficient when you're only interested in the cardinality of
+    /// the intersection.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = (1..4).collect();
+    /// let rb2: RoaringBitmap = (3..5).collect();
+    ///
+    ///
+    /// assert_eq!(rb1.intersection_len(&rb2), (rb1 & rb2).len());
+    /// ```
+    pub fn intersection_len(&self, other: &RoaringBitmap) -> u64 {
+        Pairs::new(&self.containers, &other.containers)
+            .map(|pair| match pair {
+                (Some(..), None) => 0,
+                (None, Some(..)) => 0,
+                (Some(lhs), Some(rhs)) => lhs.intersection_len(rhs),
+                (None, None) => unreachable!(),
+            })
+            .sum()
+    }
+
+    /// Computes the len of the union with the specified other bitmap without creating a new bitmap.
+    ///
+    /// This is faster and more space efficient when you're only interested in the cardinality of
+    /// the union.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = (1..4).collect();
+    /// let rb2: RoaringBitmap = (3..5).collect();
+    ///
+    ///
+    /// assert_eq!(rb1.union_len(&rb2), (rb1 | rb2).len());
+    /// ```
+    pub fn union_len(&self, other: &RoaringBitmap) -> u64 {
+        Pairs::new(&self.containers, &other.containers)
+            .map(|pair| match pair {
+                (Some(lhs), None) => lhs.len(),
+                (None, Some(rhs)) => rhs.len(),
+                (Some(lhs), Some(rhs)) => lhs.union_len(rhs),
+                (None, None) => unreachable!(),
+            })
+            .sum()
+    }
+
+    /// Computes the len of the difference with the specified other bitmap without creating a new
+    /// bitmap.
+    ///
+    /// This is faster and more space efficient when you're only interested in the cardinality of
+    /// the difference.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = (1..4).collect();
+    /// let rb2: RoaringBitmap = (3..5).collect();
+    ///
+    ///
+    /// assert_eq!(rb1.difference_len(&rb2), (rb1 - rb2).len());
+    /// ```
+    pub fn difference_len(&self, other: &RoaringBitmap) -> u64 {
+        Pairs::new(&self.containers, &other.containers)
+            .map(|pair| match pair {
+                (Some(lhs), None) => lhs.len(),
+                (None, Some(..)) => 0,
+                (Some(lhs), Some(rhs)) => lhs.difference_len(rhs),
+                (None, None) => unreachable!(),
+            })
+            .sum()
+    }
+
+    /// Computes the len of the symmetric difference with the specified other bitmap without
+    /// creating a new bitmap.
+    ///
+    /// This is faster and more space efficient when you're only interested in the cardinality of
+    /// the symmetric difference.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = (1..4).collect();
+    /// let rb2: RoaringBitmap = (3..5).collect();
+    ///
+    ///
+    /// assert_eq!(rb1.symmetric_difference_len(&rb2), (rb1 ^ rb2).len());
+    /// ```
+    pub fn symmetric_difference_len(&self, other: &RoaringBitmap) -> u64 {
+        Pairs::new(&self.containers, &other.containers)
+            .map(|pair| match pair {
+                (Some(lhs), None) => lhs.len(),
+                (None, Some(rhs)) => rhs.len(),
+                (Some(lhs), Some(rhs)) => lhs.symmetric_difference_len(rhs),
+                (None, None) => unreachable!(),
+            })
+            .sum()
     }
 }
 

@@ -1,6 +1,8 @@
 use std::borrow::Borrow;
 use std::fmt::{Display, Formatter};
-use std::ops::{BitAndAssign, BitOr, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
+use std::ops::{
+    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
+};
 
 use super::ArrayStore;
 
@@ -224,6 +226,23 @@ impl BitmapStore {
             + (self.bits[key] << (63 - bit)).count_ones() as u64
     }
 
+    pub fn intersection_len_bitmap(&self, other: &BitmapStore) -> u64 {
+        op_len_bitmap(self, other, BitAnd::bitand)
+    }
+
+    pub fn intersection_len_array(&self, other: &ArrayStore) -> u64 {
+        self.len
+            - other
+                .iter()
+                .map(|&index| {
+                    let (key, bit) = (key(index), bit(index));
+                    let old_w = self.bits[key];
+                    let new_w = old_w & 1 << bit;
+                    (old_w ^ new_w) >> bit
+                })
+                .sum::<u64>()
+    }
+
     pub fn union_len_bitmap(&self, other: &BitmapStore) -> u64 {
         op_len_bitmap(self, other, BitOr::bitor)
     }
@@ -239,6 +258,39 @@ impl BitmapStore {
                     (old_w ^ new_w) >> bit
                 })
                 .sum::<u64>()
+    }
+
+    pub fn difference_len_bitmap(&self, other: &BitmapStore) -> u64 {
+        op_len_bitmap(self, other, Sub::sub)
+    }
+
+    pub fn difference_len_array(&self, other: &ArrayStore) -> u64 {
+        self.len
+            - other
+                .iter()
+                .map(|&index| {
+                    let (key, bit) = (key(index), bit(index));
+                    let old_w = self.bits[key];
+                    let new_w = old_w & !(1 << bit);
+                    (old_w ^ new_w) >> bit
+                })
+                .sum::<u64>()
+    }
+
+    pub fn symmetric_difference_len_bitmap(&self, other: &BitmapStore) -> u64 {
+        op_len_bitmap(self, other, BitXor::bitxor)
+    }
+
+    pub fn symmetric_difference_len_array(&self, other: &ArrayStore) -> u64 {
+        (self.len as isize
+            + other
+                .iter()
+                .map(|&index| {
+                    let (key, bit) = (key(index), bit(index));
+                    let old_w = self.bits[key];
+                    1 - 2 * (((1 << bit) & old_w) >> bit) as isize // +1 or -1
+                })
+                .sum::<isize>()) as u64
     }
 
     pub fn iter(&self) -> BitmapIter<&[u64; BITMAP_LENGTH]> {
@@ -403,12 +455,12 @@ impl BitXorAssign<&Self> for BitmapStore {
 
 impl BitXorAssign<&ArrayStore> for BitmapStore {
     fn bitxor_assign(&mut self, rhs: &ArrayStore) {
-        let mut len = self.len as i64;
+        let mut len = self.len as isize;
         for &index in rhs.iter() {
             let (key, bit) = (key(index), bit(index));
             let old_w = self.bits[key];
             let new_w = old_w ^ 1 << bit;
-            len += 1 - 2 * (((1 << bit) & old_w) >> bit) as i64; // +1 or -1
+            len += 1 - 2 * (((1 << bit) & old_w) >> bit) as isize; // +1 or -1
             self.bits[key] = new_w;
         }
         self.len = len as u64;
