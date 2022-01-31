@@ -226,7 +226,8 @@ impl<'a> IntoIterator for &'a Container {
     type IntoIter = Iter<'a>;
 
     fn into_iter(self) -> Iter<'a> {
-        Iter { key: self.key, inner: (&self.store).into_iter() }
+        let store: &Store = &self.store;
+        Iter { key: self.key, inner: store.into_iter() }
     }
 }
 
