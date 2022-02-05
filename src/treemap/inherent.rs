@@ -303,6 +303,37 @@ impl RoaringTreemap {
             .unwrap_or(0)
             + iter.map(|(_, bitmap)| bitmap.len()).sum::<u64>()
     }
+
+    /// Returns the nth integer in the treemap (if the set is non-empty)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let mut rb = RoaringTreemap::new();
+    /// assert_eq!(rb.select(0), None);
+    ///
+    /// rb.insert(0);
+    /// rb.insert(10);
+    /// rb.insert(100);
+    ///
+    /// assert_eq!(rb.select(0), Some(0));
+    /// assert_eq!(rb.select(1), Some(10));
+    /// assert_eq!(rb.select(2), Some(100));
+    /// assert_eq!(rb.select(3), None);
+    /// ```
+    pub fn select(&self, mut n: u64) -> Option<u64> {
+        for (&key, bitmap) in &self.map {
+            let len = bitmap.len();
+            if len > n {
+                return Some((key as u64) << 32 | bitmap.select(n as u32).unwrap() as u64);
+            }
+            n -= len;
+        }
+
+        None
+    }
 }
 
 impl Default for RoaringTreemap {
