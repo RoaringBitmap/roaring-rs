@@ -152,6 +152,110 @@ impl RoaringTreemap {
     pub fn symmetric_difference_with(&mut self, other: &RoaringTreemap) {
         BitXorAssign::bitxor_assign(self, other)
     }
+
+    /// Computes the len of the union with the specified other treemap without creating a new
+    /// treemap.
+    ///
+    /// This is faster and more space efficient when you're only interested in the cardinality of
+    /// the union.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = (1..4).collect();
+    /// let rb2: RoaringBitmap = (3..5).collect();
+    ///
+    ///
+    /// assert_eq!(rb1.union_len(&rb2), (rb1 | rb2).len());
+    /// ```
+    pub fn union_len(&self, other: &RoaringTreemap) -> u64 {
+        self.len().wrapping_add(other.len()).wrapping_sub(self.intersection_len(other))
+    }
+
+    /// Computes the len of the intersection with the specified other treemap without creating a
+    /// new treemap.
+    ///
+    /// This is faster and more space efficient when you're only interested in the cardinality of
+    /// the intersection.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let rb1: RoaringTreemap = (1..4).collect();
+    /// let rb2: RoaringTreemap = (3..5).collect();
+    ///
+    ///
+    /// assert_eq!(rb1.intersection_len(&rb2), (rb1 & rb2).len());
+    /// ```
+    pub fn intersection_len(&self, other: &RoaringTreemap) -> u64 {
+        fn intersection_len_impl(lhs: &RoaringTreemap, rhs: &RoaringTreemap) -> u64 {
+            let mut len = 0;
+            for (key, right_rb) in &rhs.map {
+                if let Some(left_rb) = lhs.map.get(key) {
+                    len += left_rb.intersection_len(right_rb);
+                }
+            }
+            len
+        }
+
+        // We make sure that we apply the intersection operation on the biggest map.
+        if self.map.len() < other.map.len() {
+            intersection_len_impl(self, other)
+        } else {
+            intersection_len_impl(other, self)
+        }
+    }
+
+    /// Computes the len of the difference with the specified other treemap without creating a new
+    /// treemap.
+    ///
+    /// This is faster and more space efficient when you're only interested in the cardinality of
+    /// the difference.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let rb1: RoaringTreemap = (1..4).collect();
+    /// let rb2: RoaringTreemap = (3..5).collect();
+    ///
+    ///
+    /// assert_eq!(rb1.difference_len(&rb2), (rb1 - rb2).len());
+    /// ```
+    pub fn difference_len(&self, other: &RoaringTreemap) -> u64 {
+        self.len() - self.intersection_len(other)
+    }
+
+    /// Computes the len of the symmetric difference with the specified other bitmap without
+    /// creating a new bitmap.
+    ///
+    /// This is faster and more space efficient when you're only interested in the cardinality of
+    /// the symmetric difference.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let rb1: RoaringTreemap = (1..4).collect();
+    /// let rb2: RoaringTreemap = (3..5).collect();
+    ///
+    ///
+    /// assert_eq!(rb1.symmetric_difference_len(&rb2), (rb1 ^ rb2).len());
+    /// ```
+    pub fn symmetric_difference_len(&self, other: &RoaringTreemap) -> u64 {
+        let intersection_len = self.intersection_len(other);
+
+        self.len()
+            .wrapping_add(other.len())
+            .wrapping_sub(intersection_len)
+            .wrapping_sub(intersection_len)
+    }
 }
 
 impl BitOr<RoaringTreemap> for RoaringTreemap {
