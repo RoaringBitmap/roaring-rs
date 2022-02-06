@@ -603,3 +603,44 @@ impl BitXorAssign<&RoaringBitmap> for RoaringBitmap {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::RoaringBitmap;
+    use proptest::prelude::*;
+
+    // fast count tests
+    proptest! {
+        #[test]
+        fn union_len_eq_len_of_materialized_union(
+            a in RoaringBitmap::arbitrary(),
+            b in RoaringBitmap::arbitrary()
+        ) {
+            prop_assert_eq!(a.union_len(&b), (a | b).len());
+        }
+
+        #[test]
+        fn intersection_len_eq_len_of_materialized_intersection(
+            a in RoaringBitmap::arbitrary(),
+            b in RoaringBitmap::arbitrary()
+        ) {
+            prop_assert_eq!(a.intersection_len(&b), (a & b).len());
+        }
+
+        #[test]
+        fn difference_len_eq_len_of_materialized_difference(
+            a in RoaringBitmap::arbitrary(),
+            b in RoaringBitmap::arbitrary()
+        ) {
+            prop_assert_eq!(a.difference_len(&b), (a - b).len());
+        }
+
+        #[test]
+        fn symmetric_difference_len_eq_len_of_materialized_symmetric_difference(
+            a in RoaringBitmap::arbitrary(),
+            b in RoaringBitmap::arbitrary()
+        ) {
+            prop_assert_eq!(a.symmetric_difference_len(&b), (a ^ b).len());
+        }
+    }
+}
