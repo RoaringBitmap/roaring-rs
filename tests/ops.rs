@@ -11,6 +11,7 @@ fn or() {
     assert_eq!(rb3, &rb1 | rb2.clone());
     assert_eq!(rb3, rb1.clone() | &rb2);
     assert_eq!(rb3, rb1.clone() | rb2.clone());
+    assert_eq!(rb3.len(), rb1.union_len(&rb2));
 
     rb1 |= &rb2;
     rb1 |= rb2;
@@ -28,6 +29,7 @@ fn and() {
     assert_eq!(rb3, &rb1 & rb2.clone());
     assert_eq!(rb3, rb1.clone() & &rb2);
     assert_eq!(rb3, rb1.clone() & rb2.clone());
+    assert_eq!(rb3.len(), rb1.intersection_len(&rb2));
 
     rb1 &= &rb2;
     rb1 &= rb2;
@@ -45,6 +47,7 @@ fn sub() {
     assert_eq!(rb3, &rb1 - rb2.clone());
     assert_eq!(rb3, rb1.clone() - &rb2);
     assert_eq!(rb3, rb1.clone() - rb2.clone());
+    assert_eq!(rb3.len(), rb1.difference_len(&rb2));
 
     rb1 -= &rb2;
     rb1 -= rb2;
@@ -63,6 +66,7 @@ fn xor() {
     assert_eq!(rb3, &rb1 ^ rb2.clone());
     assert_eq!(rb3, rb1.clone() ^ &rb2);
     assert_eq!(rb3, rb1.clone() ^ rb2.clone());
+    assert_eq!(rb3.len(), rb1.symmetric_difference_len(&rb2));
 
     rb1 ^= &rb2;
 
