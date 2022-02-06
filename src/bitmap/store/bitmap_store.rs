@@ -1,8 +1,6 @@
 use std::borrow::Borrow;
 use std::fmt::{Display, Formatter};
-use std::ops::{
-    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, SubAssign,
-};
+use std::ops::{BitAnd, BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
 use super::ArrayStore;
 
@@ -255,56 +253,6 @@ impl BitmapStore {
                 new_w >> bit
             })
             .sum::<u64>()
-    }
-
-    pub fn union_len_bitmap(&self, other: &BitmapStore) -> u64 {
-        op_len_bitmap(self, other, BitOr::bitor)
-    }
-
-    pub fn union_len_array(&self, other: &ArrayStore) -> u64 {
-        self.len
-            + other
-                .iter()
-                .map(|&index| {
-                    let (key, bit) = (key(index), bit(index));
-                    let old_w = self.bits[key];
-                    let new_w = old_w | 1 << bit;
-                    (old_w ^ new_w) >> bit
-                })
-                .sum::<u64>()
-    }
-
-    pub fn difference_len_bitmap(&self, other: &BitmapStore) -> u64 {
-        op_len_bitmap(self, other, |a, b| a & !b)
-    }
-
-    pub fn difference_len_array(&self, other: &ArrayStore) -> u64 {
-        self.len
-            - other
-                .iter()
-                .map(|&index| {
-                    let (key, bit) = (key(index), bit(index));
-                    let old_w = self.bits[key];
-                    let new_w = old_w & !(1 << bit);
-                    (old_w ^ new_w) >> bit
-                })
-                .sum::<u64>()
-    }
-
-    pub fn symmetric_difference_len_bitmap(&self, other: &BitmapStore) -> u64 {
-        op_len_bitmap(self, other, BitXor::bitxor)
-    }
-
-    pub fn symmetric_difference_len_array(&self, other: &ArrayStore) -> u64 {
-        (self.len as isize
-            + other
-                .iter()
-                .map(|&index| {
-                    let (key, bit) = (key(index), bit(index));
-                    let old_w = self.bits[key];
-                    1 - 2 * (((1 << bit) & old_w) >> bit) as isize // +1 or -1
-                })
-                .sum::<isize>()) as u64
     }
 
     pub fn iter(&self) -> BitmapIter<&[u64; BITMAP_LENGTH]> {

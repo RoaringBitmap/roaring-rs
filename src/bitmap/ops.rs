@@ -201,14 +201,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb1.union_len(&rb2), (rb1 | rb2).len());
     /// ```
     pub fn union_len(&self, other: &RoaringBitmap) -> u64 {
-        Pairs::new(&self.containers, &other.containers)
-            .map(|pair| match pair {
-                (Some(lhs), None) => lhs.len(),
-                (None, Some(rhs)) => rhs.len(),
-                (Some(lhs), Some(rhs)) => lhs.union_len(rhs),
-                (None, None) => unreachable!(),
-            })
-            .sum()
+        self.len().wrapping_add(other.len()).wrapping_sub(self.intersection_len(other))
     }
 
     /// Computes the len of the difference with the specified other bitmap without creating a new
@@ -229,14 +222,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb1.difference_len(&rb2), (rb1 - rb2).len());
     /// ```
     pub fn difference_len(&self, other: &RoaringBitmap) -> u64 {
-        Pairs::new(&self.containers, &other.containers)
-            .map(|pair| match pair {
-                (Some(lhs), None) => lhs.len(),
-                (None, Some(..)) => 0,
-                (Some(lhs), Some(rhs)) => lhs.difference_len(rhs),
-                (None, None) => unreachable!(),
-            })
-            .sum()
+        self.len() - self.intersection_len(other)
     }
 
     /// Computes the len of the symmetric difference with the specified other bitmap without
@@ -257,14 +243,11 @@ impl RoaringBitmap {
     /// assert_eq!(rb1.symmetric_difference_len(&rb2), (rb1 ^ rb2).len());
     /// ```
     pub fn symmetric_difference_len(&self, other: &RoaringBitmap) -> u64 {
-        Pairs::new(&self.containers, &other.containers)
-            .map(|pair| match pair {
-                (Some(lhs), None) => lhs.len(),
-                (None, Some(rhs)) => rhs.len(),
-                (Some(lhs), Some(rhs)) => lhs.symmetric_difference_len(rhs),
-                (None, None) => unreachable!(),
-            })
-            .sum()
+        let intersection_len = self.intersection_len(other);
+        self.len()
+            .wrapping_add(other.len())
+            .wrapping_sub(intersection_len)
+            .wrapping_sub(intersection_len)
     }
 }
 

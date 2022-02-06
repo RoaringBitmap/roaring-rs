@@ -161,37 +161,6 @@ impl ArrayStore {
         visitor.into_inner()
     }
 
-    pub fn union_len(&self, other: &Self) -> u64 {
-        let mut visitor = CardinalityCounter::new();
-        #[cfg(feature = "simd")]
-        vector::or(self.as_slice(), other.as_slice(), &mut visitor);
-        #[cfg(not(feature = "simd"))]
-        scalar::or(self.as_slice(), other.as_slice(), &mut visitor);
-        visitor.into_inner()
-    }
-
-    pub fn difference_len(&self, other: &Self) -> u64 {
-        let mut visitor = CardinalityCounter::new();
-        #[cfg(feature = "simd")]
-        vector::sub(self.as_slice(), other.as_slice(), &mut visitor);
-        #[cfg(not(feature = "simd"))]
-        scalar::sub(self.as_slice(), other.as_slice(), &mut visitor);
-        visitor.into_inner()
-    }
-
-    pub fn difference_len_bitmap(&self, other: &BitmapStore) -> u64 {
-        self.iter().filter(|&&index| !other.contains(index)).count() as u64
-    }
-
-    pub fn symmetric_difference_len(&self, other: &Self) -> u64 {
-        let mut visitor = CardinalityCounter::new();
-        #[cfg(feature = "simd")]
-        vector::xor(self.as_slice(), other.as_slice(), &mut visitor);
-        #[cfg(not(feature = "simd"))]
-        scalar::xor(self.as_slice(), other.as_slice(), &mut visitor);
-        visitor.into_inner()
-    }
-
     pub fn to_bitmap_store(&self) -> BitmapStore {
         let mut bits = Box::new([0; BITMAP_LENGTH]);
         let len = self.len() as u64;

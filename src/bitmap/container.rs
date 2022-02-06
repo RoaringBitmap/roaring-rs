@@ -100,18 +100,6 @@ impl Container {
         self.store.intersection_len(&other.store)
     }
 
-    pub fn union_len(&self, other: &Self) -> u64 {
-        self.store.union_len(&other.store)
-    }
-
-    pub fn difference_len(&self, other: &Self) -> u64 {
-        self.store.difference_len(&other.store)
-    }
-
-    pub fn symmetric_difference_len(&self, other: &Self) -> u64 {
-        self.store.symmetric_difference_len(&other.store)
-    }
-
     pub fn min(&self) -> Option<u16> {
         self.store.min()
     }
