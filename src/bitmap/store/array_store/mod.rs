@@ -217,6 +217,10 @@ impl ArrayStore {
         }
     }
 
+    pub fn select(&self, n: u16) -> Option<u16> {
+        self.vec.get(n as usize).cloned()
+    }
+
     pub fn iter(&self) -> std::slice::Iter<u16> {
         self.vec.iter()
     }
@@ -314,11 +318,20 @@ impl BitAnd<Self> for &ArrayStore {
 impl BitAndAssign<&Self> for ArrayStore {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn bitand_assign(&mut self, rhs: &Self) {
-        let mut i = 0;
-        self.vec.retain(|x| {
-            i += rhs.iter().skip(i).position(|y| y >= x).unwrap_or(rhs.vec.len());
-            rhs.vec.get(i).map_or(false, |y| x == y)
-        });
+        #[cfg(feature = "simd")]
+        {
+            let mut visitor = VecWriter::new(self.vec.len().min(rhs.vec.len()));
+            vector::and(self.as_slice(), rhs.as_slice(), &mut visitor);
+            self.vec = visitor.into_inner()
+        }
+        #[cfg(not(feature = "simd"))]
+        {
+            let mut i = 0;
+            self.vec.retain(|x| {
+                i += rhs.iter().skip(i).position(|y| y >= x).unwrap_or(rhs.vec.len());
+                rhs.vec.get(i).map_or(false, |y| x == y)
+            });
+        }
     }
 }
 
@@ -344,11 +357,20 @@ impl Sub<Self> for &ArrayStore {
 impl SubAssign<&Self> for ArrayStore {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn sub_assign(&mut self, rhs: &Self) {
-        let mut i = 0;
-        self.vec.retain(|x| {
-            i += rhs.iter().skip(i).position(|y| y >= x).unwrap_or(rhs.vec.len());
-            rhs.vec.get(i).map_or(true, |y| x != y)
-        });
+        #[cfg(feature = "simd")]
+        {
+            let mut visitor = VecWriter::new(self.vec.len().min(rhs.vec.len()));
+            vector::sub(self.as_slice(), rhs.as_slice(), &mut visitor);
+            self.vec = visitor.into_inner()
+        }
+        #[cfg(not(feature = "simd"))]
+        {
+            let mut i = 0;
+            self.vec.retain(|x| {
+                i += rhs.iter().skip(i).position(|y| y >= x).unwrap_or(rhs.vec.len());
+                rhs.vec.get(i).map_or(true, |y| x != y)
+            });
+        }
     }
 }
 
@@ -375,29 +397,38 @@ impl BitXor<Self> for &ArrayStore {
 
 impl BitXorAssign<&Self> for ArrayStore {
     fn bitxor_assign(&mut self, rhs: &Self) {
-        let mut i1 = 0usize;
-        let mut iter2 = rhs.vec.iter();
-        let mut current2 = iter2.next();
-        while i1 < self.vec.len() {
-            match current2.map(|c2| self.vec[i1].cmp(c2)) {
-                None => break,
-                Some(Less) => {
-                    i1 += 1;
-                }
-                Some(Greater) => {
-                    self.vec.insert(i1, *current2.unwrap());
-                    i1 += 1;
-                    current2 = iter2.next();
-                }
-                Some(Equal) => {
-                    self.vec.remove(i1);
-                    current2 = iter2.next();
+        #[cfg(feature = "simd")]
+        {
+            let mut visitor = VecWriter::new(self.vec.len().min(rhs.vec.len()));
+            vector::xor(self.as_slice(), rhs.as_slice(), &mut visitor);
+            self.vec = visitor.into_inner()
+        }
+        #[cfg(not(feature = "simd"))]
+        {
+            let mut i1 = 0usize;
+            let mut iter2 = rhs.vec.iter();
+            let mut current2 = iter2.next();
+            while i1 < self.vec.len() {
+                match current2.map(|c2| self.vec[i1].cmp(c2)) {
+                    None => break,
+                    Some(Less) => {
+                        i1 += 1;
+                    }
+                    Some(Greater) => {
+                        self.vec.insert(i1, *current2.unwrap());
+                        i1 += 1;
+                        current2 = iter2.next();
+                    }
+                    Some(Equal) => {
+                        self.vec.remove(i1);
+                        current2 = iter2.next();
+                    }
                 }
             }
-        }
-        if let Some(current) = current2 {
-            self.vec.push(*current);
-            self.vec.extend(iter2.cloned());
+            if let Some(current) = current2 {
+                self.vec.push(*current);
+                self.vec.extend(iter2.cloned());
+            }
         }
     }
 }

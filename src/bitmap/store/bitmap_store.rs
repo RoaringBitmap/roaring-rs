@@ -226,6 +226,21 @@ impl BitmapStore {
             + (self.bits[key] << (63 - bit)).count_ones() as u64
     }
 
+    pub fn select(&self, n: u16) -> Option<u16> {
+        let mut n = n as u64;
+
+        for (key, value) in self.bits.iter().cloned().enumerate() {
+            let len = value.count_ones() as u64;
+            if n < len {
+                let index = select(value, n);
+                return Some((64 * key as u64 + index) as u16);
+            }
+            n -= len;
+        }
+
+        None
+    }
+
     pub fn intersection_len_bitmap(&self, other: &BitmapStore) -> u64 {
         op_len_bitmap(self, other, BitAnd::bitand)
     }
@@ -304,6 +319,16 @@ impl BitmapStore {
     pub fn as_array(&self) -> &[u64; BITMAP_LENGTH] {
         &self.bits
     }
+}
+
+// this can be done in 3 instructions on x86-64 with bmi2 with: tzcnt(pdep(1 << rank, value))
+// if n > value.count_ones() this method returns 0
+fn select(mut value: u64, n: u64) -> u64 {
+    // reset n of the least significant bits
+    for _ in 0..n {
+        value &= value - 1;
+    }
+    value.trailing_zeros() as u64
 }
 
 impl Default for BitmapStore {
