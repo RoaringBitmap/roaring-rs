@@ -140,7 +140,7 @@ impl Store {
         match (self, other) {
             (Array(vec1), Array(vec2)) => vec1.difference_len(vec2),
             (Bitmap(bits1), Bitmap(bits2)) => bits1.difference_len_bitmap(bits2),
-            (Array(vec), Bitmap(bits)) => bits.difference_len_array(vec),
+            (Array(vec), Bitmap(bits)) => vec.difference_len_bitmap(bits),
             (Bitmap(bits), Array(vec)) => bits.difference_len_array(vec),
         }
     }

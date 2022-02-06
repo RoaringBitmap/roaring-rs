@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::fmt::{Display, Formatter};
 use std::ops::{
-    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
+    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, SubAssign,
 };
 
 use super::ArrayStore;
@@ -246,16 +246,15 @@ impl BitmapStore {
     }
 
     pub fn intersection_len_array(&self, other: &ArrayStore) -> u64 {
-        self.len
-            - other
-                .iter()
-                .map(|&index| {
-                    let (key, bit) = (key(index), bit(index));
-                    let old_w = self.bits[key];
-                    let new_w = old_w & 1 << bit;
-                    (old_w ^ new_w) >> bit
-                })
-                .sum::<u64>()
+        other
+            .iter()
+            .map(|&index| {
+                let (key, bit) = (key(index), bit(index));
+                let old_w = self.bits[key];
+                let new_w = old_w & (1 << bit);
+                new_w >> bit
+            })
+            .sum::<u64>()
     }
 
     pub fn union_len_bitmap(&self, other: &BitmapStore) -> u64 {
@@ -276,7 +275,7 @@ impl BitmapStore {
     }
 
     pub fn difference_len_bitmap(&self, other: &BitmapStore) -> u64 {
-        op_len_bitmap(self, other, Sub::sub)
+        op_len_bitmap(self, other, |a, b| a & !b)
     }
 
     pub fn difference_len_array(&self, other: &ArrayStore) -> u64 {

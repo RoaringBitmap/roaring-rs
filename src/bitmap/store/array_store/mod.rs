@@ -179,6 +179,10 @@ impl ArrayStore {
         visitor.into_inner()
     }
 
+    pub fn difference_len_bitmap(&self, other: &BitmapStore) -> u64 {
+        self.iter().filter(|&&index| !other.contains(index)).count() as u64
+    }
+
     pub fn symmetric_difference_len(&self, other: &Self) -> u64 {
         let mut visitor = CardinalityCounter::new();
         #[cfg(feature = "simd")]
