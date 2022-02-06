@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::fmt::{Display, Formatter};
-use std::ops::{BitAnd, BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
+use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
 use super::ArrayStore;
 
@@ -240,7 +240,7 @@ impl BitmapStore {
     }
 
     pub fn intersection_len_bitmap(&self, other: &BitmapStore) -> u64 {
-        op_len_bitmap(self, other, BitAnd::bitand)
+        self.bits.iter().zip(other.bits.iter()).map(|(&a, &b)| (a & b).count_ones() as u64).sum()
     }
 
     pub fn intersection_len_array(&self, other: &ArrayStore) -> u64 {
@@ -368,11 +368,6 @@ fn op_bitmaps(bits1: &mut BitmapStore, bits2: &BitmapStore, op: impl Fn(&mut u64
         op(index1, index2);
         bits1.len += index1.count_ones() as u64;
     }
-}
-
-#[inline]
-fn op_len_bitmap(bits1: &BitmapStore, bits2: &BitmapStore, op: impl Fn(u64, u64) -> u64) -> u64 {
-    bits1.bits.iter().zip(bits2.bits.iter()).map(|(&a, &b)| op(a, b).count_ones() as u64).sum()
 }
 
 impl BitOrAssign<&Self> for BitmapStore {
