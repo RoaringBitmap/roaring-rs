@@ -422,12 +422,12 @@ impl BitXorAssign<&Self> for BitmapStore {
 
 impl BitXorAssign<&ArrayStore> for BitmapStore {
     fn bitxor_assign(&mut self, rhs: &ArrayStore) {
-        let mut len = self.len as isize;
+        let mut len = self.len as i64;
         for &index in rhs.iter() {
             let (key, bit) = (key(index), bit(index));
             let old_w = self.bits[key];
             let new_w = old_w ^ 1 << bit;
-            len += 1 - 2 * (((1 << bit) & old_w) >> bit) as isize; // +1 or -1
+            len += 1 - 2 * (((1 << bit) & old_w) >> bit) as i64; // +1 or -1
             self.bits[key] = new_w;
         }
         self.len = len as u64;
