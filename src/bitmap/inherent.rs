@@ -386,8 +386,6 @@ impl RoaringBitmap {
     /// assert_eq!(rb.rank(10), 2)
     /// ```
     pub fn rank(&self, value: u32) -> u64 {
-        // if len becomes cached for RoaringBitmap: return len if len > value
-
         let (key, index) = util::split(value);
 
         match self.containers.binary_search_by_key(&key, |c| c.key) {
@@ -402,7 +400,7 @@ impl RoaringBitmap {
         }
     }
 
-    /// Returns the nth integer in the bitmap (if the set is non-empty)
+    /// Returns the nth integer in the bitmap or `None` if n > len()
     ///
     /// # Examples
     ///
@@ -421,6 +419,10 @@ impl RoaringBitmap {
     /// assert_eq!(rb.select(2), Some(100));
     /// ```
     pub fn select(&self, n: u32) -> Option<u32> {
+        if n as u64 >= self.len() {
+            return None;
+        }
+
         let mut n = n as u64;
 
         for container in &self.containers {

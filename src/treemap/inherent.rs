@@ -302,8 +302,6 @@ impl RoaringTreemap {
     /// assert_eq!(rb.rank(10), 2)
     /// ```
     pub fn rank(&self, value: u64) -> u64 {
-        // if len becomes cached for RoaringTreemap: return len if len > value
-
         let (hi, lo) = util::split(value);
         let mut iter = self.map.range(..=hi).rev();
 
@@ -313,7 +311,7 @@ impl RoaringTreemap {
             + iter.map(|(_, bitmap)| bitmap.len()).sum::<u64>()
     }
 
-    /// Returns the nth integer in the treemap (if the set is non-empty)
+    /// Returns the nth integer in the treemap or `None` if n > len()
     ///
     /// # Examples
     ///
@@ -333,6 +331,10 @@ impl RoaringTreemap {
     /// assert_eq!(rb.select(3), None);
     /// ```
     pub fn select(&self, mut n: u64) -> Option<u64> {
+        if n as u64 >= self.len() {
+            return None;
+        }
+
         for (&key, bitmap) in &self.map {
             let len = bitmap.len();
             if len > n {
