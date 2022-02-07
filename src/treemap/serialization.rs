@@ -51,6 +51,25 @@ impl RoaringTreemap {
         Ok(())
     }
 
+    fn deserialize_from_impl<R, F>(mut reader: R, mut deserialize_bitmap: F) -> io::Result<Self>
+    where
+        R: io::Read,
+        F: FnMut(&mut R) -> io::Result<RoaringBitmap>,
+    {
+        let size = reader.read_u64::<LittleEndian>()?;
+
+        let mut s = Self::new();
+
+        for _ in 0..size {
+            let key = reader.read_u32::<LittleEndian>()?;
+            let bitmap = deserialize_bitmap(&mut reader)?;
+
+            s.map.insert(key, bitmap);
+        }
+
+        Ok(s)
+    }
+
     /// Deserialize a bitmap into memory.
     ///
     /// This is compatible with the official C/C++, Java and Go implementations.
@@ -68,18 +87,32 @@ impl RoaringTreemap {
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
-    pub fn deserialize_from<R: io::Read>(mut reader: R) -> io::Result<Self> {
-        let size = reader.read_u64::<LittleEndian>()?;
+    pub fn deserialize_from<R: io::Read>(reader: R) -> io::Result<Self> {
+        RoaringTreemap::deserialize_from_impl(reader, |reader| {
+            RoaringBitmap::deserialize_from(reader)
+        })
+    }
 
-        let mut s = Self::new();
-
-        for _ in 0..size {
-            let key = reader.read_u32::<LittleEndian>()?;
-            let bitmap = RoaringBitmap::deserialize_from(&mut reader)?;
-
-            s.map.insert(key, bitmap);
-        }
-
-        Ok(s)
+    /// Deserialize a bitmap into memory.
+    ///
+    /// This is compatible with the official C/C++, Java and Go implementations.
+    /// This method is memory safe but will not check if the data is a valid bitmap.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let rb1: RoaringTreemap = (1..4).collect();
+    /// let mut bytes = vec![];
+    /// rb1.serialize_into(&mut bytes).unwrap();
+    /// let rb2 = RoaringTreemap::deserialize_from_unvalidated(&bytes[..]).unwrap();
+    ///
+    /// assert_eq!(rb1, rb2);
+    /// ```
+    pub fn deserialize_from_unvalidated<R: io::Read>(reader: R) -> io::Result<Self> {
+        RoaringTreemap::deserialize_from_impl(reader, |reader| {
+            RoaringBitmap::deserialize_from_unvalidated(reader)
+        })
     }
 }
