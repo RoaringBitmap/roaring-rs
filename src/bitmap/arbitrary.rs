@@ -178,7 +178,8 @@ mod test {
                 container.ensure_correct_store();
                 container
             }).collect::<Vec<Container>>();
-            RoaringBitmap { containers }
+            let len = containers.iter().map(|c| c.len()).sum();
+            RoaringBitmap { len, containers }
        }
     }
 

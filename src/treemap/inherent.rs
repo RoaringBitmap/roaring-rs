@@ -16,7 +16,7 @@ impl RoaringTreemap {
     /// let mut rb = RoaringTreemap::new();
     /// ```
     pub fn new() -> RoaringTreemap {
-        RoaringTreemap { map: BTreeMap::new() }
+        RoaringTreemap { len: 0, map: BTreeMap::new() }
     }
 
     /// Adds a value to the set. Returns `true` if the value was not already present in the set.
@@ -33,7 +33,9 @@ impl RoaringTreemap {
     /// ```
     pub fn insert(&mut self, value: u64) -> bool {
         let (hi, lo) = util::split(value);
-        self.map.entry(hi).or_insert_with(RoaringBitmap::new).insert(lo)
+        let inserted = self.map.entry(hi).or_insert_with(RoaringBitmap::new).insert(lo);
+        self.len += inserted as u64;
+        inserted
     }
 
     /// Pushes `value` in the treemap only if it is greater than the current maximum value.
@@ -55,7 +57,9 @@ impl RoaringTreemap {
     /// ```
     pub fn push(&mut self, value: u64) -> bool {
         let (hi, lo) = util::split(value);
-        self.map.entry(hi).or_insert_with(RoaringBitmap::new).push(lo)
+        let pushed = self.map.entry(hi).or_insert_with(RoaringBitmap::new).push(lo);
+        self.len += pushed as u64;
+        pushed
     }
 
     ///
@@ -80,6 +84,7 @@ impl RoaringTreemap {
                 self.map.insert(hi, rb);
             }
         }
+        self.len += 1;
     }
 
     /// Removes a value from the set. Returns `true` if the value was present in the set.
@@ -97,7 +102,7 @@ impl RoaringTreemap {
     /// ```
     pub fn remove(&mut self, value: u64) -> bool {
         let (hi, lo) = util::split(value);
-        match self.map.entry(hi) {
+        let removed = match self.map.entry(hi) {
             Entry::Vacant(_) => false,
             Entry::Occupied(mut ent) => {
                 if ent.get_mut().remove(lo) {
@@ -109,7 +114,9 @@ impl RoaringTreemap {
                     false
                 }
             }
-        }
+        };
+        self.len -= removed as u64;
+        removed
     }
 
     /// Removes a range of values.
@@ -155,6 +162,7 @@ impl RoaringTreemap {
             self.map.remove(&key);
         }
 
+        self.len -= removed;
         removed
     }
 
@@ -193,6 +201,7 @@ impl RoaringTreemap {
     /// assert_eq!(rb.contains(1), false);
     /// ```
     pub fn clear(&mut self) {
+        self.len = 0;
         self.map.clear();
     }
 
@@ -231,7 +240,7 @@ impl RoaringTreemap {
     /// assert_eq!(rb.len(), 2);
     /// ```
     pub fn len(&self) -> u64 {
-        self.map.values().map(RoaringBitmap::len).sum()
+        self.len
     }
 
     /// Returns the minimum value in the set (if the set is non-empty).
@@ -344,10 +353,11 @@ impl Default for RoaringTreemap {
 
 impl Clone for RoaringTreemap {
     fn clone(&self) -> Self {
-        RoaringTreemap { map: self.map.clone() }
+        RoaringTreemap { len: self.len, map: self.map.clone() }
     }
 
     fn clone_from(&mut self, other: &Self) {
+        self.len = other.len;
         self.map.clone_from(&other.map);
     }
 }

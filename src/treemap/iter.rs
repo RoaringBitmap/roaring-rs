@@ -182,7 +182,9 @@ impl RoaringTreemap {
     /// assert_eq!(clone, original);
     /// ```
     pub fn from_bitmaps<I: IntoIterator<Item = (u32, RoaringBitmap)>>(iterator: I) -> Self {
-        RoaringTreemap { map: iterator.into_iter().collect() }
+        let mut len = 0;
+        let map = iterator.into_iter().inspect(|(_, rb)| len += rb.len()).collect();
+        RoaringTreemap { len, map }
     }
 }
 

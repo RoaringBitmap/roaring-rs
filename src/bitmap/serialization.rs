@@ -144,11 +144,14 @@ impl RoaringBitmap {
             drop(offsets); // Not useful when deserializing into memory
         }
 
+        let mut bitmap_len = 0;
         let mut containers = Vec::with_capacity(size);
 
         for _ in 0..size {
             let key = description_bytes.read_u16::<LittleEndian>()?;
             let len = u64::from(description_bytes.read_u16::<LittleEndian>()?) + 1;
+
+            bitmap_len += len;
 
             let store = if len <= 4096 {
                 let mut values = vec![0; len as usize];
@@ -169,6 +172,6 @@ impl RoaringBitmap {
             containers.push(Container { key, store });
         }
 
-        Ok(RoaringBitmap { containers })
+        Ok(RoaringBitmap { len: bitmap_len, containers })
     }
 }

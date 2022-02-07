@@ -34,4 +34,5 @@ pub use self::iter::{IntoIter, Iter};
 #[derive(PartialEq)]
 pub struct RoaringTreemap {
     map: BTreeMap<u32, RoaringBitmap>,
+    len: u64,
 }

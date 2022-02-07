@@ -1,6 +1,7 @@
 use super::RoaringTreemap;
 use crate::RoaringBitmap;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use std::collections::BTreeMap;
 use std::{io, mem::size_of};
 
 impl RoaringTreemap {
@@ -71,15 +72,17 @@ impl RoaringTreemap {
     pub fn deserialize_from<R: io::Read>(mut reader: R) -> io::Result<Self> {
         let size = reader.read_u64::<LittleEndian>()?;
 
-        let mut s = Self::new();
+        let mut len = 0;
+        let mut map = BTreeMap::new();
 
         for _ in 0..size {
             let key = reader.read_u32::<LittleEndian>()?;
             let bitmap = RoaringBitmap::deserialize_from(&mut reader)?;
+            len += bitmap.len();
 
-            s.map.insert(key, bitmap);
+            map.insert(key, bitmap);
         }
 
-        Ok(s)
+        Ok(RoaringTreemap { len, map })
     }
 }

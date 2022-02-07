@@ -207,10 +207,13 @@ impl BitOrAssign<RoaringTreemap> for RoaringTreemap {
         for (key, other_rb) in rhs.map {
             match self.map.entry(key) {
                 Entry::Vacant(ent) => {
+                    self.len += other_rb.len();
                     ent.insert(other_rb);
                 }
                 Entry::Occupied(mut ent) => {
+                    self.len -= ent.get().len();
                     BitOrAssign::bitor_assign(ent.get_mut(), other_rb);
+                    self.len += ent.get().len();
                 }
             }
         }
@@ -223,10 +226,13 @@ impl BitOrAssign<&RoaringTreemap> for RoaringTreemap {
         for (key, other_rb) in &rhs.map {
             match self.map.entry(*key) {
                 Entry::Vacant(ent) => {
+                    self.len += other_rb.len();
                     ent.insert(other_rb.clone());
                 }
                 Entry::Occupied(mut ent) => {
+                    self.len -= ent.get().len();
                     BitOrAssign::bitor_assign(ent.get_mut(), other_rb);
+                    self.len += ent.get().len();
                 }
             }
         }
@@ -292,9 +298,11 @@ impl BitAndAssign<&RoaringTreemap> for RoaringTreemap {
     fn bitand_assign(&mut self, rhs: &RoaringTreemap) {
         let mut keys_to_remove: Vec<u32> = Vec::new();
         for (key, self_rb) in &mut self.map {
+            self.len -= self_rb.len();
             match rhs.map.get(key) {
                 Some(other_rb) => {
                     BitAndAssign::bitand_assign(self_rb, other_rb);
+                    self.len += self_rb.len();
                     if self_rb.is_empty() {
                         keys_to_remove.push(*key);
                     }
@@ -361,7 +369,9 @@ impl SubAssign<&RoaringTreemap> for RoaringTreemap {
             match self.map.entry(*key) {
                 Entry::Vacant(_entry) => (),
                 Entry::Occupied(mut entry) => {
+                    self.len -= entry.get().len();
                     SubAssign::sub_assign(entry.get_mut(), rhs_rb);
+                    self.len += entry.get().len();
                     if entry.get().is_empty() {
                         entry.remove_entry();
                     }
@@ -419,10 +429,13 @@ impl BitXorAssign<RoaringTreemap> for RoaringTreemap {
         for (key, other_rb) in rhs.map {
             match self.map.entry(key) {
                 Entry::Vacant(entry) => {
+                    self.len += other_rb.len();
                     entry.insert(other_rb);
                 }
                 Entry::Occupied(mut entry) => {
+                    self.len -= entry.get().len();
                     BitXorAssign::bitxor_assign(entry.get_mut(), other_rb);
+                    self.len += entry.get().len();
                     if entry.get().is_empty() {
                         entry.remove_entry();
                     }
@@ -438,10 +451,13 @@ impl BitXorAssign<&RoaringTreemap> for RoaringTreemap {
         for (key, other_rb) in &rhs.map {
             match self.map.entry(*key) {
                 Entry::Vacant(entry) => {
+                    self.len += other_rb.len();
                     entry.insert(other_rb.clone());
                 }
                 Entry::Occupied(mut entry) => {
+                    self.len -= entry.get().len();
                     BitXorAssign::bitxor_assign(entry.get_mut(), other_rb);
+                    self.len += entry.get().len();
                     if entry.get().is_empty() {
                         entry.remove_entry();
                     }
