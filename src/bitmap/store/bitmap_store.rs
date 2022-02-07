@@ -379,14 +379,12 @@ impl BitAndAssign<&Self> for BitmapStore {
 }
 
 impl SubAssign<&Self> for BitmapStore {
-    #[allow(clippy::suspicious_op_assign_impl)]
     fn sub_assign(&mut self, rhs: &Self) {
         op_bitmaps(self, rhs, |l, r| *l &= !r);
     }
 }
 
 impl SubAssign<&ArrayStore> for BitmapStore {
-    #[allow(clippy::suspicious_op_assign_impl)]
     fn sub_assign(&mut self, rhs: &ArrayStore) {
         for &index in rhs.iter() {
             let (key, bit) = (key(index), bit(index));

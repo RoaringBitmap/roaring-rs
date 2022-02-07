@@ -1,5 +1,3 @@
-#![allow(clippy::suspicious_op_assign_impl)] // allow for +/- len in op assign
-
 use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 

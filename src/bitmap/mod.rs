@@ -1,3 +1,6 @@
+#![allow(clippy::suspicious_op_assign_impl)] // allow for +/- len in op assign
+#![allow(clippy::suspicious_arithmetic_impl)]
+
 mod arbitrary;
 mod container;
 mod fmt;
