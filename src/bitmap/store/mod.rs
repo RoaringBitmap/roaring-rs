@@ -442,24 +442,4 @@ impl<'a> Iterator for Iter<'a> {
             Iter::BitmapOwned(inner) => inner.next(),
         }
     }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match self {
-            Iter::Array(inner) => inner.size_hint(),
-            Iter::Vec(inner) => inner.size_hint(),
-            Iter::BitmapBorrowed(inner) => inner.size_hint(),
-            Iter::BitmapOwned(inner) => inner.size_hint(),
-        }
-    }
-}
-
-impl ExactSizeIterator for Iter<'_> {
-    fn len(&self) -> usize {
-        match self {
-            Iter::Array(inner) => inner.len(),
-            Iter::Vec(inner) => inner.len(),
-            Iter::BitmapBorrowed(inner) => inner.len(),
-            Iter::BitmapOwned(inner) => inner.len(),
-        }
-    }
 }
