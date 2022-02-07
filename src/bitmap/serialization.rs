@@ -139,7 +139,7 @@ impl RoaringBitmap {
     /// let rb1: RoaringBitmap = (1..4).collect();
     /// let mut bytes = vec![];
     /// rb1.serialize_into(&mut bytes).unwrap();
-    /// let rb2 = RoaringBitmap::deserialize_from(&bytes[..]).unwrap();
+    /// let rb2 = RoaringBitmap::deserialize_from_unvalidated(&bytes[..]).unwrap();
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
