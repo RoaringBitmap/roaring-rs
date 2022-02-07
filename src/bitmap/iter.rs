@@ -1,4 +1,3 @@
-use std::convert::identity;
 use std::iter::{self, FromIterator};
 use std::{slice, vec};
 
@@ -7,31 +6,27 @@ use crate::{NonSortedIntegers, RoaringBitmap};
 
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a> {
-    inner: iter::FlatMap<
-        slice::Iter<'a, Container>,
-        &'a Container,
-        fn(&'a Container) -> &'a Container,
-    >,
+    inner: iter::Flatten<slice::Iter<'a, Container>>,
     size_hint: u64,
 }
 
 /// An iterator for `RoaringBitmap`.
 pub struct IntoIter {
-    inner: iter::FlatMap<vec::IntoIter<Container>, Container, fn(Container) -> Container>,
+    inner: iter::Flatten<vec::IntoIter<Container>>,
     size_hint: u64,
 }
 
 impl Iter<'_> {
     fn new(containers: &[Container]) -> Iter {
         let size_hint = containers.iter().map(|c| c.len()).sum();
-        Iter { inner: containers.iter().flat_map(identity as _), size_hint }
+        Iter { inner: containers.iter().flatten(), size_hint }
     }
 }
 
 impl IntoIter {
     fn new(containers: Vec<Container>) -> IntoIter {
         let size_hint = containers.iter().map(|c| c.len()).sum();
-        IntoIter { inner: containers.into_iter().flat_map(identity as _), size_hint }
+        IntoIter { inner: containers.into_iter().flatten(), size_hint }
     }
 }
 
