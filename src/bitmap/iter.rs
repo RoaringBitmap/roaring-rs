@@ -17,16 +17,16 @@ pub struct IntoIter {
 }
 
 impl Iter<'_> {
-    fn new(containers: &[Container]) -> Iter {
-        let size_hint = containers.iter().map(|c| c.len()).sum();
-        Iter { inner: containers.iter().flatten(), size_hint }
+    fn new(bitmap: &RoaringBitmap) -> Iter {
+        let size_hint = bitmap.len();
+        Iter { inner: bitmap.containers.iter().flatten(), size_hint }
     }
 }
 
 impl IntoIter {
-    fn new(containers: Vec<Container>) -> IntoIter {
-        let size_hint = containers.iter().map(|c| c.len()).sum();
-        IntoIter { inner: containers.into_iter().flatten(), size_hint }
+    fn new(bitmap: RoaringBitmap) -> IntoIter {
+        let size_hint = bitmap.len();
+        IntoIter { inner: bitmap.containers.into_iter().flatten(), size_hint }
     }
 }
 
@@ -95,7 +95,7 @@ impl RoaringBitmap {
     /// assert_eq!(iter.next(), None);
     /// ```
     pub fn iter(&self) -> Iter {
-        Iter::new(&self.containers)
+        Iter::new(self)
     }
 }
 
@@ -113,7 +113,7 @@ impl IntoIterator for RoaringBitmap {
     type IntoIter = IntoIter;
 
     fn into_iter(self) -> IntoIter {
-        IntoIter::new(self.containers)
+        IntoIter::new(self)
     }
 }
 

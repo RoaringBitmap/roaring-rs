@@ -15,7 +15,7 @@ impl RoaringBitmap {
     /// let mut rb = RoaringBitmap::new();
     /// ```
     pub fn new() -> RoaringBitmap {
-        RoaringBitmap { containers: Vec::new() }
+        RoaringBitmap { len: 0, containers: Vec::new() }
     }
 
     /// Adds a value to the set.
@@ -41,7 +41,9 @@ impl RoaringBitmap {
                 &mut self.containers[loc]
             }
         };
-        container.insert(index)
+        let inserted = container.insert(index);
+        self.len += inserted as u64;
+        inserted
     }
 
     /// Search for the specific container by the given key.
@@ -90,7 +92,9 @@ impl RoaringBitmap {
         // If the end range value is in the same container, just call into
         // the one container.
         if start_container_key == end_container_key {
-            return self.containers[first_index].insert_range(start_index..=end_index);
+            let inserted = self.containers[first_index].insert_range(start_index..=end_index);
+            self.len += inserted;
+            return inserted;
         }
 
         // For the first container, insert start_index..=u16::MAX, with
@@ -115,7 +119,7 @@ impl RoaringBitmap {
         let last_index = self.find_container_by_key(end_container_key);
 
         inserted += self.containers[last_index].insert_range(0..=end_index);
-
+        self.len += inserted;
         inserted
     }
 
@@ -139,7 +143,7 @@ impl RoaringBitmap {
     pub fn push(&mut self, value: u32) -> bool {
         let (key, index) = util::split(value);
 
-        match self.containers.last_mut() {
+        let pushed = match self.containers.last_mut() {
             Some(container) if container.key == key => container.push(index),
             Some(container) if container.key > key => false,
             _otherwise => {
@@ -148,7 +152,9 @@ impl RoaringBitmap {
                 self.containers.push(container);
                 true
             }
-        }
+        };
+        self.len += pushed as u64;
+        pushed
     }
 
     ///
@@ -172,6 +178,7 @@ impl RoaringBitmap {
                 self.containers.push(container);
             }
         }
+        self.len += 1;
     }
 
     /// Removes a value from the set. Returns `true` if the value was present in the set.
@@ -189,7 +196,7 @@ impl RoaringBitmap {
     /// ```
     pub fn remove(&mut self, value: u32) -> bool {
         let (key, index) = util::split(value);
-        match self.containers.binary_search_by_key(&key, |c| c.key) {
+        let removed = match self.containers.binary_search_by_key(&key, |c| c.key) {
             Ok(loc) => {
                 if self.containers[loc].remove(index) {
                     if self.containers[loc].len() == 0 {
@@ -201,7 +208,9 @@ impl RoaringBitmap {
                 }
             }
             _ => false,
-        }
+        };
+        self.len -= removed as u64;
+        removed
     }
 
     /// Removes a range of values.
@@ -244,6 +253,7 @@ impl RoaringBitmap {
             }
             index += 1;
         }
+        self.len -= removed;
         removed
     }
 
@@ -282,6 +292,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.contains(1), false);
     /// ```
     pub fn clear(&mut self) {
+        self.len = 0;
         self.containers.clear();
     }
 
@@ -320,7 +331,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.len(), 2);
     /// ```
     pub fn len(&self) -> u64 {
-        self.containers.iter().map(|container| container.len()).sum()
+        self.len
     }
 
     /// Returns the minimum value in the set (if the set is non-empty).
@@ -375,8 +386,6 @@ impl RoaringBitmap {
     /// assert_eq!(rb.rank(10), 2)
     /// ```
     pub fn rank(&self, value: u32) -> u64 {
-        // if len becomes cached for RoaringBitmap: return len if len > value
-
         let (key, index) = util::split(value);
 
         match self.containers.binary_search_by_key(&key, |c| c.key) {
@@ -391,7 +400,7 @@ impl RoaringBitmap {
         }
     }
 
-    /// Returns the nth integer in the bitmap (if the set is non-empty)
+    /// Returns the nth integer in the bitmap or `None` if n > len()
     ///
     /// # Examples
     ///
@@ -410,6 +419,10 @@ impl RoaringBitmap {
     /// assert_eq!(rb.select(2), Some(100));
     /// ```
     pub fn select(&self, n: u32) -> Option<u32> {
+        if n as u64 >= self.len() {
+            return None;
+        }
+
         let mut n = n as u64;
 
         for container in &self.containers {
@@ -435,10 +448,11 @@ impl Default for RoaringBitmap {
 
 impl Clone for RoaringBitmap {
     fn clone(&self) -> Self {
-        RoaringBitmap { containers: self.containers.clone() }
+        RoaringBitmap { len: self.len, containers: self.containers.clone() }
     }
 
     fn clone_from(&mut self, other: &Self) {
+        self.len = other.len;
         self.containers.clone_from(&other.containers);
     }
 }

@@ -255,7 +255,6 @@ impl BitOr<Self> for &ArrayStore {
     type Output = ArrayStore;
 
     fn bitor(self, rhs: Self) -> Self::Output {
-        #[allow(clippy::suspicious_arithmetic_impl)]
         let capacity = self.vec.len() + rhs.vec.len();
         let mut visitor = VecWriter::new(capacity);
         #[cfg(feature = "simd")]
@@ -280,7 +279,6 @@ impl BitAnd<Self> for &ArrayStore {
 }
 
 impl BitAndAssign<&Self> for ArrayStore {
-    #[allow(clippy::suspicious_op_assign_impl)]
     fn bitand_assign(&mut self, rhs: &Self) {
         #[cfg(feature = "simd")]
         {
@@ -319,7 +317,6 @@ impl Sub<Self> for &ArrayStore {
 }
 
 impl SubAssign<&Self> for ArrayStore {
-    #[allow(clippy::suspicious_op_assign_impl)]
     fn sub_assign(&mut self, rhs: &Self) {
         #[cfg(feature = "simd")]
         {
@@ -348,7 +345,6 @@ impl BitXor<Self> for &ArrayStore {
     type Output = ArrayStore;
 
     fn bitxor(self, rhs: Self) -> Self::Output {
-        #[allow(clippy::suspicious_arithmetic_impl)]
         let capacity = self.vec.len() + rhs.vec.len();
         let mut visitor = VecWriter::new(capacity);
         #[cfg(feature = "simd")]

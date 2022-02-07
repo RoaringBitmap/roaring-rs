@@ -193,16 +193,27 @@ impl BitOr<&RoaringBitmap> for &RoaringBitmap {
     fn bitor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
         let mut containers = Vec::new();
 
+        let mut len = 0;
         for pair in Pairs::new(&self.containers, &rhs.containers) {
             match pair {
-                (Some(lhs), None) => containers.push(lhs.clone()),
-                (None, Some(rhs)) => containers.push(rhs.clone()),
-                (Some(lhs), Some(rhs)) => containers.push(BitOr::bitor(lhs, rhs)),
+                (Some(lhs), None) => {
+                    len += lhs.len();
+                    containers.push(lhs.clone());
+                }
+                (None, Some(rhs)) => {
+                    len += rhs.len();
+                    containers.push(rhs.clone());
+                }
+                (Some(lhs), Some(rhs)) => {
+                    let container = BitOr::bitor(lhs, rhs);
+                    len += container.len();
+                    containers.push(container);
+                }
                 (None, None) => break,
             }
         }
 
-        RoaringBitmap { containers }
+        RoaringBitmap { len, containers }
     }
 }
 
@@ -214,11 +225,19 @@ impl BitOrAssign<RoaringBitmap> for RoaringBitmap {
             mem::swap(self, &mut rhs);
         }
 
-        for container in rhs.containers {
-            let key = container.key;
+        for rhs_cont in rhs.containers {
+            let key = rhs_cont.key;
             match self.containers.binary_search_by_key(&key, |c| c.key) {
-                Err(loc) => self.containers.insert(loc, container),
-                Ok(loc) => BitOrAssign::bitor_assign(&mut self.containers[loc], container),
+                Err(loc) => {
+                    self.len += rhs_cont.len();
+                    self.containers.insert(loc, rhs_cont);
+                }
+                Ok(loc) => {
+                    let lhs_cont = &mut self.containers[loc];
+                    self.len -= lhs_cont.len();
+                    BitOrAssign::bitor_assign(lhs_cont, rhs_cont);
+                    self.len += lhs_cont.len();
+                }
             }
         }
     }
@@ -227,11 +246,19 @@ impl BitOrAssign<RoaringBitmap> for RoaringBitmap {
 impl BitOrAssign<&RoaringBitmap> for RoaringBitmap {
     /// An `union` between two sets.
     fn bitor_assign(&mut self, rhs: &RoaringBitmap) {
-        for container in &rhs.containers {
-            let key = container.key;
+        for rhs_cont in &rhs.containers {
+            let key = rhs_cont.key;
             match self.containers.binary_search_by_key(&key, |c| c.key) {
-                Err(loc) => self.containers.insert(loc, container.clone()),
-                Ok(loc) => BitOrAssign::bitor_assign(&mut self.containers[loc], container),
+                Err(loc) => {
+                    self.len += rhs_cont.len();
+                    self.containers.insert(loc, rhs_cont.clone());
+                }
+                Ok(loc) => {
+                    let lhs_cont = &mut self.containers[loc];
+                    self.len -= lhs_cont.len();
+                    BitOrAssign::bitor_assign(lhs_cont, rhs_cont);
+                    self.len += lhs_cont.len();
+                }
             }
         }
     }
@@ -273,16 +300,18 @@ impl BitAnd<&RoaringBitmap> for &RoaringBitmap {
     fn bitand(self, rhs: &RoaringBitmap) -> RoaringBitmap {
         let mut containers = Vec::new();
 
+        let mut len = 0;
         for pair in Pairs::new(&self.containers, &rhs.containers) {
             if let (Some(lhs), Some(rhs)) = pair {
                 let container = BitAnd::bitand(lhs, rhs);
                 if container.len() != 0 {
+                    len += container.len();
                     containers.push(container);
                 }
             }
         }
 
-        RoaringBitmap { containers }
+        RoaringBitmap { len, containers }
     }
 }
 
@@ -294,34 +323,42 @@ impl BitAndAssign<RoaringBitmap> for RoaringBitmap {
             mem::swap(self, &mut rhs);
         }
 
+        let mut len = self.len;
         RetainMut::retain_mut(&mut self.containers, |cont| {
             let key = cont.key;
+            len -= cont.len();
             match rhs.containers.binary_search_by_key(&key, |c| c.key) {
                 Ok(loc) => {
                     let rhs_cont = &mut rhs.containers[loc];
                     let rhs_cont = mem::replace(rhs_cont, Container::new(rhs_cont.key));
                     BitAndAssign::bitand_assign(cont, rhs_cont);
+                    len += cont.len();
                     cont.len() != 0
                 }
                 Err(_) => false,
             }
-        })
+        });
+        self.len = len;
     }
 }
 
 impl BitAndAssign<&RoaringBitmap> for RoaringBitmap {
     /// An `intersection` between two sets.
     fn bitand_assign(&mut self, rhs: &RoaringBitmap) {
+        let mut len = self.len;
         RetainMut::retain_mut(&mut self.containers, |cont| {
             let key = cont.key;
+            len -= cont.len();
             match rhs.containers.binary_search_by_key(&key, |c| c.key) {
                 Ok(loc) => {
                     BitAndAssign::bitand_assign(cont, &rhs.containers[loc]);
+                    len += cont.len();
                     cont.len() != 0
                 }
                 Err(_) => false,
             }
-        })
+        });
+        self.len = len;
     }
 }
 
@@ -361,13 +398,18 @@ impl Sub<&RoaringBitmap> for &RoaringBitmap {
     fn sub(self, rhs: &RoaringBitmap) -> RoaringBitmap {
         let mut containers = Vec::new();
 
+        let mut len = 0;
         for pair in Pairs::new(&self.containers, &rhs.containers) {
             match pair {
-                (Some(lhs), None) => containers.push(lhs.clone()),
+                (Some(lhs), None) => {
+                    len += lhs.len();
+                    containers.push(lhs.clone())
+                }
                 (None, Some(_)) => (),
                 (Some(lhs), Some(rhs)) => {
                     let container = Sub::sub(lhs, rhs);
                     if container.len() != 0 {
+                        len += container.len();
                         containers.push(container);
                     }
                 }
@@ -375,7 +417,7 @@ impl Sub<&RoaringBitmap> for &RoaringBitmap {
             }
         }
 
-        RoaringBitmap { containers }
+        RoaringBitmap { len, containers }
     }
 }
 
@@ -389,15 +431,19 @@ impl SubAssign<RoaringBitmap> for RoaringBitmap {
 impl SubAssign<&RoaringBitmap> for RoaringBitmap {
     /// A `difference` between two sets.
     fn sub_assign(&mut self, rhs: &RoaringBitmap) {
+        let mut len = self.len;
         RetainMut::retain_mut(&mut self.containers, |cont| {
             match rhs.containers.binary_search_by_key(&cont.key, |c| c.key) {
                 Ok(loc) => {
+                    len -= cont.len();
                     SubAssign::sub_assign(cont, &rhs.containers[loc]);
+                    len += cont.len();
                     cont.len() != 0
                 }
                 Err(_) => true,
             }
-        })
+        });
+        self.len = len;
     }
 }
 
@@ -437,13 +483,21 @@ impl BitXor<&RoaringBitmap> for &RoaringBitmap {
     fn bitxor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
         let mut containers = Vec::new();
 
+        let mut len = 0;
         for pair in Pairs::new(&self.containers, &rhs.containers) {
             match pair {
-                (Some(lhs), None) => containers.push(lhs.clone()),
-                (None, Some(rhs)) => containers.push(rhs.clone()),
+                (Some(lhs), None) => {
+                    containers.push(lhs.clone());
+                    len += lhs.len();
+                }
+                (None, Some(rhs)) => {
+                    containers.push(rhs.clone());
+                    len += rhs.len();
+                }
                 (Some(lhs), Some(rhs)) => {
                     let container = BitXor::bitxor(lhs, rhs);
                     if container.len() != 0 {
+                        len += container.len();
                         containers.push(container);
                     }
                 }
@@ -451,7 +505,7 @@ impl BitXor<&RoaringBitmap> for &RoaringBitmap {
             }
         }
 
-        RoaringBitmap { containers }
+        RoaringBitmap { len, containers }
     }
 }
 
@@ -461,13 +515,20 @@ impl BitXorAssign<RoaringBitmap> for RoaringBitmap {
         for pair in Pairs::new(mem::take(&mut self.containers), rhs.containers) {
             match pair {
                 (Some(mut lhs), Some(rhs)) => {
+                    self.len -= lhs.len();
                     BitXorAssign::bitxor_assign(&mut lhs, rhs);
+                    self.len += lhs.len();
                     if lhs.len() != 0 {
                         self.containers.push(lhs);
                     }
                 }
-                (Some(lhs), None) => self.containers.push(lhs),
-                (None, Some(rhs)) => self.containers.push(rhs),
+                (Some(lhs), None) => {
+                    self.containers.push(lhs);
+                }
+                (None, Some(rhs)) => {
+                    self.len += rhs.len();
+                    self.containers.push(rhs);
+                }
                 (None, None) => break,
             }
         }
@@ -480,13 +541,18 @@ impl BitXorAssign<&RoaringBitmap> for RoaringBitmap {
         for pair in Pairs::new(mem::take(&mut self.containers), &rhs.containers) {
             match pair {
                 (Some(mut lhs), Some(rhs)) => {
+                    self.len -= lhs.len();
                     BitXorAssign::bitxor_assign(&mut lhs, rhs);
+                    self.len += lhs.len();
                     if lhs.len() != 0 {
                         self.containers.push(lhs);
                     }
                 }
                 (Some(lhs), None) => self.containers.push(lhs),
-                (None, Some(rhs)) => self.containers.push(rhs.clone()),
+                (None, Some(rhs)) => {
+                    self.len += rhs.len();
+                    self.containers.push(rhs.clone())
+                }
                 (None, None) => break,
             }
         }

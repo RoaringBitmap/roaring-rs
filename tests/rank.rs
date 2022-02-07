@@ -20,6 +20,8 @@ fn rank() {
 
     // Bitmap container at key
     assert_eq!(bitmap.rank(200_000), 2001);
+    assert_eq!(bitmap.rank(209_998), 11_999);
+    assert_eq!(bitmap.rank(209_999), 12_000);
     assert_eq!(bitmap.rank(210_000), 12_000);
 }
 
