@@ -1,7 +1,4 @@
 use std::cmp::Reverse;
-use std::num::ParseIntError;
-use std::path::{Path, PathBuf};
-use std::{fs, io};
 
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 
@@ -381,7 +378,7 @@ fn successive_and(c: &mut Criterion) {
                 || sorted_bitmaps.clone(),
                 |bitmaps| {
                     let mut iter = bitmaps.into_iter();
-                    let mut first = iter.next().unwrap().clone();
+                    let mut first = iter.next().unwrap();
                     for bitmap in iter {
                         first &= bitmap;
                     }
