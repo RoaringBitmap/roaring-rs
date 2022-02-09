@@ -45,13 +45,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: fetch
-          args: --all-targets
 
       - name: Fetch benchmarks
         uses: actions-rs/cargo@v1
         with:
           command: fetch
-          args: --manifest-path benchmarks/Cargo.toml --all-targets
+          args: --manifest-path benchmarks/Cargo.toml
 
       - name: Build
         uses: actions-rs/cargo@v1
