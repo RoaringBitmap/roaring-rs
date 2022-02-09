@@ -243,6 +243,12 @@ impl<'a> Iterator for Iter<'a> {
     }
 }
 
+impl<'a> DoubleEndedIterator for Iter<'a> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.inner.next_back().map(|i| util::join(self.key, i))
+    }
+}
+
 impl fmt::Debug for Container {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         format!("Container<{:?} @ {:?}>", self.len(), self.key).fmt(formatter)

@@ -443,3 +443,14 @@ impl<'a> Iterator for Iter<'a> {
         }
     }
 }
+
+impl<'a> DoubleEndedIterator for Iter<'a> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self {
+            Iter::Array(inner) => inner.next_back().cloned(),
+            Iter::Vec(inner) => inner.next_back(),
+            Iter::BitmapBorrowed(inner) => inner.next_back(),
+            Iter::BitmapOwned(inner) => inner.next_back(),
+        }
+    }
+}

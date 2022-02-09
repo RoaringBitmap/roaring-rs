@@ -53,6 +53,35 @@ fn bitmaps() {
     assert_eq!(clone2, original);
 }
 
+#[test]
+fn rev() {
+    let original =
+        (1..3).chain(1_000_000..1_012_003).chain(2_000_001..2_000_003).rev().collect::<Vec<_>>();
+    let clone = RoaringBitmap::from_iter(original.clone()).iter().rev().collect::<Vec<_>>();
+
+    assert_eq!(clone, original);
+}
+
+#[test]
+fn double_ended() {
+    let mut original_iter = (1..3).chain(1_000_000..1_012_003).chain(2_000_001..2_000_003);
+    let mut clone_iter = RoaringBitmap::from_iter(original_iter.clone()).into_iter();
+
+    let mut flip = true;
+    loop {
+        let (original, clone) = if flip {
+            (original_iter.next(), clone_iter.next())
+        } else {
+            (original_iter.next_back(), clone_iter.next_back())
+        };
+        assert_eq!(clone, original);
+        if original.is_none() {
+            break;
+        }
+        flip = !flip;
+    }
+}
+
 proptest! {
     #[test]
     fn iter(values in btree_set(any::<u32>(), ..=10_000)) {
