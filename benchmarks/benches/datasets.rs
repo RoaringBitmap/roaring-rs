@@ -84,7 +84,7 @@ fn init_datasets() -> Result<PathBuf, Box<dyn std::error::Error>> {
                         .progress_chars("#> "),
                 )
                 .with_prefix("    ")
-                .with_message("Recieving objects")
+                .with_message("Receiving objects")
         });
 
         pb.set_position((progress.local_objects() + progress.received_objects()) as u64);
