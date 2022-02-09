@@ -23,6 +23,3 @@ simd = { git = "https://github.com/rust-lang/portable-simd", package = "core_sim
 
 [dev-dependencies]
 proptest = { version = "1.0.0" }
-
-[profile.test]
-opt-level = 2

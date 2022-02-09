@@ -9,6 +9,9 @@ on:
 
 name: Continuous integration
 
+env:
+  RUST_FLAGS: -C target-cpu=native -C opt-level=3
+
 jobs:
   ci:
     runs-on: ubuntu-latest
