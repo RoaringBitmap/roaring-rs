@@ -19,66 +19,87 @@ jobs:
           - beta
           - nightly
           - 1.56.1
+    env:
+      RUSTFLAGS: "-C target-cpu=native -C opt-level=3"
+      ROARINGRS_BENCH_OFFLINE: "true"
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout roaring-rs
+        uses: actions/checkout@v2
 
-      - uses: actions-rs/toolchain@v1
+      - name: Checkout benchmark datasets
+        uses: actions/checkout@v2
+        with:
+          repository: "RoaringBitmap/real-roaring-datasets"
+          path: "benchmarks/real-roaring-datasets"
+
+      - name: Initialize rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
           components: rustfmt, clippy
 
-      - uses: actions-rs/cargo@v1
+      - name: Build
+        uses: actions-rs/cargo@v1
         with:
           command: build
+          args: --all-targets
 
-      - uses: actions-rs/cargo@v1
+      - name: Build benchmarks
+        uses: actions-rs/cargo@v1
         with:
-          command: test
+          command: build
+          args: --manifest-path benchmarks/Cargo.toml --all-targets
 
-      - uses: actions-rs/cargo@v1
+      - name: Check
+        uses: actions-rs/cargo@v1
         with:
-          command: test
-          args: --benches --manifest-path benchmarks/Cargo.toml
+          command: clippy
+          args: --all-targets -- -D warnings
 
-      - uses: actions-rs/cargo@v1
+      - name: Check benchmarks
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --manifest-path benchmarks/Cargo.toml --all-targets -- -D warnings
+
+      - name: Check formatting
+        uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: -- --check
 
-      - uses: actions-rs/cargo@v1
+      - name: Check benchmark formatting
+        uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --manifest-path benchmarks/Cargo.toml -- --check
 
-      - uses: actions-rs/cargo@v1
+      - name: Test
+        uses: actions-rs/cargo@v1
         with:
-          command: clippy
-          args: --all-targets -- -D warnings
-  simd:
-    name: SIMD Feature
-    runs-on: ubuntu-latest
+          command: test
 
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
+      - name: Test benchmarks
+        uses: actions-rs/cargo@v1
         with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-          components: rustfmt, clippy
+          command: test
+          args: --manifest-path benchmarks/Cargo.toml --benches
 
-      - uses: actions-rs/cargo@v1
+      - name: SIMD test
+        if: matrix.rust == 'nightly'
+        uses: actions-rs/cargo@v1
         with:
           toolchain: nightly
           command: test
           args: --features "simd"
 
-      - uses: actions-rs/cargo@v1
+      - name: SIMD test benchmarks
+        if: matrix.rust == 'nightly'
+        uses: actions-rs/cargo@v1
         with:
           toolchain: nightly
           command: test
-          args: --features "simd" --benches --manifest-path benchmarks/Cargo.toml
+          args: --manifest-path benchmarks/Cargo.toml --features "simd"

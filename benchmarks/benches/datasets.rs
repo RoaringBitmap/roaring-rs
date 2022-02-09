@@ -50,6 +50,23 @@ fn init_datasets() -> Result<PathBuf, Box<dyn std::error::Error>> {
     let out_path = Path::new(&out_dir);
     let repo_path = out_path.join("real-roaring-datasets");
 
+    // Check if in offline mode
+
+    let offline = env::var("ROARINGRS_BENCH_OFFLINE");
+    match offline {
+        Ok(value) => {
+            if value.parse::<bool>()? {
+                return Ok(repo_path);
+            }
+        }
+        Err(ref err) => match err {
+            env::VarError::NotPresent => (),
+            _ => {
+                offline?;
+            }
+        },
+    };
+
     // Setup progress callbacks
 
     let pb_cell = once_cell::unsync::OnceCell::new();
