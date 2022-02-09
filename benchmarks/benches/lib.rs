@@ -346,20 +346,6 @@ fn serialized_size(c: &mut Criterion) {
     });
 }
 
-fn extract_integers<A: AsRef<str>>(content: A) -> Result<Vec<u32>, ParseIntError> {
-    content.as_ref().split(',').map(|s| s.trim().parse()).collect()
-}
-
-// Parse every file into a vector of integer.
-fn parse_dir_files<A: AsRef<Path>>(
-    files: A,
-) -> io::Result<Vec<(PathBuf, Result<Vec<u32>, ParseIntError>)>> {
-    fs::read_dir(files)?
-        .map(|r| r.and_then(|e| fs::read_to_string(e.path()).map(|r| (e.path(), r))))
-        .map(|r| r.map(|(p, c)| (p, extract_integers(c))))
-        .collect()
-}
-
 fn from_sorted_iter(c: &mut Criterion) {
     let mut group = c.benchmark_group("from_sorted_iter");
 
