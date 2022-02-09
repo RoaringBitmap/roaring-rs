@@ -41,6 +41,18 @@ jobs:
           override: true
           components: rustfmt, clippy
 
+      - name: Fetch
+        uses: actions-rs/cargo@v1
+        with:
+          command: fetch
+          args: --all-targets
+
+      - name: Fetch benchmarks
+        uses: actions-rs/cargo@v1
+        with:
+          command: fetch
+          args: --manifest-path benchmarks/Cargo.toml --all-targets
+
       - name: Build
         uses: actions-rs/cargo@v1
         with:
