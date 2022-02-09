@@ -113,4 +113,4 @@ jobs:
         with:
           toolchain: nightly
           command: test
-          args: --manifest-path benchmarks/Cargo.toml --features "simd"
+          args: --manifest-path benchmarks/Cargo.toml --features "simd" --benches
