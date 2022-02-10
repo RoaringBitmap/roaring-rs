@@ -3,7 +3,7 @@ name = "benchmarks"
 description = "An external library for benchmarking the roaring crate with real datasets"
 version = "0.1.0"
 authors = ["Kerollmops <renault.cle@gmail.com>"]
-edition = "2018"
+edition = "2021"
 publish = false
 
 [dependencies]
