@@ -224,11 +224,12 @@ fn select(c: &mut Criterion) {
     }
 }
 
+#[allow(clippy::redundant_closure)]
 fn and(c: &mut Criterion) {
     pairwise_binary_op_matrix(
         c,
         "and",
-        BitAnd::bitand,
+        |a, b| BitAnd::bitand(a, b),
         |a, b| BitAnd::bitand(a, b),
         |a, b| BitAnd::bitand(a, b),
         |a, b| BitAnd::bitand(a, b),
@@ -237,11 +238,12 @@ fn and(c: &mut Criterion) {
     )
 }
 
+#[allow(clippy::redundant_closure)]
 fn or(c: &mut Criterion) {
     pairwise_binary_op_matrix(
         c,
         "or",
-        BitOr::bitor,
+        |a, b| BitOr::bitor(a, b),
         |a, b| BitOr::bitor(a, b),
         |a, b| BitOr::bitor(a, b),
         |a, b| BitOr::bitor(a, b),
@@ -250,11 +252,12 @@ fn or(c: &mut Criterion) {
     )
 }
 
+#[allow(clippy::redundant_closure)]
 fn sub(c: &mut Criterion) {
     pairwise_binary_op_matrix(
         c,
         "sub",
-        Sub::sub,
+        |a, b| Sub::sub(a, b),
         |a, b| Sub::sub(a, b),
         |a, b| Sub::sub(a, b),
         |a, b| Sub::sub(a, b),
@@ -263,6 +266,7 @@ fn sub(c: &mut Criterion) {
     )
 }
 
+#[allow(clippy::redundant_closure)]
 fn xor(c: &mut Criterion) {
     pairwise_binary_op_matrix(
         c,
