@@ -1,6 +1,7 @@
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use std::convert::TryFrom;
+use std::convert::{Infallible, TryFrom};
+use std::error::Error;
 use std::io;
 
 use super::container::Container;
@@ -102,7 +103,8 @@ impl RoaringBitmap {
     /// Deserialize a bitmap into memory from [the standard Roaring on-disk
     /// format][format]. This is compatible with the official C/C++, Java and
     /// Go implementations. This method checks that all of the internal values
-    /// are valid.
+    /// are valid. If deserializing from a trusted source consider
+    /// [RoaringBitmap::deserialize_from_unvalidated]
     ///
     /// [format]: https://github.com/RoaringBitmap/RoaringFormatSpec
     ///
@@ -118,7 +120,49 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
-    pub fn deserialize_from<R: io::Read>(mut reader: R) -> io::Result<RoaringBitmap> {
+    pub fn deserialize_from<R: io::Read>(reader: R) -> io::Result<RoaringBitmap> {
+        RoaringBitmap::deserialize_from_impl(reader, ArrayStore::try_from, BitmapStore::try_from)
+    }
+
+    /// Deserialize a bitmap into memory from [the standard Roaring on-disk
+    /// format][format]. This is compatible with the official C/C++, Java and
+    /// Go implementations. This method is memory safe but will not check if
+    /// the data is a valid bitmap.
+    ///
+    /// [format]: https://github.com/RoaringBitmap/RoaringFormatSpec
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let rb1: RoaringBitmap = (1..4).collect();
+    /// let mut bytes = vec![];
+    /// rb1.serialize_into(&mut bytes).unwrap();
+    /// let rb2 = RoaringBitmap::deserialize_from_unvalidated(&bytes[..]).unwrap();
+    ///
+    /// assert_eq!(rb1, rb2);
+    /// ```
+    pub fn deserialize_from_unvalidated<R: io::Read>(reader: R) -> io::Result<RoaringBitmap> {
+        RoaringBitmap::deserialize_from_impl::<R, _, Infallible, _, Infallible>(
+            reader,
+            |values| Ok(ArrayStore::from_vec_unchecked(values)),
+            |len, values| Ok(BitmapStore::from_unchecked(len, values)),
+        )
+    }
+
+    fn deserialize_from_impl<R, A, AErr, B, BErr>(
+        mut reader: R,
+        a: A,
+        b: B,
+    ) -> io::Result<RoaringBitmap>
+    where
+        R: io::Read,
+        A: Fn(Vec<u16>) -> Result<ArrayStore, AErr>,
+        AErr: Error + Send + Sync + 'static,
+        B: Fn(u64, Box<[u64; 1024]>) -> Result<BitmapStore, BErr>,
+        BErr: Error + Send + Sync + 'static,
+    {
         let (size, has_offsets) = {
             let cookie = reader.read_u32::<LittleEndian>()?;
             if cookie == SERIAL_COOKIE_NO_RUNCONTAINER {
@@ -154,15 +198,14 @@ impl RoaringBitmap {
                 let mut values = vec![0; len as usize];
                 reader.read_exact(cast_slice_mut(&mut values))?;
                 values.iter_mut().for_each(|n| *n = u16::from_le(*n));
-                let array = ArrayStore::try_from(values)
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                let array = a(values).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
                 Store::Array(array)
             } else {
                 let mut values = Box::new([0; 1024]);
                 reader.read_exact(cast_slice_mut(&mut values[..]))?;
                 values.iter_mut().for_each(|n| *n = u64::from_le(*n));
-                let bitmap = BitmapStore::try_from(len, values)
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                let bitmap =
+                    b(len, values).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
                 Store::Bitmap(bitmap)
             };
 

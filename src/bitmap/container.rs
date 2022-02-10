@@ -245,15 +245,6 @@ impl<'a> Iterator for Iter<'a> {
     fn next(&mut self) -> Option<u32> {
         self.inner.next().map(|i| util::join(self.key, i))
     }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
-}
-
-impl ExactSizeIterator for Iter<'_> {
-    fn len(&self) -> usize {
-        self.inner.len()
-    }
 }
 
 impl fmt::Debug for Container {
