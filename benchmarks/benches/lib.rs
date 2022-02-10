@@ -1,6 +1,12 @@
+use itertools::Itertools;
 use std::cmp::Reverse;
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
-use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
+use criterion::measurement::Measurement;
+use criterion::{
+    black_box, criterion_group, criterion_main, BatchSize, BenchmarkGroup, BenchmarkId, Criterion,
+    Throughput,
+};
 
 use roaring::RoaringBitmap;
 
@@ -8,90 +14,169 @@ use crate::datasets::Datasets;
 
 mod datasets;
 
-fn create(c: &mut Criterion) {
-    c.bench_function("create", |b| {
-        b.iter(|| {
-            RoaringBitmap::new();
-        })
-    });
+#[allow(clippy::too_many_arguments)]
+fn pairwise_binary_op_matrix(
+    c: &mut Criterion,
+    op_name: &str,
+    op_own_own: impl Fn(RoaringBitmap, RoaringBitmap) -> RoaringBitmap,
+    op_own_ref: impl Fn(RoaringBitmap, &RoaringBitmap) -> RoaringBitmap,
+    op_ref_own: impl Fn(&RoaringBitmap, RoaringBitmap) -> RoaringBitmap,
+    op_ref_ref: impl Fn(&RoaringBitmap, &RoaringBitmap) -> RoaringBitmap,
+    mut op_assign_owned: impl FnMut(&mut RoaringBitmap, RoaringBitmap),
+    mut op_assign_ref: impl FnMut(&mut RoaringBitmap, &RoaringBitmap),
+) {
+    let mut group = c.benchmark_group(format!("pairwise_{}", op_name));
+
+    for dataset in Datasets {
+        let pairs = dataset.bitmaps.iter().cloned().tuple_windows::<(_, _)>().collect::<Vec<_>>();
+
+        group.bench_function(BenchmarkId::new("own_own", &dataset.name), |b| {
+            b.iter_batched(
+                || pairs.clone(),
+                |bitmaps| {
+                    for (a, b) in bitmaps {
+                        black_box(op_own_own(a, b));
+                    }
+                },
+                BatchSize::SmallInput,
+            );
+        });
+
+        group.bench_function(BenchmarkId::new("own_ref", &dataset.name), |b| {
+            b.iter_batched(
+                || pairs.clone(),
+                |bitmaps| {
+                    for (a, b) in bitmaps {
+                        black_box(op_own_ref(a, &b));
+                    }
+                },
+                BatchSize::SmallInput,
+            );
+        });
+
+        group.bench_function(BenchmarkId::new("ref_own", &dataset.name), |b| {
+            b.iter_batched(
+                || pairs.clone(),
+                |bitmaps| {
+                    for (a, b) in bitmaps {
+                        black_box(op_ref_own(&a, b));
+                    }
+                },
+                BatchSize::SmallInput,
+            );
+        });
+
+        group.bench_function(BenchmarkId::new("ref_ref", &dataset.name), |b| {
+            b.iter_batched(
+                || pairs.clone(),
+                |bitmaps| {
+                    for (a, b) in bitmaps {
+                        black_box(op_ref_ref(&a, &b));
+                    }
+                },
+                BatchSize::SmallInput,
+            );
+        });
+
+        group.bench_function(BenchmarkId::new("assign_own", &dataset.name), |b| {
+            b.iter_batched(
+                || dataset.bitmaps.iter().cloned().tuple_windows::<(_, _)>().collect::<Vec<_>>(),
+                |bitmaps| {
+                    for (mut a, b) in bitmaps {
+                        op_assign_owned(&mut a, b);
+                        black_box(a);
+                    }
+                },
+                BatchSize::SmallInput,
+            );
+        });
+
+        group.bench_function(BenchmarkId::new("assign_ref", &dataset.name), |b| {
+            b.iter_batched(
+                || dataset.bitmaps.iter().cloned().tuple_windows::<(_, _)>().collect::<Vec<_>>(),
+                |bitmaps| {
+                    for (mut a, b) in bitmaps {
+                        op_assign_ref(&mut a, &b);
+                        black_box(a);
+                    }
+                },
+                BatchSize::SmallInput,
+            );
+        });
+    }
+
+    group.finish();
 }
 
-fn insert(c: &mut Criterion) {
-    c.bench_function("create & insert 1", |b| {
-        b.iter(|| {
-            let mut bitmap = RoaringBitmap::new();
-            bitmap.insert(black_box(1));
+fn pairwise_binary_op<R, M: Measurement>(
+    group: &mut BenchmarkGroup<M>,
+    op_name: &str,
+    op: impl Fn(RoaringBitmap, RoaringBitmap) -> R,
+) {
+    for dataset in Datasets {
+        group.bench_function(BenchmarkId::new(op_name, &dataset.name), |b| {
+            b.iter_batched(
+                || dataset.bitmaps.iter().cloned().tuple_windows::<(_, _)>().collect::<Vec<_>>(),
+                |bitmaps| {
+                    for (a, b) in bitmaps {
+                        black_box(op(a, b));
+                    }
+                },
+                BatchSize::SmallInput,
+            );
         });
-    });
-
-    c.bench_function("insert 1", |b| {
-        let mut bitmap = RoaringBitmap::new();
-        b.iter(|| {
-            bitmap.insert(black_box(1));
-        });
-    });
-
-    c.bench_function("create & insert several", |b| {
-        b.iter(|| {
-            let mut bitmap = RoaringBitmap::new();
-            bitmap.insert(black_box(1));
-            bitmap.insert(black_box(10));
-            bitmap.insert(black_box(100));
-            bitmap.insert(black_box(1_000));
-            bitmap.insert(black_box(10_000));
-            bitmap.insert(black_box(100_000));
-            bitmap.insert(black_box(1_000_000));
-        });
-    });
-
-    c.bench_function("insert several", |b| {
-        let mut bitmap = RoaringBitmap::new();
-        b.iter(|| {
-            bitmap.insert(black_box(1));
-            bitmap.insert(black_box(10));
-            bitmap.insert(black_box(100));
-            bitmap.insert(black_box(1_000));
-            bitmap.insert(black_box(10_000));
-            bitmap.insert(black_box(100_000));
-            bitmap.insert(black_box(1_000_000));
-        });
-    });
+    }
 }
 
-fn contains(c: &mut Criterion) {
-    c.bench_function("contains true", |b| {
-        let mut bitmap: RoaringBitmap = RoaringBitmap::new();
-        bitmap.insert(1);
+fn creation(c: &mut Criterion) {
+    let mut group = c.benchmark_group("creation");
 
-        b.iter(|| {
-            bitmap.contains(black_box(1));
+    for dataset in Datasets {
+        let dataset_numbers = dataset
+            .bitmaps
+            .iter()
+            .map(|bitmap| bitmap.iter().collect::<Vec<_>>())
+            .collect::<Vec<_>>();
+
+        group.throughput(Throughput::Elements(dataset.bitmaps.iter().map(|rb| rb.len()).sum()));
+
+        group.bench_function(BenchmarkId::new("from_sorted_iter", &dataset.name), |b| {
+            b.iter(|| {
+                for bitmap_numbers in &dataset_numbers {
+                    black_box(
+                        RoaringBitmap::from_sorted_iter(bitmap_numbers.iter().copied()).unwrap(),
+                    );
+                }
+            })
         });
-    });
 
-    c.bench_function("contains false", |b| {
-        let bitmap: RoaringBitmap = RoaringBitmap::new();
-
-        b.iter(|| {
-            bitmap.contains(black_box(1));
+        group.bench_function(BenchmarkId::new("collect", &dataset.name), |b| {
+            b.iter(|| {
+                for bitmap_numbers in &dataset_numbers {
+                    black_box(bitmap_numbers.iter().copied().collect::<RoaringBitmap>());
+                }
+            })
         });
-    });
+    }
+
+    group.finish();
 }
 
 fn len(c: &mut Criterion) {
-    c.bench_function("len 100000", |b| {
-        let bitmap: RoaringBitmap = (1..100_000).collect();
+    let mut group = c.benchmark_group("len");
 
-        b.iter(|| {
-            black_box(bitmap.len());
+    for dataset in Datasets {
+        group.throughput(Throughput::Elements(dataset.bitmaps.iter().map(|rb| rb.len()).sum()));
+        group.bench_function(BenchmarkId::new("len", &dataset.name), |b| {
+            b.iter(|| {
+                for bitmap in &dataset.bitmaps {
+                    black_box(bitmap.len());
+                }
+            });
         });
-    });
-    c.bench_function("len 1000000", |b| {
-        let bitmap: RoaringBitmap = (1..1_000_000).collect();
+    }
 
-        b.iter(|| {
-            black_box(bitmap.len());
-        });
-    });
+    group.finish();
 }
 
 fn rank(c: &mut Criterion) {
@@ -115,164 +200,156 @@ fn rank(c: &mut Criterion) {
     }
 }
 
-fn and(c: &mut Criterion) {
-    c.bench_function("and", |b| {
-        let bitmap1: RoaringBitmap = (1..100).collect();
-        let bitmap2: RoaringBitmap = (100..200).collect();
+fn select(c: &mut Criterion) {
+    let mut group = c.benchmark_group("select");
+    for dataset in Datasets {
+        let bitmaps = dataset
+            .bitmaps
+            .iter()
+            .map(|bitmap| (bitmap, bitmap.max().unwrap() as u32))
+            .collect::<Vec<_>>();
 
-        b.iter(|| &bitmap1 & &bitmap2);
-    });
-}
-
-fn intersect_with(c: &mut Criterion) {
-    c.bench_function("intersect_with", |b| {
-        let mut bitmap1: RoaringBitmap = (1..100).collect();
-        let bitmap2: RoaringBitmap = (100..200).collect();
-
-        b.iter(|| {
-            bitmap1 &= black_box(&bitmap2);
-        });
-    });
-}
-
-fn or(c: &mut Criterion) {
-    c.bench_function("or", |b| {
-        let bitmap1: RoaringBitmap = (1..100).collect();
-        let bitmap2: RoaringBitmap = (100..200).collect();
-
-        b.iter(|| &bitmap1 | &bitmap2);
-    });
-}
-
-fn union_with(c: &mut Criterion) {
-    c.bench_function("union_with", |b| {
-        let mut bitmap1: RoaringBitmap = (1..100).collect();
-        let bitmap2: RoaringBitmap = (100..200).collect();
-
-        b.iter(|| {
-            bitmap1 |= black_box(&bitmap2);
-        });
-    });
-}
-
-fn sub(c: &mut Criterion) {
-    c.bench_function("sub", |b| {
-        let bitmap1: RoaringBitmap = (1..100_000).collect();
-        let bitmap2: RoaringBitmap = (10..2_000_000).collect();
-
-        b.iter(|| &bitmap1 - &bitmap2);
-    });
-}
-
-fn xor(c: &mut Criterion) {
-    c.bench_function("xor", |b| {
-        let bitmap1: RoaringBitmap = (1..100).collect();
-        let bitmap2: RoaringBitmap = (100..200).collect();
-
-        b.iter(|| &bitmap1 ^ &bitmap2);
-    });
-}
-
-fn symmetric_deference_with(c: &mut Criterion) {
-    c.bench_function("symmetric_deference_with", |b| {
-        let mut bitmap1: RoaringBitmap = (1..100).collect();
-        let bitmap2: RoaringBitmap = (100..200).collect();
-
-        b.iter(|| {
-            bitmap1 ^= black_box(&bitmap2);
-        });
-    });
-}
-
-fn is_subset(c: &mut Criterion) {
-    c.bench_function("is_subset 1", |b| {
-        let bitmap: RoaringBitmap = (1..250).collect();
-        b.iter(|| black_box(bitmap.is_subset(&bitmap)))
-    });
-
-    c.bench_function("is_subset 2", |b| {
-        let sub: RoaringBitmap = (1000..8196).collect();
-        let sup: RoaringBitmap = (0..16384).collect();
-        b.iter(|| black_box(sub.is_subset(&sup)))
-    });
-
-    c.bench_function("is_subset 3", |b| {
-        let sub: RoaringBitmap = (1000..4096).map(|x| x * 2).collect();
-        let sup: RoaringBitmap = (0..16384).collect();
-        b.iter(|| black_box(sub.is_subset(&sup)))
-    });
-
-    c.bench_function("is_subset 4", |b| {
-        let sub: RoaringBitmap = (0..17).map(|x| 1 << x).collect();
-        let sup: RoaringBitmap = (0..65536).collect();
-        b.iter(|| black_box(sub.is_subset(&sup)))
-    });
-}
-
-fn remove(c: &mut Criterion) {
-    c.bench_function("remove 1", |b| {
-        let mut sub: RoaringBitmap = (0..65_536).collect();
-        b.iter(|| {
-            black_box(sub.remove(1000));
-        });
-    });
-}
-
-fn remove_range_bitmap(c: &mut Criterion) {
-    c.bench_function("remove_range 1", |b| {
-        let mut sub: RoaringBitmap = (0..65_536).collect();
-        b.iter(|| {
-            // carefully delete part of the bitmap
-            // only the first iteration will actually change something
-            // but the runtime remains identical afterwards
-            black_box(sub.remove_range(4096 + 1..65_536));
-            assert_eq!(sub.len(), 4096 + 1);
-        });
-    });
-
-    c.bench_function("remove_range 2", |b| {
-        // Slower bench that creates a new bitmap on each iteration so that can benchmark
-        // bitmap to array conversion
-        b.iter(|| {
-            let mut sub: RoaringBitmap = (0..65_536).collect();
-            black_box(sub.remove_range(100..65_536));
-            assert_eq!(sub.len(), 100);
-        });
-    });
-}
-
-fn insert_range_bitmap(c: &mut Criterion) {
-    for &size in &[10, 100, 1_000, 5_000, 10_000, 20_000] {
-        let mut group = c.benchmark_group("insert_range");
-        group.throughput(criterion::Throughput::Elements(size as u64));
-        group.bench_function(format!("from_empty_{}", size), |b| {
-            let bm = RoaringBitmap::new();
-            b.iter_batched(
-                || bm.clone(),
-                |mut bm| black_box(bm.insert_range(0..size)),
-                criterion::BatchSize::SmallInput,
-            )
-        });
-        group.bench_function(format!("pre_populated_{}", size), |b| {
-            let mut bm = RoaringBitmap::new();
-            bm.insert_range(0..size);
-            b.iter_batched(
-                || bm.clone(),
-                |mut bm| black_box(bm.insert_range(0..size)),
-                criterion::BatchSize::SmallInput,
-            )
+        // Select all multiples of 100 < bitmap.max()
+        // Mupliplier chosen arbitrarily, but should be sure not to select many values > max()
+        // Doing so would degenerate into benchmarking len()
+        group.bench_function(BenchmarkId::new("select", &dataset.name), |b| {
+            b.iter(|| {
+                for (bitmap, max) in bitmaps.iter() {
+                    for i in (0..*max).step_by(100) {
+                        black_box(bitmap.select(i));
+                    }
+                }
+            });
         });
     }
 }
 
-fn iter(c: &mut Criterion) {
-    let mut group = c.benchmark_group("iter");
+#[allow(clippy::redundant_closure)]
+fn and(c: &mut Criterion) {
+    pairwise_binary_op_matrix(
+        c,
+        "and",
+        |a, b| BitAnd::bitand(a, b),
+        |a, b| BitAnd::bitand(a, b),
+        |a, b| BitAnd::bitand(a, b),
+        |a, b| BitAnd::bitand(a, b),
+        |a, b| BitAndAssign::bitand_assign(a, b),
+        |a, b| BitAndAssign::bitand_assign(a, b),
+    )
+}
+
+#[allow(clippy::redundant_closure)]
+fn or(c: &mut Criterion) {
+    pairwise_binary_op_matrix(
+        c,
+        "or",
+        |a, b| BitOr::bitor(a, b),
+        |a, b| BitOr::bitor(a, b),
+        |a, b| BitOr::bitor(a, b),
+        |a, b| BitOr::bitor(a, b),
+        |a, b| BitOrAssign::bitor_assign(a, b),
+        |a, b| BitOrAssign::bitor_assign(a, b),
+    )
+}
+
+#[allow(clippy::redundant_closure)]
+fn sub(c: &mut Criterion) {
+    pairwise_binary_op_matrix(
+        c,
+        "sub",
+        |a, b| Sub::sub(a, b),
+        |a, b| Sub::sub(a, b),
+        |a, b| Sub::sub(a, b),
+        |a, b| Sub::sub(a, b),
+        |a, b| SubAssign::sub_assign(a, b),
+        |a, b| SubAssign::sub_assign(a, b),
+    )
+}
+
+#[allow(clippy::redundant_closure)]
+fn xor(c: &mut Criterion) {
+    pairwise_binary_op_matrix(
+        c,
+        "xor",
+        BitXor::bitxor,
+        |a, b| BitXor::bitxor(a, b),
+        |a, b| BitXor::bitxor(a, b),
+        |a, b| BitXor::bitxor(a, b),
+        |a, b| BitXorAssign::bitxor_assign(a, b),
+        |a, b| BitXorAssign::bitxor_assign(a, b),
+    )
+}
+
+fn subset(c: &mut Criterion) {
+    let mut group = c.benchmark_group("pairwise_subset");
+    pairwise_binary_op(&mut group, "is_subset", |a, b| a.is_subset(&b));
+    group.finish();
+}
+
+fn disjoint(c: &mut Criterion) {
+    let mut group = c.benchmark_group("pairwise_disjoint");
+    pairwise_binary_op(&mut group, "is_disjoint", |a, b| a.is_disjoint(&b));
+    group.finish();
+}
+
+fn iteration(c: &mut Criterion) {
+    let mut group = c.benchmark_group("iteration");
+
     for dataset in Datasets {
+        group.throughput(Throughput::Elements(
+            dataset.bitmaps.iter().map(|rb| rb.len() as u64).sum(),
+        ));
+
         group.bench_function(BenchmarkId::new("iter", &dataset.name), |b| {
             b.iter(|| {
-                dataset.bitmaps.iter().flat_map(|bitmap| bitmap.iter()).for_each(|i| {
+                for i in dataset.bitmaps.iter().flat_map(|bitmap| bitmap.iter()) {
                     black_box(i);
-                });
+                }
+            });
+        });
+
+        group.bench_function(BenchmarkId::new("into_iter", &dataset.name), |b| {
+            b.iter_batched(
+                || dataset.bitmaps.clone(),
+                |bitmaps| {
+                    for i in bitmaps.into_iter().flat_map(|bitmap| bitmap.into_iter()) {
+                        black_box(i);
+                    }
+                },
+                BatchSize::SmallInput,
+            );
+        });
+    }
+
+    group.finish();
+}
+
+fn serialization(c: &mut Criterion) {
+    let mut group = c.benchmark_group("serialization");
+
+    for dataset in Datasets {
+        let sizes = dataset.bitmaps.iter().map(|rb| rb.serialized_size()).collect::<Vec<_>>();
+
+        let max_size = sizes.iter().copied().max().unwrap();
+        let mut buf = Vec::with_capacity(max_size);
+
+        group.throughput(Throughput::Bytes(sizes.iter().copied().sum::<usize>() as u64));
+
+        group.bench_function(BenchmarkId::new("serialized_size", &dataset.name), |b| {
+            b.iter(|| {
+                for bitmap in &dataset.bitmaps {
+                    black_box(bitmap.serialized_size());
+                }
+            });
+        });
+
+        group.bench_function(BenchmarkId::new("serialize_into", &dataset.name), |b| {
+            b.iter(|| {
+                for bitmap in &dataset.bitmaps {
+                    buf.clear();
+                    bitmap.serialize_into(&mut buf).unwrap();
+                    black_box(&buf);
+                }
             });
         });
     }
@@ -280,86 +357,43 @@ fn iter(c: &mut Criterion) {
     group.finish();
 }
 
-fn is_empty(c: &mut Criterion) {
-    c.bench_function("is_empty true", |b| {
-        let bitmap = RoaringBitmap::new();
-        b.iter(|| {
-            bitmap.is_empty();
-        });
-    });
-    c.bench_function("is_empty false", |b| {
-        let mut bitmap = RoaringBitmap::new();
-        bitmap.insert(1);
-        b.iter(|| {
-            bitmap.is_empty();
-        });
-    });
-}
-
-fn serialize(c: &mut Criterion) {
-    c.bench_function("serialize 100000", |b| {
-        let bitmap: RoaringBitmap = (1..100_000).collect();
-        let mut buffer = Vec::with_capacity(bitmap.serialized_size());
-
-        b.iter(|| {
-            bitmap.serialize_into(&mut buffer).unwrap();
-        });
-    });
-    c.bench_function("serialize 1000000", |b| {
-        let bitmap: RoaringBitmap = (1..1_000_000).collect();
-        let mut buffer = Vec::with_capacity(bitmap.serialized_size());
-
-        b.iter(|| {
-            bitmap.serialize_into(&mut buffer).unwrap();
-        });
-    });
-}
-
-fn deserialize(c: &mut Criterion) {
-    c.bench_function("deserialize 100000", |b| {
-        let bitmap: RoaringBitmap = (1..100_000).collect();
-        let mut buffer = Vec::with_capacity(bitmap.serialized_size());
-        bitmap.serialize_into(&mut buffer).unwrap();
-
-        b.iter(|| {
-            RoaringBitmap::deserialize_from(&buffer[..]).unwrap();
-        });
-    });
-    c.bench_function("deserialize 1000000", |b| {
-        let bitmap: RoaringBitmap = (1..1_000_000).collect();
-        let mut buffer = Vec::with_capacity(bitmap.serialized_size());
-        bitmap.serialize_into(&mut buffer).unwrap();
-
-        b.iter(|| {
-            RoaringBitmap::deserialize_from(&buffer[..]).unwrap();
-        });
-    });
-}
-
-fn serialized_size(c: &mut Criterion) {
-    c.bench_function("serialized_size", |b| {
-        let bitmap: RoaringBitmap = (1..100).collect();
-        b.iter(|| bitmap.serialized_size());
-    });
-}
-
-fn from_sorted_iter(c: &mut Criterion) {
-    let mut group = c.benchmark_group("from_sorted_iter");
+fn deserialization(c: &mut Criterion) {
+    let mut group = c.benchmark_group("deserialization");
 
     for dataset in Datasets {
-        let dataset_numbers = dataset
+        let input = dataset
             .bitmaps
             .iter()
-            .map(|bitmap| bitmap.iter().collect::<Vec<_>>())
+            .map(|rb| {
+                let size = rb.serialized_size();
+                let mut buf = Vec::with_capacity(size);
+                rb.serialize_into(&mut buf).unwrap();
+                buf
+            })
             .collect::<Vec<_>>();
 
-        group.bench_function(BenchmarkId::new("from_sorted_iter", &dataset.name), |b| {
+        group.throughput(Throughput::Bytes(input.iter().map(|buf| buf.len() as u64).sum()));
+
+        group.bench_function(BenchmarkId::new("deserialize_from", &dataset.name), |b| {
             b.iter(|| {
-                for bitmap_numbers in &dataset_numbers {
-                    RoaringBitmap::from_sorted_iter(bitmap_numbers.iter().copied()).unwrap();
+                for buf in input.iter() {
+                    black_box(RoaringBitmap::deserialize_from(buf.as_slice()).unwrap());
                 }
-            })
+            });
         });
+
+        group.bench_function(
+            BenchmarkId::new("deserialize_from_unvalidated", &dataset.name),
+            |b| {
+                b.iter(|| {
+                    for buf in input.iter() {
+                        black_box(
+                            RoaringBitmap::deserialize_from_unvalidated(buf.as_slice()).unwrap(),
+                        );
+                    }
+                });
+            },
+        );
     }
 
     group.finish();
@@ -452,30 +486,163 @@ fn successive_or(c: &mut Criterion) {
     group.finish();
 }
 
+// LEGACY BENCHMARKS
+// =================
+
+fn is_empty(c: &mut Criterion) {
+    c.bench_function("is_empty true", |b| {
+        let bitmap = RoaringBitmap::new();
+        b.iter(|| {
+            bitmap.is_empty();
+        });
+    });
+    c.bench_function("is_empty false", |b| {
+        let mut bitmap = RoaringBitmap::new();
+        bitmap.insert(1);
+        b.iter(|| {
+            bitmap.is_empty();
+        });
+    });
+}
+
+fn insert(c: &mut Criterion) {
+    c.bench_function("create & insert 1", |b| {
+        b.iter(|| {
+            let mut bitmap = RoaringBitmap::new();
+            bitmap.insert(black_box(1));
+        });
+    });
+
+    c.bench_function("insert 1", |b| {
+        let mut bitmap = RoaringBitmap::new();
+        b.iter(|| {
+            bitmap.insert(black_box(1));
+        });
+    });
+
+    c.bench_function("create & insert several", |b| {
+        b.iter(|| {
+            let mut bitmap = RoaringBitmap::new();
+            bitmap.insert(black_box(1));
+            bitmap.insert(black_box(10));
+            bitmap.insert(black_box(100));
+            bitmap.insert(black_box(1_000));
+            bitmap.insert(black_box(10_000));
+            bitmap.insert(black_box(100_000));
+            bitmap.insert(black_box(1_000_000));
+        });
+    });
+
+    c.bench_function("insert several", |b| {
+        let mut bitmap = RoaringBitmap::new();
+        b.iter(|| {
+            bitmap.insert(black_box(1));
+            bitmap.insert(black_box(10));
+            bitmap.insert(black_box(100));
+            bitmap.insert(black_box(1_000));
+            bitmap.insert(black_box(10_000));
+            bitmap.insert(black_box(100_000));
+            bitmap.insert(black_box(1_000_000));
+        });
+    });
+}
+
+fn contains(c: &mut Criterion) {
+    c.bench_function("contains true", |b| {
+        let mut bitmap: RoaringBitmap = RoaringBitmap::new();
+        bitmap.insert(1);
+
+        b.iter(|| {
+            bitmap.contains(black_box(1));
+        });
+    });
+
+    c.bench_function("contains false", |b| {
+        let bitmap: RoaringBitmap = RoaringBitmap::new();
+
+        b.iter(|| {
+            bitmap.contains(black_box(1));
+        });
+    });
+}
+
+fn remove(c: &mut Criterion) {
+    c.bench_function("remove 1", |b| {
+        let mut sub: RoaringBitmap = (0..65_536).collect();
+        b.iter(|| {
+            black_box(sub.remove(1000));
+        });
+    });
+}
+
+fn remove_range_bitmap(c: &mut Criterion) {
+    c.bench_function("remove_range 1", |b| {
+        let mut sub: RoaringBitmap = (0..65_536).collect();
+        b.iter(|| {
+            // carefully delete part of the bitmap
+            // only the first iteration will actually change something
+            // but the runtime remains identical afterwards
+            black_box(sub.remove_range(4096 + 1..65_536));
+            assert_eq!(sub.len(), 4096 + 1);
+        });
+    });
+
+    c.bench_function("remove_range 2", |b| {
+        // Slower bench that creates a new bitmap on each iteration so that can benchmark
+        // bitmap to array conversion
+        b.iter(|| {
+            let mut sub: RoaringBitmap = (0..65_536).collect();
+            black_box(sub.remove_range(100..65_536));
+            assert_eq!(sub.len(), 100);
+        });
+    });
+}
+
+fn insert_range_bitmap(c: &mut Criterion) {
+    for &size in &[10, 100, 1_000, 5_000, 10_000, 20_000] {
+        let mut group = c.benchmark_group("insert_range");
+        group.throughput(criterion::Throughput::Elements(size as u64));
+        group.bench_function(format!("from_empty_{}", size), |b| {
+            let bm = RoaringBitmap::new();
+            b.iter_batched(
+                || bm.clone(),
+                |mut bm| black_box(bm.insert_range(0..size)),
+                criterion::BatchSize::SmallInput,
+            )
+        });
+        group.bench_function(format!("pre_populated_{}", size), |b| {
+            let mut bm = RoaringBitmap::new();
+            bm.insert_range(0..size);
+            b.iter_batched(
+                || bm.clone(),
+                |mut bm| black_box(bm.insert_range(0..size)),
+                criterion::BatchSize::SmallInput,
+            )
+        });
+    }
+}
+
 criterion_group!(
     benches,
-    create,
+    creation,
     insert,
     contains,
     len,
     rank,
+    select,
     and,
-    intersect_with,
     or,
-    union_with,
     sub,
     xor,
-    symmetric_deference_with,
-    is_subset,
+    subset,
+    disjoint,
     remove,
     remove_range_bitmap,
     insert_range_bitmap,
-    iter,
+    iteration,
     is_empty,
-    serialize,
-    deserialize,
-    serialized_size,
-    from_sorted_iter,
+    serialization,
+    deserialization,
     successive_and,
     successive_or,
 );
