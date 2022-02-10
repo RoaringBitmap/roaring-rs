@@ -14,6 +14,7 @@ use crate::datasets::Datasets;
 
 mod datasets;
 
+#[allow(clippy::too_many_arguments)]
 fn pairwise_binary_op_matrix(
     c: &mut Criterion,
     op_name: &str,
@@ -227,7 +228,7 @@ fn and(c: &mut Criterion) {
     pairwise_binary_op_matrix(
         c,
         "and",
-        |a, b| BitAnd::bitand(a, b),
+        BitAnd::bitand,
         |a, b| BitAnd::bitand(a, b),
         |a, b| BitAnd::bitand(a, b),
         |a, b| BitAnd::bitand(a, b),
@@ -240,7 +241,7 @@ fn or(c: &mut Criterion) {
     pairwise_binary_op_matrix(
         c,
         "or",
-        |a, b| BitOr::bitor(a, b),
+        BitOr::bitor,
         |a, b| BitOr::bitor(a, b),
         |a, b| BitOr::bitor(a, b),
         |a, b| BitOr::bitor(a, b),
@@ -253,7 +254,7 @@ fn sub(c: &mut Criterion) {
     pairwise_binary_op_matrix(
         c,
         "sub",
-        |a, b| Sub::sub(a, b),
+        Sub::sub,
         |a, b| Sub::sub(a, b),
         |a, b| Sub::sub(a, b),
         |a, b| Sub::sub(a, b),
@@ -266,7 +267,7 @@ fn xor(c: &mut Criterion) {
     pairwise_binary_op_matrix(
         c,
         "xor",
-        |a, b| BitXor::bitxor(a, b),
+        BitXor::bitxor,
         |a, b| BitXor::bitxor(a, b),
         |a, b| BitXor::bitxor(a, b),
         |a, b| BitXor::bitxor(a, b),
