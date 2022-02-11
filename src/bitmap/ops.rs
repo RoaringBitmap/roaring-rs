@@ -31,7 +31,7 @@ impl RoaringBitmap {
                 (Some(..), None) => 0,
                 (None, Some(..)) => 0,
                 (Some(lhs), Some(rhs)) => lhs.intersection_len(rhs),
-                (None, None) => unreachable!(),
+                (None, None) => 0,
             })
             .sum()
     }
