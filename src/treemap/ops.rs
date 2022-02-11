@@ -14,10 +14,10 @@ impl RoaringTreemap {
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap;
+    /// use roaring::RoaringTreemap;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
-    /// let rb2: RoaringBitmap = (3..5).collect();
+    /// let rb1: RoaringTreemap = (1..4).collect();
+    /// let rb2: RoaringTreemap = (3..5).collect();
     ///
     ///
     /// assert_eq!(rb1.union_len(&rb2), (rb1 | rb2).len());
@@ -83,7 +83,7 @@ impl RoaringTreemap {
         self.len() - self.intersection_len(other)
     }
 
-    /// Computes the len of the symmetric difference with the specified other bitmap without
+    /// Computes the len of the symmetric difference with the specified other treemap without
     /// creating a new bitmap.
     ///
     /// This is faster and more space efficient when you're only interested in the cardinality of
