@@ -231,7 +231,7 @@ impl RoaringTreemap {
         self.len() - self.intersection_len(other)
     }
 
-    /// Computes the len of the symmetric difference with the specified other bitmap without
+    /// Computes the len of the symmetric difference with the specified other treemap without
     /// creating a new bitmap.
     ///
     /// This is faster and more space efficient when you're only interested in the cardinality of
