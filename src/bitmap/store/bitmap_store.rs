@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
@@ -317,13 +318,13 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
         loop {
             if self.value == 0 {
                 self.key += 1;
-                if self.key > self.key_back {
-                    return None;
-                }
-                self.value = if self.key == self.key_back {
+                let cmp = self.key.cmp(&self.key_back);
+                self.value = if cmp == Ordering::Less {
+                    unsafe { *self.bits.borrow().get_unchecked(self.key) }
+                } else if cmp == Ordering::Equal {
                     self.value_back
                 } else {
-                    unsafe { *self.bits.borrow().get_unchecked(self.key) }
+                    return None;
                 };
                 continue;
             }
