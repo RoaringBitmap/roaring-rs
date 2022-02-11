@@ -382,10 +382,10 @@ fn deserialization(c: &mut Criterion) {
             });
         });
 
-        group.bench_function(BenchmarkId::new("deserialize_from_unchecked", &dataset.name), |b| {
+        group.bench_function(BenchmarkId::new("deserialize_unchecked_from", &dataset.name), |b| {
             b.iter(|| {
                 for buf in input.iter() {
-                    black_box(RoaringBitmap::deserialize_from_unchecked(buf.as_slice()).unwrap());
+                    black_box(RoaringBitmap::deserialize_unchecked_from(buf.as_slice()).unwrap());
                 }
             });
         });
