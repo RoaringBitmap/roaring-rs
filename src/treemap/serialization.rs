@@ -87,13 +87,13 @@ impl RoaringTreemap {
     /// let rb1: RoaringTreemap = (1..4).collect();
     /// let mut bytes = vec![];
     /// rb1.serialize_into(&mut bytes).unwrap();
-    /// let rb2 = RoaringTreemap::deserialize_from_unvalidated(&bytes[..]).unwrap();
+    /// let rb2 = RoaringTreemap::deserialize_unchecked_from(&bytes[..]).unwrap();
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
-    pub fn deserialize_from_unvalidated<R: io::Read>(reader: R) -> io::Result<Self> {
+    pub fn deserialize_unchecked_from<R: io::Read>(reader: R) -> io::Result<Self> {
         RoaringTreemap::deserialize_from_impl(reader, |reader| {
-            RoaringBitmap::deserialize_from_unvalidated(reader)
+            RoaringBitmap::deserialize_unchecked_from(reader)
         })
     }
 

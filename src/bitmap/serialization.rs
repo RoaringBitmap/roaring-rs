@@ -104,7 +104,7 @@ impl RoaringBitmap {
     /// format][format]. This is compatible with the official C/C++, Java and
     /// Go implementations. This method checks that all of the internal values
     /// are valid. If deserializing from a trusted source consider
-    /// [RoaringBitmap::deserialize_from_unvalidated]
+    /// [RoaringBitmap::deserialize_unchecked_from]
     ///
     /// [format]: https://github.com/RoaringBitmap/RoaringFormatSpec
     ///
@@ -139,11 +139,11 @@ impl RoaringBitmap {
     /// let rb1: RoaringBitmap = (1..4).collect();
     /// let mut bytes = vec![];
     /// rb1.serialize_into(&mut bytes).unwrap();
-    /// let rb2 = RoaringBitmap::deserialize_from_unvalidated(&bytes[..]).unwrap();
+    /// let rb2 = RoaringBitmap::deserialize_unchecked_from(&bytes[..]).unwrap();
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
-    pub fn deserialize_from_unvalidated<R: io::Read>(reader: R) -> io::Result<RoaringBitmap> {
+    pub fn deserialize_unchecked_from<R: io::Read>(reader: R) -> io::Result<RoaringBitmap> {
         RoaringBitmap::deserialize_from_impl::<R, _, Infallible, _, Infallible>(
             reader,
             |values| Ok(ArrayStore::from_vec_unchecked(values)),
