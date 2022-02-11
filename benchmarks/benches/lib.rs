@@ -382,18 +382,13 @@ fn deserialization(c: &mut Criterion) {
             });
         });
 
-        group.bench_function(
-            BenchmarkId::new("deserialize_from_nonvalidating", &dataset.name),
-            |b| {
-                b.iter(|| {
-                    for buf in input.iter() {
-                        black_box(
-                            RoaringBitmap::deserialize_from_nonvalidating(buf.as_slice()).unwrap(),
-                        );
-                    }
-                });
-            },
-        );
+        group.bench_function(BenchmarkId::new("deserialize_from_unchecked", &dataset.name), |b| {
+            b.iter(|| {
+                for buf in input.iter() {
+                    black_box(RoaringBitmap::deserialize_from_unchecked(buf.as_slice()).unwrap());
+                }
+            });
+        });
     }
 
     group.finish();
