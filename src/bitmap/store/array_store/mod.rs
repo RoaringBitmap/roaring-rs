@@ -2,7 +2,7 @@ mod scalar;
 mod vector;
 mod visitor;
 
-use crate::bitmap::store::array_store::visitor::VecWriter;
+use crate::bitmap::store::array_store::visitor::{CardinalityCounter, VecWriter};
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::convert::{TryFrom, TryInto};
@@ -150,6 +150,15 @@ impl ArrayStore {
                 },
             }
         }
+    }
+
+    pub fn intersection_len(&self, other: &Self) -> u64 {
+        let mut visitor = CardinalityCounter::new();
+        #[cfg(feature = "simd")]
+        vector::and(self.as_slice(), other.as_slice(), &mut visitor);
+        #[cfg(not(feature = "simd"))]
+        scalar::and(self.as_slice(), other.as_slice(), &mut visitor);
+        visitor.into_inner()
     }
 
     pub fn to_bitmap_store(&self) -> BitmapStore {

@@ -118,6 +118,15 @@ impl Store {
         }
     }
 
+    pub fn intersection_len(&self, other: &Self) -> u64 {
+        match (self, other) {
+            (Array(vec1), Array(vec2)) => vec1.intersection_len(vec2),
+            (Bitmap(bits1), Bitmap(bits2)) => bits1.intersection_len_bitmap(bits2),
+            (Array(vec), Bitmap(bits)) => bits.intersection_len_array(vec),
+            (Bitmap(bits), Array(vec)) => bits.intersection_len_array(vec),
+        }
+    }
+
     pub fn len(&self) -> u64 {
         match self {
             Array(vec) => vec.len(),

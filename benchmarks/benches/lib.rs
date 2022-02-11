@@ -24,6 +24,7 @@ fn pairwise_binary_op_matrix(
     op_ref_ref: impl Fn(&RoaringBitmap, &RoaringBitmap) -> RoaringBitmap,
     mut op_assign_owned: impl FnMut(&mut RoaringBitmap, RoaringBitmap),
     mut op_assign_ref: impl FnMut(&mut RoaringBitmap, &RoaringBitmap),
+    op_len: impl Fn(&RoaringBitmap, &RoaringBitmap) -> u64,
 ) {
     let mut group = c.benchmark_group(format!("pairwise_{}", op_name));
 
@@ -102,6 +103,14 @@ fn pairwise_binary_op_matrix(
                 },
                 BatchSize::SmallInput,
             );
+        });
+
+        group.bench_function(BenchmarkId::new("len", &dataset.name), |b| {
+            b.iter(|| {
+                for (a, b) in pairs.iter() {
+                    black_box(op_len(a, b));
+                }
+            })
         });
     }
 
@@ -235,6 +244,7 @@ fn and(c: &mut Criterion) {
         |a, b| BitAnd::bitand(a, b),
         |a, b| BitAndAssign::bitand_assign(a, b),
         |a, b| BitAndAssign::bitand_assign(a, b),
+        |a, b| a.intersection_len(b),
     )
 }
 
@@ -249,6 +259,7 @@ fn or(c: &mut Criterion) {
         |a, b| BitOr::bitor(a, b),
         |a, b| BitOrAssign::bitor_assign(a, b),
         |a, b| BitOrAssign::bitor_assign(a, b),
+        |a, b| a.union_len(b),
     )
 }
 
@@ -263,6 +274,7 @@ fn sub(c: &mut Criterion) {
         |a, b| Sub::sub(a, b),
         |a, b| SubAssign::sub_assign(a, b),
         |a, b| SubAssign::sub_assign(a, b),
+        |a, b| a.difference_len(b),
     )
 }
 
@@ -277,6 +289,7 @@ fn xor(c: &mut Criterion) {
         |a, b| BitXor::bitxor(a, b),
         |a, b| BitXorAssign::bitxor_assign(a, b),
         |a, b| BitXorAssign::bitxor_assign(a, b),
+        |a, b| a.symmetric_difference_len(b),
     )
 }
 

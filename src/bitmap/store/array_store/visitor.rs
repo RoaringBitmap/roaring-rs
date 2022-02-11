@@ -58,3 +58,32 @@ impl BinaryOperationVisitor for VecWriter {
         self.vec.extend_from_slice(values);
     }
 }
+
+pub struct CardinalityCounter {
+    count: usize,
+}
+
+impl CardinalityCounter {
+    pub fn new() -> CardinalityCounter {
+        CardinalityCounter { count: 0 }
+    }
+
+    pub fn into_inner(self) -> u64 {
+        self.count as u64
+    }
+}
+
+impl BinaryOperationVisitor for CardinalityCounter {
+    #[cfg(feature = "simd")]
+    fn visit_vector(&mut self, _value: simd::u16x8, mask: u8) {
+        self.count += mask.count_ones() as usize;
+    }
+
+    fn visit_scalar(&mut self, _value: u16) {
+        self.count += 1;
+    }
+
+    fn visit_slice(&mut self, values: &[u16]) {
+        self.count += values.len();
+    }
+}

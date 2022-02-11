@@ -96,6 +96,10 @@ impl Container {
         self.len() <= other.len() && self.store.is_subset(&other.store)
     }
 
+    pub fn intersection_len(&self, other: &Self) -> u64 {
+        self.store.intersection_len(&other.store)
+    }
+
     pub fn min(&self) -> Option<u16> {
         self.store.min()
     }

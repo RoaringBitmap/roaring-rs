@@ -4,6 +4,104 @@ use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, S
 
 use crate::RoaringTreemap;
 
+impl RoaringTreemap {
+    /// Computes the len of the union with the specified other treemap without creating a new
+    /// treemap.
+    ///
+    /// This is faster and more space efficient when you're only interested in the cardinality of
+    /// the union.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let rb1: RoaringTreemap = (1..4).collect();
+    /// let rb2: RoaringTreemap = (3..5).collect();
+    ///
+    ///
+    /// assert_eq!(rb1.union_len(&rb2), (rb1 | rb2).len());
+    /// ```
+    pub fn union_len(&self, other: &RoaringTreemap) -> u64 {
+        self.len().wrapping_add(other.len()).wrapping_sub(self.intersection_len(other))
+    }
+
+    /// Computes the len of the intersection with the specified other treemap without creating a
+    /// new treemap.
+    ///
+    /// This is faster and more space efficient when you're only interested in the cardinality of
+    /// the intersection.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let rb1: RoaringTreemap = (1..4).collect();
+    /// let rb2: RoaringTreemap = (3..5).collect();
+    ///
+    ///
+    /// assert_eq!(rb1.intersection_len(&rb2), (rb1 & rb2).len());
+    /// ```
+    pub fn intersection_len(&self, other: &RoaringTreemap) -> u64 {
+        self.pairs(other)
+            .map(|pair| match pair {
+                (Some(..), None) => 0,
+                (None, Some(..)) => 0,
+                (Some(lhs), Some(rhs)) => lhs.intersection_len(rhs),
+                (None, None) => 0,
+            })
+            .sum()
+    }
+
+    /// Computes the len of the difference with the specified other treemap without creating a new
+    /// treemap.
+    ///
+    /// This is faster and more space efficient when you're only interested in the cardinality of
+    /// the difference.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let rb1: RoaringTreemap = (1..4).collect();
+    /// let rb2: RoaringTreemap = (3..5).collect();
+    ///
+    ///
+    /// assert_eq!(rb1.difference_len(&rb2), (rb1 - rb2).len());
+    /// ```
+    pub fn difference_len(&self, other: &RoaringTreemap) -> u64 {
+        self.len() - self.intersection_len(other)
+    }
+
+    /// Computes the len of the symmetric difference with the specified other treemap without
+    /// creating a new bitmap.
+    ///
+    /// This is faster and more space efficient when you're only interested in the cardinality of
+    /// the symmetric difference.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let rb1: RoaringTreemap = (1..4).collect();
+    /// let rb2: RoaringTreemap = (3..5).collect();
+    ///
+    ///
+    /// assert_eq!(rb1.symmetric_difference_len(&rb2), (rb1 ^ rb2).len());
+    /// ```
+    pub fn symmetric_difference_len(&self, other: &RoaringTreemap) -> u64 {
+        let intersection_len = self.intersection_len(other);
+
+        self.len()
+            .wrapping_add(other.len())
+            .wrapping_sub(intersection_len)
+            .wrapping_sub(intersection_len)
+    }
+}
+
 impl BitOr<RoaringTreemap> for RoaringTreemap {
     type Output = RoaringTreemap;
 

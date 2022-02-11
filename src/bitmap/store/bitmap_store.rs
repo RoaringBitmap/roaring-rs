@@ -239,6 +239,22 @@ impl BitmapStore {
         None
     }
 
+    pub fn intersection_len_bitmap(&self, other: &BitmapStore) -> u64 {
+        self.bits.iter().zip(other.bits.iter()).map(|(&a, &b)| (a & b).count_ones() as u64).sum()
+    }
+
+    pub fn intersection_len_array(&self, other: &ArrayStore) -> u64 {
+        other
+            .iter()
+            .map(|&index| {
+                let (key, bit) = (key(index), bit(index));
+                let old_w = self.bits[key];
+                let new_w = old_w & (1 << bit);
+                new_w >> bit
+            })
+            .sum::<u64>()
+    }
+
     pub fn iter(&self) -> BitmapIter<&[u64; BITMAP_LENGTH]> {
         BitmapIter::new(&self.bits)
     }

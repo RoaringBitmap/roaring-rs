@@ -4,13 +4,13 @@ use std::iter::Peekable;
 use crate::RoaringBitmap;
 use crate::RoaringTreemap;
 
-struct Pairs<'a>(
+pub(crate) struct Pairs<'a>(
     Peekable<btree_map::Iter<'a, u32, RoaringBitmap>>,
     Peekable<btree_map::Iter<'a, u32, RoaringBitmap>>,
 );
 
 impl RoaringTreemap {
-    fn pairs<'a>(&'a self, other: &'a RoaringTreemap) -> Pairs<'a> {
+    pub(crate) fn pairs<'a>(&'a self, other: &'a RoaringTreemap) -> Pairs<'a> {
         Pairs(self.map.iter().peekable(), other.map.iter().peekable())
     }
 
