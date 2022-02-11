@@ -44,22 +44,14 @@ impl RoaringTreemap {
     /// assert_eq!(rb1.intersection_len(&rb2), (rb1 & rb2).len());
     /// ```
     pub fn intersection_len(&self, other: &RoaringTreemap) -> u64 {
-        fn intersection_len_impl(lhs: &RoaringTreemap, rhs: &RoaringTreemap) -> u64 {
-            let mut len = 0;
-            for (key, right_rb) in &rhs.map {
-                if let Some(left_rb) = lhs.map.get(key) {
-                    len += left_rb.intersection_len(right_rb);
-                }
-            }
-            len
-        }
-
-        // We make sure that we apply the intersection operation on the biggest map.
-        if self.map.len() < other.map.len() {
-            intersection_len_impl(self, other)
-        } else {
-            intersection_len_impl(other, self)
-        }
+        self.pairs(other)
+            .map(|pair| match pair {
+                (Some(..), None) => 0,
+                (None, Some(..)) => 0,
+                (Some(lhs), Some(rhs)) => lhs.intersection_len(rhs),
+                (None, None) => 0,
+            })
+            .sum()
     }
 
     /// Computes the len of the difference with the specified other treemap without creating a new
