@@ -80,6 +80,24 @@ fn double_ended() {
         }
         flip = !flip;
     }
+
+    // Check again with one more element so we end with the other direction
+    let mut original_iter = (1..3).chain(1_000_000..1_012_003).chain(2_000_001..2_000_004);
+    let mut clone_iter = RoaringBitmap::from_iter(original_iter.clone()).into_iter();
+
+    let mut flip = true;
+    loop {
+        let (original, clone) = if flip {
+            (original_iter.next(), clone_iter.next())
+        } else {
+            (original_iter.next_back(), clone_iter.next_back())
+        };
+        assert_eq!(clone, original);
+        if original.is_none() {
+            break;
+        }
+        flip = !flip;
+    }
 }
 
 proptest! {

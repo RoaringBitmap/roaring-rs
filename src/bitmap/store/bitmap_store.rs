@@ -344,11 +344,7 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> DoubleEndedIterator for BitmapIter<B> {
                     return None;
                 }
                 self.key_back -= 1;
-                self.value_back = if self.key == self.key_back {
-                    self.value_back
-                } else {
-                    unsafe { *self.bits.borrow().get_unchecked(self.key_back) }
-                };
+                self.value_back = unsafe { *self.bits.borrow().get_unchecked(self.key_back) };
                 continue;
             }
             let index_from_left = value.leading_zeros() as usize;
