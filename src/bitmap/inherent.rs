@@ -391,7 +391,7 @@ impl RoaringBitmap {
         }
     }
 
-    /// Returns the nth integer in the bitmap (if the set is non-empty)
+    /// Returns the `n`th integer in the set or `None` if `n <= len()`
     ///
     /// # Examples
     ///
@@ -401,13 +401,12 @@ impl RoaringBitmap {
     /// let mut rb = RoaringBitmap::new();
     /// assert_eq!(rb.select(0), None);
     ///
-    /// rb.insert(0);
-    /// rb.insert(10);
-    /// rb.insert(100);
+    /// rb.append(vec![0, 10, 100]);
     ///
     /// assert_eq!(rb.select(0), Some(0));
     /// assert_eq!(rb.select(1), Some(10));
     /// assert_eq!(rb.select(2), Some(100));
+    /// assert_eq!(rb.select(3), None);
     /// ```
     pub fn select(&self, n: u32) -> Option<u32> {
         let mut n = n as u64;
