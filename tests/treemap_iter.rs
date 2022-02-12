@@ -1,6 +1,11 @@
 extern crate roaring;
+mod iter;
 use roaring::RoaringTreemap;
 
+use iter::outside_in;
+use proptest::arbitrary::any;
+use proptest::collection::btree_set;
+use proptest::proptest;
 use std::iter::FromIterator;
 
 #[test]
@@ -56,59 +61,51 @@ fn bitmaps_iterator() {
     assert_eq!(clone2, original);
 }
 
-#[test]
-fn rev() {
-    let original = (1..3)
-        .chain(1_000_000..1_012_003)
-        .chain(2_000_001..2_000_003)
-        .chain(2_000_000_000_001..2_000_000_000_003)
-        .rev()
-        .collect::<Vec<_>>();
-    let clone = RoaringTreemap::from_iter(original.clone()).iter().rev().collect::<Vec<_>>();
+proptest! {
+    #[test]
+    fn iter(values in btree_set(any::<u64>(), ..=10_000)) {
+        let bitmap = RoaringTreemap::from_sorted_iter(values.iter().cloned()).unwrap();
 
-    assert_eq!(clone, original);
+        assert!(values.into_iter().eq(bitmap.into_iter()));
+    }
 }
 
 #[test]
-fn double_ended() {
-    let mut original_iter = (1..3)
+fn rev() {
+    let values = (1..3)
         .chain(1_000_000..1_012_003)
         .chain(2_000_001..2_000_003)
         .chain(2_000_000_000_001..2_000_000_000_003);
-    let mut clone_iter = RoaringTreemap::from_iter(original_iter.clone()).into_iter();
+    let bitmap = RoaringTreemap::from_iter(values.clone());
 
-    let mut flip = true;
-    loop {
-        let (original, clone) = if flip {
-            (original_iter.next(), clone_iter.next())
-        } else {
-            (original_iter.next_back(), clone_iter.next_back())
-        };
-        assert_eq!(clone, original);
-        if original.is_none() {
-            break;
-        }
-        flip = !flip;
+    assert!(values.into_iter().rev().eq(bitmap.iter().rev()));
+}
+
+proptest! {
+    #[test]
+    fn rev_iter(values in btree_set(any::<u64>(), ..=10_000)) {
+        let bitmap = RoaringTreemap::from_sorted_iter(values.iter().cloned()).unwrap();
+
+        assert!(values.into_iter().rev().eq(bitmap.iter().rev()));
     }
+}
 
-    // Check again with one more element so we end with the other direction
-    let mut original_iter = (1..3)
+#[test]
+fn interleaved() {
+    let values = (1..3)
         .chain(1_000_000..1_012_003)
         .chain(2_000_001..2_000_003)
-        .chain(2_000_000_000_001..2_000_000_000_004);
-    let mut clone_iter = RoaringTreemap::from_iter(original_iter.clone()).into_iter();
+        .chain(2_000_000_000_001..2_000_000_000_003);
+    let bitmap = RoaringTreemap::from_iter(values.clone());
 
-    let mut flip = true;
-    loop {
-        let (original, clone) = if flip {
-            (original_iter.next(), clone_iter.next())
-        } else {
-            (original_iter.next_back(), clone_iter.next_back())
-        };
-        assert_eq!(clone, original);
-        if original.is_none() {
-            break;
-        }
-        flip = !flip;
+    assert!(outside_in(values).eq(outside_in(bitmap)));
+}
+
+proptest! {
+    #[test]
+    fn interleaved_iter(values in btree_set(any::<u64>(), 50_000..=100_000)) {
+        let bitmap = RoaringTreemap::from_sorted_iter(values.iter().cloned()).unwrap();
+
+        assert!(outside_in(values).eq(outside_in(bitmap)));
     }
 }

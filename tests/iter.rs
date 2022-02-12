@@ -53,58 +53,92 @@ fn bitmaps() {
     assert_eq!(clone2, original);
 }
 
-#[test]
-fn rev() {
-    let original =
-        (1..3).chain(1_000_000..1_012_003).chain(2_000_001..2_000_003).rev().collect::<Vec<_>>();
-    let clone = RoaringBitmap::from_iter(original.clone()).iter().rev().collect::<Vec<_>>();
-
-    assert_eq!(clone, original);
-}
-
-#[test]
-fn double_ended() {
-    let mut original_iter = (1..3).chain(1_000_000..1_012_003).chain(2_000_001..2_000_003);
-    let mut clone_iter = RoaringBitmap::from_iter(original_iter.clone()).into_iter();
-
-    let mut flip = true;
-    loop {
-        let (original, clone) = if flip {
-            (original_iter.next(), clone_iter.next())
-        } else {
-            (original_iter.next_back(), clone_iter.next_back())
-        };
-        assert_eq!(clone, original);
-        if original.is_none() {
-            break;
-        }
-        flip = !flip;
-    }
-
-    // Check again with one more element so we end with the other direction
-    let mut original_iter = (1..3).chain(1_000_000..1_012_003).chain(2_000_001..2_000_004);
-    let mut clone_iter = RoaringBitmap::from_iter(original_iter.clone()).into_iter();
-
-    let mut flip = true;
-    loop {
-        let (original, clone) = if flip {
-            (original_iter.next(), clone_iter.next())
-        } else {
-            (original_iter.next_back(), clone_iter.next_back())
-        };
-        assert_eq!(clone, original);
-        if original.is_none() {
-            break;
-        }
-        flip = !flip;
-    }
-}
-
 proptest! {
     #[test]
     fn iter(values in btree_set(any::<u32>(), ..=10_000)) {
         let bitmap = RoaringBitmap::from_sorted_iter(values.iter().cloned()).unwrap();
         // Iterator::eq != PartialEq::eq - cannot use assert_eq macro
         assert!(values.into_iter().eq(bitmap.into_iter()));
+    }
+}
+
+#[test]
+fn rev_array() {
+    let values = 0..100;
+    let bitmap = values.clone().collect::<RoaringBitmap>();
+
+    assert!(values.into_iter().rev().eq(bitmap.iter().rev()));
+}
+
+#[test]
+fn rev_bitmap() {
+    let values = 0..=4097;
+    let bitmap = values.clone().collect::<RoaringBitmap>();
+
+    assert!(values.into_iter().rev().eq(bitmap.iter().rev()));
+}
+
+proptest! {
+    #[test]
+    fn rev_iter(values in btree_set(any::<u32>(), ..=10_000)) {
+        let bitmap = RoaringBitmap::from_sorted_iter(values.iter().cloned()).unwrap();
+
+        assert!(values.into_iter().rev().eq(bitmap.iter().rev()));
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct OutsideInIter<T>(bool, T);
+
+impl<T, I> Iterator for OutsideInIter<I>
+where
+    I: DoubleEndedIterator<Item = T>,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let res = if self.0 { self.1.next() } else { self.1.next_back() };
+        self.0 = !self.0;
+        res
+    }
+}
+
+pub fn outside_in<U, I>(into_iter: I) -> OutsideInIter<U>
+where
+    U: DoubleEndedIterator,
+    I: IntoIterator<IntoIter = U>,
+{
+    OutsideInIter(true, into_iter.into_iter())
+}
+
+// Sanity check that outside_in does what we expect
+#[test]
+fn outside_in_iterator() {
+    let values = 0..10;
+    assert!(outside_in(values).eq(vec![0, 9, 1, 8, 2, 7, 3, 6, 4, 5].into_iter()));
+}
+
+#[test]
+fn interleaved_array() {
+    let values = 0..100;
+    let bitmap = values.clone().collect::<RoaringBitmap>();
+
+    assert!(outside_in(values).eq(outside_in(bitmap)));
+}
+
+#[test]
+fn interleaved_bitmap() {
+    let values = 0..=4097;
+    let bitmap = values.clone().collect::<RoaringBitmap>();
+
+    assert!(outside_in(values).eq(outside_in(bitmap)));
+}
+
+proptest! {
+    #[test]
+    fn interleaved_iter(values in btree_set(any::<u32>(), 50_000..=100_000)) {
+        let bitmap = RoaringBitmap::from_sorted_iter(values.iter().cloned()).unwrap();
+
+        assert!(outside_in(values).eq(outside_in(bitmap)));
     }
 }
