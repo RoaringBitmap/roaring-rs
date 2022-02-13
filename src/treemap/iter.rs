@@ -19,7 +19,7 @@ impl<'a> Iterator for To64Iter<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator for To64Iter<'a> {
+impl DoubleEndedIterator for To64Iter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner.next_back().map(|n| util::join(self.hi, n))
     }
@@ -107,7 +107,7 @@ impl<'a> Iterator for Iter<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator for Iter<'a> {
+impl DoubleEndedIterator for Iter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.size_hint = self.size_hint.saturating_sub(1);
         self.inner.next_back()
