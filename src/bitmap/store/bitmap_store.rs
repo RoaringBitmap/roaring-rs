@@ -319,6 +319,7 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
             if self.value == 0 {
                 self.key += 1;
                 let cmp = self.key.cmp(&self.key_back);
+                // Match arms can be reordered, this ordering is perf sensitive
                 self.value = if cmp == Ordering::Less {
                     unsafe { *self.bits.borrow().get_unchecked(self.key) }
                 } else if cmp == Ordering::Equal {
