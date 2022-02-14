@@ -304,7 +304,7 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
         BitmapIter {
             key: 0,
             value: bits.borrow()[0],
-            key_back: BITMAP_LENGTH,
+            key_back: BITMAP_LENGTH - 1,
             value_back: bits.borrow()[BITMAP_LENGTH - 1],
             bits,
         }

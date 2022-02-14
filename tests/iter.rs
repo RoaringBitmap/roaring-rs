@@ -19,7 +19,7 @@ fn array() {
 
 #[test]
 fn bitmap() {
-    let original = (0..6000).collect::<RoaringBitmap>();
+    let original = (0..100_000).collect::<RoaringBitmap>();
     let clone = RoaringBitmap::from_iter(&original);
     let clone2 = RoaringBitmap::from_iter(original.clone());
 
@@ -42,7 +42,7 @@ fn arrays() {
 
 #[test]
 fn bitmaps() {
-    let original = (0..6000)
+    let original = (0..100_000)
         .chain(1_000_000..1_012_000)
         .chain(2_000_000..2_010_000)
         .collect::<RoaringBitmap>();
@@ -72,7 +72,7 @@ fn rev_array() {
 
 #[test]
 fn rev_bitmap() {
-    let values = 0..=4097;
+    let values = 0..=100_000;
     let bitmap = values.clone().collect::<RoaringBitmap>();
 
     assert!(values.into_iter().rev().eq(bitmap.iter().rev()));
