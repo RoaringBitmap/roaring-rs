@@ -502,12 +502,11 @@ where
         )
     }
 
-    let b = simd_swizzle!(b, [7, 6, 5, 4, 3, 2, 1, 0]);
-    let mut lo = lanes_min(a, b);
-    let mut hi = lanes_max(a, b);
-
-    lo = bitonic_merge(lo);
-    hi = bitonic_merge(hi);
+    let b_rev = simd_swizzle!(b, [7, 6, 5, 4, 3, 2, 1, 0]);
+    let min = lanes_min(a, b_rev);
+    let max = lanes_max(a, b_rev);
+    let lo = bitonic_merge(min);
+    let hi = bitonic_merge(max);
     [lo, hi]
 }
 
