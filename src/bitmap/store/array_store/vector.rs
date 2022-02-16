@@ -11,7 +11,10 @@
 #![cfg(feature = "simd")]
 
 use super::scalar;
-use simd::{mask16x8, simd_swizzle, u16x8, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
+use simd::{
+    mask16x8, simd_swizzle, u16x8, LaneCount, Mask, MaskElement, Simd, SimdElement,
+    SupportedLaneCount,
+};
 
 // a one-pass SSE union algorithm
 pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
@@ -459,26 +462,53 @@ impl Swizzle2<8, 8> for Shr2 {
 }
 
 /// Assuming that a and b are sorted, returns an array of the sorted output.
-/// Developed originally for merge sort using SIMD instructions.
-/// Standard merge. See, e.g., Inoue and Taura, SIMD- and Cache-Friendly
-/// Algorithm for Sorting an Array of Structures
+/// Implementation of a 16 way bitonic merge in 128 bit SIMD registers by Joel Pedraza 2022
+/// https://en.wikipedia.org/wiki/Bitonic_sorter
 #[inline]
 fn simd_merge<U>(a: Simd<U, 8>, b: Simd<U, 8>) -> [Simd<U, 8>; 2]
 where
     U: SimdElement + PartialOrd,
 {
-    let mut tmp: Simd<U, 8> = lanes_min(a, b);
-    let mut max: Simd<U, 8> = lanes_max(a, b);
-    tmp = tmp.rotate_lanes_left::<1>();
-    let mut min: Simd<U, 8> = lanes_min(tmp, max);
-    for _ in 0..6 {
-        max = lanes_max(tmp, max);
-        tmp = min.rotate_lanes_left::<1>();
-        min = lanes_min(tmp, max);
+    fn bitonic_merge<U>(v: Simd<U, 8>) -> Simd<U, 8>
+    where
+        U: SimdElement + PartialOrd,
+    {
+        fn select_min_max<U, T>(a: Simd<U, 8>, b: Simd<U, 8>, m: Mask<T, 8>) -> Simd<U, 8>
+        where
+            U: SimdElement<Mask = T> + PartialOrd,
+            T: MaskElement,
+        {
+            let min = lanes_min(a, b);
+            let max = lanes_max(a, b);
+            m.select(max, min)
+        }
+
+        let v = select_min_max(
+            v,
+            simd_swizzle!(v, [4, 5, 6, 7, 0, 1, 2, 3]),
+            Mask::from_array([false, false, false, false, true, true, true, true]),
+        );
+
+        let v = select_min_max(
+            v,
+            simd_swizzle!(v, [2, 3, 0, 1, 6, 7, 4, 5]),
+            Mask::from_array([false, false, true, true, false, false, true, true]),
+        );
+
+        select_min_max(
+            v,
+            simd_swizzle!(v, [1, 0, 3, 2, 5, 4, 7, 6]),
+            Mask::from_array([false, true, false, true, false, true, false, true]),
+        )
     }
-    max = lanes_max(tmp, max);
-    min = min.rotate_lanes_left::<1>();
-    [min, max]
+
+    let b = simd_swizzle!(b, [7, 6, 5, 4, 3, 2, 1, 0]);
+    let mut lo = lanes_min(a, b);
+    let mut hi = lanes_max(a, b);
+
+    lo = bitonic_merge(lo);
+    hi = bitonic_merge(hi);
+    [lo, hi]
 }
 
 /// Move the values in `val` with the corresponding index in `bitmask`
