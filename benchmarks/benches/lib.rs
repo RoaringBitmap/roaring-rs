@@ -332,6 +332,26 @@ fn iteration(c: &mut Criterion) {
                 BatchSize::SmallInput,
             );
         });
+
+        group.bench_function(BenchmarkId::new("iter rev", &dataset.name), |b| {
+            b.iter(|| {
+                for i in dataset.bitmaps.iter().flat_map(|bitmap| bitmap.iter().rev()) {
+                    black_box(i);
+                }
+            });
+        });
+
+        group.bench_function(BenchmarkId::new("into_iter rev", &dataset.name), |b| {
+            b.iter_batched(
+                || dataset.bitmaps.clone(),
+                |bitmaps| {
+                    for i in bitmaps.into_iter().flat_map(|bitmap| bitmap.into_iter().rev()) {
+                        black_box(i);
+                    }
+                },
+                BatchSize::SmallInput,
+            );
+        });
     }
 
     group.finish();

@@ -47,6 +47,13 @@ impl Iterator for Iter<'_> {
     }
 }
 
+impl DoubleEndedIterator for Iter<'_> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.size_hint = self.size_hint.saturating_sub(1);
+        self.inner.next_back()
+    }
+}
+
 #[cfg(target_pointer_width = "64")]
 impl ExactSizeIterator for Iter<'_> {
     fn len(&self) -> usize {
@@ -68,6 +75,13 @@ impl Iterator for IntoIter {
         } else {
             (usize::MAX, None)
         }
+    }
+}
+
+impl DoubleEndedIterator for IntoIter {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.size_hint = self.size_hint.saturating_sub(1);
+        self.inner.next_back()
     }
 }
 

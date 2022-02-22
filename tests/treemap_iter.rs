@@ -1,6 +1,11 @@
 extern crate roaring;
+mod iter;
 use roaring::RoaringTreemap;
 
+use iter::outside_in;
+use proptest::arbitrary::any;
+use proptest::collection::btree_set;
+use proptest::proptest;
 use std::iter::FromIterator;
 
 #[test]
@@ -54,4 +59,53 @@ fn bitmaps_iterator() {
 
     assert_eq!(clone, original);
     assert_eq!(clone2, original);
+}
+
+proptest! {
+    #[test]
+    fn iter(values in btree_set(any::<u64>(), ..=10_000)) {
+        let bitmap = RoaringTreemap::from_sorted_iter(values.iter().cloned()).unwrap();
+
+        assert!(values.into_iter().eq(bitmap.into_iter()));
+    }
+}
+
+#[test]
+fn rev() {
+    let values = (1..3)
+        .chain(1_000_000..1_012_003)
+        .chain(2_000_001..2_000_003)
+        .chain(2_000_000_000_001..2_000_000_000_003);
+    let bitmap = RoaringTreemap::from_iter(values.clone());
+
+    assert!(values.into_iter().rev().eq(bitmap.iter().rev()));
+}
+
+proptest! {
+    #[test]
+    fn rev_iter(values in btree_set(any::<u64>(), ..=10_000)) {
+        let bitmap = RoaringTreemap::from_sorted_iter(values.iter().cloned()).unwrap();
+
+        assert!(values.into_iter().rev().eq(bitmap.iter().rev()));
+    }
+}
+
+#[test]
+fn interleaved() {
+    let values = (1..3)
+        .chain(1_000_000..1_012_003)
+        .chain(2_000_001..2_000_003)
+        .chain(2_000_000_000_001..2_000_000_000_003);
+    let bitmap = RoaringTreemap::from_iter(values.clone());
+
+    assert!(outside_in(values).eq(outside_in(bitmap)));
+}
+
+proptest! {
+    #[test]
+    fn interleaved_iter(values in btree_set(any::<u64>(), 50_000..=100_000)) {
+        let bitmap = RoaringTreemap::from_sorted_iter(values.iter().cloned()).unwrap();
+
+        assert!(outside_in(values).eq(outside_in(bitmap)));
+    }
 }
