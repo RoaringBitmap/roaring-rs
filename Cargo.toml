@@ -19,7 +19,11 @@ license = "MIT OR Apache-2.0"
 bytemuck = "1.7.3"
 byteorder = "1.4.3"
 retain_mut = "0.1.6"
-simd = { git = "https://github.com/rust-lang/portable-simd", package = "core_simd", optional = true }
+
+[features]
+# Enables SIMD-based algorithm that are most of the time faster than the
+# scalar ones. This feature can only be enabled on the nightly channel.
+simd = []
 
 [dev-dependencies]
 proptest = { version = "1.0.0" }

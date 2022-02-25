@@ -11,7 +11,9 @@
 #![cfg(feature = "simd")]
 
 use super::scalar;
-use simd::{mask16x8, simd_swizzle, u16x8, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
+use core::simd::{
+    mask16x8, simd_swizzle, u16x8, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount,
+};
 
 // a one-pass SSE union algorithm
 pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
@@ -442,7 +444,7 @@ where
 }
 
 use crate::bitmap::store::array_store::visitor::BinaryOperationVisitor;
-use simd::{Swizzle2, Which, Which::First as A, Which::Second as B};
+use core::simd::{Swizzle2, Which, Which::First as A, Which::Second as B};
 
 /// Append to vectors to an imaginary 16 lane vector,  shift the lanes right by 1, then
 /// truncate to the low order 8 lanes
