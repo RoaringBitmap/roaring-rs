@@ -10,7 +10,7 @@ use crate::bitmap::store::array_store::vector::swizzle_to_front;
 /// computing the cardinality of an operation without materializng a new bitmap.
 pub trait BinaryOperationVisitor {
     #[cfg(feature = "simd")]
-    fn visit_vector(&mut self, value: simd::u16x8, mask: u8);
+    fn visit_vector(&mut self, value: core::simd::u16x8, mask: u8);
     fn visit_scalar(&mut self, value: u16);
     fn visit_slice(&mut self, values: &[u16]);
 }
@@ -37,7 +37,7 @@ impl VecWriter {
 
 impl BinaryOperationVisitor for VecWriter {
     #[cfg(feature = "simd")]
-    fn visit_vector(&mut self, value: simd::u16x8, mask: u8) {
+    fn visit_vector(&mut self, value: core::simd::u16x8, mask: u8) {
         let result = swizzle_to_front(value, mask);
 
         // This idiom is better than subslicing result, as it compiles down to an unaligned vector
@@ -75,7 +75,7 @@ impl CardinalityCounter {
 
 impl BinaryOperationVisitor for CardinalityCounter {
     #[cfg(feature = "simd")]
-    fn visit_vector(&mut self, _value: simd::u16x8, mask: u8) {
+    fn visit_vector(&mut self, _value: core::simd::u16x8, mask: u8) {
         self.count += mask.count_ones() as usize;
     }
 

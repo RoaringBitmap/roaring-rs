@@ -11,7 +11,10 @@
 #![cfg(feature = "simd")]
 
 use super::scalar;
-use simd::{mask16x8, simd_swizzle, u16x8, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
+use core::simd::{
+    mask16x8, simd_swizzle, u16x8, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount,
+    ToBitMask,
+};
 
 // a one-pass SSE union algorithm
 pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
@@ -33,7 +36,7 @@ pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
     #[inline]
     fn handle_vector(old: u16x8, new: u16x8, f: impl FnOnce(u16x8, u8)) {
         let tmp: u16x8 = Shr1::swizzle2(new, old);
-        let mask = 255 - tmp.lanes_eq(new).to_bitmask()[0];
+        let mask = 255 - tmp.lanes_eq(new).to_bitmask();
         f(new, mask);
     }
 
@@ -125,7 +128,7 @@ pub fn and(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
         let mut v_a: u16x8 = load(&lhs[i..]);
         let mut v_b: u16x8 = load(&rhs[j..]);
         loop {
-            let mask = matrix_cmp(v_a, v_b).to_bitmask()[0];
+            let mask = matrix_cmp(v_a, v_b).to_bitmask();
             visitor.visit_vector(v_a, mask);
 
             let a_max: u16 = lhs[i + u16x8::LANES - 1];
@@ -179,7 +182,7 @@ pub fn xor(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
         let eq_l: mask16x8 = tmp2.lanes_eq(tmp1);
         let eq_r: mask16x8 = tmp2.lanes_eq(new);
         let eq_l_or_r: mask16x8 = eq_l | eq_r;
-        let mask: u8 = eq_l_or_r.to_bitmask()[0];
+        let mask: u8 = eq_l_or_r.to_bitmask();
         f(tmp2, 255 - mask);
     }
 
@@ -293,7 +296,7 @@ pub fn sub(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
         loop {
             // a_found_in_b will contain a mask indicate for each entry in A
             // whether it is seen in B
-            let a_found_in_b: u8 = matrix_cmp(v_a, v_b).to_bitmask()[0];
+            let a_found_in_b: u8 = matrix_cmp(v_a, v_b).to_bitmask();
             runningmask_a_found_in_b |= a_found_in_b;
             // we always compare the last values of A and B
             let a_max: u16 = lhs[i + u16x8::LANES - 1];
@@ -331,7 +334,7 @@ pub fn sub(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
             let mut buffer: [u16; 8] = [0; 8]; // buffer to do a masked load
             buffer[..rhs.len() - j].copy_from_slice(&rhs[j..]);
             v_b = Simd::from_array(buffer);
-            let a_found_in_b: u8 = matrix_cmp(v_a, v_b).to_bitmask()[0];
+            let a_found_in_b: u8 = matrix_cmp(v_a, v_b).to_bitmask();
             runningmask_a_found_in_b |= a_found_in_b;
             let bitmask_belongs_to_difference: u8 = runningmask_a_found_in_b ^ 0xFF;
             visitor.visit_vector(v_a, bitmask_belongs_to_difference);
@@ -442,7 +445,7 @@ where
 }
 
 use crate::bitmap::store::array_store::visitor::BinaryOperationVisitor;
-use simd::{Swizzle2, Which, Which::First as A, Which::Second as B};
+use core::simd::{Swizzle2, Which, Which::First as A, Which::Second as B};
 
 /// Append to vectors to an imaginary 16 lane vector,  shift the lanes right by 1, then
 /// truncate to the low order 8 lanes
