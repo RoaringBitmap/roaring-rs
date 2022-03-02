@@ -391,7 +391,7 @@ impl RoaringBitmap {
         }
     }
 
-    /// Returns the `n`th integer in the set or `None` if `n <= len()`
+    /// Returns the `n`th integer in the set or `None` if `n >= len()`
     ///
     /// # Examples
     ///
