@@ -545,7 +545,7 @@ fn naive_lazy_multi_op_owned(
         }
     }
 
-    containers.retain_mut(|container| {
+    RetainMut::retain_mut(&mut containers, |container| {
         container.ensure_correct_store();
         container.len() > 0
     });
