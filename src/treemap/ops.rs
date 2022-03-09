@@ -1,8 +1,12 @@
+use std::borrow::Borrow;
+use std::cmp::Ordering;
+use std::collections::binary_heap::PeekMut;
 use std::collections::btree_map::Entry;
+use std::collections::{BTreeMap, BinaryHeap};
 use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
-use crate::{IterExt, RoaringTreemap};
+use crate::{IterExt, RoaringBitmap, RoaringTreemap};
 
 impl RoaringTreemap {
     /// Computes the len of the union with the specified other treemap without creating a new
@@ -406,7 +410,49 @@ where
     type Bitmap = RoaringTreemap;
 
     fn or(self) -> Self::Bitmap {
-        todo!()
+        let mut heap: BinaryHeap<_> = self
+            .into_iter()
+            .filter_map(|treemap| {
+                let mut iter = treemap.map.into_iter();
+                iter.next().map(|(key, bitmap)| PeekedRoaringBitmap { key, bitmap, iter })
+            })
+            .collect();
+
+        let mut bitmaps = Vec::new();
+        let mut map = BTreeMap::new();
+
+        while let Some(mut peek) = heap.peek_mut() {
+            let (key, bitmap) = match peek.iter.next() {
+                Some((next_key, next_bitmap)) => {
+                    let key = peek.key;
+                    peek.key = next_key;
+                    let bitmap = mem::replace(&mut peek.bitmap, next_bitmap);
+                    (key, bitmap)
+                }
+                None => {
+                    let poped = PeekMut::pop(peek);
+                    (poped.key, poped.bitmap)
+                }
+            };
+
+            if let Some((first_key, _)) = bitmaps.first() {
+                if *first_key != key {
+                    let current_key = *first_key;
+                    let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).or();
+                    map.insert(current_key, computed_bitmap);
+                }
+            }
+
+            bitmaps.push((key, bitmap));
+        }
+
+        if let Some((first_key, _)) = bitmaps.first() {
+            let current_key = *first_key;
+            let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).or();
+            map.insert(current_key, computed_bitmap);
+        }
+
+        RoaringTreemap { map }
     }
 
     fn and(self) -> Self::Bitmap {
@@ -442,5 +488,31 @@ where
 
     fn xor(self) -> Self::Bitmap {
         todo!()
+    }
+}
+
+struct PeekedRoaringBitmap<R, I> {
+    key: u32,
+    bitmap: R,
+    iter: I,
+}
+
+impl<R: Borrow<RoaringBitmap>, I> Ord for PeekedRoaringBitmap<R, I> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.key.cmp(&other.key).reverse()
+    }
+}
+
+impl<R: Borrow<RoaringBitmap>, I> PartialOrd for PeekedRoaringBitmap<R, I> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<R: Borrow<RoaringBitmap>, I> Eq for PeekedRoaringBitmap<R, I> {}
+
+impl<R: Borrow<RoaringBitmap>, I> PartialEq for PeekedRoaringBitmap<R, I> {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
     }
 }
