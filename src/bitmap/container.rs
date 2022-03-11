@@ -40,6 +40,12 @@ impl Container {
     }
 
     pub fn insert_range(&mut self, range: RangeInclusive<u16>) -> u64 {
+        // If inserting the range will make this a bitmap by itself, do it now
+        if range.len() as u64 > ARRAY_LIMIT {
+            if let Store::Array(arr) = &self.store {
+                self.store = Store::Bitmap(arr.to_bitmap_store());
+            }
+        }
         let inserted = self.store.insert_range(range);
         self.ensure_correct_store();
         inserted
