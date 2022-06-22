@@ -628,7 +628,7 @@ fn naive_lazy_multi_op_ref<'a>(
 
 #[cfg(test)]
 mod test {
-    use crate::RoaringBitmap;
+    use crate::{IterExt, RoaringBitmap};
     use proptest::prelude::*;
 
     // fast count tests
@@ -663,6 +663,108 @@ mod test {
             b in RoaringBitmap::arbitrary()
         ) {
             prop_assert_eq!(a.symmetric_difference_len(&b), (a ^ b).len());
+        }
+
+        #[test]
+        fn all_union_give_the_same_result(
+            a in RoaringBitmap::arbitrary(),
+            b in RoaringBitmap::arbitrary(),
+            c in RoaringBitmap::arbitrary()
+        ) {
+            let mut ref_assign = RoaringBitmap::new();
+            ref_assign |= &a;
+            ref_assign |= &b;
+            ref_assign |= &c;
+
+            let mut own_assign = RoaringBitmap::new();
+            own_assign |= a.clone();
+            own_assign |= b.clone();
+            own_assign |= c.clone();
+
+            let ref_inline = &a | &b | &c;
+            let own_inline = a.clone() | b.clone() | c.clone();
+
+            let ref_multiop = [&a, &b, &c].or();
+            let own_multiop = [a.clone(), b.clone(), c.clone()].or();
+
+            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+                prop_assert_eq!(&ref_assign, roar);
+            }
+        }
+
+        #[test]
+        fn all_intersection_give_the_same_result(
+            a in RoaringBitmap::arbitrary(),
+            b in RoaringBitmap::arbitrary(),
+            c in RoaringBitmap::arbitrary()
+        ) {
+            let mut ref_assign = a.clone();
+            ref_assign &= &b;
+            ref_assign &= &c;
+
+            let mut own_assign = a.clone();
+            own_assign &= b.clone();
+            own_assign &= c.clone();
+
+            let ref_inline = &a & &b & &c;
+            let own_inline = a.clone() & b.clone() & c.clone();
+
+            let ref_multiop = [&a, &b, &c].and();
+            let own_multiop = [a.clone(), b.clone(), c.clone()].and();
+
+            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+                prop_assert_eq!(&ref_assign, roar);
+            }
+        }
+
+        #[test]
+        fn all_difference_give_the_same_result(
+            a in RoaringBitmap::arbitrary(),
+            b in RoaringBitmap::arbitrary(),
+            c in RoaringBitmap::arbitrary()
+        ) {
+            let mut ref_assign = a.clone();
+            ref_assign -= &b;
+            ref_assign -= &c;
+
+            let mut own_assign = a.clone();
+            own_assign -= b.clone();
+            own_assign -= c.clone();
+
+            let ref_inline = &a - &b - &c;
+            let own_inline = a.clone() - b.clone() - c.clone();
+
+            let ref_multiop = [&a, &b, &c].sub();
+            let own_multiop = [a.clone(), b.clone(), c.clone()].sub();
+
+            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+                prop_assert_eq!(&ref_assign, roar);
+            }
+        }
+
+        #[test]
+        fn all_symmetric_difference_give_the_same_result(
+            a in RoaringBitmap::arbitrary(),
+            b in RoaringBitmap::arbitrary(),
+            c in RoaringBitmap::arbitrary()
+        ) {
+            let mut ref_assign = a.clone();
+            ref_assign ^= &b;
+            ref_assign ^= &c;
+
+            let mut own_assign = a.clone();
+            own_assign ^= b.clone();
+            own_assign ^= c.clone();
+
+            let ref_inline = &a ^ &b ^ &c;
+            let own_inline = a.clone() ^ b.clone() ^ c.clone();
+
+            let ref_multiop = [&a, &b, &c].xor();
+            let own_multiop = [a.clone(), b.clone(), c.clone()].xor();
+
+            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+                prop_assert_eq!(&ref_assign, roar);
+            }
         }
     }
 }
