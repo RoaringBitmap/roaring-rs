@@ -521,7 +521,6 @@ impl<R: Borrow<RoaringBitmap>, I> PartialEq for PeekedRoaringBitmap<R, I> {
 mod test {
     use crate::{IterExt, RoaringTreemap};
     use proptest::prelude::*;
-    use proptest_derive::Arbitrary;
 
     // fast count tests
     proptest! {
