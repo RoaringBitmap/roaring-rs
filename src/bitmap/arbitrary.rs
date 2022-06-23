@@ -2,7 +2,7 @@
 mod test {
     use crate::bitmap::container::Container;
     use crate::bitmap::store::{ArrayStore, BitmapStore, Store};
-    use crate::RoaringBitmap;
+    use crate::{RoaringBitmap, RoaringTreemap};
     use proptest::bits::{BitSetLike, BitSetStrategy, SampledBitSetStrategy};
     use proptest::collection::{vec, SizeRange};
     use proptest::prelude::*;
@@ -186,6 +186,19 @@ mod test {
         prop_compose! {
             pub fn arbitrary()(bitmap in (0usize..=16).prop_flat_map(containers)) -> RoaringBitmap {
                 bitmap
+            }
+        }
+    }
+
+    impl RoaringTreemap {
+        prop_compose! {
+            pub fn arbitrary()(bitmaps in any::<Vec<(u32, RoaringBitmap)>>()) -> RoaringTreemap {
+                use std::collections::BTreeMap;
+                let mut map = BTreeMap::new();
+                for (idx, size) in bitmaps {
+                    map.insert(idx, containers(size));
+                }
+                RoaringTreemap { map }
             }
         }
     }
