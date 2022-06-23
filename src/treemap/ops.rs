@@ -856,13 +856,11 @@ mod test {
             b in RoaringTreemap::arbitrary(),
             c in RoaringTreemap::arbitrary()
         ) {
-            let mut ref_assign = RoaringTreemap::new();
-            ref_assign |= &a;
+            let mut ref_assign = a.clone();
             ref_assign |= &b;
             ref_assign |= &c;
 
-            let mut own_assign = RoaringTreemap::new();
-            own_assign |= a.clone();
+            let mut own_assign = a.clone();
             own_assign |= b.clone();
             own_assign |= c.clone();
 

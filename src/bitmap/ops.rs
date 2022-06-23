@@ -671,13 +671,11 @@ mod test {
             b in RoaringBitmap::arbitrary(),
             c in RoaringBitmap::arbitrary()
         ) {
-            let mut ref_assign = RoaringBitmap::new();
-            ref_assign |= &a;
+            let mut ref_assign = a.clone();
             ref_assign |= &b;
             ref_assign |= &c;
 
-            let mut own_assign = RoaringBitmap::new();
-            own_assign |= a.clone();
+            let mut own_assign = a.clone();
             own_assign |= b.clone();
             own_assign |= c.clone();
 
