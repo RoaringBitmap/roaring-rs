@@ -36,6 +36,52 @@ impl RoaringTreemap {
         self.map.entry(hi).or_insert_with(RoaringBitmap::new).insert(lo)
     }
 
+    /// Inserts a range of values.
+    /// Returns the number of inserted values.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let mut rb = RoaringTreemap::new();
+    /// rb.insert_range(2..4);
+    /// assert!(rb.contains(2));
+    /// assert!(rb.contains(3));
+    /// assert!(!rb.contains(4));
+    /// ```
+    pub fn insert_range<R: RangeBounds<u64>>(&mut self, range: R) -> u64 {
+        let (start, end) = match util::convert_range_to_inclusive(range) {
+            Some(range) => (*range.start(), *range.end()),
+            None => return 0,
+        };
+
+        let (start_hi, start_lo) = util::split(start);
+        let (end_hi, end_lo) = util::split(end);
+
+        let mut counter = 0u64;
+
+        // Split the input range by the leading 32 bits
+        for hi in start_hi..=end_hi {
+            // Calculate the sub-range from the lower 32 bits
+            let range = if hi == end_hi && hi == start_hi {
+                start_lo..=end_lo
+            } else if hi == start_hi {
+                start_lo..=u32::MAX
+            } else if hi == end_hi {
+                0..=end_hi
+            } else {
+                // This is pretty expensive, we can definitely pre-calculate what a full
+                // `RoaringBitmap` looks like so we might as well use it here.
+                0..=u32::MAX
+            };
+
+            counter += self.map.entry(hi).or_insert_with(RoaringBitmap::new).insert_range(range)
+        }
+
+        counter
+    }
+
     /// Pushes `value` in the treemap only if it is greater than the current maximum value.
     ///
     /// Returns whether the value was inserted.
