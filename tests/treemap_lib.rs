@@ -13,11 +13,11 @@ fn smoke() {
     assert!(bitmap.contains(1));
     assert_eq!(bitmap.len(), 1);
     assert!(!bitmap.is_empty());
-    bitmap.insert(u64::max_value() - 2);
-    assert!(bitmap.contains(u64::max_value() - 2));
+    bitmap.insert(u64::MAX - 2);
+    assert!(bitmap.contains(u64::MAX - 2));
     assert_eq!(bitmap.len(), 2);
-    bitmap.insert(u64::max_value());
-    assert!(bitmap.contains(u64::max_value()));
+    bitmap.insert(u64::MAX);
+    assert!(bitmap.contains(u64::MAX));
     assert_eq!(bitmap.len(), 3);
     bitmap.insert(2);
     assert!(bitmap.contains(2));
@@ -28,9 +28,24 @@ fn smoke() {
     assert!(!bitmap.contains(0));
     assert!(bitmap.contains(1));
     assert!(!bitmap.contains(100));
-    assert!(bitmap.contains(u64::max_value() - 2));
-    assert!(!bitmap.contains(u64::max_value() - 1));
-    assert!(bitmap.contains(u64::max_value()));
+    assert!(bitmap.contains(u64::MAX - 2));
+    assert!(!bitmap.contains(u64::MAX - 1));
+    assert!(bitmap.contains(u64::MAX));
+}
+
+#[test]
+fn insert_range() {
+    let ranges = 0..0x1000;
+
+    let mut bitmap = RoaringTreemap::new();
+    assert_eq!(bitmap.insert_range(ranges), 0x1000);
+    assert_eq!(bitmap.len(), 0x1000);
+    assert_eq!(bitmap.max(), Some(0xFFF));
+
+    assert_eq!(bitmap.insert_range(u32::MAX as u64 - 1..u32::MAX as u64 + 1), 2);
+    assert!(bitmap.contains(2));
+    assert!(bitmap.contains(0xFFF));
+    assert!(!bitmap.contains(0x1000));
 }
 
 #[test]
@@ -53,16 +68,16 @@ fn test_max() {
     assert_eq!(bitmap.max(), Some(0));
     bitmap.insert(1);
     assert_eq!(bitmap.max(), Some(1));
-    bitmap.insert(u64::max_value());
-    assert_eq!(bitmap.max(), Some(u64::max_value()));
+    bitmap.insert(u64::MAX);
+    assert_eq!(bitmap.max(), Some(u64::MAX));
 }
 
 #[test]
 fn test_min() {
     let mut bitmap = RoaringTreemap::new();
     assert_eq!(bitmap.min(), None);
-    bitmap.insert(u64::max_value());
-    assert_eq!(bitmap.min(), Some(u64::max_value()));
+    bitmap.insert(u64::MAX);
+    assert_eq!(bitmap.min(), Some(u64::MAX));
     bitmap.insert(1);
     assert_eq!(bitmap.min(), Some(1));
     bitmap.insert(0);
