@@ -69,7 +69,7 @@ impl RoaringTreemap {
             } else if hi == start_hi {
                 start_lo..=u32::MAX
             } else if hi == end_hi {
-                0..=end_hi
+                0..=end_lo
             } else {
                 // This is pretty expensive, we can definitely pre-calculate what a full
                 // `RoaringBitmap` looks like so we might as well use it here.
