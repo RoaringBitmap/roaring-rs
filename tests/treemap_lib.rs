@@ -36,6 +36,7 @@ fn smoke() {
 #[test]
 fn insert_range() {
     let ranges = 0..0x1000;
+    const SIGMA: u64 = u32::MAX as u64;
 
     let mut bitmap = RoaringTreemap::new();
     assert_eq!(bitmap.insert_range(ranges), 0x1000);
@@ -46,6 +47,14 @@ fn insert_range() {
     assert!(bitmap.contains(2));
     assert!(bitmap.contains(0xFFF));
     assert!(!bitmap.contains(0x1000));
+
+    bitmap.clear();
+    bitmap.insert_range(2 * SIGMA..=4 * SIGMA);
+
+    assert_eq!(bitmap.min(), Some(2 * SIGMA));
+    assert_eq!(bitmap.max(), Some(4 * SIGMA));
+
+    assert!(bitmap.contains(3 * SIGMA));
 }
 
 #[test]
