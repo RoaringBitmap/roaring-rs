@@ -18,7 +18,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 bytemuck = "1.7.3"
 byteorder = "1.4.3"
-retain_mut = "0.1.6"
+retain_mut = "=0.1.7"
 
 [features]
 simd = []
