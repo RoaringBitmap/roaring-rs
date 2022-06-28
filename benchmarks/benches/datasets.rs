@@ -99,7 +99,7 @@ fn init_datasets() -> Result<PathBuf, Box<dyn std::error::Error>> {
     if !Path::new(&repo_path).exists() {
         git2::build::RepoBuilder::new()
             .fetch_options(fetch_opts)
-            .clone("git://github.com/RoaringBitmap/real-roaring-datasets.git", &repo_path)?;
+            .clone("https://github.com/RoaringBitmap/real-roaring-datasets.git", &repo_path)?;
     } else {
         let repo = git2::Repository::open(&repo_path)?;
         repo.find_remote("origin")?.fetch(&["master"], Some(&mut fetch_opts), None)?;
