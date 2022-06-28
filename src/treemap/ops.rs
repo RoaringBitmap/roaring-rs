@@ -410,187 +410,180 @@ where
     type Bitmap = RoaringTreemap;
 
     fn or(self) -> Self::Bitmap {
-        let mut heap: BinaryHeap<_> = self
-            .into_iter()
-            .filter_map(|treemap| {
-                let mut iter = treemap.map.into_iter();
-                iter.next().map(|(key, bitmap)| PeekedRoaringBitmap { key, bitmap, iter })
-            })
-            .collect();
-
-        let mut bitmaps = Vec::new();
-        let mut map = BTreeMap::new();
-
-        while let Some(mut peek) = heap.peek_mut() {
-            let (key, bitmap) = match peek.iter.next() {
-                Some((next_key, next_bitmap)) => {
-                    let key = peek.key;
-                    peek.key = next_key;
-                    let bitmap = mem::replace(&mut peek.bitmap, next_bitmap);
-                    (key, bitmap)
-                }
-                None => {
-                    let poped = PeekMut::pop(peek);
-                    (poped.key, poped.bitmap)
-                }
-            };
-
-            if let Some((first_key, _)) = bitmaps.first() {
-                if *first_key != key {
-                    let current_key = *first_key;
-                    let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).or();
-                    map.insert(current_key, computed_bitmap);
-                }
-            }
-
-            bitmaps.push((key, bitmap));
-        }
-
-        if let Some((first_key, _)) = bitmaps.first() {
-            let current_key = *first_key;
-            let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).or();
-            map.insert(current_key, computed_bitmap);
-        }
-
-        RoaringTreemap { map }
+        simple_multi_op_owned::<_, OrOp>(self)
     }
 
     fn and(self) -> Self::Bitmap {
-        let mut heap: BinaryHeap<_> = self
-            .into_iter()
-            .filter_map(|treemap| {
-                let mut iter = treemap.map.into_iter();
-                iter.next().map(|(key, bitmap)| PeekedRoaringBitmap { key, bitmap, iter })
-            })
-            .collect();
-
-        let mut bitmaps = Vec::new();
-        let mut map = BTreeMap::new();
-
-        while let Some(mut peek) = heap.peek_mut() {
-            let (key, bitmap) = match peek.iter.next() {
-                Some((next_key, next_bitmap)) => {
-                    let key = peek.key;
-                    peek.key = next_key;
-                    let bitmap = mem::replace(&mut peek.bitmap, next_bitmap);
-                    (key, bitmap)
-                }
-                None => {
-                    let poped = PeekMut::pop(peek);
-                    (poped.key, poped.bitmap)
-                }
-            };
-
-            if let Some((first_key, _)) = bitmaps.first() {
-                if *first_key != key {
-                    let current_key = *first_key;
-                    let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).and();
-                    map.insert(current_key, computed_bitmap);
-                }
-            }
-
-            bitmaps.push((key, bitmap));
-        }
-
-        if let Some((first_key, _)) = bitmaps.first() {
-            let current_key = *first_key;
-            let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).and();
-            map.insert(current_key, computed_bitmap);
-        }
-
-        RoaringTreemap { map }
+        simple_multi_op_owned::<_, AndOp>(self)
     }
 
     fn sub(self) -> Self::Bitmap {
-        let mut heap: BinaryHeap<_> = self
-            .into_iter()
-            .filter_map(|treemap| {
-                let mut iter = treemap.map.into_iter();
-                iter.next().map(|(key, bitmap)| PeekedRoaringBitmap { key, bitmap, iter })
-            })
-            .collect();
-
-        let mut bitmaps = Vec::new();
-        let mut map = BTreeMap::new();
-
-        while let Some(mut peek) = heap.peek_mut() {
-            let (key, bitmap) = match peek.iter.next() {
-                Some((next_key, next_bitmap)) => {
-                    let key = peek.key;
-                    peek.key = next_key;
-                    let bitmap = mem::replace(&mut peek.bitmap, next_bitmap);
-                    (key, bitmap)
-                }
-                None => {
-                    let poped = PeekMut::pop(peek);
-                    (poped.key, poped.bitmap)
-                }
-            };
-
-            if let Some((first_key, _)) = bitmaps.first() {
-                if *first_key != key {
-                    let current_key = *first_key;
-                    let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).sub();
-                    map.insert(current_key, computed_bitmap);
-                }
-            }
-
-            bitmaps.push((key, bitmap));
-        }
-
-        if let Some((first_key, _)) = bitmaps.first() {
-            let current_key = *first_key;
-            let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).sub();
-            map.insert(current_key, computed_bitmap);
-        }
-
-        RoaringTreemap { map }
+        simple_multi_op_owned::<_, SubOp>(self)
     }
 
     fn xor(self) -> Self::Bitmap {
-        let mut heap: BinaryHeap<_> = self
-            .into_iter()
-            .filter_map(|treemap| {
-                let mut iter = treemap.map.into_iter();
-                iter.next().map(|(key, bitmap)| PeekedRoaringBitmap { key, bitmap, iter })
-            })
-            .collect();
+        simple_multi_op_owned::<_, XorOp>(self)
+    }
+}
 
-        let mut bitmaps = Vec::new();
-        let mut map = BTreeMap::new();
+#[inline]
+fn simple_multi_op_owned<I, O: Op>(treemaps: I) -> RoaringTreemap
+where
+    I: IntoIterator<Item = RoaringTreemap>,
+{
+    let mut heap: BinaryHeap<_> = treemaps
+        .into_iter()
+        .filter_map(|treemap| {
+            let mut iter = treemap.map.into_iter();
+            iter.next().map(|(key, bitmap)| PeekedRoaringBitmap { key, bitmap, iter })
+        })
+        .collect();
 
-        while let Some(mut peek) = heap.peek_mut() {
-            let (key, bitmap) = match peek.iter.next() {
-                Some((next_key, next_bitmap)) => {
-                    let key = peek.key;
-                    peek.key = next_key;
-                    let bitmap = mem::replace(&mut peek.bitmap, next_bitmap);
-                    (key, bitmap)
-                }
-                None => {
-                    let poped = PeekMut::pop(peek);
-                    (poped.key, poped.bitmap)
-                }
-            };
+    let mut bitmaps = Vec::new();
+    let mut map = BTreeMap::new();
 
-            if let Some((first_key, _)) = bitmaps.first() {
-                if *first_key != key {
-                    let current_key = *first_key;
-                    let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).xor();
+    while let Some(mut peek) = heap.peek_mut() {
+        let (key, bitmap) = match peek.iter.next() {
+            Some((next_key, next_bitmap)) => {
+                let key = peek.key;
+                peek.key = next_key;
+                let bitmap = mem::replace(&mut peek.bitmap, next_bitmap);
+                (key, bitmap)
+            }
+            None => {
+                let poped = PeekMut::pop(peek);
+                (poped.key, poped.bitmap)
+            }
+        };
+
+        if let Some((first_key, _)) = bitmaps.first() {
+            if *first_key != key {
+                let current_key = *first_key;
+                let computed_bitmap = O::op_owned(bitmaps.drain(..).map(|(_, rb)| rb));
+                if !computed_bitmap.is_empty() {
                     map.insert(current_key, computed_bitmap);
                 }
             }
-
-            bitmaps.push((key, bitmap));
         }
 
-        if let Some((first_key, _)) = bitmaps.first() {
-            let current_key = *first_key;
-            let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).xor();
+        bitmaps.push((key, bitmap));
+    }
+
+    if let Some((first_key, _)) = bitmaps.first() {
+        let current_key = *first_key;
+        let computed_bitmap = O::op_owned(bitmaps.drain(..).map(|(_, rb)| rb));
+        if !computed_bitmap.is_empty() {
             map.insert(current_key, computed_bitmap);
         }
+    }
 
-        RoaringTreemap { map }
+    RoaringTreemap { map }
+}
+
+#[inline]
+fn simple_multi_op_ref<'a, I, O: Op>(treemaps: I) -> RoaringTreemap
+where
+    I: IntoIterator<Item = &'a RoaringTreemap>,
+{
+    let mut heap: BinaryHeap<_> = treemaps
+        .into_iter()
+        .filter_map(|treemap| {
+            let mut iter = treemap.map.iter();
+            iter.next().map(|(&key, bitmap)| PeekedRoaringBitmap { key, bitmap, iter })
+        })
+        .collect();
+
+    let mut bitmaps = Vec::new();
+    let mut map = BTreeMap::new();
+
+    while let Some(mut peek) = heap.peek_mut() {
+        let (key, bitmap) = match peek.iter.next() {
+            Some((&next_key, next_bitmap)) => {
+                let key = peek.key;
+                peek.key = next_key;
+                let bitmap = mem::replace(&mut peek.bitmap, next_bitmap);
+                (key, bitmap)
+            }
+            None => {
+                let poped = PeekMut::pop(peek);
+                (poped.key, poped.bitmap)
+            }
+        };
+
+        if let Some((first_key, _)) = bitmaps.first() {
+            if *first_key != key {
+                let current_key = *first_key;
+                let computed_bitmap = O::op_ref(bitmaps.drain(..).map(|(_, rb)| rb));
+                if !computed_bitmap.is_empty() {
+                    map.insert(current_key, computed_bitmap);
+                }
+            }
+        }
+
+        bitmaps.push((key, bitmap));
+    }
+
+    if let Some((first_key, _)) = bitmaps.first() {
+        let current_key = *first_key;
+        let computed_bitmap = O::op_ref(bitmaps.drain(..).map(|(_, rb)| rb));
+        if !computed_bitmap.is_empty() {
+            map.insert(current_key, computed_bitmap);
+        }
+    }
+
+    RoaringTreemap { map }
+}
+
+trait Op {
+    fn op_owned<I: IntoIterator<Item = RoaringBitmap>>(iter: I) -> RoaringBitmap;
+    fn op_ref<'a, I: IntoIterator<Item = &'a RoaringBitmap>>(iter: I) -> RoaringBitmap;
+}
+
+enum OrOp {}
+
+impl Op for OrOp {
+    fn op_owned<J: IntoIterator<Item = RoaringBitmap>>(iter: J) -> RoaringBitmap {
+        iter.or()
+    }
+
+    fn op_ref<'a, J: IntoIterator<Item = &'a RoaringBitmap>>(iter: J) -> RoaringBitmap {
+        iter.or()
+    }
+}
+
+enum AndOp {}
+
+impl Op for AndOp {
+    fn op_owned<J: IntoIterator<Item = RoaringBitmap>>(iter: J) -> RoaringBitmap {
+        iter.sub()
+    }
+
+    fn op_ref<'a, J: IntoIterator<Item = &'a RoaringBitmap>>(iter: J) -> RoaringBitmap {
+        iter.sub()
+    }
+}
+
+enum SubOp {}
+
+impl Op for SubOp {
+    fn op_owned<J: IntoIterator<Item = RoaringBitmap>>(iter: J) -> RoaringBitmap {
+        iter.sub()
+    }
+
+    fn op_ref<'a, J: IntoIterator<Item = &'a RoaringBitmap>>(iter: J) -> RoaringBitmap {
+        iter.sub()
+    }
+}
+
+enum XorOp {}
+
+impl Op for XorOp {
+    fn op_owned<J: IntoIterator<Item = RoaringBitmap>>(iter: J) -> RoaringBitmap {
+        iter.xor()
+    }
+
+    fn op_ref<'a, J: IntoIterator<Item = &'a RoaringBitmap>>(iter: J) -> RoaringBitmap {
+        iter.xor()
     }
 }
 
@@ -601,187 +594,19 @@ where
     type Bitmap = RoaringTreemap;
 
     fn or(self) -> Self::Bitmap {
-        let mut heap: BinaryHeap<_> = self
-            .into_iter()
-            .filter_map(|treemap| {
-                let mut iter = treemap.map.iter();
-                iter.next().map(|(&key, bitmap)| PeekedRoaringBitmap { key, bitmap, iter })
-            })
-            .collect();
-
-        let mut bitmaps = Vec::new();
-        let mut map = BTreeMap::new();
-
-        while let Some(mut peek) = heap.peek_mut() {
-            let (key, bitmap) = match peek.iter.next() {
-                Some((&next_key, next_bitmap)) => {
-                    let key = peek.key;
-                    peek.key = next_key;
-                    let bitmap = mem::replace(&mut peek.bitmap, next_bitmap);
-                    (key, bitmap)
-                }
-                None => {
-                    let poped = PeekMut::pop(peek);
-                    (poped.key, poped.bitmap)
-                }
-            };
-
-            if let Some((first_key, _)) = bitmaps.first() {
-                if *first_key != key {
-                    let current_key = *first_key;
-                    let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).or();
-                    map.insert(current_key, computed_bitmap);
-                }
-            }
-
-            bitmaps.push((key, bitmap));
-        }
-
-        if let Some((first_key, _)) = bitmaps.first() {
-            let current_key = *first_key;
-            let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).or();
-            map.insert(current_key, computed_bitmap);
-        }
-
-        RoaringTreemap { map }
+        simple_multi_op_ref::<_, OrOp>(self)
     }
 
     fn and(self) -> Self::Bitmap {
-        let mut heap: BinaryHeap<_> = self
-            .into_iter()
-            .filter_map(|treemap| {
-                let mut iter = treemap.map.iter();
-                iter.next().map(|(&key, bitmap)| PeekedRoaringBitmap { key, bitmap, iter })
-            })
-            .collect();
-
-        let mut bitmaps = Vec::new();
-        let mut map = BTreeMap::new();
-
-        while let Some(mut peek) = heap.peek_mut() {
-            let (key, bitmap) = match peek.iter.next() {
-                Some((&next_key, next_bitmap)) => {
-                    let key = peek.key;
-                    peek.key = next_key;
-                    let bitmap = mem::replace(&mut peek.bitmap, next_bitmap);
-                    (key, bitmap)
-                }
-                None => {
-                    let poped = PeekMut::pop(peek);
-                    (poped.key, poped.bitmap)
-                }
-            };
-
-            if let Some((first_key, _)) = bitmaps.first() {
-                if *first_key != key {
-                    let current_key = *first_key;
-                    let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).and();
-                    map.insert(current_key, computed_bitmap);
-                }
-            }
-
-            bitmaps.push((key, bitmap));
-        }
-
-        if let Some((first_key, _)) = bitmaps.first() {
-            let current_key = *first_key;
-            let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).and();
-            map.insert(current_key, computed_bitmap);
-        }
-
-        RoaringTreemap { map }
+        simple_multi_op_ref::<_, AndOp>(self)
     }
 
     fn sub(self) -> Self::Bitmap {
-        let mut heap: BinaryHeap<_> = self
-            .into_iter()
-            .filter_map(|treemap| {
-                let mut iter = treemap.map.iter();
-                iter.next().map(|(&key, bitmap)| PeekedRoaringBitmap { key, bitmap, iter })
-            })
-            .collect();
-
-        let mut bitmaps = Vec::new();
-        let mut map = BTreeMap::new();
-
-        while let Some(mut peek) = heap.peek_mut() {
-            let (key, bitmap) = match peek.iter.next() {
-                Some((&next_key, next_bitmap)) => {
-                    let key = peek.key;
-                    peek.key = next_key;
-                    let bitmap = mem::replace(&mut peek.bitmap, next_bitmap);
-                    (key, bitmap)
-                }
-                None => {
-                    let poped = PeekMut::pop(peek);
-                    (poped.key, poped.bitmap)
-                }
-            };
-
-            if let Some((first_key, _)) = bitmaps.first() {
-                if *first_key != key {
-                    let current_key = *first_key;
-                    let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).sub();
-                    map.insert(current_key, computed_bitmap);
-                }
-            }
-
-            bitmaps.push((key, bitmap));
-        }
-
-        if let Some((first_key, _)) = bitmaps.first() {
-            let current_key = *first_key;
-            let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).sub();
-            map.insert(current_key, computed_bitmap);
-        }
-
-        RoaringTreemap { map }
+        simple_multi_op_ref::<_, SubOp>(self)
     }
 
     fn xor(self) -> Self::Bitmap {
-        let mut heap: BinaryHeap<_> = self
-            .into_iter()
-            .filter_map(|treemap| {
-                let mut iter = treemap.map.iter();
-                iter.next().map(|(&key, bitmap)| PeekedRoaringBitmap { key, bitmap, iter })
-            })
-            .collect();
-
-        let mut bitmaps = Vec::new();
-        let mut map = BTreeMap::new();
-
-        while let Some(mut peek) = heap.peek_mut() {
-            let (key, bitmap) = match peek.iter.next() {
-                Some((&next_key, next_bitmap)) => {
-                    let key = peek.key;
-                    peek.key = next_key;
-                    let bitmap = mem::replace(&mut peek.bitmap, next_bitmap);
-                    (key, bitmap)
-                }
-                None => {
-                    let poped = PeekMut::pop(peek);
-                    (poped.key, poped.bitmap)
-                }
-            };
-
-            if let Some((first_key, _)) = bitmaps.first() {
-                if *first_key != key {
-                    let current_key = *first_key;
-                    let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).xor();
-                    map.insert(current_key, computed_bitmap);
-                }
-            }
-
-            bitmaps.push((key, bitmap));
-        }
-
-        if let Some((first_key, _)) = bitmaps.first() {
-            let current_key = *first_key;
-            let computed_bitmap = bitmaps.drain(..).map(|(_, rb)| rb).xor();
-            map.insert(current_key, computed_bitmap);
-        }
-
-        RoaringTreemap { map }
+        simple_multi_op_ref::<_, XorOp>(self)
     }
 }
 
