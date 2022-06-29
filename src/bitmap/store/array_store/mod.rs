@@ -12,7 +12,6 @@ use std::ops::{BitAnd, BitAndAssign, BitOr, BitXor, RangeInclusive, Sub, SubAssi
 use super::bitmap_store::{bit, key, BitmapStore, BITMAP_LENGTH};
 
 #[derive(Clone, Eq, PartialEq)]
-#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct ArrayStore {
     vec: Vec<u16>,
 }
