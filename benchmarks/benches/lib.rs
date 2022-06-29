@@ -675,7 +675,7 @@ fn insert_range_bitmap(c: &mut Criterion) {
 }
 
 fn insert_range_treemap(c: &mut Criterion) {
-    for &size in &[10, 100, 1_000, 5_000, 10_000, 20_000] {
+    for &size in &[1_000_u64, 10_000u64, 2 * (u32::MAX as u64)] {
         let mut group = c.benchmark_group("insert_range_treemap");
         group.throughput(criterion::Throughput::Elements(size as u64));
         group.bench_function(format!("from_empty_{}", size), |b| {
