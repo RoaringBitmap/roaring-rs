@@ -414,11 +414,11 @@ where
     }
 
     fn and(self) -> Self::Bitmap {
-        simple_multi_op_owned::<_, AndOp>(self)
+        ordered_multi_op_owned::<_, AndOp>(self)
     }
 
     fn sub(self) -> Self::Bitmap {
-        simple_multi_op_owned::<_, SubOp>(self)
+        ordered_multi_op_owned::<_, SubOp>(self)
     }
 
     fn xor(self) -> Self::Bitmap {
@@ -478,6 +478,69 @@ where
     }
 
     RoaringTreemap { map }
+}
+
+#[inline]
+fn ordered_multi_op_owned<I, O: Op>(treemaps: I) -> RoaringTreemap
+where
+    I: IntoIterator<Item = RoaringTreemap>,
+{
+    let mut treemaps = treemaps.into_iter();
+    let mut treemap = match treemaps.next() {
+        Some(treemap) => treemap,
+        None => return RoaringTreemap::new(),
+    };
+    let mut treemaps: Vec<_> = treemaps.collect();
+
+    // for each keys in the first treemap we're going find and accumulate all the corresponding bitmaps
+    let keys: Vec<_> = treemap.map.keys().copied().collect();
+    for k in keys {
+        // the unwrap is safe since we're iterating on our keys
+        let current_bitmap = treemap.map.remove(&k).unwrap();
+        let new_bitmap =
+            O::op_owned(std::iter::once(current_bitmap).chain(
+                treemaps
+                    .iter_mut()
+                    .map(|treemap| treemap.map.remove(&k).unwrap_or(RoaringBitmap::new())),
+            ));
+        if !new_bitmap.is_empty() {
+            treemap.map.insert(k, new_bitmap);
+        }
+    }
+
+    treemap
+}
+
+#[inline]
+fn ordered_multi_op_ref<'a, I, O: Op>(treemaps: I) -> RoaringTreemap
+where
+    I: IntoIterator<Item = &'a RoaringTreemap>,
+{
+    let mut treemaps = treemaps.into_iter();
+    let treemap = match treemaps.next() {
+        Some(treemap) => treemap,
+        None => return RoaringTreemap::new(),
+    };
+    let treemaps: Vec<_> = treemaps.collect();
+
+    let mut ret = RoaringTreemap::new();
+
+    // for each keys in the first treemap we're going find and accumulate all the corresponding bitmaps
+    let keys: Vec<_> = treemap.map.keys().copied().collect();
+    let empty_bitmap = RoaringBitmap::new();
+    for k in keys {
+        // the unwrap is safe since we're iterating on our keys
+        let current_bitmap = treemap.map.get(&k).unwrap();
+        let new_bitmap = O::op_ref(
+            std::iter::once(current_bitmap)
+                .chain(treemaps.iter().map(|treemap| treemap.map.get(&k).unwrap_or(&empty_bitmap))),
+        );
+        if !new_bitmap.is_empty() {
+            ret.map.insert(k, new_bitmap);
+        }
+    }
+
+    ret
 }
 
 #[inline]
@@ -555,11 +618,11 @@ enum AndOp {}
 
 impl Op for AndOp {
     fn op_owned<J: IntoIterator<Item = RoaringBitmap>>(iter: J) -> RoaringBitmap {
-        iter.sub()
+        iter.and()
     }
 
     fn op_ref<'a, J: IntoIterator<Item = &'a RoaringBitmap>>(iter: J) -> RoaringBitmap {
-        iter.sub()
+        iter.and()
     }
 }
 
@@ -598,11 +661,11 @@ where
     }
 
     fn and(self) -> Self::Bitmap {
-        simple_multi_op_ref::<_, AndOp>(self)
+        ordered_multi_op_ref::<_, AndOp>(self)
     }
 
     fn sub(self) -> Self::Bitmap {
-        simple_multi_op_ref::<_, SubOp>(self)
+        ordered_multi_op_ref::<_, SubOp>(self)
     }
 
     fn xor(self) -> Self::Bitmap {
