@@ -50,13 +50,7 @@ impl Error for NonSortedIntegers {}
 
 /// An [`IntoIterator`] blanket implementation that provides extra methods for [`RoaringBitmap`]
 /// and [`RoaringTreemap`]
-///
-/// This trait is parameterized by a sealed trait and cannot be implemented for types outside
-/// of this crate
-pub trait IterExt<T>: IntoIterator<Item = T>
-where
-    T: private::Roaring,
-{
+pub trait IterExt<T>: IntoIterator<Item = T> {
     /// The type of output from operations.
     type Bitmap;
 
@@ -71,14 +65,4 @@ where
 
     /// The `symmetric difference` between all elements.
     fn xor(self) -> Self::Bitmap;
-}
-
-mod private {
-    use crate::{RoaringBitmap, RoaringTreemap};
-
-    pub trait Roaring {}
-    impl Roaring for RoaringBitmap {}
-    impl Roaring for &RoaringBitmap {}
-    impl Roaring for RoaringTreemap {}
-    impl Roaring for &RoaringTreemap {}
 }
