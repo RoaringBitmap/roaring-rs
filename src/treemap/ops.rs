@@ -499,9 +499,7 @@ where
         let current_bitmap = treemap.map.remove(&k).unwrap();
         let new_bitmap =
             O::op_owned(std::iter::once(current_bitmap).chain(
-                treemaps
-                    .iter_mut()
-                    .map(|treemap| treemap.map.remove(&k).unwrap_or(RoaringBitmap::new())),
+                treemaps.iter_mut().map(|treemap| treemap.map.remove(&k).unwrap_or_default()),
             ));
         if !new_bitmap.is_empty() {
             treemap.map.insert(k, new_bitmap);
