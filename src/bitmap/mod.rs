@@ -14,6 +14,11 @@ mod iter;
 mod ops;
 mod serialization;
 
+use serde::de::Visitor;
+use serde::Deserialize;
+use serde::Deserializer;
+use serde::Serialize;
+
 use self::cmp::Pairs;
 pub use self::iter::IntoIter;
 pub use self::iter::Iter;
@@ -37,4 +42,42 @@ pub use self::iter::Iter;
 #[derive(PartialEq)]
 pub struct RoaringBitmap {
     containers: Vec<container::Container>,
+}
+
+impl<'de> Deserialize<'de> for RoaringBitmap {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct BitmapVisitor;
+
+        impl<'de> Visitor<'de> for BitmapVisitor {
+            type Value = RoaringBitmap;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("roaring bitmap")
+            }
+
+            fn visit_bytes<E>(self, bytes: &[u8]) -> Result<RoaringBitmap, E>
+            where
+                E: serde::de::Error,
+            {
+                RoaringBitmap::deserialize_from(bytes).map_err(serde::de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_bytes(BitmapVisitor)
+    }
+}
+
+impl Serialize for RoaringBitmap {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut buf = Vec::new();
+        self.serialize_into(&mut buf).map_err(serde::ser::Error::custom)?;
+
+        serializer.serialize_bytes(&buf)
+    }
 }
