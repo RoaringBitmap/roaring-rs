@@ -14,6 +14,7 @@ mod iter;
 mod ops;
 mod serialization;
 
+use serde::de::SeqAccess;
 use serde::de::Visitor;
 use serde::Deserialize;
 use serde::Deserializer;
@@ -63,6 +64,17 @@ impl<'de> Deserialize<'de> for RoaringBitmap {
                 E: serde::de::Error,
             {
                 RoaringBitmap::deserialize_from(bytes).map_err(serde::de::Error::custom)
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<RoaringBitmap, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let mut bytes: Vec<u8> = Vec::new();
+                while let Some(el) = seq.next_element()? {
+                    bytes.push(el);
+                }
+                RoaringBitmap::deserialize_from(&*bytes).map_err(serde::de::Error::custom)
             }
         }
 
