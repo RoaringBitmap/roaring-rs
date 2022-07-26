@@ -13,7 +13,7 @@
 use super::scalar;
 use core::simd::{
     mask16x8, simd_swizzle, u16x8, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount,
-    ToBitMask,
+    ToBitMask, SimdPartialEq, SimdPartialOrd,
 };
 
 // a one-pass SSE union algorithm
@@ -36,7 +36,7 @@ pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
     #[inline]
     fn handle_vector(old: u16x8, new: u16x8, f: impl FnOnce(u16x8, u8)) {
         let tmp: u16x8 = Shr1::swizzle2(new, old);
-        let mask = 255 - tmp.lanes_eq(new).to_bitmask();
+        let mask = 255 - tmp.simd_eq(new).to_bitmask();
         f(new, mask);
     }
 
@@ -179,8 +179,8 @@ pub fn xor(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
     fn handle_vector(old: u16x8, new: u16x8, f: impl FnOnce(u16x8, u8)) {
         let tmp1: u16x8 = Shr2::swizzle2(new, old);
         let tmp2: u16x8 = Shr1::swizzle2(new, old);
-        let eq_l: mask16x8 = tmp2.lanes_eq(tmp1);
-        let eq_r: mask16x8 = tmp2.lanes_eq(new);
+        let eq_l: mask16x8 = tmp2.simd_eq(tmp1);
+        let eq_r: mask16x8 = tmp2.simd_eq(new);
         let eq_l_or_r: mask16x8 = eq_l | eq_r;
         let mask: u8 = eq_l_or_r.to_bitmask();
         f(tmp2, 255 - mask);
@@ -353,7 +353,7 @@ where
     U: SimdElement + PartialOrd,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    lhs.lanes_le(rhs).select(lhs, rhs)
+    lhs.simd_le(rhs).select(lhs, rhs)
 }
 
 /// compute the max for each lane in `a` and `b`
@@ -363,7 +363,7 @@ where
     U: SimdElement + PartialOrd,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    lhs.lanes_gt(rhs).select(lhs, rhs)
+    lhs.simd_gt(rhs).select(lhs, rhs)
 }
 
 #[inline]
@@ -434,14 +434,14 @@ fn matrix_cmp<U>(a: Simd<U, 8>, b: Simd<U, 8>) -> Mask<<U as SimdElement>::Mask,
 where
     U: SimdElement + PartialEq,
 {
-    a.lanes_eq(b)
-        | a.lanes_eq(b.rotate_lanes_left::<1>())
-        | a.lanes_eq(b.rotate_lanes_left::<2>())
-        | a.lanes_eq(b.rotate_lanes_left::<3>())
-        | a.lanes_eq(b.rotate_lanes_left::<4>())
-        | a.lanes_eq(b.rotate_lanes_left::<5>())
-        | a.lanes_eq(b.rotate_lanes_left::<6>())
-        | a.lanes_eq(b.rotate_lanes_left::<7>())
+    a.simd_eq(b)
+        | a.simd_eq(b.rotate_lanes_left::<1>())
+        | a.simd_eq(b.rotate_lanes_left::<2>())
+        | a.simd_eq(b.rotate_lanes_left::<3>())
+        | a.simd_eq(b.rotate_lanes_left::<4>())
+        | a.simd_eq(b.rotate_lanes_left::<5>())
+        | a.simd_eq(b.rotate_lanes_left::<6>())
+        | a.simd_eq(b.rotate_lanes_left::<7>())
 }
 
 use crate::bitmap::store::array_store::visitor::BinaryOperationVisitor;
