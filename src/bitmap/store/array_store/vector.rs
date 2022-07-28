@@ -12,8 +12,8 @@
 
 use super::scalar;
 use core::simd::{
-    mask16x8, simd_swizzle, u16x8, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount,
-    ToBitMask,
+    mask16x8, simd_swizzle, u16x8, LaneCount, Mask, Simd, SimdElement, SimdPartialEq,
+    SimdPartialOrd, SupportedLaneCount, ToBitMask,
 };
 
 // a one-pass SSE union algorithm
@@ -36,7 +36,7 @@ pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
     #[inline]
     fn handle_vector(old: u16x8, new: u16x8, f: impl FnOnce(u16x8, u8)) {
         let tmp: u16x8 = Shr1::swizzle2(new, old);
-        let mask = 255 - tmp.lanes_eq(new).to_bitmask();
+        let mask = 255 - tmp.simd_eq(new).to_bitmask();
         f(new, mask);
     }
 
@@ -50,7 +50,7 @@ pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
 
     let v_a: u16x8 = load(lhs);
     let v_b: u16x8 = load(rhs);
-    let [mut v_min, mut v_max] = simd_merge(v_a, v_b);
+    let [mut v_min, mut v_max] = simd_merge_u16(v_a, v_b);
 
     let mut i = 1;
     let mut j = 1;
@@ -78,11 +78,11 @@ pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
                     break;
                 }
             }
-            [v_min, v_max] = simd_merge(v, v_max);
+            [v_min, v_max] = simd_merge_u16(v, v_max);
             handle_vector(v_prev, v_min, |v, m| visitor.visit_vector(v, m));
             v_prev = v_min;
         }
-        [v_min, v_max] = simd_merge(v, v_max);
+        [v_min, v_max] = simd_merge_u16(v, v_max);
         handle_vector(v_prev, v_min, |v, m| visitor.visit_vector(v, m));
         v_prev = v_min;
     }
@@ -128,7 +128,7 @@ pub fn and(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
         let mut v_a: u16x8 = load(&lhs[i..]);
         let mut v_b: u16x8 = load(&rhs[j..]);
         loop {
-            let mask = matrix_cmp(v_a, v_b).to_bitmask();
+            let mask = matrix_cmp_u16(v_a, v_b).to_bitmask();
             visitor.visit_vector(v_a, mask);
 
             let a_max: u16 = lhs[i + u16x8::LANES - 1];
@@ -179,8 +179,8 @@ pub fn xor(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
     fn handle_vector(old: u16x8, new: u16x8, f: impl FnOnce(u16x8, u8)) {
         let tmp1: u16x8 = Shr2::swizzle2(new, old);
         let tmp2: u16x8 = Shr1::swizzle2(new, old);
-        let eq_l: mask16x8 = tmp2.lanes_eq(tmp1);
-        let eq_r: mask16x8 = tmp2.lanes_eq(new);
+        let eq_l: mask16x8 = tmp2.simd_eq(tmp1);
+        let eq_r: mask16x8 = tmp2.simd_eq(new);
         let eq_l_or_r: mask16x8 = eq_l | eq_r;
         let mask: u8 = eq_l_or_r.to_bitmask();
         f(tmp2, 255 - mask);
@@ -196,7 +196,7 @@ pub fn xor(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
 
     let v_a: u16x8 = load(lhs);
     let v_b: u16x8 = load(rhs);
-    let [mut v_min, mut v_max] = simd_merge(v_a, v_b);
+    let [mut v_min, mut v_max] = simd_merge_u16(v_a, v_b);
 
     let mut i = 1;
     let mut j = 1;
@@ -224,11 +224,11 @@ pub fn xor(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
                     break;
                 }
             }
-            [v_min, v_max] = simd_merge(v, v_max);
+            [v_min, v_max] = simd_merge_u16(v, v_max);
             handle_vector(v_prev, v_min, |v, m| visitor.visit_vector(v, m));
             v_prev = v_min;
         }
-        [v_min, v_max] = simd_merge(v, v_max);
+        [v_min, v_max] = simd_merge_u16(v, v_max);
         handle_vector(v_prev, v_min, |v, m| visitor.visit_vector(v, m));
         v_prev = v_min;
     }
@@ -296,7 +296,7 @@ pub fn sub(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
         loop {
             // a_found_in_b will contain a mask indicate for each entry in A
             // whether it is seen in B
-            let a_found_in_b: u8 = matrix_cmp(v_a, v_b).to_bitmask();
+            let a_found_in_b: u8 = matrix_cmp_u16(v_a, v_b).to_bitmask();
             runningmask_a_found_in_b |= a_found_in_b;
             // we always compare the last values of A and B
             let a_max: u16 = lhs[i + u16x8::LANES - 1];
@@ -334,7 +334,7 @@ pub fn sub(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
             let mut buffer: [u16; 8] = [0; 8]; // buffer to do a masked load
             buffer[..rhs.len() - j].copy_from_slice(&rhs[j..]);
             v_b = Simd::from_array(buffer);
-            let a_found_in_b: u8 = matrix_cmp(v_a, v_b).to_bitmask();
+            let a_found_in_b: u8 = matrix_cmp_u16(v_a, v_b).to_bitmask();
             runningmask_a_found_in_b |= a_found_in_b;
             let bitmask_belongs_to_difference: u8 = runningmask_a_found_in_b ^ 0xFF;
             visitor.visit_vector(v_a, bitmask_belongs_to_difference);
@@ -348,22 +348,26 @@ pub fn sub(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
 
 /// compute the min for each lane in `a` and `b`
 #[inline]
-fn lanes_min<U, const LANES: usize>(lhs: Simd<U, LANES>, rhs: Simd<U, LANES>) -> Simd<U, LANES>
+fn lanes_min_u16<const LANES: usize>(
+    lhs: Simd<u16, LANES>,
+    rhs: Simd<u16, LANES>,
+) -> Simd<u16, LANES>
 where
-    U: SimdElement + PartialOrd,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    lhs.lanes_le(rhs).select(lhs, rhs)
+    lhs.simd_le(rhs).select(lhs, rhs)
 }
 
 /// compute the max for each lane in `a` and `b`
 #[inline]
-fn lanes_max<U, const LANES: usize>(lhs: Simd<U, LANES>, rhs: Simd<U, LANES>) -> Simd<U, LANES>
+fn lanes_max_u16<const LANES: usize>(
+    lhs: Simd<u16, LANES>,
+    rhs: Simd<u16, LANES>,
+) -> Simd<u16, LANES>
 where
-    U: SimdElement + PartialOrd,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    lhs.lanes_gt(rhs).select(lhs, rhs)
+    lhs.simd_gt(rhs).select(lhs, rhs)
 }
 
 #[inline]
@@ -412,7 +416,6 @@ where
     U: SimdElement + PartialOrd,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    // unsafe { std::ptr::write_unaligned(out as *mut _ as *mut [U; LANES], v.to_array()) }
     unsafe { std::ptr::write_unaligned(out as *mut _ as *mut Simd<U, LANES>, v) }
 }
 
@@ -424,24 +427,21 @@ where
 /// ```ignore
 /// let a = Simd::from_array([1, 2, 3, 4, 32, 33, 34, 35]);
 /// let b = Simd::from_array([2, 4, 6, 8, 10, 12, 14, 16]);
-/// let result = matrix_cmp(a, b);
+/// let result = matrix_cmp_u16(a, b);
 /// assert_eq!(result, Mask::from_array([false, true, false, true, false, false, false, false]));
 /// ```
 #[inline]
 // It would be nice to implement this for all supported lane counts
 // However, we currently only support u16x8 so it's not really necessary
-fn matrix_cmp<U>(a: Simd<U, 8>, b: Simd<U, 8>) -> Mask<<U as SimdElement>::Mask, 8>
-where
-    U: SimdElement + PartialEq,
-{
-    a.lanes_eq(b)
-        | a.lanes_eq(b.rotate_lanes_left::<1>())
-        | a.lanes_eq(b.rotate_lanes_left::<2>())
-        | a.lanes_eq(b.rotate_lanes_left::<3>())
-        | a.lanes_eq(b.rotate_lanes_left::<4>())
-        | a.lanes_eq(b.rotate_lanes_left::<5>())
-        | a.lanes_eq(b.rotate_lanes_left::<6>())
-        | a.lanes_eq(b.rotate_lanes_left::<7>())
+fn matrix_cmp_u16(a: Simd<u16, 8>, b: Simd<u16, 8>) -> Mask<i16, 8> {
+    a.simd_eq(b)
+        | a.simd_eq(b.rotate_lanes_left::<1>())
+        | a.simd_eq(b.rotate_lanes_left::<2>())
+        | a.simd_eq(b.rotate_lanes_left::<3>())
+        | a.simd_eq(b.rotate_lanes_left::<4>())
+        | a.simd_eq(b.rotate_lanes_left::<5>())
+        | a.simd_eq(b.rotate_lanes_left::<6>())
+        | a.simd_eq(b.rotate_lanes_left::<7>())
 }
 
 use crate::bitmap::store::array_store::visitor::BinaryOperationVisitor;
@@ -466,20 +466,17 @@ impl Swizzle2<8, 8> for Shr2 {
 /// Standard merge. See, e.g., Inoue and Taura, SIMD- and Cache-Friendly
 /// Algorithm for Sorting an Array of Structures
 #[inline]
-fn simd_merge<U>(a: Simd<U, 8>, b: Simd<U, 8>) -> [Simd<U, 8>; 2]
-where
-    U: SimdElement + PartialOrd,
-{
-    let mut tmp: Simd<U, 8> = lanes_min(a, b);
-    let mut max: Simd<U, 8> = lanes_max(a, b);
+fn simd_merge_u16(a: Simd<u16, 8>, b: Simd<u16, 8>) -> [Simd<u16, 8>; 2] {
+    let mut tmp: Simd<u16, 8> = lanes_min_u16(a, b);
+    let mut max: Simd<u16, 8> = lanes_max_u16(a, b);
     tmp = tmp.rotate_lanes_left::<1>();
-    let mut min: Simd<U, 8> = lanes_min(tmp, max);
+    let mut min: Simd<u16, 8> = lanes_min_u16(tmp, max);
     for _ in 0..6 {
-        max = lanes_max(tmp, max);
+        max = lanes_max_u16(tmp, max);
         tmp = min.rotate_lanes_left::<1>();
-        min = lanes_min(tmp, max);
+        min = lanes_min_u16(tmp, max);
     }
-    max = lanes_max(tmp, max);
+    max = lanes_max_u16(tmp, max);
     min = min.rotate_lanes_left::<1>();
     [min, max]
 }
