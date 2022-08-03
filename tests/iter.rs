@@ -6,13 +6,21 @@ use std::iter::FromIterator;
 use roaring::RoaringBitmap;
 
 #[test]
-fn array() {
+fn range() {
     let original = (0..2000).collect::<RoaringBitmap>();
     let clone = RoaringBitmap::from_iter(&original);
     let clone2 = RoaringBitmap::from_iter(original.clone());
 
     assert_eq!(clone, original);
     assert_eq!(clone2, original);
+}
+
+#[test]
+fn array() {
+    let original = (0..5).collect::<RoaringBitmap>();
+    let clone = RoaringBitmap::from([0, 1, 2, 3, 4]);
+
+    assert_eq!(clone, original);
 }
 
 #[test]
@@ -74,6 +82,14 @@ fn rev_bitmap() {
     let bitmap = values.clone().collect::<RoaringBitmap>();
 
     assert!(values.into_iter().rev().eq(bitmap.iter().rev()));
+}
+
+#[test]
+fn from_single() {
+    let value = 10;
+    let bitmap = RoaringBitmap::from(value);
+
+    assert!(bitmap.contains(value));
 }
 
 proptest! {
