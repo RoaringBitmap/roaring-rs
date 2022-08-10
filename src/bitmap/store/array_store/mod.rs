@@ -205,6 +205,23 @@ impl ArrayStore {
     pub fn as_slice(&self) -> &[u16] {
         &self.vec
     }
+
+    /// Retains only the elements specified by the predicate.
+    pub fn retain(&mut self, mut f: impl FnMut(u16) -> bool) {
+        // Idea to avoid branching from "Engineering Fast Indexes for Big Data
+        // Applications" talk by Daniel Lemire
+        // (https://youtu.be/1QMgGxiCFWE?t=1242).
+        let slice = self.vec.as_mut_slice();
+        let mut pos = 0;
+        for i in 0..slice.len() {
+            let val = slice[i];
+            // We want to do `slice[pos] = val` but we don't need the bounds check.
+            // SAFETY: pos is always at most i because `f(val) as usize` is at most 1.
+            unsafe { *slice.get_unchecked_mut(pos) = val }
+            pos += f(val) as usize;
+        }
+        self.vec.truncate(pos);
+    }
 }
 
 impl Default for ArrayStore {
@@ -300,9 +317,9 @@ impl BitAndAssign<&Self> for ArrayStore {
         #[cfg(not(feature = "simd"))]
         {
             let mut i = 0;
-            self.vec.retain(|x| {
-                i += rhs.iter().skip(i).position(|y| y >= x).unwrap_or(rhs.vec.len());
-                rhs.vec.get(i).map_or(false, |y| x == y)
+            self.retain(|x| {
+                i += rhs.iter().skip(i).position(|y| *y >= x).unwrap_or(rhs.vec.len());
+                rhs.vec.get(i).map_or(false, |y| x == *y)
             });
         }
     }
@@ -310,7 +327,7 @@ impl BitAndAssign<&Self> for ArrayStore {
 
 impl BitAndAssign<&BitmapStore> for ArrayStore {
     fn bitand_assign(&mut self, rhs: &BitmapStore) {
-        self.vec.retain(|x| rhs.contains(*x));
+        self.retain(|x| rhs.contains(x));
     }
 }
 
@@ -339,9 +356,9 @@ impl SubAssign<&Self> for ArrayStore {
         #[cfg(not(feature = "simd"))]
         {
             let mut i = 0;
-            self.vec.retain(|x| {
-                i += rhs.iter().skip(i).position(|y| y >= x).unwrap_or(rhs.vec.len());
-                rhs.vec.get(i).map_or(true, |y| x != y)
+            self.retain(|x| {
+                i += rhs.iter().skip(i).position(|y| *y >= x).unwrap_or(rhs.vec.len());
+                rhs.vec.get(i).map_or(true, |y| x != *y)
             });
         }
     }
@@ -349,7 +366,7 @@ impl SubAssign<&Self> for ArrayStore {
 
 impl SubAssign<&BitmapStore> for ArrayStore {
     fn sub_assign(&mut self, rhs: &BitmapStore) {
-        self.vec.retain(|x| !rhs.contains(*x));
+        self.retain(|x| !rhs.contains(x));
     }
 }
 
