@@ -91,6 +91,16 @@ proptest! {
 }
 
 #[test]
+fn from_iter() {
+    // This test verifies that the public API allows conversion from iterators
+    // with u64 as well as &u64 elements.
+    let vals = vec![1, 5, 1_000_000_000_000_000];
+    let a = RoaringTreemap::from_iter(vals.iter());
+    let b = RoaringTreemap::from_iter(vals.into_iter());
+    assert_eq!(a, b);
+}
+
+#[test]
 fn interleaved() {
     let values = (1..3)
         .chain(1_000_000..1_012_003)

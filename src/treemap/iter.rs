@@ -238,10 +238,26 @@ impl FromIterator<u64> for RoaringTreemap {
     }
 }
 
+impl<'a> FromIterator<&'a u64> for RoaringTreemap {
+    fn from_iter<I: IntoIterator<Item = &'a u64>>(iterator: I) -> RoaringTreemap {
+        let mut rb = RoaringTreemap::new();
+        rb.extend(iterator);
+        rb
+    }
+}
+
 impl Extend<u64> for RoaringTreemap {
     fn extend<I: IntoIterator<Item = u64>>(&mut self, iterator: I) {
         for value in iterator {
             self.insert(value);
+        }
+    }
+}
+
+impl<'a> Extend<&'a u64> for RoaringTreemap {
+    fn extend<I: IntoIterator<Item = &'a u64>>(&mut self, iterator: I) {
+        for value in iterator {
+            self.insert(*value);
         }
     }
 }
