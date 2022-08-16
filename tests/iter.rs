@@ -1,5 +1,3 @@
-extern crate roaring;
-
 use proptest::arbitrary::any;
 use proptest::collection::btree_set;
 use proptest::proptest;
@@ -85,6 +83,16 @@ proptest! {
 
         assert!(values.into_iter().rev().eq(bitmap.iter().rev()));
     }
+}
+
+#[test]
+fn from_iter() {
+    // This test verifies that the public API allows conversion from iterators
+    // with u32 as well as &u32 elements.
+    let vals = vec![1, 5, 10000];
+    let a = RoaringBitmap::from_iter(vals.iter());
+    let b = RoaringBitmap::from_iter(vals.into_iter());
+    assert_eq!(a, b);
 }
 
 #[derive(Clone, Debug)]
