@@ -52,17 +52,17 @@ impl Error for NonSortedIntegers {}
 /// and [`RoaringTreemap`]
 pub trait IterExt<T>: IntoIterator<Item = T> {
     /// The type of output from operations.
-    type Bitmap;
+    type Output;
 
     /// The `union` between all elements.
-    fn or(self) -> Self::Bitmap;
+    fn or(self) -> Self::Output;
 
     /// The `intersection` between all elements.
-    fn and(self) -> Self::Bitmap;
+    fn and(self) -> Self::Output;
 
     /// The `difference` between all elements.
-    fn sub(self) -> Self::Bitmap;
+    fn sub(self) -> Self::Output;
 
     /// The `symmetric difference` between all elements.
-    fn xor(self) -> Self::Bitmap;
+    fn xor(self) -> Self::Output;
 }

@@ -445,9 +445,9 @@ impl<I> IterExt<RoaringBitmap> for I
 where
     I: IntoIterator<Item = RoaringBitmap>,
 {
-    type Bitmap = RoaringBitmap;
+    type Output = RoaringBitmap;
 
-    fn or(self) -> Self::Bitmap {
+    fn or(self) -> Self::Output {
         try_naive_lazy_multi_op_owned(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
             |a, b| BitOrAssign::bitor_assign(a, b),
@@ -455,7 +455,7 @@ where
         .unwrap()
     }
 
-    fn and(self) -> Self::Bitmap {
+    fn and(self) -> Self::Output {
         try_simple_multi_op_owned(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
             |a, b| BitAndAssign::bitand_assign(a, b),
@@ -463,7 +463,7 @@ where
         .unwrap()
     }
 
-    fn sub(self) -> Self::Bitmap {
+    fn sub(self) -> Self::Output {
         try_simple_multi_op_owned(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
             |a, b| SubAssign::sub_assign(a, b),
@@ -471,7 +471,7 @@ where
         .unwrap()
     }
 
-    fn xor(self) -> Self::Bitmap {
+    fn xor(self) -> Self::Output {
         try_naive_lazy_multi_op_owned(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
             |a, b| BitXorAssign::bitxor_assign(a, b),
@@ -484,21 +484,21 @@ impl<I, E> IterExt<Result<RoaringBitmap, E>> for I
 where
     I: IntoIterator<Item = Result<RoaringBitmap, E>>,
 {
-    type Bitmap = Result<RoaringBitmap, E>;
+    type Output = Result<RoaringBitmap, E>;
 
-    fn or(self) -> Self::Bitmap {
+    fn or(self) -> Self::Output {
         try_naive_lazy_multi_op_owned(self, |a, b| BitOrAssign::bitor_assign(a, b))
     }
 
-    fn and(self) -> Self::Bitmap {
+    fn and(self) -> Self::Output {
         try_simple_multi_op_owned(self, |a, b| BitAndAssign::bitand_assign(a, b))
     }
 
-    fn sub(self) -> Self::Bitmap {
+    fn sub(self) -> Self::Output {
         try_simple_multi_op_owned(self, |a, b| SubAssign::sub_assign(a, b))
     }
 
-    fn xor(self) -> Self::Bitmap {
+    fn xor(self) -> Self::Output {
         try_naive_lazy_multi_op_owned(self, |a, b| BitXorAssign::bitxor_assign(a, b))
     }
 }
@@ -507,9 +507,9 @@ impl<'a, I> IterExt<&'a RoaringBitmap> for I
 where
     I: IntoIterator<Item = &'a RoaringBitmap>,
 {
-    type Bitmap = RoaringBitmap;
+    type Output = RoaringBitmap;
 
-    fn or(self) -> Self::Bitmap {
+    fn or(self) -> Self::Output {
         try_naive_lazy_multi_op_ref(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
             |a, b| BitOrAssign::bitor_assign(a, b),
@@ -517,21 +517,21 @@ where
         .unwrap()
     }
 
-    fn and(self) -> Self::Bitmap {
+    fn and(self) -> Self::Output {
         try_simple_multi_op_ref(self.into_iter().map(Ok::<_, std::convert::Infallible>), |a, b| {
             BitAndAssign::bitand_assign(a, b)
         })
         .unwrap()
     }
 
-    fn sub(self) -> Self::Bitmap {
+    fn sub(self) -> Self::Output {
         try_simple_multi_op_ref(self.into_iter().map(Ok::<_, std::convert::Infallible>), |a, b| {
             SubAssign::sub_assign(a, b)
         })
         .unwrap()
     }
 
-    fn xor(self) -> Self::Bitmap {
+    fn xor(self) -> Self::Output {
         try_naive_lazy_multi_op_ref(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
             |a, b| BitXorAssign::bitxor_assign(a, b),
@@ -544,21 +544,21 @@ impl<'a, I, E: 'a> IterExt<Result<&'a RoaringBitmap, E>> for I
 where
     I: IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
 {
-    type Bitmap = Result<RoaringBitmap, E>;
+    type Output = Result<RoaringBitmap, E>;
 
-    fn or(self) -> Self::Bitmap {
+    fn or(self) -> Self::Output {
         try_naive_lazy_multi_op_ref(self, |a, b| BitOrAssign::bitor_assign(a, b))
     }
 
-    fn and(self) -> Self::Bitmap {
+    fn and(self) -> Self::Output {
         try_simple_multi_op_ref(self, |a, b| BitAndAssign::bitand_assign(a, b))
     }
 
-    fn sub(self) -> Self::Bitmap {
+    fn sub(self) -> Self::Output {
         try_simple_multi_op_ref(self, |a, b| SubAssign::sub_assign(a, b))
     }
 
-    fn xor(self) -> Self::Bitmap {
+    fn xor(self) -> Self::Output {
         try_naive_lazy_multi_op_ref(self, |a, b| BitXorAssign::bitxor_assign(a, b))
     }
 }

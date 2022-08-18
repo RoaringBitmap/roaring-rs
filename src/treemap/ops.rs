@@ -407,30 +407,30 @@ impl<I> IterExt<RoaringTreemap> for I
 where
     I: IntoIterator<Item = RoaringTreemap>,
 {
-    type Bitmap = RoaringTreemap;
+    type Output = RoaringTreemap;
 
-    fn or(self) -> Self::Bitmap {
+    fn or(self) -> Self::Output {
         try_simple_multi_op_owned::<_, _, OrOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
         .unwrap()
     }
 
-    fn and(self) -> Self::Bitmap {
+    fn and(self) -> Self::Output {
         try_ordered_multi_op_owned::<_, _, AndOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
         .unwrap()
     }
 
-    fn sub(self) -> Self::Bitmap {
+    fn sub(self) -> Self::Output {
         try_ordered_multi_op_owned::<_, _, SubOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
         .unwrap()
     }
 
-    fn xor(self) -> Self::Bitmap {
+    fn xor(self) -> Self::Output {
         try_simple_multi_op_owned::<_, _, XorOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
@@ -442,21 +442,21 @@ impl<I, E> IterExt<Result<RoaringTreemap, E>> for I
 where
     I: IntoIterator<Item = Result<RoaringTreemap, E>>,
 {
-    type Bitmap = Result<RoaringTreemap, E>;
+    type Output = Result<RoaringTreemap, E>;
 
-    fn or(self) -> Self::Bitmap {
+    fn or(self) -> Self::Output {
         try_simple_multi_op_owned::<_, _, OrOp>(self)
     }
 
-    fn and(self) -> Self::Bitmap {
+    fn and(self) -> Self::Output {
         try_ordered_multi_op_owned::<_, _, AndOp>(self)
     }
 
-    fn sub(self) -> Self::Bitmap {
+    fn sub(self) -> Self::Output {
         try_ordered_multi_op_owned::<_, _, SubOp>(self)
     }
 
-    fn xor(self) -> Self::Bitmap {
+    fn xor(self) -> Self::Output {
         try_simple_multi_op_owned::<_, _, XorOp>(self)
     }
 }
@@ -691,30 +691,30 @@ impl<'a, I> IterExt<&'a RoaringTreemap> for I
 where
     I: IntoIterator<Item = &'a RoaringTreemap>,
 {
-    type Bitmap = RoaringTreemap;
+    type Output = RoaringTreemap;
 
-    fn or(self) -> Self::Bitmap {
+    fn or(self) -> Self::Output {
         try_simple_multi_op_ref::<_, _, OrOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
         .unwrap()
     }
 
-    fn and(self) -> Self::Bitmap {
+    fn and(self) -> Self::Output {
         try_ordered_multi_op_ref::<_, _, AndOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
         .unwrap()
     }
 
-    fn sub(self) -> Self::Bitmap {
+    fn sub(self) -> Self::Output {
         try_ordered_multi_op_ref::<_, _, SubOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
         .unwrap()
     }
 
-    fn xor(self) -> Self::Bitmap {
+    fn xor(self) -> Self::Output {
         try_simple_multi_op_ref::<_, _, XorOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
@@ -726,21 +726,21 @@ impl<'a, I, E: 'a> IterExt<Result<&'a RoaringTreemap, E>> for I
 where
     I: IntoIterator<Item = Result<&'a RoaringTreemap, E>>,
 {
-    type Bitmap = Result<RoaringTreemap, E>;
+    type Output = Result<RoaringTreemap, E>;
 
-    fn or(self) -> Self::Bitmap {
+    fn or(self) -> Self::Output {
         try_simple_multi_op_ref::<_, _, OrOp>(self)
     }
 
-    fn and(self) -> Self::Bitmap {
+    fn and(self) -> Self::Output {
         try_ordered_multi_op_ref::<_, _, AndOp>(self)
     }
 
-    fn sub(self) -> Self::Bitmap {
+    fn sub(self) -> Self::Output {
         try_ordered_multi_op_ref::<_, _, SubOp>(self)
     }
 
-    fn xor(self) -> Self::Bitmap {
+    fn xor(self) -> Self::Output {
         try_simple_multi_op_ref::<_, _, XorOp>(self)
     }
 }
