@@ -448,19 +448,58 @@ where
     type Bitmap = RoaringBitmap;
 
     fn or(self) -> Self::Bitmap {
-        naive_lazy_multi_op_owned(self, |a, b| BitOrAssign::bitor_assign(a, b))
+        try_naive_lazy_multi_op_owned(
+            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+            |a, b| BitOrAssign::bitor_assign(a, b),
+        )
+        .unwrap()
     }
 
     fn and(self) -> Self::Bitmap {
-        simple_multi_op_owned(self, |a, b| BitAndAssign::bitand_assign(a, b))
+        try_simple_multi_op_owned(
+            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+            |a, b| BitAndAssign::bitand_assign(a, b),
+        )
+        .unwrap()
     }
 
     fn sub(self) -> Self::Bitmap {
-        simple_multi_op_owned(self, |a, b| SubAssign::sub_assign(a, b))
+        try_simple_multi_op_owned(
+            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+            |a, b| SubAssign::sub_assign(a, b),
+        )
+        .unwrap()
     }
 
     fn xor(self) -> Self::Bitmap {
-        naive_lazy_multi_op_owned(self, |a, b| BitXorAssign::bitxor_assign(a, b))
+        try_naive_lazy_multi_op_owned(
+            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+            |a, b| BitXorAssign::bitxor_assign(a, b),
+        )
+        .unwrap()
+    }
+}
+
+impl<I, E> IterExt<Result<RoaringBitmap, E>> for I
+where
+    I: IntoIterator<Item = Result<RoaringBitmap, E>>,
+{
+    type Bitmap = Result<RoaringBitmap, E>;
+
+    fn or(self) -> Self::Bitmap {
+        try_naive_lazy_multi_op_owned(self, |a, b| BitOrAssign::bitor_assign(a, b))
+    }
+
+    fn and(self) -> Self::Bitmap {
+        try_simple_multi_op_owned(self, |a, b| BitAndAssign::bitand_assign(a, b))
+    }
+
+    fn sub(self) -> Self::Bitmap {
+        try_simple_multi_op_owned(self, |a, b| SubAssign::sub_assign(a, b))
+    }
+
+    fn xor(self) -> Self::Bitmap {
+        try_naive_lazy_multi_op_owned(self, |a, b| BitXorAssign::bitxor_assign(a, b))
     }
 }
 
@@ -471,65 +510,102 @@ where
     type Bitmap = RoaringBitmap;
 
     fn or(self) -> Self::Bitmap {
-        naive_lazy_multi_op_ref(self, |a, b| BitOrAssign::bitor_assign(a, b))
+        try_naive_lazy_multi_op_ref(
+            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+            |a, b| BitOrAssign::bitor_assign(a, b),
+        )
+        .unwrap()
     }
 
     fn and(self) -> Self::Bitmap {
-        simple_multi_op_ref(self, |a, b| BitAndAssign::bitand_assign(a, b))
+        try_simple_multi_op_ref(self.into_iter().map(Ok::<_, std::convert::Infallible>), |a, b| {
+            BitAndAssign::bitand_assign(a, b)
+        })
+        .unwrap()
     }
 
     fn sub(self) -> Self::Bitmap {
-        simple_multi_op_ref(self, |a, b| SubAssign::sub_assign(a, b))
+        try_simple_multi_op_ref(self.into_iter().map(Ok::<_, std::convert::Infallible>), |a, b| {
+            SubAssign::sub_assign(a, b)
+        })
+        .unwrap()
     }
 
     fn xor(self) -> Self::Bitmap {
-        naive_lazy_multi_op_ref(self, |a, b| BitXorAssign::bitxor_assign(a, b))
+        try_naive_lazy_multi_op_ref(
+            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+            |a, b| BitXorAssign::bitxor_assign(a, b),
+        )
+        .unwrap()
+    }
+}
+
+impl<'a, I, E: 'a> IterExt<Result<&'a RoaringBitmap, E>> for I
+where
+    I: IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
+{
+    type Bitmap = Result<RoaringBitmap, E>;
+
+    fn or(self) -> Self::Bitmap {
+        try_naive_lazy_multi_op_ref(self, |a, b| BitOrAssign::bitor_assign(a, b))
+    }
+
+    fn and(self) -> Self::Bitmap {
+        try_simple_multi_op_ref(self, |a, b| BitAndAssign::bitand_assign(a, b))
+    }
+
+    fn sub(self) -> Self::Bitmap {
+        try_simple_multi_op_ref(self, |a, b| SubAssign::sub_assign(a, b))
+    }
+
+    fn xor(self) -> Self::Bitmap {
+        try_naive_lazy_multi_op_ref(self, |a, b| BitXorAssign::bitxor_assign(a, b))
     }
 }
 
 #[inline]
-fn simple_multi_op_owned(
-    bitmaps: impl IntoIterator<Item = RoaringBitmap>,
+fn try_simple_multi_op_owned<E>(
+    bitmaps: impl IntoIterator<Item = Result<RoaringBitmap, E>>,
     op: impl Fn(&mut RoaringBitmap, RoaringBitmap),
-) -> RoaringBitmap {
+) -> Result<RoaringBitmap, E> {
     let mut iter = bitmaps.into_iter();
-    match iter.next() {
+    match iter.next().transpose()? {
         Some(mut lhs) => {
-            iter.for_each(|rhs| op(&mut lhs, rhs));
-            lhs
+            iter.try_for_each(|rhs| rhs.map(|rhs| op(&mut lhs, rhs)))?;
+            Ok(lhs)
         }
-        None => RoaringBitmap::default(),
+        None => Ok(RoaringBitmap::default()),
     }
 }
 
 #[inline]
-fn simple_multi_op_ref<'a>(
-    bitmaps: impl IntoIterator<Item = &'a RoaringBitmap>,
+fn try_simple_multi_op_ref<'a, E>(
+    bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
     op: impl Fn(&mut RoaringBitmap, &RoaringBitmap),
-) -> RoaringBitmap {
+) -> Result<RoaringBitmap, E> {
     let mut iter = bitmaps.into_iter();
-    match iter.next().cloned() {
+    match iter.next().transpose()?.cloned() {
         Some(mut lhs) => {
-            iter.for_each(|rhs| op(&mut lhs, rhs));
-            lhs
+            iter.try_for_each(|rhs| rhs.map(|rhs| op(&mut lhs, rhs)))?;
+            Ok(lhs)
         }
-        None => RoaringBitmap::default(),
+        None => Ok(RoaringBitmap::default()),
     }
 }
 
 #[inline]
-fn naive_lazy_multi_op_owned(
-    bitmaps: impl IntoIterator<Item = RoaringBitmap>,
+fn try_naive_lazy_multi_op_owned<E>(
+    bitmaps: impl IntoIterator<Item = Result<RoaringBitmap, E>>,
     op: impl Fn(&mut Store, &Store),
-) -> RoaringBitmap {
+) -> Result<RoaringBitmap, E> {
     let mut iter = bitmaps.into_iter();
-    let mut containers = match iter.next() {
+    let mut containers = match iter.next().transpose()? {
         None => Vec::new(),
         Some(v) => v.containers,
     };
 
     for bitmap in iter {
-        for mut rhs in bitmap.containers {
+        for mut rhs in bitmap?.containers {
             match containers.binary_search_by_key(&rhs.key, |c| c.key) {
                 Err(loc) => containers.insert(loc, rhs),
                 Ok(loc) => {
@@ -550,14 +626,14 @@ fn naive_lazy_multi_op_owned(
         container.len() > 0
     });
 
-    RoaringBitmap { containers }
+    Ok(RoaringBitmap { containers })
 }
 
 #[inline]
-fn naive_lazy_multi_op_ref<'a>(
-    bitmaps: impl IntoIterator<Item = &'a RoaringBitmap>,
+fn try_naive_lazy_multi_op_ref<'a, E: 'a>(
+    bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
     op: impl Fn(&mut Store, &Store),
-) -> RoaringBitmap {
+) -> Result<RoaringBitmap, E> {
     //
     // This algorithm operates on bitmaps. It must deal with arrays for which there are not (yet)
     // any others with the same key.
@@ -566,18 +642,18 @@ fn naive_lazy_multi_op_ref<'a>(
     //   2. Eager promoting forces disjoint containers to converted back to arrays at the end
     //
     // This strategy uses COW to lazily promote arrays to bitmaps as they are operated on.
-    // More memory effiecient, negligible wall time difference benchmarks
+    // More memory efficient, negligible wall time difference benchmarks
 
     // Phase 1. Borrow all the containers from the first element.
     let mut iter = bitmaps.into_iter();
-    let mut containers: Vec<Cow<Container>> = match iter.next() {
+    let mut containers: Vec<Cow<Container>> = match iter.next().transpose()? {
         None => Vec::new(),
         Some(v) => v.containers.iter().map(Cow::Borrowed).collect(),
     };
 
     // Phase 2: Operate on the remaining contaners
     for bitmap in iter {
-        for rhs in &bitmap.containers {
+        for rhs in &bitmap?.containers {
             match containers.binary_search_by_key(&rhs.key, |c| c.key) {
                 Err(loc) => {
                     // A container not currently in containers. Borrow it.
@@ -623,7 +699,7 @@ fn naive_lazy_multi_op_ref<'a>(
         .filter(|container| container.len() > 0)
         .collect();
 
-    RoaringBitmap { containers }
+    Ok(RoaringBitmap { containers })
 }
 
 #[cfg(test)]

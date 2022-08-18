@@ -410,27 +410,64 @@ where
     type Bitmap = RoaringTreemap;
 
     fn or(self) -> Self::Bitmap {
-        simple_multi_op_owned::<_, OrOp>(self)
+        try_simple_multi_op_owned::<_, _, OrOp>(
+            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+        )
+        .unwrap()
     }
 
     fn and(self) -> Self::Bitmap {
-        ordered_multi_op_owned::<_, AndOp>(self)
+        try_ordered_multi_op_owned::<_, _, AndOp>(
+            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+        )
+        .unwrap()
     }
 
     fn sub(self) -> Self::Bitmap {
-        ordered_multi_op_owned::<_, SubOp>(self)
+        try_ordered_multi_op_owned::<_, _, SubOp>(
+            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+        )
+        .unwrap()
     }
 
     fn xor(self) -> Self::Bitmap {
-        simple_multi_op_owned::<_, XorOp>(self)
+        try_simple_multi_op_owned::<_, _, XorOp>(
+            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+        )
+        .unwrap()
+    }
+}
+
+impl<I, E> IterExt<Result<RoaringTreemap, E>> for I
+where
+    I: IntoIterator<Item = Result<RoaringTreemap, E>>,
+{
+    type Bitmap = Result<RoaringTreemap, E>;
+
+    fn or(self) -> Self::Bitmap {
+        try_simple_multi_op_owned::<_, _, OrOp>(self)
+    }
+
+    fn and(self) -> Self::Bitmap {
+        try_ordered_multi_op_owned::<_, _, AndOp>(self)
+    }
+
+    fn sub(self) -> Self::Bitmap {
+        try_ordered_multi_op_owned::<_, _, SubOp>(self)
+    }
+
+    fn xor(self) -> Self::Bitmap {
+        try_simple_multi_op_owned::<_, _, XorOp>(self)
     }
 }
 
 #[inline]
-fn simple_multi_op_owned<I, O: Op>(treemaps: I) -> RoaringTreemap
+fn try_simple_multi_op_owned<E, I, O: Op>(treemaps: I) -> Result<RoaringTreemap, E>
 where
-    I: IntoIterator<Item = RoaringTreemap>,
+    I: IntoIterator<Item = Result<RoaringTreemap, E>>,
 {
+    let treemaps = treemaps.into_iter().collect::<Result<Vec<_>, _>>()?;
+
     let mut heap: BinaryHeap<_> = treemaps
         .into_iter()
         .filter_map(|treemap| {
@@ -477,20 +514,20 @@ where
         }
     }
 
-    RoaringTreemap { map }
+    Ok(RoaringTreemap { map })
 }
 
 #[inline]
-fn ordered_multi_op_owned<I, O: Op>(treemaps: I) -> RoaringTreemap
+fn try_ordered_multi_op_owned<E, I, O: Op>(treemaps: I) -> Result<RoaringTreemap, E>
 where
-    I: IntoIterator<Item = RoaringTreemap>,
+    I: IntoIterator<Item = Result<RoaringTreemap, E>>,
 {
     let mut treemaps = treemaps.into_iter();
-    let mut treemap = match treemaps.next() {
+    let mut treemap = match treemaps.next().transpose()? {
         Some(treemap) => treemap,
-        None => return RoaringTreemap::new(),
+        None => return Ok(RoaringTreemap::new()),
     };
-    let mut treemaps: Vec<_> = treemaps.collect();
+    let mut treemaps = treemaps.collect::<Result<Vec<_>, _>>()?;
 
     // for each keys in the first treemap we're going find and accumulate all the corresponding bitmaps
     let keys: Vec<_> = treemap.map.keys().copied().collect();
@@ -506,20 +543,20 @@ where
         }
     }
 
-    treemap
+    Ok(treemap)
 }
 
 #[inline]
-fn ordered_multi_op_ref<'a, I, O: Op>(treemaps: I) -> RoaringTreemap
+fn try_ordered_multi_op_ref<'a, E: 'a, I, O: Op>(treemaps: I) -> Result<RoaringTreemap, E>
 where
-    I: IntoIterator<Item = &'a RoaringTreemap>,
+    I: IntoIterator<Item = Result<&'a RoaringTreemap, E>>,
 {
     let mut treemaps = treemaps.into_iter();
-    let treemap = match treemaps.next() {
+    let treemap = match treemaps.next().transpose()? {
         Some(treemap) => treemap,
-        None => return RoaringTreemap::new(),
+        None => return Ok(RoaringTreemap::new()),
     };
-    let treemaps: Vec<_> = treemaps.collect();
+    let treemaps = treemaps.collect::<Result<Vec<_>, _>>()?;
 
     let mut ret = RoaringTreemap::new();
 
@@ -538,14 +575,16 @@ where
         }
     }
 
-    ret
+    Ok(ret)
 }
 
 #[inline]
-fn simple_multi_op_ref<'a, I, O: Op>(treemaps: I) -> RoaringTreemap
+fn try_simple_multi_op_ref<'a, E: 'a, I, O: Op>(treemaps: I) -> Result<RoaringTreemap, E>
 where
-    I: IntoIterator<Item = &'a RoaringTreemap>,
+    I: IntoIterator<Item = Result<&'a RoaringTreemap, E>>,
 {
+    let treemaps = treemaps.into_iter().collect::<Result<Vec<_>, E>>()?;
+
     let mut heap: BinaryHeap<_> = treemaps
         .into_iter()
         .filter_map(|treemap| {
@@ -592,7 +631,7 @@ where
         }
     }
 
-    RoaringTreemap { map }
+    Ok(RoaringTreemap { map })
 }
 
 trait Op {
@@ -655,19 +694,54 @@ where
     type Bitmap = RoaringTreemap;
 
     fn or(self) -> Self::Bitmap {
-        simple_multi_op_ref::<_, OrOp>(self)
+        try_simple_multi_op_ref::<_, _, OrOp>(
+            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+        )
+        .unwrap()
     }
 
     fn and(self) -> Self::Bitmap {
-        ordered_multi_op_ref::<_, AndOp>(self)
+        try_ordered_multi_op_ref::<_, _, AndOp>(
+            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+        )
+        .unwrap()
     }
 
     fn sub(self) -> Self::Bitmap {
-        ordered_multi_op_ref::<_, SubOp>(self)
+        try_ordered_multi_op_ref::<_, _, SubOp>(
+            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+        )
+        .unwrap()
     }
 
     fn xor(self) -> Self::Bitmap {
-        simple_multi_op_ref::<_, XorOp>(self)
+        try_simple_multi_op_ref::<_, _, XorOp>(
+            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+        )
+        .unwrap()
+    }
+}
+
+impl<'a, I, E: 'a> IterExt<Result<&'a RoaringTreemap, E>> for I
+where
+    I: IntoIterator<Item = Result<&'a RoaringTreemap, E>>,
+{
+    type Bitmap = Result<RoaringTreemap, E>;
+
+    fn or(self) -> Self::Bitmap {
+        try_simple_multi_op_ref::<_, _, OrOp>(self)
+    }
+
+    fn and(self) -> Self::Bitmap {
+        try_ordered_multi_op_ref::<_, _, AndOp>(self)
+    }
+
+    fn sub(self) -> Self::Bitmap {
+        try_ordered_multi_op_ref::<_, _, SubOp>(self)
+    }
+
+    fn xor(self) -> Self::Bitmap {
+        try_simple_multi_op_ref::<_, _, XorOp>(self)
     }
 }
 
