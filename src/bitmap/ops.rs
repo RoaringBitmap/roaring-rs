@@ -571,7 +571,12 @@ fn try_simple_multi_op_owned<E>(
     let mut iter = bitmaps.into_iter();
     match iter.next().transpose()? {
         Some(mut lhs) => {
-            iter.try_for_each(|rhs| rhs.map(|rhs| op(&mut lhs, rhs)))?;
+            for rhs in iter {
+                if lhs.is_empty() {
+                    return Ok(lhs);
+                }
+                op(&mut lhs, rhs?);
+            }
             Ok(lhs)
         }
         None => Ok(RoaringBitmap::default()),
@@ -586,7 +591,13 @@ fn try_simple_multi_op_ref<'a, E>(
     let mut iter = bitmaps.into_iter();
     match iter.next().transpose()?.cloned() {
         Some(mut lhs) => {
-            iter.try_for_each(|rhs| rhs.map(|rhs| op(&mut lhs, rhs)))?;
+            for rhs in iter {
+                if lhs.is_empty() {
+                    return Ok(lhs);
+                }
+                op(&mut lhs, rhs?);
+            }
+
             Ok(lhs)
         }
         None => Ok(RoaringBitmap::default()),
