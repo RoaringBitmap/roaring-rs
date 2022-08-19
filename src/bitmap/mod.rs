@@ -1,6 +1,7 @@
 mod arbitrary;
 mod container;
 mod fmt;
+mod multiops;
 mod proptests;
 mod store;
 mod util;
