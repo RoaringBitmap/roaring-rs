@@ -11,6 +11,14 @@ use crate::{IterExt, RoaringBitmap};
 
 use super::{container::Container, store::Store};
 
+/// When collecting bitmaps for optimizing the computation.If we don't know how many
+// elements are in the iterator we collect 10 elements.
+const BASE_COLLECT: usize = 10;
+
+/// If an iterator contain 50 elements or less we collect everything because it'll be so
+/// much faster without impacting the memory usage too much (in most cases).
+const MAX_COLLECT: usize = 50;
+
 impl<I> IterExt<RoaringBitmap> for I
 where
     I: IntoIterator<Item = RoaringBitmap>,
@@ -18,10 +26,7 @@ where
     type Output = RoaringBitmap;
 
     fn or(self) -> Self::Output {
-        try_naive_lazy_multi_op_owned(self.into_iter().map(Ok::<_, Infallible>), |a, b| {
-            BitOrAssign::bitor_assign(a, b)
-        })
-        .unwrap()
+        try_multi_or_owned(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 
     fn and(self) -> Self::Output {
@@ -33,10 +38,7 @@ where
     }
 
     fn xor(self) -> Self::Output {
-        try_naive_lazy_multi_op_owned(self.into_iter().map(Ok::<_, Infallible>), |a, b| {
-            BitXorAssign::bitxor_assign(a, b)
-        })
-        .unwrap()
+        try_multi_xor_owned(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 }
 
@@ -47,7 +49,7 @@ where
     type Output = Result<RoaringBitmap, E>;
 
     fn or(self) -> Self::Output {
-        try_naive_lazy_multi_op_owned(self, |a, b| BitOrAssign::bitor_assign(a, b))
+        try_multi_xor_owned(self)
     }
 
     fn and(self) -> Self::Output {
@@ -59,7 +61,7 @@ where
     }
 
     fn xor(self) -> Self::Output {
-        try_naive_lazy_multi_op_owned(self, |a, b| BitXorAssign::bitxor_assign(a, b))
+        try_multi_xor_owned(self)
     }
 }
 
@@ -120,7 +122,7 @@ fn try_multi_and_owned<E>(
     bitmaps: impl IntoIterator<Item = Result<RoaringBitmap, E>>,
 ) -> Result<RoaringBitmap, E> {
     let mut iter = bitmaps.into_iter();
-    let mut start = iter.by_ref().take(10).collect::<Result<Vec<_>, _>>()?;
+    let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
 
     if let Some((idx, _)) = start.iter().enumerate().min_by_key(|(_, b)| b.containers.len()) {
         let mut lhs = start.swap_remove(idx);
@@ -148,7 +150,7 @@ fn try_multi_and_ref<'a, E>(
     bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
 ) -> Result<RoaringBitmap, E> {
     let mut iter = bitmaps.into_iter();
-    let mut start = iter.by_ref().take(10).collect::<Result<Vec<_>, _>>()?;
+    let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
 
     if let Some((idx, _)) = start.iter().enumerate().min_by_key(|(_, b)| b.containers.len()) {
         let mut lhs = start.swap_remove(idx).clone();
@@ -212,31 +214,30 @@ fn try_multi_sub_ref<'a, E>(
 }
 
 #[inline]
-fn try_naive_lazy_multi_op_owned<E>(
+fn try_multi_or_owned<E>(
     bitmaps: impl IntoIterator<Item = Result<RoaringBitmap, E>>,
-    op: impl Fn(&mut Store, &Store),
 ) -> Result<RoaringBitmap, E> {
     let mut iter = bitmaps.into_iter();
-    let mut containers = match iter.next().transpose()? {
-        None => Vec::new(),
-        Some(v) => v.containers,
-    };
+    let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
+
+    let mut containers =
+        if let Some((idx, _)) = start.iter().enumerate().max_by_key(|(_, b)| b.containers.len()) {
+            let c = start.swap_remove(idx).containers.clone();
+            if c.is_empty() {
+                // everything must be empty if the max is empty
+                start.clear();
+            }
+            c
+        } else {
+            return Ok(RoaringBitmap::new());
+        };
+
+    for bitmap in start {
+        merge_containers(&mut containers, bitmap.containers, BitOrAssign::bitor_assign);
+    }
 
     for bitmap in iter {
-        for mut rhs in bitmap?.containers {
-            match containers.binary_search_by_key(&rhs.key, |c| c.key) {
-                Err(loc) => containers.insert(loc, rhs),
-                Ok(loc) => {
-                    let lhs = &mut containers[loc];
-                    match (&lhs.store, &rhs.store) {
-                        (Store::Array(..), Store::Array(..)) => lhs.store = lhs.store.to_bitmap(),
-                        (Store::Array(..), Store::Bitmap(..)) => mem::swap(lhs, &mut rhs),
-                        _ => (),
-                    };
-                    op(&mut lhs.store, &rhs.store);
-                }
-            }
-        }
+        merge_containers(&mut containers, bitmap?.containers, BitOrAssign::bitor_assign);
     }
 
     RetainMut::retain_mut(&mut containers, |container| {
@@ -245,6 +246,45 @@ fn try_naive_lazy_multi_op_owned<E>(
     });
 
     Ok(RoaringBitmap { containers })
+}
+
+#[inline]
+fn try_multi_xor_owned<E>(
+    bitmaps: impl IntoIterator<Item = Result<RoaringBitmap, E>>,
+) -> Result<RoaringBitmap, E> {
+    let mut iter = bitmaps.into_iter();
+    let mut containers = match iter.next().transpose()? {
+        None => Vec::new(),
+        Some(v) => v.containers,
+    };
+
+    for bitmap in iter {
+        merge_containers(&mut containers, bitmap?.containers, BitXorAssign::bitxor_assign);
+    }
+
+    RetainMut::retain_mut(&mut containers, |container| {
+        container.ensure_correct_store();
+        container.len() > 0
+    });
+
+    Ok(RoaringBitmap { containers })
+}
+
+fn merge_containers(lhs: &mut Vec<Container>, rhs: Vec<Container>, op: impl Fn(&mut Store, Store)) {
+    for mut rhs in rhs {
+        match lhs.binary_search_by_key(&rhs.key, |c| c.key) {
+            Err(loc) => lhs.insert(loc, rhs),
+            Ok(loc) => {
+                let lhs = &mut lhs[loc];
+                match (&lhs.store, &rhs.store) {
+                    (Store::Array(..), Store::Array(..)) => lhs.store = lhs.store.to_bitmap(),
+                    (Store::Array(..), Store::Bitmap(..)) => mem::swap(lhs, &mut rhs),
+                    _ => (),
+                };
+                op(&mut lhs.store, rhs.store);
+            }
+        }
+    }
 }
 
 #[inline]
@@ -318,4 +358,17 @@ fn try_naive_lazy_multi_op_ref<'a, E: 'a>(
         .collect();
 
     Ok(RoaringBitmap { containers })
+}
+
+fn collect_starting_elements<I, O>(iter: impl IntoIterator<Item = I>) -> O
+where
+    O: FromIterator<I>,
+{
+    let mut iter = iter.into_iter();
+    let mut to_collect = iter.size_hint().1.unwrap_or(BASE_COLLECT);
+    if to_collect > MAX_COLLECT {
+        to_collect = BASE_COLLECT;
+    }
+
+    iter.by_ref().take(to_collect).collect()
 }
