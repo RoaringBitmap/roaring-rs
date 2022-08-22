@@ -2,7 +2,7 @@ use std::{
     borrow::Cow,
     convert::Infallible,
     mem,
-    ops::{BitAndAssign, BitOrAssign, BitXorAssign, SubAssign},
+    ops::{BitOrAssign, BitXorAssign},
 };
 
 use retain_mut::RetainMut;
@@ -29,10 +29,7 @@ where
     }
 
     fn sub(self) -> Self::Output {
-        try_simple_multi_op_owned(self.into_iter().map(Ok::<_, Infallible>), |a, b| {
-            SubAssign::sub_assign(a, b)
-        })
-        .unwrap()
+        try_multi_sub_owned(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 
     fn xor(self) -> Self::Output {
@@ -58,7 +55,7 @@ where
     }
 
     fn sub(self) -> Self::Output {
-        try_simple_multi_op_owned(self, |a, b| SubAssign::sub_assign(a, b))
+        try_multi_sub_owned(self)
     }
 
     fn xor(self) -> Self::Output {
@@ -84,10 +81,7 @@ where
     }
 
     fn sub(self) -> Self::Output {
-        try_simple_multi_op_ref(self.into_iter().map(Ok::<_, Infallible>), |a, b| {
-            SubAssign::sub_assign(a, b)
-        })
-        .unwrap()
+        try_multi_sub_ref(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 
     fn xor(self) -> Self::Output {
@@ -113,7 +107,7 @@ where
     }
 
     fn sub(self) -> Self::Output {
-        try_simple_multi_op_ref(self, |a, b| SubAssign::sub_assign(a, b))
+        try_multi_sub_ref(self)
     }
 
     fn xor(self) -> Self::Output {
@@ -179,9 +173,8 @@ fn try_multi_and_ref<'a, E>(
 }
 
 #[inline]
-fn try_simple_multi_op_owned<E>(
+fn try_multi_sub_owned<E>(
     bitmaps: impl IntoIterator<Item = Result<RoaringBitmap, E>>,
-    op: impl Fn(&mut RoaringBitmap, RoaringBitmap),
 ) -> Result<RoaringBitmap, E> {
     let mut iter = bitmaps.into_iter();
     match iter.next().transpose()? {
@@ -190,7 +183,7 @@ fn try_simple_multi_op_owned<E>(
                 if lhs.is_empty() {
                     return Ok(lhs);
                 }
-                op(&mut lhs, rhs?);
+                lhs -= rhs?;
             }
             Ok(lhs)
         }
@@ -199,9 +192,8 @@ fn try_simple_multi_op_owned<E>(
 }
 
 #[inline]
-fn try_simple_multi_op_ref<'a, E>(
+fn try_multi_sub_ref<'a, E>(
     bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
-    op: impl Fn(&mut RoaringBitmap, &RoaringBitmap),
 ) -> Result<RoaringBitmap, E> {
     let mut iter = bitmaps.into_iter();
     match iter.next().transpose()?.cloned() {
@@ -210,7 +202,7 @@ fn try_simple_multi_op_ref<'a, E>(
                 if lhs.is_empty() {
                     return Ok(lhs);
                 }
-                op(&mut lhs, rhs?);
+                lhs -= rhs?;
             }
 
             Ok(lhs)
