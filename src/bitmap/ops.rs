@@ -236,7 +236,7 @@ impl BitAndAssign<RoaringBitmap> for RoaringBitmap {
     /// An `intersection` between two sets.
     fn bitand_assign(&mut self, mut rhs: RoaringBitmap) {
         // We make sure that we apply the intersection operation on the smallest map.
-        if rhs.len() < self.len() {
+        if rhs.containers.len() < self.containers.len() {
             mem::swap(self, &mut rhs);
         }
 

@@ -25,10 +25,7 @@ where
     }
 
     fn and(self) -> Self::Output {
-        try_simple_multi_op_owned(self.into_iter().map(Ok::<_, Infallible>), |a, b| {
-            BitAndAssign::bitand_assign(a, b)
-        })
-        .unwrap()
+        try_multi_and_owned(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 
     fn sub(self) -> Self::Output {
@@ -57,7 +54,7 @@ where
     }
 
     fn and(self) -> Self::Output {
-        try_simple_multi_op_owned(self, |a, b| BitAndAssign::bitand_assign(a, b))
+        try_multi_and_owned(self)
     }
 
     fn sub(self) -> Self::Output {
@@ -83,10 +80,7 @@ where
     }
 
     fn and(self) -> Self::Output {
-        try_simple_multi_op_ref(self.into_iter().map(Ok::<_, Infallible>), |a, b| {
-            BitAndAssign::bitand_assign(a, b)
-        })
-        .unwrap()
+        try_multi_and_ref(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 
     fn sub(self) -> Self::Output {
@@ -115,7 +109,7 @@ where
     }
 
     fn and(self) -> Self::Output {
-        try_simple_multi_op_ref(self, |a, b| BitAndAssign::bitand_assign(a, b))
+        try_multi_and_ref(self)
     }
 
     fn sub(self) -> Self::Output {
@@ -124,6 +118,63 @@ where
 
     fn xor(self) -> Self::Output {
         try_naive_lazy_multi_op_ref(self, |a, b| BitXorAssign::bitxor_assign(a, b))
+    }
+}
+
+#[inline]
+fn try_multi_and_owned<E>(
+    bitmaps: impl IntoIterator<Item = Result<RoaringBitmap, E>>,
+) -> Result<RoaringBitmap, E> {
+    let mut iter = bitmaps.into_iter();
+    let mut start = iter.by_ref().take(10).collect::<Result<Vec<_>, _>>()?;
+
+    if let Some((idx, _)) = start.iter().enumerate().min_by_key(|(_, b)| b.containers.len()) {
+        let mut lhs = start.swap_remove(idx);
+        for rhs in start {
+            if lhs.is_empty() {
+                return Ok(lhs);
+            }
+            lhs &= rhs;
+        }
+
+        for rhs in iter {
+            if lhs.is_empty() {
+                return Ok(lhs);
+            }
+            lhs &= rhs?;
+        }
+        Ok(lhs)
+    } else {
+        Ok(RoaringBitmap::new())
+    }
+}
+
+#[inline]
+fn try_multi_and_ref<'a, E>(
+    bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
+) -> Result<RoaringBitmap, E> {
+    let mut iter = bitmaps.into_iter();
+    let mut start = iter.by_ref().take(10).collect::<Result<Vec<_>, _>>()?;
+
+    if let Some((idx, _)) = start.iter().enumerate().min_by_key(|(_, b)| b.containers.len()) {
+        let mut lhs = start.swap_remove(idx).clone();
+
+        for rhs in start {
+            if lhs.is_empty() {
+                return Ok(lhs);
+            }
+            lhs &= rhs;
+        }
+
+        for rhs in iter {
+            if lhs.is_empty() {
+                return Ok(lhs);
+            }
+            lhs &= rhs?;
+        }
+        Ok(lhs)
+    } else {
+        Ok(RoaringBitmap::new())
     }
 }
 
