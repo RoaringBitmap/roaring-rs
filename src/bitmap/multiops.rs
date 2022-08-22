@@ -72,10 +72,7 @@ where
     type Output = RoaringBitmap;
 
     fn or(self) -> Self::Output {
-        try_naive_lazy_multi_op_ref(self.into_iter().map(Ok::<_, Infallible>), |a, b| {
-            BitOrAssign::bitor_assign(a, b)
-        })
-        .unwrap()
+        try_multi_or_ref(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 
     fn and(self) -> Self::Output {
@@ -87,10 +84,7 @@ where
     }
 
     fn xor(self) -> Self::Output {
-        try_naive_lazy_multi_op_ref(self.into_iter().map(Ok::<_, Infallible>), |a, b| {
-            BitXorAssign::bitxor_assign(a, b)
-        })
-        .unwrap()
+        try_multi_xor_ref(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 }
 
@@ -101,7 +95,7 @@ where
     type Output = Result<RoaringBitmap, E>;
 
     fn or(self) -> Self::Output {
-        try_naive_lazy_multi_op_ref(self, |a, b| BitOrAssign::bitor_assign(a, b))
+        try_multi_or_ref(self)
     }
 
     fn and(self) -> Self::Output {
@@ -113,7 +107,7 @@ where
     }
 
     fn xor(self) -> Self::Output {
-        try_naive_lazy_multi_op_ref(self, |a, b| BitXorAssign::bitxor_assign(a, b))
+        try_multi_xor_ref(self)
     }
 }
 
@@ -233,11 +227,11 @@ fn try_multi_or_owned<E>(
         };
 
     for bitmap in start {
-        merge_containers(&mut containers, bitmap.containers, BitOrAssign::bitor_assign);
+        merge_container_owned(&mut containers, bitmap.containers, BitOrAssign::bitor_assign);
     }
 
     for bitmap in iter {
-        merge_containers(&mut containers, bitmap?.containers, BitOrAssign::bitor_assign);
+        merge_container_owned(&mut containers, bitmap?.containers, BitOrAssign::bitor_assign);
     }
 
     RetainMut::retain_mut(&mut containers, |container| {
@@ -259,7 +253,7 @@ fn try_multi_xor_owned<E>(
     };
 
     for bitmap in iter {
-        merge_containers(&mut containers, bitmap?.containers, BitXorAssign::bitxor_assign);
+        merge_container_owned(&mut containers, bitmap?.containers, BitXorAssign::bitxor_assign);
     }
 
     RetainMut::retain_mut(&mut containers, |container| {
@@ -270,7 +264,11 @@ fn try_multi_xor_owned<E>(
     Ok(RoaringBitmap { containers })
 }
 
-fn merge_containers(lhs: &mut Vec<Container>, rhs: Vec<Container>, op: impl Fn(&mut Store, Store)) {
+fn merge_container_owned(
+    lhs: &mut Vec<Container>,
+    rhs: Vec<Container>,
+    op: impl Fn(&mut Store, Store),
+) {
     for mut rhs in rhs {
         match lhs.binary_search_by_key(&rhs.key, |c| c.key) {
             Err(loc) => lhs.insert(loc, rhs),
@@ -288,9 +286,61 @@ fn merge_containers(lhs: &mut Vec<Container>, rhs: Vec<Container>, op: impl Fn(&
 }
 
 #[inline]
-fn try_naive_lazy_multi_op_ref<'a, E: 'a>(
+fn try_multi_or_ref<'a, E: 'a>(
     bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
-    op: impl Fn(&mut Store, &Store),
+) -> Result<RoaringBitmap, E> {
+    // This algorithm operates on bitmaps. It must deal with arrays for which there are not (yet)
+    // any others with the same key.
+    //
+    //   1. Eager cloning would create useless intermediate values that might become bitmaps
+    //   2. Eager promoting forces disjoint containers to converted back to arrays at the end
+    //
+    // This strategy uses COW to lazily promote arrays to bitmaps as they are operated on.
+    // More memory efficient, negligible wall time difference benchmarks
+
+    // Phase 1. Borrow all the containers from the first element.
+    let mut iter = bitmaps.into_iter();
+    let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
+
+    let mut containers =
+        if let Some((idx, _)) = start.iter().enumerate().max_by_key(|(_, b)| b.containers.len()) {
+            let c: Vec<Cow<Container>> =
+                start.swap_remove(idx).containers.iter().map(Cow::Borrowed).collect();
+            if c.is_empty() {
+                // everything must be empty if the max is empty
+                start.clear();
+            }
+            c
+        } else {
+            return Ok(RoaringBitmap::new());
+        };
+
+    // Phase 2: Operate on the remaining containers
+    for bitmap in start {
+        merge_container_ref(&mut containers, &bitmap.containers, |a, b| *a |= b);
+    }
+    for bitmap in iter {
+        merge_container_ref(&mut containers, &bitmap?.containers, |a, b| *a |= b);
+    }
+
+    // Phase 3: Clean up
+    let containers: Vec<Container> = containers
+        .into_iter()
+        .map(|c| {
+            // Any borrowed bitmaps or arrays left over get cloned here
+            let mut container = c.into_owned();
+            container.ensure_correct_store();
+            container
+        })
+        .filter(|container| container.len() > 0)
+        .collect();
+
+    Ok(RoaringBitmap { containers })
+}
+
+#[inline]
+fn try_multi_xor_ref<'a, E: 'a>(
+    bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
 ) -> Result<RoaringBitmap, E> {
     //
     // This algorithm operates on bitmaps. It must deal with arrays for which there are not (yet)
@@ -311,38 +361,7 @@ fn try_naive_lazy_multi_op_ref<'a, E: 'a>(
 
     // Phase 2: Operate on the remaining contaners
     for bitmap in iter {
-        for rhs in &bitmap?.containers {
-            match containers.binary_search_by_key(&rhs.key, |c| c.key) {
-                Err(loc) => {
-                    // A container not currently in containers. Borrow it.
-                    containers.insert(loc, Cow::Borrowed(rhs))
-                }
-                Ok(loc) => {
-                    // A container that is in containers. Operate on it.
-                    let lhs = &mut containers[loc];
-                    match (&lhs.store, &rhs.store) {
-                        (Store::Array(..), Store::Array(..)) => {
-                            // We had borrowed an array. Without cloning it, create a new bitmap
-                            // Add all the elements to the new bitmap
-                            let mut store = lhs.store.to_bitmap();
-                            op(&mut store, &rhs.store);
-                            *lhs = Cow::Owned(Container { key: lhs.key, store });
-                        }
-                        (Store::Array(..), Store::Bitmap(..)) => {
-                            // We had borrowed an array. Copy the rhs bitmap, add lhs to it
-                            let mut store = rhs.store.clone();
-                            op(&mut store, &lhs.store);
-                            *lhs = Cow::Owned(Container { key: lhs.key, store });
-                        }
-                        (Store::Bitmap(..), _) => {
-                            // This might be a owned or borrowed bitmap.
-                            // If it was borrowed it will clone-on-write
-                            op(&mut lhs.to_mut().store, &rhs.store);
-                        }
-                    };
-                }
-            }
-        }
+        merge_container_ref(&mut containers, &bitmap?.containers, |a, b| *a ^= b);
     }
 
     // Phase 3: Clean up
@@ -358,6 +377,45 @@ fn try_naive_lazy_multi_op_ref<'a, E: 'a>(
         .collect();
 
     Ok(RoaringBitmap { containers })
+}
+
+fn merge_container_ref<'a>(
+    containers: &mut Vec<Cow<'a, Container>>,
+    rhs: &'a [Container],
+    op: impl Fn(&mut Store, &Store),
+) {
+    for rhs in rhs {
+        match containers.binary_search_by_key(&rhs.key, |c| c.key) {
+            Err(loc) => {
+                // A container not currently in containers. Borrow it.
+                containers.insert(loc, Cow::Borrowed(rhs))
+            }
+            Ok(loc) => {
+                // A container that is in containers. Operate on it.
+                let lhs = &mut containers[loc];
+                match (&lhs.store, &rhs.store) {
+                    (Store::Array(..), Store::Array(..)) => {
+                        // We had borrowed an array. Without cloning it, create a new bitmap
+                        // Add all the elements to the new bitmap
+                        let mut store = lhs.store.to_bitmap();
+                        op(&mut store, &rhs.store);
+                        *lhs = Cow::Owned(Container { key: lhs.key, store });
+                    }
+                    (Store::Array(..), Store::Bitmap(..)) => {
+                        // We had borrowed an array. Copy the rhs bitmap, add lhs to it
+                        let mut store = rhs.store.clone();
+                        op(&mut store, &lhs.store);
+                        *lhs = Cow::Owned(Container { key: lhs.key, store });
+                    }
+                    (Store::Bitmap(..), _) => {
+                        // This might be a owned or borrowed bitmap.
+                        // If it was borrowed it will clone-on-write
+                        op(&mut lhs.to_mut().store, &rhs.store);
+                    }
+                };
+            }
+        }
+    }
 }
 
 fn collect_starting_elements<I, O>(iter: impl IntoIterator<Item = I>) -> O
