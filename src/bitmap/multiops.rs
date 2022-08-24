@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    cmp::Reverse,
     convert::Infallible,
     mem,
     ops::{BitOrAssign, BitXorAssign},
@@ -214,18 +215,19 @@ fn try_multi_or_owned<E>(
 ) -> Result<RoaringBitmap, E> {
     let mut iter = bitmaps.into_iter();
     let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
+    let start_size = start.len();
 
-    let mut containers =
-        if let Some((idx, _)) = start.iter().enumerate().max_by_key(|(_, b)| b.containers.len()) {
-            let c = start.swap_remove(idx).containers.clone();
-            if c.is_empty() {
-                // everything must be empty if the max is empty
-                start.clear();
-            }
-            c
-        } else {
-            return Ok(RoaringBitmap::new());
-        };
+    start.sort_unstable_by_key(|bitmap| Reverse(bitmap.containers.len()));
+    let mut start = start.into_iter();
+    let mut containers = if let Some(c) = start.next() {
+        if c.is_empty() {
+            // everything must be empty if the max is empty
+            start.by_ref().skip(start_size).next();
+        }
+        c.containers
+    } else {
+        return Ok(RoaringBitmap::new());
+    };
 
     for bitmap in start {
         merge_container_owned(&mut containers, bitmap.containers, BitOrAssign::bitor_assign);
@@ -302,19 +304,20 @@ fn try_multi_or_ref<'a, E: 'a>(
     // Phase 1. Borrow all the containers from the first element.
     let mut iter = bitmaps.into_iter();
     let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
+    let start_size = start.len();
 
-    let mut containers =
-        if let Some((idx, _)) = start.iter().enumerate().max_by_key(|(_, b)| b.containers.len()) {
-            let c: Vec<Cow<Container>> =
-                start.swap_remove(idx).containers.iter().map(Cow::Borrowed).collect();
-            if c.is_empty() {
-                // everything must be empty if the max is empty
-                start.clear();
-            }
-            c
-        } else {
-            return Ok(RoaringBitmap::new());
-        };
+    start.sort_unstable_by_key(|bitmap| Reverse(bitmap.containers.len()));
+    let mut start = start.into_iter();
+    let mut containers = if let Some(c) = start.next() {
+        let c: Vec<Cow<Container>> = c.containers.iter().map(Cow::Borrowed).collect();
+        if c.is_empty() {
+            // everything must be empty if the max is empty
+            start.by_ref().skip(start_size).next();
+        }
+        c
+    } else {
+        return Ok(RoaringBitmap::new());
+    };
 
     // Phase 2: Operate on the remaining containers
     for bitmap in start {
