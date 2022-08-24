@@ -117,10 +117,13 @@ fn try_multi_and_owned<E>(
     bitmaps: impl IntoIterator<Item = Result<RoaringBitmap, E>>,
 ) -> Result<RoaringBitmap, E> {
     let mut iter = bitmaps.into_iter();
-    let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
 
+    // We're going to take a bunch of elements at the start of the iterator and sort
+    // them to reduce the size of our bitmap faster.
+    let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
     start.sort_unstable_by_key(|bitmap| bitmap.containers.len());
     let mut start = start.into_iter();
+
     if let Some(mut lhs) = start.next() {
         for rhs in start {
             if lhs.is_empty() {
@@ -146,10 +149,13 @@ fn try_multi_and_ref<'a, E>(
     bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
 ) -> Result<RoaringBitmap, E> {
     let mut iter = bitmaps.into_iter();
-    let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
 
+    // We're going to take a bunch of elements at the start of the iterator and sort
+    // them to reduce the size of our bitmap faster.
+    let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
     start.sort_unstable_by_key(|bitmap| bitmap.containers.len());
     let mut start = start.into_iter();
+
     if let Some(mut lhs) = start.next().cloned() {
         for rhs in start {
             if lhs.is_empty() {
@@ -214,11 +220,14 @@ fn try_multi_or_owned<E>(
     bitmaps: impl IntoIterator<Item = Result<RoaringBitmap, E>>,
 ) -> Result<RoaringBitmap, E> {
     let mut iter = bitmaps.into_iter();
-    let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
-    let start_size = start.len();
 
+    // We're going to take a bunch of elements at the start of the iterator and
+    // move the biggest one first to grow faster.
+    let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
     start.sort_unstable_by_key(|bitmap| Reverse(bitmap.containers.len()));
+    let start_size = start.len();
     let mut start = start.into_iter();
+
     let mut containers = if let Some(c) = start.next() {
         if c.is_empty() {
             // everything must be empty if the max is empty
