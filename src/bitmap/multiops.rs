@@ -118,8 +118,9 @@ fn try_multi_and_owned<E>(
     let mut iter = bitmaps.into_iter();
     let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
 
-    if let Some((idx, _)) = start.iter().enumerate().min_by_key(|(_, b)| b.containers.len()) {
-        let mut lhs = start.swap_remove(idx);
+    start.sort_unstable_by_key(|bitmap| bitmap.containers.len());
+    let mut start = start.into_iter();
+    if let Some(mut lhs) = start.next() {
         for rhs in start {
             if lhs.is_empty() {
                 return Ok(lhs);
@@ -146,9 +147,9 @@ fn try_multi_and_ref<'a, E>(
     let mut iter = bitmaps.into_iter();
     let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
 
-    if let Some((idx, _)) = start.iter().enumerate().min_by_key(|(_, b)| b.containers.len()) {
-        let mut lhs = start.swap_remove(idx).clone();
-
+    start.sort_unstable_by_key(|bitmap| bitmap.containers.len());
+    let mut start = start.into_iter();
+    if let Some(mut lhs) = start.next().cloned() {
         for rhs in start {
             if lhs.is_empty() {
                 return Ok(lhs);
