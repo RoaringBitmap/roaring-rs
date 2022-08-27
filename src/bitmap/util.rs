@@ -21,14 +21,12 @@ where
 {
     let start: u32 = match range.start_bound() {
         Bound::Included(&i) => i,
-        Bound::Excluded(&u32::MAX) => return None,
-        Bound::Excluded(&i) => i + 1,
+        Bound::Excluded(&i) => i.checked_add(1)?,
         Bound::Unbounded => 0,
     };
     let end: u32 = match range.end_bound() {
         Bound::Included(&i) => i,
-        Bound::Excluded(&0) => return None,
-        Bound::Excluded(&i) => i - 1,
+        Bound::Excluded(&i) => i.checked_sub(1)?,
         Bound::Unbounded => u32::MAX,
     };
     if end < start {
@@ -39,6 +37,7 @@ where
 
 #[cfg(test)]
 mod test {
+    use std::ops::Bound;
     use super::{convert_range_to_inclusive, join, split};
 
     #[test]
@@ -70,7 +69,15 @@ mod test {
         assert_eq!(Some(1..=5), convert_range_to_inclusive(1..6));
         assert_eq!(Some(1..=u32::MAX), convert_range_to_inclusive(1..));
         assert_eq!(Some(0..=u32::MAX), convert_range_to_inclusive(..));
+        assert_eq!(Some(16..=16), convert_range_to_inclusive(16..=16));
+        assert_eq!(Some(11..=19), convert_range_to_inclusive((Bound::Excluded(10), Bound::Excluded(20))));
+
+        assert_eq!(None, convert_range_to_inclusive(0..0));
         assert_eq!(None, convert_range_to_inclusive(5..5));
-        assert_eq!(Some(16..=16), convert_range_to_inclusive(16..=16))
+        assert_eq!(None, convert_range_to_inclusive(1..0));
+        assert_eq!(None, convert_range_to_inclusive(10..5));
+        assert_eq!(None, convert_range_to_inclusive((Bound::Excluded(u32::MAX), Bound::Included(u32::MAX))));
+        assert_eq!(None, convert_range_to_inclusive((Bound::Excluded(u32::MAX), Bound::Included(u32::MAX))));
+        assert_eq!(None, convert_range_to_inclusive((Bound::Excluded(0), Bound::Included(0))));
     }
 }
