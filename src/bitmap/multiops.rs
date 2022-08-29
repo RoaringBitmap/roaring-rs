@@ -8,7 +8,7 @@ use std::{
 
 use retain_mut::RetainMut;
 
-use crate::{IterExt, RoaringBitmap};
+use crate::{MultiOps, RoaringBitmap};
 
 use super::{container::Container, store::Store};
 
@@ -20,7 +20,7 @@ const BASE_COLLECT: usize = 10;
 /// much faster without impacting the memory usage too much (in most cases).
 const MAX_COLLECT: usize = 50;
 
-impl<I> IterExt<RoaringBitmap> for I
+impl<I> MultiOps<RoaringBitmap> for I
 where
     I: IntoIterator<Item = RoaringBitmap>,
 {
@@ -43,7 +43,7 @@ where
     }
 }
 
-impl<I, E> IterExt<Result<RoaringBitmap, E>> for I
+impl<I, E> MultiOps<Result<RoaringBitmap, E>> for I
 where
     I: IntoIterator<Item = Result<RoaringBitmap, E>>,
 {
@@ -66,7 +66,7 @@ where
     }
 }
 
-impl<'a, I> IterExt<&'a RoaringBitmap> for I
+impl<'a, I> MultiOps<&'a RoaringBitmap> for I
 where
     I: IntoIterator<Item = &'a RoaringBitmap>,
 {
@@ -89,7 +89,7 @@ where
     }
 }
 
-impl<'a, I, E: 'a> IterExt<Result<&'a RoaringBitmap, E>> for I
+impl<'a, I, E: 'a> MultiOps<Result<&'a RoaringBitmap, E>> for I
 where
     I: IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
 {

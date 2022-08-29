@@ -48,9 +48,30 @@ impl fmt::Display for NonSortedIntegers {
 
 impl Error for NonSortedIntegers {}
 
-/// An [`IntoIterator`] blanket implementation that provides extra methods for [`RoaringBitmap`]
-/// and [`RoaringTreemap`]
-pub trait IterExt<T>: IntoIterator<Item = T> {
+/// A [`collect`] blanket implementation that provides extra methods for [`RoaringBitmap`]
+/// and [`RoaringTreemap`].
+/// When merging multiple bitmap with the same operation it's usually faster to call the
+/// method in this trait than to write your own for loop and merging the bitmaps yourself.
+///
+/// # Examples
+/// ```
+/// use roaring::{MultiOps, RoaringBitmap};
+///
+/// let bitmaps = [
+///     RoaringBitmap::from_sorted_iter(0..10).unwrap(),
+///     RoaringBitmap::from_sorted_iter(10..20).unwrap(),
+///     RoaringBitmap::from_sorted_iter(20..30).unwrap()
+/// ];
+///
+/// // Stop doing this
+/// let naive = bitmaps.clone().into_iter().reduce(|a, b| a | b).unwrap_or_default();
+///
+/// // And start doing this instead
+/// let iter = bitmaps.or();
+///
+/// assert_eq!(naive, iter);
+/// ```
+pub trait MultiOps<T>: IntoIterator<Item = T> {
     /// The type of output from operations.
     type Output;
 

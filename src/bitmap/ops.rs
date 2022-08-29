@@ -441,7 +441,7 @@ impl BitXorAssign<&RoaringBitmap> for RoaringBitmap {
 
 #[cfg(test)]
 mod test {
-    use crate::{IterExt, RoaringBitmap};
+    use crate::{MultiOps, RoaringBitmap};
     use proptest::prelude::*;
 
     // fast count tests

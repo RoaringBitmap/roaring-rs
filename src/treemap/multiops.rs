@@ -5,9 +5,9 @@ use std::{
     mem,
 };
 
-use crate::{IterExt, RoaringBitmap, RoaringTreemap};
+use crate::{MultiOps, RoaringBitmap, RoaringTreemap};
 
-impl<I> IterExt<RoaringTreemap> for I
+impl<I> MultiOps<RoaringTreemap> for I
 where
     I: IntoIterator<Item = RoaringTreemap>,
 {
@@ -42,7 +42,7 @@ where
     }
 }
 
-impl<I, E> IterExt<Result<RoaringTreemap, E>> for I
+impl<I, E> MultiOps<Result<RoaringTreemap, E>> for I
 where
     I: IntoIterator<Item = Result<RoaringTreemap, E>>,
 {
@@ -291,7 +291,7 @@ impl Op for XorOp {
     }
 }
 
-impl<'a, I> IterExt<&'a RoaringTreemap> for I
+impl<'a, I> MultiOps<&'a RoaringTreemap> for I
 where
     I: IntoIterator<Item = &'a RoaringTreemap>,
 {
@@ -326,7 +326,7 @@ where
     }
 }
 
-impl<'a, I, E: 'a> IterExt<Result<&'a RoaringTreemap, E>> for I
+impl<'a, I, E: 'a> MultiOps<Result<&'a RoaringTreemap, E>> for I
 where
     I: IntoIterator<Item = Result<&'a RoaringTreemap, E>>,
 {

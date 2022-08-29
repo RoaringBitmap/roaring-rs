@@ -401,7 +401,7 @@ impl BitXorAssign<&RoaringTreemap> for RoaringTreemap {
 
 #[cfg(test)]
 mod test {
-    use crate::{IterExt, RoaringTreemap};
+    use crate::{MultiOps, RoaringTreemap};
     use proptest::prelude::*;
 
     // fast count tests
