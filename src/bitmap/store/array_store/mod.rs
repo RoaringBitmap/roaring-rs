@@ -132,9 +132,9 @@ impl ArrayStore {
             Err(_) => return false,
         };
 
-        // If there are `range_count` items, the `range_count`th item should be the final item
-        // in the range, because this vec is sorted and has no duplicates
-        self.vec.get(start_i + range_count) == Some(&end)
+        // If there are `range_count` items, last item in the next range_count should be the
+        // expected end value, because this vec is sorted and has no duplicates
+        self.vec.get(start_i + range_count - 1) == Some(&end)
     }
 
     pub fn is_disjoint(&self, other: &Self) -> bool {
