@@ -65,6 +65,7 @@ mod test {
     }
 
     #[test]
+    #[allow(clippy::reversed_empty_ranges)]
     fn test_convert_range_to_inclusive() {
         assert_eq!(Some(1..=5), convert_range_to_inclusive(1..6));
         assert_eq!(Some(1..=u32::MAX), convert_range_to_inclusive(1..));
