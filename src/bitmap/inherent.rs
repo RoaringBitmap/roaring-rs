@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::ops::RangeBounds;
 
 use crate::RoaringBitmap;
@@ -326,6 +327,71 @@ impl RoaringBitmap {
             }
             _ => unreachable!("already validated containers has at least 2 items"),
         }
+    }
+
+    /// Returns the number of elements in this set which are in the passed range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// rb.insert_range(0x10000..0x40000);
+    /// rb.insert(0x50001);
+    /// rb.insert(0x50005);
+    /// rb.insert(u32::MAX);
+    ///
+    /// assert_eq!(rb.range_cardinality(0..0x10000), 0);
+    /// assert_eq!(rb.range_cardinality(0x10000..0x40000), 0x30000);
+    /// assert_eq!(rb.range_cardinality(0x50000..0x60000), 2);
+    /// assert_eq!(rb.range_cardinality(0x10000..0x10000), 0);
+    /// assert_eq!(rb.range_cardinality(0x50000..=u32::MAX), 3);
+    /// ```
+    pub fn range_cardinality<R>(&self, range: R) -> u64
+    where
+        R: RangeBounds<u32>,
+    {
+        let (start, end) = match util::convert_range_to_inclusive(range) {
+            Some(range) => (*range.start(), *range.end()),
+            // Empty ranges have 0 bits set in them
+            None => return 0,
+        };
+
+        let (start_key, start_low) = util::split(start);
+        let (end_key, end_low) = util::split(end);
+
+        let mut cardinality = 0;
+
+        let i = match self.containers.binary_search_by_key(&start_key, |c| c.key) {
+            Ok(i) => {
+                let container = &self.containers[i];
+                if start_key == end_key {
+                    cardinality += container.rank(end_low)
+                } else {
+                    cardinality += container.len();
+                }
+                if start_low != 0 {
+                    cardinality -= container.rank(start_low);
+                }
+                i + 1
+            }
+            Err(i) => i,
+        };
+        for container in &self.containers[i..] {
+            match container.key.cmp(&end_key) {
+                Ordering::Less => cardinality += container.len(),
+                Ordering::Equal => {
+                    cardinality += container.rank(end_low);
+                    break;
+                }
+                Ordering::Greater => {
+                    break;
+                }
+            }
+        }
+
+        cardinality
     }
 
     /// Clears all integers in this set.
