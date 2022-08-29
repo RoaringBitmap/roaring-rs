@@ -268,6 +268,66 @@ impl RoaringBitmap {
         }
     }
 
+    /// Returns `true` if all values in the range are present in this set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// // An empty range is always contained
+    /// assert!(rb.contains_range(7..7));
+    ///
+    /// rb.insert_range(1..0xFFF);
+    /// assert!(rb.contains_range(1..0xFFF));
+    /// assert!(rb.contains_range(2..0xFFF));
+    /// // 0 is not contained
+    /// assert!(!rb.contains_range(0..2));
+    /// // 0xFFF is not contained
+    /// assert!(!rb.contains_range(1..=0xFFF));
+    /// ```
+    pub fn contains_range<R>(&self, range: R) -> bool
+    where
+        R: RangeBounds<u32>,
+    {
+        let (start, end) = match util::convert_range_to_inclusive(range) {
+            Some(range) => (*range.start(), *range.end()),
+            // Empty ranges are always contained
+            None => return true,
+        };
+        let (start_high, start_low) = util::split(start);
+        let (end_high, end_low) = util::split(end);
+        debug_assert!(start_high <= end_high);
+
+        let containers =
+            match self.containers.binary_search_by_key(&start_high, |container| container.key) {
+                Ok(i) => &self.containers[i..],
+                Err(_) => return false,
+            };
+
+        if start_high == end_high {
+            return containers[0].contains_range(start_low..=end_low);
+        }
+
+        let high_span = usize::from(end_high - start_high);
+        // If this contains everything in the range, there should be a container for every item in the span
+        // and the container that many items away should be the high key
+        let containers = match containers.get(high_span) {
+            Some(c) if c.key == end_high => &containers[..=high_span],
+            _ => return false,
+        };
+
+        match containers {
+            [first, rest @ .., last] => {
+                first.contains_range(start_low..=u16::MAX)
+                    && rest.iter().all(|container| container.is_full())
+                    && last.contains_range(0..=end_low)
+            }
+            _ => unreachable!("already validated containers has at least 2 items"),
+        }
+    }
+
     /// Clears all integers in this set.
     ///
     /// # Examples

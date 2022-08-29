@@ -178,6 +178,30 @@ impl BitmapStore {
         self.bits[key(index)] & (1 << bit(index)) != 0
     }
 
+    pub fn contains_range(&self, range: RangeInclusive<u16>) -> bool {
+        let start = *range.start();
+        let end = *range.end();
+        if self.len() < u64::from(end - start) + 1 {
+            return false;
+        }
+
+        let (start_i, start_bit) = (key(start), bit(start));
+        let (end_i, end_bit) = (key(end), bit(end));
+
+        let start_mask = !((1 << start_bit) - 1);
+        let end_mask = (1 << end_bit) - 1;
+
+        match &self.bits[start_i..=end_i] {
+            [] => unreachable!(),
+            &[word] => word & (start_mask & end_mask) == (start_mask & end_mask),
+            &[first, ref rest @ .., last] => {
+                (first & start_mask) == start_mask
+                    && rest.iter().all(|&word| word == !0)
+                    && (last & end_mask) == end_mask
+            }
+        }
+    }
+
     pub fn is_disjoint(&self, other: &BitmapStore) -> bool {
         self.bits.iter().zip(other.bits.iter()).all(|(&i1, &i2)| (i1 & i2) == 0)
     }

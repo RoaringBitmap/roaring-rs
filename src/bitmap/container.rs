@@ -94,6 +94,14 @@ impl Container {
         self.store.contains(index)
     }
 
+    pub fn contains_range(&self, range: RangeInclusive<u16>) -> bool {
+        self.store.contains_range(range)
+    }
+
+    pub fn is_full(&self) -> bool {
+        self.store.is_full()
+    }
+
     pub fn is_disjoint(&self, other: &Self) -> bool {
         self.store.is_disjoint(&other.store)
     }
