@@ -67,7 +67,7 @@ impl Error for NonSortedIntegers {}
 /// let naive = bitmaps.clone().into_iter().reduce(|a, b| a | b).unwrap_or_default();
 ///
 /// // And start doing this instead
-/// let iter = bitmaps.or();
+/// let iter = bitmaps.union();
 ///
 /// assert_eq!(naive, iter);
 /// ```
@@ -76,14 +76,14 @@ pub trait MultiOps<T>: IntoIterator<Item = T> {
     type Output;
 
     /// The `union` between all elements.
-    fn or(self) -> Self::Output;
+    fn union(self) -> Self::Output;
 
     /// The `intersection` between all elements.
-    fn and(self) -> Self::Output;
+    fn intersection(self) -> Self::Output;
 
     /// The `difference` between all elements.
-    fn sub(self) -> Self::Output;
+    fn difference(self) -> Self::Output;
 
     /// The `symmetric difference` between all elements.
-    fn xor(self) -> Self::Output;
+    fn symmetric_difference(self) -> Self::Output;
 }

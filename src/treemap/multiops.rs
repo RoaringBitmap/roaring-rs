@@ -13,28 +13,28 @@ where
 {
     type Output = RoaringTreemap;
 
-    fn or(self) -> Self::Output {
+    fn union(self) -> Self::Output {
         try_simple_multi_op_owned::<_, _, OrOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
         .unwrap()
     }
 
-    fn and(self) -> Self::Output {
+    fn intersection(self) -> Self::Output {
         try_ordered_multi_op_owned::<_, _, AndOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
         .unwrap()
     }
 
-    fn sub(self) -> Self::Output {
+    fn difference(self) -> Self::Output {
         try_ordered_multi_op_owned::<_, _, SubOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
         .unwrap()
     }
 
-    fn xor(self) -> Self::Output {
+    fn symmetric_difference(self) -> Self::Output {
         try_simple_multi_op_owned::<_, _, XorOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
@@ -48,19 +48,19 @@ where
 {
     type Output = Result<RoaringTreemap, E>;
 
-    fn or(self) -> Self::Output {
+    fn union(self) -> Self::Output {
         try_simple_multi_op_owned::<_, _, OrOp>(self)
     }
 
-    fn and(self) -> Self::Output {
+    fn intersection(self) -> Self::Output {
         try_ordered_multi_op_owned::<_, _, AndOp>(self)
     }
 
-    fn sub(self) -> Self::Output {
+    fn difference(self) -> Self::Output {
         try_ordered_multi_op_owned::<_, _, SubOp>(self)
     }
 
-    fn xor(self) -> Self::Output {
+    fn symmetric_difference(self) -> Self::Output {
         try_simple_multi_op_owned::<_, _, XorOp>(self)
     }
 }
@@ -247,11 +247,11 @@ enum OrOp {}
 
 impl Op for OrOp {
     fn op_owned<J: IntoIterator<Item = RoaringBitmap>>(iter: J) -> RoaringBitmap {
-        iter.or()
+        iter.union()
     }
 
     fn op_ref<'a, J: IntoIterator<Item = &'a RoaringBitmap>>(iter: J) -> RoaringBitmap {
-        iter.or()
+        iter.union()
     }
 }
 
@@ -259,11 +259,11 @@ enum AndOp {}
 
 impl Op for AndOp {
     fn op_owned<J: IntoIterator<Item = RoaringBitmap>>(iter: J) -> RoaringBitmap {
-        iter.and()
+        iter.intersection()
     }
 
     fn op_ref<'a, J: IntoIterator<Item = &'a RoaringBitmap>>(iter: J) -> RoaringBitmap {
-        iter.and()
+        iter.intersection()
     }
 }
 
@@ -271,11 +271,11 @@ enum SubOp {}
 
 impl Op for SubOp {
     fn op_owned<J: IntoIterator<Item = RoaringBitmap>>(iter: J) -> RoaringBitmap {
-        iter.sub()
+        iter.difference()
     }
 
     fn op_ref<'a, J: IntoIterator<Item = &'a RoaringBitmap>>(iter: J) -> RoaringBitmap {
-        iter.sub()
+        iter.difference()
     }
 }
 
@@ -283,11 +283,11 @@ enum XorOp {}
 
 impl Op for XorOp {
     fn op_owned<J: IntoIterator<Item = RoaringBitmap>>(iter: J) -> RoaringBitmap {
-        iter.xor()
+        iter.symmetric_difference()
     }
 
     fn op_ref<'a, J: IntoIterator<Item = &'a RoaringBitmap>>(iter: J) -> RoaringBitmap {
-        iter.xor()
+        iter.symmetric_difference()
     }
 }
 
@@ -297,28 +297,28 @@ where
 {
     type Output = RoaringTreemap;
 
-    fn or(self) -> Self::Output {
+    fn union(self) -> Self::Output {
         try_simple_multi_op_ref::<_, _, OrOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
         .unwrap()
     }
 
-    fn and(self) -> Self::Output {
+    fn intersection(self) -> Self::Output {
         try_ordered_multi_op_ref::<_, _, AndOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
         .unwrap()
     }
 
-    fn sub(self) -> Self::Output {
+    fn difference(self) -> Self::Output {
         try_ordered_multi_op_ref::<_, _, SubOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
         .unwrap()
     }
 
-    fn xor(self) -> Self::Output {
+    fn symmetric_difference(self) -> Self::Output {
         try_simple_multi_op_ref::<_, _, XorOp>(
             self.into_iter().map(Ok::<_, std::convert::Infallible>),
         )
@@ -332,19 +332,19 @@ where
 {
     type Output = Result<RoaringTreemap, E>;
 
-    fn or(self) -> Self::Output {
+    fn union(self) -> Self::Output {
         try_simple_multi_op_ref::<_, _, OrOp>(self)
     }
 
-    fn and(self) -> Self::Output {
+    fn intersection(self) -> Self::Output {
         try_ordered_multi_op_ref::<_, _, AndOp>(self)
     }
 
-    fn sub(self) -> Self::Output {
+    fn difference(self) -> Self::Output {
         try_ordered_multi_op_ref::<_, _, SubOp>(self)
     }
 
-    fn xor(self) -> Self::Output {
+    fn symmetric_difference(self) -> Self::Output {
         try_simple_multi_op_ref::<_, _, XorOp>(self)
     }
 }

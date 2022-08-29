@@ -26,19 +26,19 @@ where
 {
     type Output = RoaringBitmap;
 
-    fn or(self) -> Self::Output {
+    fn union(self) -> Self::Output {
         try_multi_or_owned(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 
-    fn and(self) -> Self::Output {
+    fn intersection(self) -> Self::Output {
         try_multi_and_owned(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 
-    fn sub(self) -> Self::Output {
+    fn difference(self) -> Self::Output {
         try_multi_sub_owned(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 
-    fn xor(self) -> Self::Output {
+    fn symmetric_difference(self) -> Self::Output {
         try_multi_xor_owned(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 }
@@ -49,19 +49,19 @@ where
 {
     type Output = Result<RoaringBitmap, E>;
 
-    fn or(self) -> Self::Output {
+    fn union(self) -> Self::Output {
         try_multi_xor_owned(self)
     }
 
-    fn and(self) -> Self::Output {
+    fn intersection(self) -> Self::Output {
         try_multi_and_owned(self)
     }
 
-    fn sub(self) -> Self::Output {
+    fn difference(self) -> Self::Output {
         try_multi_sub_owned(self)
     }
 
-    fn xor(self) -> Self::Output {
+    fn symmetric_difference(self) -> Self::Output {
         try_multi_xor_owned(self)
     }
 }
@@ -72,19 +72,19 @@ where
 {
     type Output = RoaringBitmap;
 
-    fn or(self) -> Self::Output {
+    fn union(self) -> Self::Output {
         try_multi_or_ref(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 
-    fn and(self) -> Self::Output {
+    fn intersection(self) -> Self::Output {
         try_multi_and_ref(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 
-    fn sub(self) -> Self::Output {
+    fn difference(self) -> Self::Output {
         try_multi_sub_ref(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 
-    fn xor(self) -> Self::Output {
+    fn symmetric_difference(self) -> Self::Output {
         try_multi_xor_ref(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
     }
 }
@@ -95,19 +95,19 @@ where
 {
     type Output = Result<RoaringBitmap, E>;
 
-    fn or(self) -> Self::Output {
+    fn union(self) -> Self::Output {
         try_multi_or_ref(self)
     }
 
-    fn and(self) -> Self::Output {
+    fn intersection(self) -> Self::Output {
         try_multi_and_ref(self)
     }
 
-    fn sub(self) -> Self::Output {
+    fn difference(self) -> Self::Output {
         try_multi_sub_ref(self)
     }
 
-    fn xor(self) -> Self::Output {
+    fn symmetric_difference(self) -> Self::Output {
         try_multi_xor_ref(self)
     }
 }

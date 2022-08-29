@@ -455,8 +455,8 @@ mod test {
             let ref_inline = &a | &b | &c;
             let own_inline = a.clone() | b.clone() | c.clone();
 
-            let ref_multiop = [&a, &b, &c].or();
-            let own_multiop = [a.clone(), b.clone(), c.clone()].or();
+            let ref_multiop = [&a, &b, &c].union();
+            let own_multiop = [a.clone(), b.clone(), c.clone()].union();
 
             for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
                 prop_assert_eq!(&ref_assign, roar);
@@ -480,8 +480,8 @@ mod test {
             let ref_inline = &a & &b & &c;
             let own_inline = a.clone() & b.clone() & c.clone();
 
-            let ref_multiop = [&a, &b, &c].and();
-            let own_multiop = [a.clone(), b.clone(), c.clone()].and();
+            let ref_multiop = [&a, &b, &c].intersection();
+            let own_multiop = [a.clone(), b.clone(), c.clone()].intersection();
 
             for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
                 prop_assert_eq!(&ref_assign, roar);
@@ -505,8 +505,8 @@ mod test {
             let ref_inline = &a - &b - &c;
             let own_inline = a.clone() - b.clone() - c.clone();
 
-            let ref_multiop = [&a, &b, &c].sub();
-            let own_multiop = [a.clone(), b.clone(), c.clone()].sub();
+            let ref_multiop = [&a, &b, &c].difference();
+            let own_multiop = [a.clone(), b.clone(), c.clone()].difference();
 
             for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
                 prop_assert_eq!(&ref_assign, roar);
@@ -530,8 +530,8 @@ mod test {
             let ref_inline = &a ^ &b ^ &c;
             let own_inline = a.clone() ^ b.clone() ^ c.clone();
 
-            let ref_multiop = [&a, &b, &c].xor();
-            let own_multiop = [a.clone(), b.clone(), c.clone()].xor();
+            let ref_multiop = [&a, &b, &c].symmetric_difference();
+            let own_multiop = [a.clone(), b.clone(), c.clone()].symmetric_difference();
 
             for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
                 prop_assert_eq!(&ref_assign, roar);
