@@ -218,7 +218,7 @@ fn try_multi_or_owned<E>(
     let mut containers = if let Some(c) = start.next() {
         if c.is_empty() {
             // everything must be empty if the max is empty
-            start.by_ref().skip(start_size).next();
+            start.by_ref().nth(start_size);
         }
         c.containers
     } else {
@@ -313,7 +313,7 @@ fn try_multi_or_ref<'a, E: 'a>(
             let c: Vec<Cow<Container>> = c.containers.iter().map(Cow::Borrowed).collect();
             if c.is_empty() {
                 // everything must be empty if the max is empty
-                start.by_ref().skip(start_size).next();
+                start.by_ref().nth(start_size);
             }
             c
         }

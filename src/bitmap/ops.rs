@@ -496,7 +496,7 @@ mod test {
             let own_inline = a.clone() | b.clone() | c.clone();
 
             let ref_multiop = [&a, &b, &c].union();
-            let own_multiop = [a.clone(), b.clone(), c.clone()].union();
+            let own_multiop = [a, b.clone(), c.clone()].union();
 
             for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
                 prop_assert_eq!(&ref_assign, roar);
@@ -521,7 +521,7 @@ mod test {
             let own_inline = a.clone() & b.clone() & c.clone();
 
             let ref_multiop = [&a, &b, &c].intersection();
-            let own_multiop = [a.clone(), b.clone(), c.clone()].intersection();
+            let own_multiop = [a, b.clone(), c.clone()].intersection();
 
             for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
                 prop_assert_eq!(&ref_assign, roar);
@@ -546,7 +546,7 @@ mod test {
             let own_inline = a.clone() - b.clone() - c.clone();
 
             let ref_multiop = [&a, &b, &c].difference();
-            let own_multiop = [a.clone(), b.clone(), c.clone()].difference();
+            let own_multiop = [a, b.clone(), c.clone()].difference();
 
             for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
                 prop_assert_eq!(&ref_assign, roar);
@@ -571,7 +571,7 @@ mod test {
             let own_inline = a.clone() ^ b.clone() ^ c.clone();
 
             let ref_multiop = [&a, &b, &c].symmetric_difference();
-            let own_multiop = [a.clone(), b.clone(), c.clone()].symmetric_difference();
+            let own_multiop = [a, b.clone(), c.clone()].symmetric_difference();
 
             for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
                 prop_assert_eq!(&ref_assign, roar);
