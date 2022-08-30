@@ -12,7 +12,7 @@ use crate::{MultiOps, RoaringBitmap};
 
 use super::{container::Container, store::Store};
 
-/// When collecting bitmaps for optimizing the computation.If we don't know how many
+/// When collecting bitmaps for optimizing the computation. If we don't know how many
 // elements are in the iterator we collect 10 elements.
 const BASE_COLLECT: usize = 10;
 
@@ -120,7 +120,7 @@ fn try_multi_and_owned<E>(
 
     // We're going to take a bunch of elements at the start of the iterator and sort
     // them to reduce the size of our bitmap faster.
-    let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
+    let mut start = collect_starting_elements::<_, _, Result<Vec<_>, _>>(iter.by_ref())?;
     start.sort_unstable_by_key(|bitmap| bitmap.containers.len());
     let mut start = start.into_iter();
 
@@ -152,7 +152,7 @@ fn try_multi_and_ref<'a, E>(
 
     // We're going to take a bunch of elements at the start of the iterator and sort
     // them to reduce the size of our bitmap faster.
-    let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
+    let mut start = collect_starting_elements::<_, _, Result<Vec<_>, _>>(iter.by_ref())?;
     start.sort_unstable_by_key(|bitmap| bitmap.containers.len());
     let mut start = start.into_iter();
 
@@ -223,7 +223,7 @@ fn try_multi_or_owned<E>(
 
     // We're going to take a bunch of elements at the start of the iterator and
     // move the biggest one first to grow faster.
-    let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
+    let mut start = collect_starting_elements::<_, _, Result<Vec<_>, _>>(iter.by_ref())?;
     start.sort_unstable_by_key(|bitmap| Reverse(bitmap.containers.len()));
     let start_size = start.len();
     let mut start = start.into_iter();
@@ -312,7 +312,7 @@ fn try_multi_or_ref<'a, E: 'a>(
 
     // Phase 1. Borrow all the containers from the first element.
     let mut iter = bitmaps.into_iter();
-    let mut start = collect_starting_elements::<_, Result<Vec<_>, _>>(iter.by_ref())?;
+    let mut start = collect_starting_elements::<_, _, Result<Vec<_>, _>>(iter.by_ref())?;
     let start_size = start.len();
 
     start.sort_unstable_by_key(|bitmap| Reverse(bitmap.containers.len()));
@@ -337,7 +337,7 @@ fn try_multi_or_ref<'a, E: 'a>(
     }
 
     // Phase 3: Clean up
-    let containers: Vec<Container> = containers
+    let containers: Vec<_> = containers
         .into_iter()
         .map(|c| {
             // Any borrowed bitmaps or arrays left over get cloned here
@@ -378,7 +378,7 @@ fn try_multi_xor_ref<'a, E: 'a>(
     }
 
     // Phase 3: Clean up
-    let containers: Vec<Container> = containers
+    let containers: Vec<_> = containers
         .into_iter()
         .map(|c| {
             // Any borrowed bitmaps or arrays left over get cloned here
@@ -431,9 +431,10 @@ fn merge_container_ref<'a>(
     }
 }
 
-fn collect_starting_elements<I, O>(iter: impl IntoIterator<Item = I>) -> O
+fn collect_starting_elements<I, T, O>(iter: I) -> O
 where
-    O: FromIterator<I>,
+    I: IntoIterator<Item = T>,
+    O: FromIterator<T>,
 {
     let mut iter = iter.into_iter();
     let mut to_collect = iter.size_hint().1.unwrap_or(BASE_COLLECT);

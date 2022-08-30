@@ -133,7 +133,8 @@ where
     };
     let mut treemaps = treemaps.collect::<Result<Vec<_>, _>>()?;
 
-    // for each keys in the first treemap we're going find and accumulate all the corresponding bitmaps
+    // for each key in the first treemap we're going to find and
+    // accumulate all the corresponding bitmaps
     let keys: Vec<_> = treemap.map.keys().copied().collect();
     for k in keys {
         // the unwrap is safe since we're iterating on our keys

@@ -50,6 +50,7 @@ impl Error for NonSortedIntegers {}
 
 /// A [`collect`] blanket implementation that provides extra methods for [`RoaringBitmap`]
 /// and [`RoaringTreemap`].
+///
 /// When merging multiple bitmap with the same operation it's usually faster to call the
 /// method in this trait than to write your own for loop and merging the bitmaps yourself.
 ///
