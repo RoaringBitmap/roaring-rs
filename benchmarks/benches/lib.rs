@@ -8,7 +8,7 @@ use criterion::{
     Throughput,
 };
 
-use roaring::{IterExt, RoaringBitmap};
+use roaring::{MultiOps, RoaringBitmap};
 
 use crate::datasets::Datasets;
 
@@ -472,13 +472,13 @@ fn successive_and(c: &mut Criterion) {
         });
 
         group.bench_function(BenchmarkId::new("Multi And Ref", &dataset.name), |b| {
-            b.iter(|| black_box(dataset.bitmaps.iter().and()));
+            b.iter(|| black_box(dataset.bitmaps.iter().intersection()));
         });
 
         group.bench_function(BenchmarkId::new("Multi And Owned", &dataset.name), |b| {
             b.iter_batched(
                 || dataset.bitmaps.clone(),
-                |bitmaps: Vec<RoaringBitmap>| black_box(bitmaps.and()),
+                |bitmaps: Vec<RoaringBitmap>| black_box(bitmaps.intersection()),
                 BatchSize::LargeInput,
             );
         });
@@ -523,13 +523,13 @@ fn successive_or(c: &mut Criterion) {
         });
 
         group.bench_function(BenchmarkId::new("Multi Or Ref", &dataset.name), |b| {
-            b.iter(|| black_box(dataset.bitmaps.iter().or()));
+            b.iter(|| black_box(dataset.bitmaps.iter().union()));
         });
 
         group.bench_function(BenchmarkId::new("Multi Or Owned", &dataset.name), |b| {
             b.iter_batched(
                 || dataset.bitmaps.clone(),
-                |bitmaps: Vec<RoaringBitmap>| black_box(bitmaps.or()),
+                |bitmaps: Vec<RoaringBitmap>| black_box(bitmaps.union()),
                 BatchSize::LargeInput,
             );
         });
