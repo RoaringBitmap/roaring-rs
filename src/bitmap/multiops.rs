@@ -446,7 +446,6 @@ where
     }
 
     let mut ret = Vec::with_capacity(to_collect);
-
     for el in iter.take(to_collect) {
         ret.push(el?);
     }
