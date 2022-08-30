@@ -372,7 +372,7 @@ impl RoaringBitmap {
                     cardinality += container.len();
                 }
                 if start_low != 0 {
-                    cardinality -= container.rank(start_low);
+                    cardinality -= container.rank(start_low - 1);
                 }
                 i + 1
             }
