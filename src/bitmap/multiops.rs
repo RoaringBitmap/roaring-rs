@@ -230,8 +230,12 @@ fn try_multi_or_owned<E>(
     }
 
     RetainMut::retain_mut(&mut containers, |container| {
-        container.ensure_correct_store();
-        container.len() > 0
+        if container.len() > 0 {
+            container.ensure_correct_store();
+            true
+        } else {
+            false
+        }
     });
 
     Ok(RoaringBitmap { containers })
@@ -252,8 +256,12 @@ fn try_multi_xor_owned<E>(
     }
 
     RetainMut::retain_mut(&mut containers, |container| {
-        container.ensure_correct_store();
-        container.len() > 0
+        if container.len() > 0 {
+            container.ensure_correct_store();
+            true
+        } else {
+            false
+        }
     });
 
     Ok(RoaringBitmap { containers })
@@ -322,13 +330,13 @@ fn try_multi_or_ref<'a, E: 'a>(
     // Phase 3: Clean up
     let containers: Vec<_> = containers
         .into_iter()
+        .filter(|container| container.len() > 0)
         .map(|c| {
             // Any borrowed bitmaps or arrays left over get cloned here
             let mut container = c.into_owned();
             container.ensure_correct_store();
             container
         })
-        .filter(|container| container.len() > 0)
         .collect();
 
     Ok(RoaringBitmap { containers })
@@ -363,13 +371,13 @@ fn try_multi_xor_ref<'a, E: 'a>(
     // Phase 3: Clean up
     let containers: Vec<_> = containers
         .into_iter()
+        .filter(|container| container.len() > 0)
         .map(|c| {
             // Any borrowed bitmaps or arrays left over get cloned here
             let mut container = c.into_owned();
             container.ensure_correct_store();
             container
         })
-        .filter(|container| container.len() > 0)
         .collect();
 
     Ok(RoaringBitmap { containers })
