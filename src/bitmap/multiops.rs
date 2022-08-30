@@ -317,15 +317,18 @@ fn try_multi_or_ref<'a, E: 'a>(
 
     start.sort_unstable_by_key(|bitmap| Reverse(bitmap.containers.len()));
     let mut start = start.into_iter();
-    let mut containers = if let Some(c) = start.next() {
-        let c: Vec<Cow<Container>> = c.containers.iter().map(Cow::Borrowed).collect();
-        if c.is_empty() {
-            // everything must be empty if the max is empty
-            start.by_ref().skip(start_size).next();
+    let mut containers = match start.next() {
+        Some(c) => {
+            let c: Vec<Cow<Container>> = c.containers.iter().map(Cow::Borrowed).collect();
+            if c.is_empty() {
+                // everything must be empty if the max is empty
+                start.by_ref().skip(start_size).next();
+            }
+            c
         }
-        c
-    } else {
-        return Ok(RoaringBitmap::new());
+        None => {
+            return Ok(RoaringBitmap::new());
+        }
     };
 
     // Phase 2: Operate on the remaining containers
