@@ -355,7 +355,7 @@ fn try_multi_xor_ref<'a, E: 'a>(
         Some(v) => v.containers.iter().map(Cow::Borrowed).collect(),
     };
 
-    // Phase 2: Operate on the remaining contaners
+    // Phase 2: Operate on the remaining containers
     for bitmap in iter {
         merge_container_ref(&mut containers, &bitmap?.containers, |a, b| *a ^= b);
     }
