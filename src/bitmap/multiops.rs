@@ -120,7 +120,7 @@ fn try_multi_and_owned<E>(
 
     // We're going to take a bunch of elements at the start of the iterator and sort
     // them to reduce the size of our bitmap faster.
-    let mut start = collect_starting_elements::<_, _, Result<Vec<_>, _>>(iter.by_ref())?;
+    let mut start = collect_starting_elements(iter.by_ref())?;
     start.sort_unstable_by_key(|bitmap| bitmap.containers.len());
     let mut start = start.into_iter();
 
@@ -152,7 +152,7 @@ fn try_multi_and_ref<'a, E>(
 
     // We're going to take a bunch of elements at the start of the iterator and sort
     // them to reduce the size of our bitmap faster.
-    let mut start = collect_starting_elements::<_, _, Result<Vec<_>, _>>(iter.by_ref())?;
+    let mut start = collect_starting_elements(iter.by_ref())?;
     start.sort_unstable_by_key(|bitmap| bitmap.containers.len());
     let mut start = start.into_iter();
 
@@ -223,7 +223,7 @@ fn try_multi_or_owned<E>(
 
     // We're going to take a bunch of elements at the start of the iterator and
     // move the biggest one first to grow faster.
-    let mut start = collect_starting_elements::<_, _, Result<Vec<_>, _>>(iter.by_ref())?;
+    let mut start = collect_starting_elements(iter.by_ref())?;
     start.sort_unstable_by_key(|bitmap| Reverse(bitmap.containers.len()));
     let start_size = start.len();
     let mut start = start.into_iter();
@@ -312,7 +312,7 @@ fn try_multi_or_ref<'a, E: 'a>(
 
     // Phase 1. Borrow all the containers from the first element.
     let mut iter = bitmaps.into_iter();
-    let mut start = collect_starting_elements::<_, _, Result<Vec<_>, _>>(iter.by_ref())?;
+    let mut start = collect_starting_elements(iter.by_ref())?;
     let start_size = start.len();
 
     start.sort_unstable_by_key(|bitmap| Reverse(bitmap.containers.len()));
@@ -434,16 +434,22 @@ fn merge_container_ref<'a>(
     }
 }
 
-fn collect_starting_elements<I, T, O>(iter: I) -> O
+#[inline]
+fn collect_starting_elements<I, El, Er>(iter: I) -> Result<Vec<El>, Er>
 where
-    I: IntoIterator<Item = T>,
-    O: FromIterator<T>,
+    I: IntoIterator<Item = Result<El, Er>>,
 {
-    let mut iter = iter.into_iter();
+    let iter = iter.into_iter();
     let mut to_collect = iter.size_hint().1.unwrap_or(BASE_COLLECT);
     if to_collect > MAX_COLLECT {
         to_collect = BASE_COLLECT;
     }
 
-    iter.by_ref().take(to_collect).collect()
+    let mut ret = Vec::with_capacity(to_collect);
+
+    for el in iter.take(to_collect) {
+        ret.push(el?);
+    }
+
+    Ok(ret)
 }
