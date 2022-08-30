@@ -8,7 +8,7 @@ use criterion::{
     Throughput,
 };
 
-use roaring::RoaringBitmap;
+use roaring::{MultiOps, RoaringBitmap};
 
 use crate::datasets::Datasets;
 
@@ -470,6 +470,18 @@ fn successive_and(c: &mut Criterion) {
                 BatchSize::LargeInput,
             );
         });
+
+        group.bench_function(BenchmarkId::new("Multi And Ref", &dataset.name), |b| {
+            b.iter(|| black_box(dataset.bitmaps.iter().intersection()));
+        });
+
+        group.bench_function(BenchmarkId::new("Multi And Owned", &dataset.name), |b| {
+            b.iter_batched(
+                || dataset.bitmaps.clone(),
+                |bitmaps: Vec<RoaringBitmap>| black_box(bitmaps.intersection()),
+                BatchSize::LargeInput,
+            );
+        });
     }
 
     group.finish();
@@ -508,6 +520,18 @@ fn successive_or(c: &mut Criterion) {
                     output = (&output) | bitmap;
                 }
             });
+        });
+
+        group.bench_function(BenchmarkId::new("Multi Or Ref", &dataset.name), |b| {
+            b.iter(|| black_box(dataset.bitmaps.iter().union()));
+        });
+
+        group.bench_function(BenchmarkId::new("Multi Or Owned", &dataset.name), |b| {
+            b.iter_batched(
+                || dataset.bitmaps.clone(),
+                |bitmaps: Vec<RoaringBitmap>| black_box(bitmaps.union()),
+                BatchSize::LargeInput,
+            );
         });
     }
 
@@ -672,6 +696,6 @@ criterion_group!(
     serialization,
     deserialization,
     successive_and,
-    successive_or,
+    successive_or
 );
 criterion_main!(benches);

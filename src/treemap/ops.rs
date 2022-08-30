@@ -398,3 +398,144 @@ impl BitXorAssign<&RoaringTreemap> for RoaringTreemap {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::{MultiOps, RoaringTreemap};
+    use proptest::prelude::*;
+
+    // fast count tests
+    proptest! {
+        #[test]
+        fn union_len_eq_len_of_materialized_union(
+            a in RoaringTreemap::arbitrary(),
+            b in RoaringTreemap::arbitrary()
+        ) {
+            prop_assert_eq!(a.union_len(&b), (a | b).len());
+        }
+
+        #[test]
+        fn intersection_len_eq_len_of_materialized_intersection(
+            a in RoaringTreemap::arbitrary(),
+            b in RoaringTreemap::arbitrary()
+        ) {
+            prop_assert_eq!(a.intersection_len(&b), (a & b).len());
+        }
+
+        #[test]
+        fn difference_len_eq_len_of_materialized_difference(
+            a in RoaringTreemap::arbitrary(),
+            b in RoaringTreemap::arbitrary()
+        ) {
+            prop_assert_eq!(a.difference_len(&b), (a - b).len());
+        }
+
+        #[test]
+        fn symmetric_difference_len_eq_len_of_materialized_symmetric_difference(
+            a in RoaringTreemap::arbitrary(),
+            b in RoaringTreemap::arbitrary()
+        ) {
+            prop_assert_eq!(a.symmetric_difference_len(&b), (a ^ b).len());
+        }
+
+        #[test]
+        fn all_union_give_the_same_result(
+            a in RoaringTreemap::arbitrary(),
+            b in RoaringTreemap::arbitrary(),
+            c in RoaringTreemap::arbitrary()
+        ) {
+            let mut ref_assign = a.clone();
+            ref_assign |= &b;
+            ref_assign |= &c;
+
+            let mut own_assign = a.clone();
+            own_assign |= b.clone();
+            own_assign |= c.clone();
+
+            let ref_inline = &a | &b | &c;
+            let own_inline = a.clone() | b.clone() | c.clone();
+
+            let ref_multiop = [&a, &b, &c].union();
+            let own_multiop = [a, b.clone(), c.clone()].union();
+
+            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+                prop_assert_eq!(&ref_assign, roar);
+            }
+        }
+
+        #[test]
+        fn all_intersection_give_the_same_result(
+            a in RoaringTreemap::arbitrary(),
+            b in RoaringTreemap::arbitrary(),
+            c in RoaringTreemap::arbitrary()
+        ) {
+            let mut ref_assign = a.clone();
+            ref_assign &= &b;
+            ref_assign &= &c;
+
+            let mut own_assign = a.clone();
+            own_assign &= b.clone();
+            own_assign &= c.clone();
+
+            let ref_inline = &a & &b & &c;
+            let own_inline = a.clone() & b.clone() & c.clone();
+
+            let ref_multiop = [&a, &b, &c].intersection();
+            let own_multiop = [a, b.clone(), c.clone()].intersection();
+
+            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+                prop_assert_eq!(&ref_assign, roar);
+            }
+        }
+
+        #[test]
+        fn all_difference_give_the_same_result(
+            a in RoaringTreemap::arbitrary(),
+            b in RoaringTreemap::arbitrary(),
+            c in RoaringTreemap::arbitrary()
+        ) {
+            let mut ref_assign = a.clone();
+            ref_assign -= &b;
+            ref_assign -= &c;
+
+            let mut own_assign = a.clone();
+            own_assign -= b.clone();
+            own_assign -= c.clone();
+
+            let ref_inline = &a - &b - &c;
+            let own_inline = a.clone() - b.clone() - c.clone();
+
+            let ref_multiop = [&a, &b, &c].difference();
+            let own_multiop = [a, b.clone(), c.clone()].difference();
+
+            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+                prop_assert_eq!(&ref_assign, roar);
+            }
+        }
+
+        #[test]
+        fn all_symmetric_difference_give_the_same_result(
+            a in RoaringTreemap::arbitrary(),
+            b in RoaringTreemap::arbitrary(),
+            c in RoaringTreemap::arbitrary()
+        ) {
+            let mut ref_assign = a.clone();
+            ref_assign ^= &b;
+            ref_assign ^= &c;
+
+            let mut own_assign = a.clone();
+            own_assign ^= b.clone();
+            own_assign ^= c.clone();
+
+            let ref_inline = &a ^ &b ^ &c;
+            let own_inline = a.clone() ^ b.clone() ^ c.clone();
+
+            let ref_multiop = [&a, &b, &c].symmetric_difference();
+            let own_multiop = [a, b.clone(), c.clone()].symmetric_difference();
+
+            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+                prop_assert_eq!(&ref_assign, roar);
+            }
+        }
+    }
+}

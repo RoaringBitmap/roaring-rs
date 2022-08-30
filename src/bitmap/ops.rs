@@ -236,7 +236,7 @@ impl BitAndAssign<RoaringBitmap> for RoaringBitmap {
     /// An `intersection` between two sets.
     fn bitand_assign(&mut self, mut rhs: RoaringBitmap) {
         // We make sure that we apply the intersection operation on the smallest map.
-        if rhs.len() < self.len() {
+        if rhs.containers.len() < self.containers.len() {
             mem::swap(self, &mut rhs);
         }
 
@@ -441,7 +441,7 @@ impl BitXorAssign<&RoaringBitmap> for RoaringBitmap {
 
 #[cfg(test)]
 mod test {
-    use crate::RoaringBitmap;
+    use crate::{MultiOps, RoaringBitmap};
     use proptest::prelude::*;
 
     // fast count tests
@@ -476,6 +476,106 @@ mod test {
             b in RoaringBitmap::arbitrary()
         ) {
             prop_assert_eq!(a.symmetric_difference_len(&b), (a ^ b).len());
+        }
+
+        #[test]
+        fn all_union_give_the_same_result(
+            a in RoaringBitmap::arbitrary(),
+            b in RoaringBitmap::arbitrary(),
+            c in RoaringBitmap::arbitrary()
+        ) {
+            let mut ref_assign = a.clone();
+            ref_assign |= &b;
+            ref_assign |= &c;
+
+            let mut own_assign = a.clone();
+            own_assign |= b.clone();
+            own_assign |= c.clone();
+
+            let ref_inline = &a | &b | &c;
+            let own_inline = a.clone() | b.clone() | c.clone();
+
+            let ref_multiop = [&a, &b, &c].union();
+            let own_multiop = [a, b.clone(), c.clone()].union();
+
+            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+                prop_assert_eq!(&ref_assign, roar);
+            }
+        }
+
+        #[test]
+        fn all_intersection_give_the_same_result(
+            a in RoaringBitmap::arbitrary(),
+            b in RoaringBitmap::arbitrary(),
+            c in RoaringBitmap::arbitrary()
+        ) {
+            let mut ref_assign = a.clone();
+            ref_assign &= &b;
+            ref_assign &= &c;
+
+            let mut own_assign = a.clone();
+            own_assign &= b.clone();
+            own_assign &= c.clone();
+
+            let ref_inline = &a & &b & &c;
+            let own_inline = a.clone() & b.clone() & c.clone();
+
+            let ref_multiop = [&a, &b, &c].intersection();
+            let own_multiop = [a, b.clone(), c.clone()].intersection();
+
+            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+                prop_assert_eq!(&ref_assign, roar);
+            }
+        }
+
+        #[test]
+        fn all_difference_give_the_same_result(
+            a in RoaringBitmap::arbitrary(),
+            b in RoaringBitmap::arbitrary(),
+            c in RoaringBitmap::arbitrary()
+        ) {
+            let mut ref_assign = a.clone();
+            ref_assign -= &b;
+            ref_assign -= &c;
+
+            let mut own_assign = a.clone();
+            own_assign -= b.clone();
+            own_assign -= c.clone();
+
+            let ref_inline = &a - &b - &c;
+            let own_inline = a.clone() - b.clone() - c.clone();
+
+            let ref_multiop = [&a, &b, &c].difference();
+            let own_multiop = [a, b.clone(), c.clone()].difference();
+
+            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+                prop_assert_eq!(&ref_assign, roar);
+            }
+        }
+
+        #[test]
+        fn all_symmetric_difference_give_the_same_result(
+            a in RoaringBitmap::arbitrary(),
+            b in RoaringBitmap::arbitrary(),
+            c in RoaringBitmap::arbitrary()
+        ) {
+            let mut ref_assign = a.clone();
+            ref_assign ^= &b;
+            ref_assign ^= &c;
+
+            let mut own_assign = a.clone();
+            own_assign ^= b.clone();
+            own_assign ^= c.clone();
+
+            let ref_inline = &a ^ &b ^ &c;
+            let own_inline = a.clone() ^ b.clone() ^ c.clone();
+
+            let ref_multiop = [&a, &b, &c].symmetric_difference();
+            let own_multiop = [a, b.clone(), c.clone()].symmetric_difference();
+
+            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+                prop_assert_eq!(&ref_assign, roar);
+            }
         }
     }
 }

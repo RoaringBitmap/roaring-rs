@@ -2,10 +2,12 @@ use crate::RoaringBitmap;
 use std::collections::BTreeMap;
 
 mod fmt;
+mod multiops;
 mod util;
 
 // Order of these modules matters as it determines the `impl` blocks order in
 // the docs
+mod arbitrary;
 mod cmp;
 mod inherent;
 mod iter;
