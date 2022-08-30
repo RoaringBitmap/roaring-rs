@@ -25,7 +25,6 @@ simd = []
 
 [dev-dependencies]
 proptest = { version = "1.0.0" }
-arbitrary = { version = "1", features = ["derive"] }
 
 [profile.test]
 opt-level = 2
