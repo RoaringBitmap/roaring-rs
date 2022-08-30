@@ -37,8 +37,8 @@ where
 
 #[cfg(test)]
 mod test {
-    use std::ops::Bound;
     use super::{convert_range_to_inclusive, join, split};
+    use std::ops::Bound;
 
     #[test]
     fn test_split_u32() {
@@ -71,14 +71,23 @@ mod test {
         assert_eq!(Some(1..=u32::MAX), convert_range_to_inclusive(1..));
         assert_eq!(Some(0..=u32::MAX), convert_range_to_inclusive(..));
         assert_eq!(Some(16..=16), convert_range_to_inclusive(16..=16));
-        assert_eq!(Some(11..=19), convert_range_to_inclusive((Bound::Excluded(10), Bound::Excluded(20))));
+        assert_eq!(
+            Some(11..=19),
+            convert_range_to_inclusive((Bound::Excluded(10), Bound::Excluded(20)))
+        );
 
         assert_eq!(None, convert_range_to_inclusive(0..0));
         assert_eq!(None, convert_range_to_inclusive(5..5));
         assert_eq!(None, convert_range_to_inclusive(1..0));
         assert_eq!(None, convert_range_to_inclusive(10..5));
-        assert_eq!(None, convert_range_to_inclusive((Bound::Excluded(u32::MAX), Bound::Included(u32::MAX))));
-        assert_eq!(None, convert_range_to_inclusive((Bound::Excluded(u32::MAX), Bound::Included(u32::MAX))));
+        assert_eq!(
+            None,
+            convert_range_to_inclusive((Bound::Excluded(u32::MAX), Bound::Included(u32::MAX)))
+        );
+        assert_eq!(
+            None,
+            convert_range_to_inclusive((Bound::Excluded(u32::MAX), Bound::Included(u32::MAX)))
+        );
         assert_eq!(None, convert_range_to_inclusive((Bound::Excluded(0), Bound::Included(0))));
     }
 }
