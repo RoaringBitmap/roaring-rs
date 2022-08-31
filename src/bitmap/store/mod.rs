@@ -99,6 +99,17 @@ impl Store {
         }
     }
 
+    pub fn contains_range(&self, range: RangeInclusive<u16>) -> bool {
+        match self {
+            Array(vec) => vec.contains_range(range),
+            Bitmap(bits) => bits.contains_range(range),
+        }
+    }
+
+    pub fn is_full(&self) -> bool {
+        self.len() == (1 << 16)
+    }
+
     pub fn is_disjoint(&self, other: &Self) -> bool {
         match (self, other) {
             (Array(vec1), Array(vec2)) => vec1.is_disjoint(vec2),

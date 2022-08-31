@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::ops::RangeBounds;
 
 use crate::RoaringBitmap;
@@ -266,6 +267,131 @@ impl RoaringBitmap {
             Ok(loc) => self.containers[loc].contains(index),
             Err(_) => false,
         }
+    }
+
+    /// Returns `true` if all values in the range are present in this set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// // An empty range is always contained
+    /// assert!(rb.contains_range(7..7));
+    ///
+    /// rb.insert_range(1..0xFFF);
+    /// assert!(rb.contains_range(1..0xFFF));
+    /// assert!(rb.contains_range(2..0xFFF));
+    /// // 0 is not contained
+    /// assert!(!rb.contains_range(0..2));
+    /// // 0xFFF is not contained
+    /// assert!(!rb.contains_range(1..=0xFFF));
+    /// ```
+    pub fn contains_range<R>(&self, range: R) -> bool
+    where
+        R: RangeBounds<u32>,
+    {
+        let (start, end) = match util::convert_range_to_inclusive(range) {
+            Some(range) => (*range.start(), *range.end()),
+            // Empty ranges are always contained
+            None => return true,
+        };
+        let (start_high, start_low) = util::split(start);
+        let (end_high, end_low) = util::split(end);
+        debug_assert!(start_high <= end_high);
+
+        let containers =
+            match self.containers.binary_search_by_key(&start_high, |container| container.key) {
+                Ok(i) => &self.containers[i..],
+                Err(_) => return false,
+            };
+
+        if start_high == end_high {
+            return containers[0].contains_range(start_low..=end_low);
+        }
+
+        let high_span = usize::from(end_high - start_high);
+        // If this contains everything in the range, there should be a container for every item in the span
+        // and the container that many items away should be the high key
+        let containers = match containers.get(high_span) {
+            Some(c) if c.key == end_high => &containers[..=high_span],
+            _ => return false,
+        };
+
+        match containers {
+            [first, rest @ .., last] => {
+                first.contains_range(start_low..=u16::MAX)
+                    && rest.iter().all(|container| container.is_full())
+                    && last.contains_range(0..=end_low)
+            }
+            _ => unreachable!("already validated containers has at least 2 items"),
+        }
+    }
+
+    /// Returns the number of elements in this set which are in the passed range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// rb.insert_range(0x10000..0x40000);
+    /// rb.insert(0x50001);
+    /// rb.insert(0x50005);
+    /// rb.insert(u32::MAX);
+    ///
+    /// assert_eq!(rb.range_cardinality(0..0x10000), 0);
+    /// assert_eq!(rb.range_cardinality(0x10000..0x40000), 0x30000);
+    /// assert_eq!(rb.range_cardinality(0x50000..0x60000), 2);
+    /// assert_eq!(rb.range_cardinality(0x10000..0x10000), 0);
+    /// assert_eq!(rb.range_cardinality(0x50000..=u32::MAX), 3);
+    /// ```
+    pub fn range_cardinality<R>(&self, range: R) -> u64
+    where
+        R: RangeBounds<u32>,
+    {
+        let (start, end) = match util::convert_range_to_inclusive(range) {
+            Some(range) => (*range.start(), *range.end()),
+            // Empty ranges have 0 bits set in them
+            None => return 0,
+        };
+
+        let (start_key, start_low) = util::split(start);
+        let (end_key, end_low) = util::split(end);
+
+        let mut cardinality = 0;
+
+        let i = match self.containers.binary_search_by_key(&start_key, |c| c.key) {
+            Ok(i) => {
+                let container = &self.containers[i];
+                if start_key == end_key {
+                    cardinality += container.rank(end_low)
+                } else {
+                    cardinality += container.len();
+                }
+                if start_low != 0 {
+                    cardinality -= container.rank(start_low - 1);
+                }
+                i + 1
+            }
+            Err(i) => i,
+        };
+        for container in &self.containers[i..] {
+            match container.key.cmp(&end_key) {
+                Ordering::Less => cardinality += container.len(),
+                Ordering::Equal => {
+                    cardinality += container.rank(end_low);
+                    break;
+                }
+                Ordering::Greater => {
+                    break;
+                }
+            }
+        }
+
+        cardinality
     }
 
     /// Clears all integers in this set.

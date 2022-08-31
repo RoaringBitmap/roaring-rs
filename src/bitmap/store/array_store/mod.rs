@@ -120,6 +120,23 @@ impl ArrayStore {
         self.vec.binary_search(&index).is_ok()
     }
 
+    pub fn contains_range(&self, range: RangeInclusive<u16>) -> bool {
+        let start = *range.start();
+        let end = *range.end();
+        let range_count = usize::from(end - start) + 1;
+        if self.vec.len() < range_count {
+            return false;
+        }
+        let start_i = match self.vec.binary_search(&start) {
+            Ok(i) => i,
+            Err(_) => return false,
+        };
+
+        // If there are `range_count` items, last item in the next range_count should be the
+        // expected end value, because this vec is sorted and has no duplicates
+        self.vec.get(start_i + range_count - 1) == Some(&end)
+    }
+
     pub fn is_disjoint(&self, other: &Self) -> bool {
         let (mut i1, mut i2) = (self.vec.iter(), other.vec.iter());
         let (mut value1, mut value2) = (i1.next(), i2.next());
@@ -444,6 +461,20 @@ mod tests {
         assert_eq!(new, 4);
 
         assert_eq!(into_vec(store), vec![1, 2, 4, 5, 6, 7, 8, 9]);
+    }
+
+    #[test]
+    fn test_array_contains_range() {
+        let store = Store::Array(ArrayStore::from_vec_unchecked(vec![]));
+        assert!(!store.contains_range(0..=0));
+        assert!(!store.contains_range(0..=1));
+        assert!(!store.contains_range(1..=u16::MAX));
+
+        let store = Store::Array(ArrayStore::from_vec_unchecked(vec![0, 1, 2, 3, 4, 5, 100]));
+        assert!(store.contains_range(0..=0));
+        assert!(store.contains_range(0..=5));
+        assert!(!store.contains_range(0..=6));
+        assert!(store.contains_range(100..=100));
     }
 
     #[test]
