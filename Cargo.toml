@@ -23,7 +23,6 @@ serde = { version = "1.0.139", optional = true }
 
 [features]
 simd = []
-serde = ["dep:serde"]
 
 [dev-dependencies]
 proptest = "1.0.0"
