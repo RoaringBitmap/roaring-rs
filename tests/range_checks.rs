@@ -1,5 +1,5 @@
 use proptest::array::uniform2;
-use proptest::collection::vec;
+use proptest::collection::hash_set;
 use proptest::prelude::*;
 use roaring::RoaringBitmap;
 
@@ -7,7 +7,7 @@ proptest! {
     #[test]
     fn proptest_range(
         range in uniform2(..=262_143_u32),
-        extra in vec(..=262_143_u32, ..=100),
+        extra in hash_set(..=262_143_u32, ..=100),
     ){
         let range = range[0]..range[1];
         let mut bitmap = RoaringBitmap::new();
