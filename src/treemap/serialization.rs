@@ -116,3 +116,20 @@ impl RoaringTreemap {
         Ok(s)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::RoaringTreemap;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn test_serialization(
+            treemap in RoaringTreemap::arbitrary(),
+        ) {
+            let mut buffer = Vec::new();
+            treemap.serialize_into(&mut buffer).unwrap();
+            prop_assert_eq!(treemap, RoaringTreemap::deserialize_from(buffer.as_slice()).unwrap());
+        }
+    }
+}

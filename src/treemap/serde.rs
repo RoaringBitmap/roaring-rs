@@ -56,3 +56,27 @@ impl Serialize for RoaringTreemap {
         serializer.serialize_bytes(&buf)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::RoaringTreemap;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn test_serde_json(
+            treemap in RoaringTreemap::arbitrary(),
+        ) {
+            let json = serde_json::to_vec(&treemap).unwrap();
+            prop_assert_eq!(treemap, serde_json::from_slice(&json).unwrap());
+        }
+
+        #[test]
+        fn test_bincode(
+            treemap in RoaringTreemap::arbitrary(),
+        ) {
+            let buffer = bincode::serialize(&treemap).unwrap();
+            prop_assert_eq!(treemap, bincode::deserialize(&buffer).unwrap());
+        }
+    }
+}

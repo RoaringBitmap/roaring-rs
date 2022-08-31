@@ -56,3 +56,27 @@ impl Serialize for RoaringBitmap {
         serializer.serialize_bytes(&buf)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::RoaringBitmap;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn test_serde_json(
+            bitmap in RoaringBitmap::arbitrary(),
+        ) {
+            let json = serde_json::to_vec(&bitmap).unwrap();
+            prop_assert_eq!(bitmap, serde_json::from_slice(&json).unwrap());
+        }
+
+        #[test]
+        fn test_bincode(
+            bitmap in RoaringBitmap::arbitrary(),
+        ) {
+            let buffer = bincode::serialize(&bitmap).unwrap();
+            prop_assert_eq!(bitmap, bincode::deserialize(&buffer).unwrap());
+        }
+    }
+}

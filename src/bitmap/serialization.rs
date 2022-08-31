@@ -215,3 +215,20 @@ impl RoaringBitmap {
         Ok(RoaringBitmap { containers })
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::RoaringBitmap;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn test_serialization(
+            bitmap in RoaringBitmap::arbitrary(),
+        ) {
+            let mut buffer = Vec::new();
+            bitmap.serialize_into(&mut buffer).unwrap();
+            prop_assert_eq!(bitmap, RoaringBitmap::deserialize_from(buffer.as_slice()).unwrap());
+        }
+    }
+}
