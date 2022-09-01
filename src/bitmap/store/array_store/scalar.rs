@@ -1,4 +1,4 @@
-//! Scalar arithmetic binary set operations on [ArrayStore]'s inner types
+//! Scalar arithmetic binary set operations on `ArrayStore`'s inner types
 
 use crate::bitmap::store::array_store::visitor::BinaryOperationVisitor;
 use std::cmp::Ordering::*;

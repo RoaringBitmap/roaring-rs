@@ -48,7 +48,7 @@ impl fmt::Display for NonSortedIntegers {
 
 impl Error for NonSortedIntegers {}
 
-/// A [`collect`] blanket implementation that provides extra methods for [`RoaringBitmap`]
+/// A [`Iterator::collect`] blanket implementation that provides extra methods for [`RoaringBitmap`]
 /// and [`RoaringTreemap`].
 ///
 /// When merging multiple bitmap with the same operation it's usually faster to call the
