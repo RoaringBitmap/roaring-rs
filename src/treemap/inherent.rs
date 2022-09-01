@@ -1,4 +1,5 @@
 use std::collections::btree_map::{BTreeMap, Entry};
+use std::iter;
 use std::ops::RangeBounds;
 
 use crate::RoaringBitmap;
@@ -13,10 +14,22 @@ impl RoaringTreemap {
     ///
     /// ```rust
     /// use roaring::RoaringTreemap;
-    /// let mut rb = RoaringTreemap::new();
+    /// let rb = RoaringTreemap::new();
     /// ```
     pub fn new() -> RoaringTreemap {
         RoaringTreemap { map: BTreeMap::new() }
+    }
+
+    /// Creates a full `RoaringTreemap`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use roaring::RoaringTreemap;
+    /// let rb = RoaringTreemap::full();
+    /// ```
+    pub fn full() -> RoaringTreemap {
+        RoaringTreemap { map: (0..=u32::MAX).zip(iter::repeat(RoaringBitmap::full())).collect() }
     }
 
     /// Adds a value to the set. Returns `true` if the value was not already present in the set.
@@ -257,6 +270,21 @@ impl RoaringTreemap {
     /// ```
     pub fn is_empty(&self) -> bool {
         self.map.values().all(RoaringBitmap::is_empty)
+    }
+
+    /// Returns `true` if there are every possible integers in this set.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let mut rb = RoaringTreemap::full();
+    /// assert!(!rb.is_empty());
+    /// assert!(rb.is_full());
+    /// ```
+    pub fn is_full(&self) -> bool {
+        self.map.len() == (u32::MAX as usize + 1) && self.map.values().all(RoaringBitmap::is_full)
     }
 
     /// Returns the number of distinct integers added to the set.
