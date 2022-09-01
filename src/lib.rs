@@ -59,15 +59,15 @@ impl Error for NonSortedIntegers {}
 /// use roaring::{MultiOps, RoaringBitmap};
 ///
 /// let bitmaps = [
-///     RoaringBitmap::from_sorted_iter(0..10).unwrap(),
-///     RoaringBitmap::from_sorted_iter(10..20).unwrap(),
-///     RoaringBitmap::from_sorted_iter(20..30).unwrap()
+///     RoaringBitmap::from_iter(0..10),
+///     RoaringBitmap::from_iter(10..20),
+///     RoaringBitmap::from_iter(20..30),
 /// ];
 ///
 /// // Stop doing this
 /// let naive = bitmaps.clone().into_iter().reduce(|a, b| a | b).unwrap_or_default();
 ///
-/// // And start doing this instead
+/// // And start doing this instead, it will be much faster!
 /// let iter = bitmaps.union();
 ///
 /// assert_eq!(naive, iter);
