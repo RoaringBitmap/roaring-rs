@@ -50,6 +50,7 @@ impl RoaringTreemap {
     }
 
     /// Inserts a range of values.
+    ///
     /// Returns the number of inserted values.
     ///
     /// # Examples
@@ -76,20 +77,27 @@ impl RoaringTreemap {
 
         // Split the input range by the leading 32 bits
         for hi in start_hi..=end_hi {
-            // Calculate the sub-range from the lower 32 bits
-            let range = if hi == end_hi && hi == start_hi {
-                start_lo..=end_lo
-            } else if hi == start_hi {
-                start_lo..=u32::MAX
-            } else if hi == end_hi {
-                0..=end_lo
-            } else {
-                // This is pretty expensive, we can definitely pre-calculate what a full
-                // `RoaringBitmap` looks like so we might as well use it here.
-                0..=u32::MAX
-            };
+            let entry = self.map.entry(hi);
 
-            counter += self.map.entry(hi).or_insert_with(RoaringBitmap::new).insert_range(range)
+            // Calculate the sub-range from the lower 32 bits
+            counter += if hi == end_hi && hi == start_hi {
+                entry.or_insert_with(RoaringBitmap::new).insert_range(start_lo..=end_lo)
+            } else if hi == start_hi {
+                entry.or_insert_with(RoaringBitmap::new).insert_range(start_lo..=u32::MAX)
+            } else if hi == end_hi {
+                entry.or_insert_with(RoaringBitmap::new).insert_range(0..=end_lo)
+            } else {
+                // We insert a full bitmap if it doesn't already exist and return the size of it.
+                // But if the bitmap already exists at this spot we replace it with a full bitmap
+                // and specify that we didn't inserted the integers from the previous bitmap.
+                let full_bitmap = RoaringBitmap::full();
+                match entry {
+                    Entry::Vacant(entry) => entry.insert(full_bitmap).len(),
+                    Entry::Occupied(mut entry) => {
+                        full_bitmap.len() - entry.insert(full_bitmap).len()
+                    }
+                }
+            };
         }
 
         counter
@@ -117,7 +125,6 @@ impl RoaringTreemap {
         self.map.entry(hi).or_insert_with(RoaringBitmap::new).push(lo)
     }
 
-    ///
     /// Pushes `value` in the treemap only if it is greater than the current maximum value.
     /// It is up to the caller to have validated index > self.max()
     ///
