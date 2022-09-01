@@ -12,6 +12,8 @@ mod cmp;
 mod inherent;
 mod iter;
 mod ops;
+#[cfg(feature = "serde")]
+mod serde;
 mod serialization;
 
 use self::cmp::Pairs;
