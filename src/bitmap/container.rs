@@ -23,6 +23,10 @@ impl Container {
     pub fn new(key: u16) -> Container {
         Container { key, store: Store::new() }
     }
+
+    pub fn full(key: u16) -> Container {
+        Container { key, store: Store::full() }
+    }
 }
 
 impl Container {

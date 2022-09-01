@@ -31,6 +31,10 @@ impl Store {
         Store::Array(ArrayStore::new())
     }
 
+    pub fn full() -> Store {
+        Store::Bitmap(BitmapStore::full())
+    }
+
     pub fn insert(&mut self, index: u16) -> bool {
         match self {
             Array(vec) => vec.insert(index),
