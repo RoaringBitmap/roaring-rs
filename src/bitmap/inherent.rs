@@ -13,10 +13,22 @@ impl RoaringBitmap {
     ///
     /// ```rust
     /// use roaring::RoaringBitmap;
-    /// let mut rb = RoaringBitmap::new();
+    /// let rb = RoaringBitmap::new();
     /// ```
     pub fn new() -> RoaringBitmap {
         RoaringBitmap { containers: Vec::new() }
+    }
+
+    /// Creates a full `RoaringBitmap`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    /// let rb = RoaringBitmap::full();
+    /// ```
+    pub fn full() -> RoaringBitmap {
+        RoaringBitmap { containers: (0..=u16::MAX).map(Container::full).collect() }
     }
 
     /// Adds a value to the set.
@@ -426,6 +438,22 @@ impl RoaringBitmap {
     /// ```
     pub fn is_empty(&self) -> bool {
         self.containers.is_empty()
+    }
+
+    /// Returns `true` if there are every possible integers in this set.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::full();
+    /// assert!(!rb.is_empty());
+    /// assert!(rb.is_full());
+    /// ```
+    pub fn is_full(&self) -> bool {
+        self.containers.len() == (u16::MAX as usize + 1)
+            && self.containers.iter().all(Container::is_full)
     }
 
     /// Returns the number of distinct integers added to the set.

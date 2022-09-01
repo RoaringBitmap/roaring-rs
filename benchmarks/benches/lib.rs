@@ -8,7 +8,7 @@ use criterion::{
     Throughput,
 };
 
-use roaring::{MultiOps, RoaringBitmap};
+use roaring::{MultiOps, RoaringBitmap, RoaringTreemap};
 
 use crate::datasets::Datasets;
 
@@ -674,6 +674,30 @@ fn insert_range_bitmap(c: &mut Criterion) {
     }
 }
 
+fn insert_range_treemap(c: &mut Criterion) {
+    for &size in &[1_000_u64, 10_000u64, 2 * (u32::MAX as u64)] {
+        let mut group = c.benchmark_group("insert_range_treemap");
+        group.throughput(criterion::Throughput::Elements(size as u64));
+        group.bench_function(format!("from_empty_{}", size), |b| {
+            let bm = RoaringTreemap::new();
+            b.iter_batched(
+                || bm.clone(),
+                |mut bm| black_box(bm.insert_range(0..size)),
+                criterion::BatchSize::SmallInput,
+            )
+        });
+        group.bench_function(format!("pre_populated_{}", size), |b| {
+            let mut bm = RoaringTreemap::new();
+            bm.insert_range(0..size);
+            b.iter_batched(
+                || bm.clone(),
+                |mut bm| black_box(bm.insert_range(0..size)),
+                criterion::BatchSize::SmallInput,
+            )
+        });
+    }
+}
+
 criterion_group!(
     benches,
     creation,
@@ -691,6 +715,7 @@ criterion_group!(
     remove,
     remove_range_bitmap,
     insert_range_bitmap,
+    insert_range_treemap,
     iteration,
     is_empty,
     serialization,

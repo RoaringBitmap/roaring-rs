@@ -1,4 +1,5 @@
 use std::collections::btree_map::{BTreeMap, Entry};
+use std::iter;
 use std::ops::RangeBounds;
 
 use crate::RoaringBitmap;
@@ -13,10 +14,22 @@ impl RoaringTreemap {
     ///
     /// ```rust
     /// use roaring::RoaringTreemap;
-    /// let mut rb = RoaringTreemap::new();
+    /// let rb = RoaringTreemap::new();
     /// ```
     pub fn new() -> RoaringTreemap {
         RoaringTreemap { map: BTreeMap::new() }
+    }
+
+    /// Creates a full `RoaringTreemap`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use roaring::RoaringTreemap;
+    /// let rb = RoaringTreemap::full();
+    /// ```
+    pub fn full() -> RoaringTreemap {
+        RoaringTreemap { map: (0..=u32::MAX).zip(iter::repeat(RoaringBitmap::full())).collect() }
     }
 
     /// Adds a value to the set. Returns `true` if the value was not already present in the set.
@@ -34,6 +47,60 @@ impl RoaringTreemap {
     pub fn insert(&mut self, value: u64) -> bool {
         let (hi, lo) = util::split(value);
         self.map.entry(hi).or_insert_with(RoaringBitmap::new).insert(lo)
+    }
+
+    /// Inserts a range of values.
+    ///
+    /// Returns the number of inserted values.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let mut rb = RoaringTreemap::new();
+    /// rb.insert_range(2..4);
+    /// assert!(rb.contains(2));
+    /// assert!(rb.contains(3));
+    /// assert!(!rb.contains(4));
+    /// ```
+    pub fn insert_range<R: RangeBounds<u64>>(&mut self, range: R) -> u64 {
+        let (start, end) = match util::convert_range_to_inclusive(range) {
+            Some(range) => (*range.start(), *range.end()),
+            None => return 0,
+        };
+
+        let (start_hi, start_lo) = util::split(start);
+        let (end_hi, end_lo) = util::split(end);
+
+        let mut counter = 0u64;
+
+        // Split the input range by the leading 32 bits
+        for hi in start_hi..=end_hi {
+            let entry = self.map.entry(hi);
+
+            // Calculate the sub-range from the lower 32 bits
+            counter += if hi == end_hi && hi == start_hi {
+                entry.or_insert_with(RoaringBitmap::new).insert_range(start_lo..=end_lo)
+            } else if hi == start_hi {
+                entry.or_insert_with(RoaringBitmap::new).insert_range(start_lo..=u32::MAX)
+            } else if hi == end_hi {
+                entry.or_insert_with(RoaringBitmap::new).insert_range(0..=end_lo)
+            } else {
+                // We insert a full bitmap if it doesn't already exist and return the size of it.
+                // But if the bitmap already exists at this spot we replace it with a full bitmap
+                // and specify that we didn't inserted the integers from the previous bitmap.
+                let full_bitmap = RoaringBitmap::full();
+                match entry {
+                    Entry::Vacant(entry) => entry.insert(full_bitmap).len(),
+                    Entry::Occupied(mut entry) => {
+                        full_bitmap.len() - entry.insert(full_bitmap).len()
+                    }
+                }
+            };
+        }
+
+        counter
     }
 
     /// Pushes `value` in the treemap only if it is greater than the current maximum value.
@@ -58,7 +125,6 @@ impl RoaringTreemap {
         self.map.entry(hi).or_insert_with(RoaringBitmap::new).push(lo)
     }
 
-    ///
     /// Pushes `value` in the treemap only if it is greater than the current maximum value.
     /// It is up to the caller to have validated index > self.max()
     ///
@@ -211,6 +277,21 @@ impl RoaringTreemap {
     /// ```
     pub fn is_empty(&self) -> bool {
         self.map.values().all(RoaringBitmap::is_empty)
+    }
+
+    /// Returns `true` if there are every possible integers in this set.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let mut rb = RoaringTreemap::full();
+    /// assert!(!rb.is_empty());
+    /// assert!(rb.is_full());
+    /// ```
+    pub fn is_full(&self) -> bool {
+        self.map.len() == (u32::MAX as usize + 1) && self.map.values().all(RoaringBitmap::is_full)
     }
 
     /// Returns the number of distinct integers added to the set.
