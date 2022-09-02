@@ -192,8 +192,15 @@ impl BitmapStore {
         let (start_i, start_bit) = (key(start), bit(start));
         let (end_i, end_bit) = (key(end), bit(end));
 
+        // Create a mask to exclude the first `start_bit` bits
+        // e.g. if we start at bit index 1, this will create a mask which includes all but the bit
+        // at index 0.
         let start_mask = !((1 << start_bit) - 1);
-        let end_mask = (1 << end_bit) - 1;
+        // We want to create a mask which includes the end_bit, so we create a mask of
+        // `end_bit + 1` bits. `end_bit` will be between [0, 63], so we create a mask including
+        // between [1, 64] bits. For example, if the last bit is the 0th bit, we make a mask with
+        // only the 0th bit set (one bit).
+        let end_mask = (!0) >> (64 - (end_bit + 1));
 
         match &self.bits[start_i..=end_i] {
             [] => unreachable!(),
