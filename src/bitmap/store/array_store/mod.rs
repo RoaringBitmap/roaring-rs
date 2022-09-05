@@ -48,16 +48,11 @@ impl ArrayStore {
 
         // Figure out the starting/ending position in the vec.
         let pos_start = self.vec.binary_search(&start).unwrap_or_else(|x| x);
-        let pos_end = self
-            .vec
-            .binary_search_by(|p| {
-                // binary search the right most position when equals
-                match p.cmp(&end) {
-                    Greater => Greater,
-                    _ => Less,
-                }
-            })
-            .unwrap_or_else(|x| x);
+        let pos_end = pos_start
+            + match self.vec[pos_start..].binary_search(&end) {
+                Ok(x) => x + 1,
+                Err(x) => x,
+            };
 
         // Overwrite the range in the middle - there's no need to take
         // into account any existing elements between start and end, as
@@ -102,16 +97,11 @@ impl ArrayStore {
 
         // Figure out the starting/ending position in the vec.
         let pos_start = self.vec.binary_search(&start).unwrap_or_else(|x| x);
-        let pos_end = self
-            .vec
-            .binary_search_by(|p| {
-                // binary search the right most position when equals
-                match p.cmp(&end) {
-                    Greater => Greater,
-                    _ => Less,
-                }
-            })
-            .unwrap_or_else(|x| x);
+        let pos_end = pos_start
+            + match self.vec[pos_start..].binary_search(&end) {
+                Ok(x) => x + 1,
+                Err(x) => x,
+            };
         self.vec.drain(pos_start..pos_end);
         (pos_end - pos_start) as u64
     }
