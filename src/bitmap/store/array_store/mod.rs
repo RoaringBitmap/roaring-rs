@@ -521,7 +521,7 @@ mod tests {
 
         let mut want = vec![1, 2];
         want.extend(4..129);
-        want.extend(&[130]);
+        want.extend([130]);
 
         assert_eq!(into_vec(store), want);
     }
@@ -536,7 +536,7 @@ mod tests {
 
         let mut want = Vec::new();
         want.extend(1..129);
-        want.extend(&[130]);
+        want.extend([130]);
 
         assert_eq!(into_vec(store), want);
     }
