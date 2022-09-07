@@ -443,6 +443,7 @@ impl BitXorAssign<&RoaringBitmap> for RoaringBitmap {
 mod test {
     use crate::{MultiOps, RoaringBitmap};
     use proptest::prelude::*;
+    use std::convert::Infallible;
 
     // fast count tests
     proptest! {
@@ -496,9 +497,20 @@ mod test {
             let own_inline = a.clone() | b.clone() | c.clone();
 
             let ref_multiop = [&a, &b, &c].union();
-            let own_multiop = [a, b.clone(), c.clone()].union();
+            let own_multiop = [a.clone(), b.clone(), c.clone()].union();
 
-            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+            let ref_multiop_try = [&a, &b, &c].map(Ok::<_, Infallible>).union().unwrap();
+            let own_multiop_try = [a, b, c].map(Ok::<_, Infallible>).union().unwrap();
+
+            for roar in &[
+                own_assign,
+                ref_inline,
+                own_inline,
+                ref_multiop,
+                own_multiop,
+                ref_multiop_try,
+                own_multiop_try,
+            ] {
                 prop_assert_eq!(&ref_assign, roar);
             }
         }
@@ -521,9 +533,20 @@ mod test {
             let own_inline = a.clone() & b.clone() & c.clone();
 
             let ref_multiop = [&a, &b, &c].intersection();
-            let own_multiop = [a, b.clone(), c.clone()].intersection();
+            let own_multiop = [a.clone(), b.clone(), c.clone()].intersection();
 
-            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+            let ref_multiop_try = [&a, &b, &c].map(Ok::<_, Infallible>).intersection().unwrap();
+            let own_multiop_try = [a, b, c].map(Ok::<_, Infallible>).intersection().unwrap();
+
+            for roar in &[
+                own_assign,
+                ref_inline,
+                own_inline,
+                ref_multiop,
+                own_multiop,
+                ref_multiop_try,
+                own_multiop_try,
+            ] {
                 prop_assert_eq!(&ref_assign, roar);
             }
         }
@@ -546,9 +569,20 @@ mod test {
             let own_inline = a.clone() - b.clone() - c.clone();
 
             let ref_multiop = [&a, &b, &c].difference();
-            let own_multiop = [a, b.clone(), c.clone()].difference();
+            let own_multiop = [a.clone(), b.clone(), c.clone()].difference();
 
-            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+            let ref_multiop_try = [&a, &b, &c].map(Ok::<_, Infallible>).difference().unwrap();
+            let own_multiop_try = [a, b, c].map(Ok::<_, Infallible>).difference().unwrap();
+
+            for roar in &[
+                own_assign,
+                ref_inline,
+                own_inline,
+                ref_multiop,
+                own_multiop,
+                ref_multiop_try,
+                own_multiop_try,
+            ] {
                 prop_assert_eq!(&ref_assign, roar);
             }
         }
@@ -571,9 +605,26 @@ mod test {
             let own_inline = a.clone() ^ b.clone() ^ c.clone();
 
             let ref_multiop = [&a, &b, &c].symmetric_difference();
-            let own_multiop = [a, b.clone(), c.clone()].symmetric_difference();
+            let own_multiop = [a.clone(), b.clone(), c.clone()].symmetric_difference();
 
-            for roar in &[own_assign, ref_inline, own_inline, ref_multiop, own_multiop] {
+            let ref_multiop_try = [&a, &b, &c]
+                .map(Ok::<_, Infallible>)
+                .symmetric_difference()
+                .unwrap();
+            let own_multiop_try = [a, b, c]
+                .map(Ok::<_, Infallible>)
+                .symmetric_difference()
+                .unwrap();
+
+            for roar in &[
+                own_assign,
+                ref_inline,
+                own_inline,
+                ref_multiop,
+                own_multiop,
+                ref_multiop_try,
+                own_multiop_try,
+            ] {
                 prop_assert_eq!(&ref_assign, roar);
             }
         }
