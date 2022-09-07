@@ -50,7 +50,7 @@ where
     type Output = Result<RoaringBitmap, E>;
 
     fn union(self) -> Self::Output {
-        try_multi_xor_owned(self)
+        try_multi_or_owned(self)
     }
 
     fn intersection(self) -> Self::Output {
