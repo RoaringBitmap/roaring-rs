@@ -140,13 +140,8 @@ impl From<u32> for RoaringBitmap {
 }
 
 impl<const N: usize> From<[u32; N]> for RoaringBitmap {
-    fn from(mut arr: [u32; N]) -> Self {
-        if N == 0 {
-            return RoaringBitmap::new();
-        }
-
-        arr.sort();
-        RoaringBitmap::from_sorted_iter(arr.into_iter()).unwrap()
+    fn from(arr: [u32; N]) -> Self {
+        RoaringBitmap::from_iter(arr.into_iter())
     }
 }
 
