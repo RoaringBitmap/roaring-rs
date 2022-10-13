@@ -9,13 +9,21 @@ use proptest::proptest;
 use std::iter::FromIterator;
 
 #[test]
-fn array() {
+fn range() {
     let original = (0..2000).collect::<RoaringTreemap>();
     let clone = RoaringTreemap::from_iter(&original);
     let clone2 = RoaringTreemap::from_iter(original.clone());
 
     assert_eq!(clone, original);
     assert_eq!(clone2, original);
+}
+
+#[test]
+fn array() {
+    let original = (0..5).collect::<RoaringTreemap>();
+    let clone = RoaringTreemap::from([0, 1, 2, 3, 4]);
+
+    assert_eq!(clone, original);
 }
 
 #[test]
