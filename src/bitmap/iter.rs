@@ -131,14 +131,6 @@ impl IntoIterator for RoaringBitmap {
     }
 }
 
-impl From<u32> for RoaringBitmap {
-    fn from(value: u32) -> RoaringBitmap {
-        let mut rb = RoaringBitmap::new();
-        rb.insert(value);
-        rb
-    }
-}
-
 impl<const N: usize> From<[u32; N]> for RoaringBitmap {
     fn from(arr: [u32; N]) -> Self {
         RoaringBitmap::from_iter(arr.into_iter())

@@ -84,14 +84,6 @@ fn rev_bitmap() {
     assert!(values.into_iter().rev().eq(bitmap.iter().rev()));
 }
 
-#[test]
-fn from_single() {
-    let value = 10;
-    let bitmap = RoaringBitmap::from(value);
-
-    assert!(bitmap.contains(value));
-}
-
 proptest! {
     #[test]
     fn rev_iter(values in btree_set(any::<u32>(), ..=10_000)) {
