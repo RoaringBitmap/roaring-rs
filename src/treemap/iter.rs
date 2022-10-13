@@ -230,6 +230,12 @@ impl IntoIterator for RoaringTreemap {
     }
 }
 
+impl<const N: usize> From<[u64; N]> for RoaringTreemap {
+    fn from(arr: [u64; N]) -> Self {
+        RoaringTreemap::from_iter(arr.into_iter())
+    }
+}
+
 impl FromIterator<u64> for RoaringTreemap {
     fn from_iter<I: IntoIterator<Item = u64>>(iterator: I) -> RoaringTreemap {
         let mut rb = RoaringTreemap::new();
