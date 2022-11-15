@@ -138,7 +138,7 @@ impl Container {
                 }
             }
             Store::Array(ref vec) => {
-                if vec.len() as u64 > ARRAY_LIMIT {
+                if vec.len() > ARRAY_LIMIT {
                     self.store = Store::Bitmap(vec.to_bitmap_store())
                 }
             }

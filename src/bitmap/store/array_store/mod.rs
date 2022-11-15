@@ -170,7 +170,7 @@ impl ArrayStore {
 
     pub fn to_bitmap_store(&self) -> BitmapStore {
         let mut bits = Box::new([0; BITMAP_LENGTH]);
-        let len = self.len() as u64;
+        let len = self.len();
 
         for &index in self.iter() {
             bits[key(index)] |= 1 << bit(index);
