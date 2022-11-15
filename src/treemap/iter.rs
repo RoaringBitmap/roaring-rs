@@ -84,7 +84,7 @@ impl<'a> Iter<'a> {
 
 impl IntoIter {
     fn new(map: BTreeMap<u32, RoaringBitmap>) -> IntoIter {
-        let size_hint = map.iter().map(|(_, r)| r.len()).sum();
+        let size_hint = map.values().map(|r| r.len()).sum();
         let i = map.into_iter().flat_map(to64intoiter as _);
         IntoIter { inner: i, size_hint }
     }
