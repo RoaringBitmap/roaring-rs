@@ -309,9 +309,7 @@ fn iteration(c: &mut Criterion) {
     let mut group = c.benchmark_group("iteration");
 
     for dataset in Datasets {
-        group.throughput(Throughput::Elements(
-            dataset.bitmaps.iter().map(|rb| rb.len()).sum(),
-        ));
+        group.throughput(Throughput::Elements(dataset.bitmaps.iter().map(|rb| rb.len()).sum()));
 
         group.bench_function(BenchmarkId::new("iter", &dataset.name), |b| {
             b.iter(|| {
