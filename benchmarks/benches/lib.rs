@@ -215,7 +215,7 @@ fn select(c: &mut Criterion) {
         let bitmaps = dataset
             .bitmaps
             .iter()
-            .map(|bitmap| (bitmap, bitmap.max().unwrap() as u32))
+            .map(|bitmap| (bitmap, bitmap.max().unwrap()))
             .collect::<Vec<_>>();
 
         // Select all multiples of 100 < bitmap.max()
@@ -310,7 +310,7 @@ fn iteration(c: &mut Criterion) {
 
     for dataset in Datasets {
         group.throughput(Throughput::Elements(
-            dataset.bitmaps.iter().map(|rb| rb.len() as u64).sum(),
+            dataset.bitmaps.iter().map(|rb| rb.len()).sum(),
         ));
 
         group.bench_function(BenchmarkId::new("iter", &dataset.name), |b| {
@@ -677,7 +677,7 @@ fn insert_range_bitmap(c: &mut Criterion) {
 fn insert_range_treemap(c: &mut Criterion) {
     for &size in &[1_000_u64, 10_000u64, 2 * (u32::MAX as u64)] {
         let mut group = c.benchmark_group("insert_range_treemap");
-        group.throughput(criterion::Throughput::Elements(size as u64));
+        group.throughput(criterion::Throughput::Elements(size));
         group.bench_function(format!("from_empty_{}", size), |b| {
             let bm = RoaringTreemap::new();
             b.iter_batched(
