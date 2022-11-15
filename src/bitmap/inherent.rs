@@ -620,7 +620,7 @@ mod tests {
 
             // Assert all values in the range are present
             for i in r.clone() {
-                assert!(b.contains(i as u32), "does not contain {}", i);
+                assert!(b.contains(i), "does not contain {}", i);
             }
 
             // Run the check values looking for any false positives
