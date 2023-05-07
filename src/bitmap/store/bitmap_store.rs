@@ -302,6 +302,21 @@ impl BitmapStore {
     pub fn as_array(&self) -> &[u64; BITMAP_LENGTH] {
         &self.bits
     }
+
+    /// Set N bits that are currently 1 bit from the lower bit to 0.
+    pub fn remove_first(&mut self, mut clear_bits: usize) -> bool {
+        if self.bits[0].count_ones() > clear_bits as u32 {
+            let mut mask = 1;
+            while clear_bits > 0 {
+                if self.bits[0] & mask == mask {
+                    self.bits[0] &= !mask;
+                    clear_bits -= 1;
+                }
+                mask <<= 1;
+            }
+        }
+        true
+    }
 }
 
 // this can be done in 3 instructions on x86-64 with bmi2 with: tzcnt(pdep(1 << rank, value))
@@ -488,5 +503,25 @@ impl BitXorAssign<&ArrayStore> for BitmapStore {
             self.bits[key] = new_w;
         }
         self.len = len as u64;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bitmap_remove_first() {
+        let mut store = BitmapStore::new();
+        let range = RangeInclusive::new(1, 3);
+        store.insert_range(range);
+        let range_second = RangeInclusive::new(5, 65535);
+        // store.bits[0] = 0b1111111111111111111111111111111111111111111111111111111111101110
+        store.insert_range(range_second);
+        store.remove_first(2);
+        assert_eq!(
+            store.bits[0],
+            0b1111111111111111111111111111111111111111111111111111111111101000
+        );
     }
 }

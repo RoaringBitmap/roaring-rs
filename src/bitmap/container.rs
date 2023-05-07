@@ -94,6 +94,12 @@ impl Container {
         result
     }
 
+    pub fn remove_first(&mut self, n: usize) -> bool {
+        let result = self.store.remove_first(n);
+        self.ensure_correct_store();
+        result
+    }
+
     pub fn contains(&self, index: u16) -> bool {
         self.store.contains(index)
     }
