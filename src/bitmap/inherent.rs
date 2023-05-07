@@ -768,26 +768,42 @@ mod tests {
     }
 
     #[test]
-    fn remove_first() {
+    fn remove_first_for_vec() {
         let mut bitmap = RoaringBitmap::from_iter([1, 2, 3, 7, 9, 11]);
         bitmap.remove_first(3);
+        assert_eq!(bitmap.len(), 3);
         assert_eq!(bitmap, RoaringBitmap::from_iter([7, 9, 11]));
 
         bitmap = RoaringBitmap::from_iter([1, 2, 5, 7, 9, 11]);
         bitmap.remove_first(3);
+        assert_eq!(bitmap.len(), 3);
         assert_eq!(bitmap, RoaringBitmap::from_iter([7, 9, 11]));
 
-        let mut rb = RoaringBitmap::from_iter([1, 3]);
-        rb.remove_first(1);
-        println!("{:?}", rb);
-        assert_eq!(rb.len(), 1);
+        bitmap = RoaringBitmap::from_iter([1, 3]);
+        bitmap.remove_first(1);
+        assert_eq!(bitmap.len(), 1);
+        assert_eq!(bitmap, RoaringBitmap::from_iter([3]));
+
+        bitmap = RoaringBitmap::new();
+        bitmap.insert_range(0..(1_u32 << 16) + 5);
+        bitmap.remove_first(65537);
+        assert_eq!(bitmap.len(), 4);
+        assert_eq!(bitmap, RoaringBitmap::from_iter([65537, 65538, 65539, 65540]));
     }
 
     #[test]
     fn remove_first_for_bit() {
         let mut bitmap = RoaringBitmap::new();
-        bitmap.insert_range(0..(1_u32 << 16) + 3);
-        bitmap.remove_first(65537);
-        println!("{:?}", bitmap);
+        bitmap.insert_range(0..4098);
+        bitmap.remove_first(4095);
+        assert_eq!(bitmap.len(), 3);
+        // removed bit to vec
+        assert_eq!(bitmap, RoaringBitmap::from_iter([4095, 4096, 4097]));
+
+        bitmap = RoaringBitmap::new();
+        bitmap.insert_range(0..(1_u32 << 16));
+        bitmap.remove_first(65536);
+        assert_eq!(bitmap.len(), 0);
+    }
     }
 }
