@@ -106,7 +106,7 @@ impl Store {
         }
     }
 
-    pub fn remove_first(&mut self, index: usize) -> bool {
+    pub fn remove_first(&mut self, index: usize) {
         match self {
             Array(vec) => vec.remove_first(index),
             Bitmap(bits) => bits.remove_first(index),

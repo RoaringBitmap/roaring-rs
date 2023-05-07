@@ -110,10 +110,13 @@ impl ArrayStore {
         (pos_end - pos_start) as u64
     }
 
-    pub fn remove_first(&mut self, n: usize) -> bool {
+    pub fn remove_first(&mut self, n: usize) {
         self.vec.rotate_left(n.into());
         self.vec.truncate(self.vec.len() - n as usize);
-        true
+    }
+
+    pub fn remove_last(&mut self, n: usize) {
+        self.vec.truncate(self.vec.len() - n as usize);
     }
 
     pub fn contains(&self, index: u16) -> bool {

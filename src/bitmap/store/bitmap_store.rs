@@ -304,7 +304,7 @@ impl BitmapStore {
     }
 
     /// Set N bits that are currently 1 bit from the lower bit to 0.
-    pub fn remove_first(&mut self, mut clear_bits: usize) -> bool {
+    pub fn remove_first(&mut self, mut clear_bits: usize) {
         if self.bits[0].count_ones() > clear_bits as u32 {
             let mut mask = 1;
             while clear_bits > 0 {
