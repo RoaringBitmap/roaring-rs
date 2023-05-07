@@ -586,33 +586,35 @@ impl RoaringBitmap {
     /// ```rust
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb = RoaringBitmap::from_iter([1, 65535, 65536, 65589]);
+    /// let mut rb = RoaringBitmap::from_iter([1, 5, 7, 9]);
     /// rb.remove_first(2);
-    /// assert_eq!(rb, RoaringBitmap::from_iter([65536, 65589]));
-    /// rb.remove_first(1);
-    /// assert_eq!(rb, RoaringBitmap::from_iter([65589]));
-    pub fn remove_first(&mut self, n: usize) -> bool {
+    /// assert_eq!(rb, RoaringBitmap::from_iter([7, 9]));
+    /// rb = RoaringBitmap::from_iter([1, 3, 7, 9]);
+    /// rb.remove_first(2);
+    /// assert_eq!(rb, RoaringBitmap::from_iter([7, 9]));
+    pub fn remove_first(&mut self, mut n: usize) {
         // remove containers up to the front of the target
-        let loc = self.select(n as u32).unwrap();
-        let old_len = self.len();
-        let remove_key = loc / (u16::MAX as usize + 1) as u32;
-        for i in 0..remove_key {
-            match self.containers.binary_search_by_key(&i, |c| c.key.into()) {
-                Ok(loc) => {
-                    self.containers.remove(loc);
-                }
-                _ => {}
+        let position = self.containers.iter().position(|container| {
+            let container_len = container.len() as usize;
+            if container_len < n {
+                n -= container_len;
+                false
+            } else {
+                true
+            }
+        });
+        if let Some(position) = position {
+            if position > 0 {
+                self.containers.rotate_left(position);
+                self.containers.truncate(position);
             }
         }
-        let removed_len = (old_len - self.len()) as usize;
-
         // remove data in containers if there are still targets for deletion
-        if removed_len < n {
+        if n > 0 {
             // container immediately before should have been deleted, so the target is 0 index
-            let result = self.containers[0].remove_first(n - removed_len);
-            return result;
+            self.containers[0].remove_first(n);
         }
-        false
+    }
     }
 }
 
@@ -763,5 +765,29 @@ mod tests {
         assert_eq!(bitmap.insert_range((1_u32 << 16)..(2_u32 << 16)), 1_u64 << 16);
         assert_eq!(bitmap.containers.len(), 1);
         assert_eq!(bitmap.containers[0].key, 1);
+    }
+
+    #[test]
+    fn remove_first() {
+        let mut bitmap = RoaringBitmap::from_iter([1, 2, 3, 7, 9, 11]);
+        bitmap.remove_first(3);
+        assert_eq!(bitmap, RoaringBitmap::from_iter([7, 9, 11]));
+
+        bitmap = RoaringBitmap::from_iter([1, 2, 5, 7, 9, 11]);
+        bitmap.remove_first(3);
+        assert_eq!(bitmap, RoaringBitmap::from_iter([7, 9, 11]));
+
+        let mut rb = RoaringBitmap::from_iter([1, 3]);
+        rb.remove_first(1);
+        println!("{:?}", rb);
+        assert_eq!(rb.len(), 1);
+    }
+
+    #[test]
+    fn remove_first_for_bit() {
+        let mut bitmap = RoaringBitmap::new();
+        bitmap.insert_range(0..(1_u32 << 16) + 3);
+        bitmap.remove_first(65537);
+        println!("{:?}", bitmap);
     }
 }
