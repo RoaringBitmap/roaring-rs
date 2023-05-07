@@ -106,6 +106,12 @@ impl ArrayStore {
         (pos_end - pos_start) as u64
     }
 
+    pub fn remove_first(&mut self, n: usize) -> bool {
+        self.vec.rotate_left(n.into());
+        self.vec.truncate(self.vec.len() - n as usize);
+        true
+    }
+
     pub fn contains(&self, index: u16) -> bool {
         self.vec.binary_search(&index).is_ok()
     }
@@ -557,5 +563,12 @@ mod tests {
         want.extend(1..135);
 
         assert_eq!(into_vec(store), want);
+    }
+
+    #[test]
+    fn test_bitmap_remove_first() {
+        let mut store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 130, 500]));
+        store.remove_first(3);
+        assert_eq!(into_vec(store), vec![500]);
     }
 }

@@ -578,6 +578,42 @@ impl RoaringBitmap {
 
         None
     }
+
+    /// Removes the specified number of elements from the top.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::from_iter([1, 65535, 65536, 65589]);
+    /// rb.remove_first(2);
+    /// assert_eq!(rb, RoaringBitmap::from_iter([65536, 65589]));
+    /// rb.remove_first(1);
+    /// assert_eq!(rb, RoaringBitmap::from_iter([65589]));
+    pub fn remove_first(&mut self, n: usize) -> bool {
+        // remove containers up to the front of the target
+        let loc = self.select(n as u32).unwrap();
+        let old_len = self.len();
+        let remove_key = loc / (u16::MAX as usize + 1) as u32;
+        for i in 0..remove_key {
+            match self.containers.binary_search_by_key(&i, |c| c.key.into()) {
+                Ok(loc) => {
+                    self.containers.remove(loc);
+                }
+                _ => {}
+            }
+        }
+        let removed_len = (old_len - self.len()) as usize;
+
+        // remove data in containers if there are still targets for deletion
+        if removed_len < n {
+            // container immediately before should have been deleted, so the target is 0 index
+            let result = self.containers[0].remove_first(n - removed_len);
+            return result;
+        }
+        false
+    }
 }
 
 impl Default for RoaringBitmap {
