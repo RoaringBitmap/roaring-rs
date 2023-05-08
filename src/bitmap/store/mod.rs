@@ -103,6 +103,13 @@ impl Store {
         }
     }
 
+    pub fn remove_last(&mut self, index: usize) {
+        match self {
+            Array(vec) => vec.remove_last(index),
+            Bitmap(bits) => bits.remove_last(index),
+        }
+    }
+
     pub fn contains(&self, index: u16) -> bool {
         match self {
             Array(vec) => vec.contains(index),

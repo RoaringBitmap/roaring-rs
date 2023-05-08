@@ -574,4 +574,11 @@ mod tests {
         store.remove_first(3);
         assert_eq!(into_vec(store), vec![500]);
     }
+
+    #[test]
+    fn test_bitmap_remove_last() {
+        let mut store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 130, 500]));
+        store.remove_last(2);
+        assert_eq!(into_vec(store), vec![1, 2]);
+    }
 }
