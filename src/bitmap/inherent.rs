@@ -617,7 +617,17 @@ impl RoaringBitmap {
     }
 
     /// Removes the specified number of elements from the tail.
-    /// todo doc test
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::from_iter([1, 5, 7, 9]);
+    /// rb.remove_last(2);
+    /// assert_eq!(rb, RoaringBitmap::from_iter([1, 5]));
+    /// rb.remove_last(1);
+    /// assert_eq!(rb, RoaringBitmap::from_iter([1]));
     pub fn remove_last(&mut self, mut n: usize) {
         let container_len = self.containers.len();
         let potision = self.containers.iter().enumerate().rev().find_map(|(index, container)| {
@@ -632,7 +642,7 @@ impl RoaringBitmap {
         if let Some(position) = potision {
             let remove_container = container_len - position - 1;
             if remove_container > 0 {
-                self.containers.truncate(remove_container);
+                self.containers.truncate(self.containers.len() - remove_container);
             }
             if n > 0 {
                 self.containers[position].remove_last(n);
@@ -845,6 +855,11 @@ mod tests {
         bitmap.insert_range(0..6000);
         bitmap.remove_last(1000);
         assert_eq!(bitmap.len(), 5000);
+
+        bitmap = RoaringBitmap::new();
+        bitmap.insert_range(0..200000);
+        bitmap.remove_last(196000);
+        assert_eq!(bitmap.len(), 4000);
     }
 
     #[test]
