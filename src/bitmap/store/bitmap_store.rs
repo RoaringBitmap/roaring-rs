@@ -329,9 +329,33 @@ impl BitmapStore {
             }
         }
     }
+
+    /// Set N bits that are currently 1 bit from the lower bit to 0.
+    pub fn remove_last(&mut self, mut clear_bits: usize) {
+        if self.len() < clear_bits as u64 {
+            return;
+        }
+        let mut removed: u64 = 0;
+        let max = self.max().unwrap();
+        let key = key(max);
+        for index in (0..=key).rev() {
+            let bit = self.bits[index].count_ones();
+            let mut mask = 1 << bit - 1;
+            let mut count = self.bits[index].count_ones();
+            while count > 0 {
+                if self.bits[index] & mask == mask {
+                    self.bits[index] &= !mask;
+                    clear_bits -= 1;
+                    removed += 1;
+                    if clear_bits <= 0 {
+                        self.len -= removed;
+                        return;
+                    }
+                }
+                mask >>= 1;
+                count -= 1;
             }
         }
-        true
     }
 }
 

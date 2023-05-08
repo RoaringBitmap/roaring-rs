@@ -108,8 +108,21 @@ impl Container {
             Store::Array(_) => self.store.remove_first(n),
         };
     }
-        self.ensure_correct_store();
-        result
+
+    pub fn remove_last(&mut self, n: usize) {
+        match &self.store {
+            Store::Bitmap(bits) => {
+                if bits.len() - n as u64 <= ARRAY_LIMIT {
+                    let mut replace_array = Vec::with_capacity(bits.len() as usize - n);
+                    replace_array.extend(bits.clone().into_iter());
+                    replace_array.truncate(replace_array.len() - n);
+                    self.store = Store::Array(store::ArrayStore::from_vec_unchecked(replace_array));
+                } else {
+                    self.store.remove_last(n)
+                }
+            }
+            Store::Array(_) => self.store.remove_last(n),
+        };
     }
 
     pub fn contains(&self, index: u16) -> bool {
