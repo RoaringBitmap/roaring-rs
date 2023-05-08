@@ -842,6 +842,13 @@ mod tests {
         bitmap.insert_range(0..8000);
         bitmap.remove_first(10);
         assert_eq!(bitmap.len(), 7990);
+
+        bitmap = RoaringBitmap::new();
+        bitmap.insert_range(0..2);
+        bitmap.insert_range(4..7);
+        bitmap.insert_range(1000..6000);
+        bitmap.remove_first(30);
+        assert_eq!(bitmap.len(), 4975);
     }
 
     #[test]
