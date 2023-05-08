@@ -305,14 +305,30 @@ impl BitmapStore {
 
     /// Set N bits that are currently 1 bit from the lower bit to 0.
     pub fn remove_first(&mut self, mut clear_bits: usize) {
-        if self.bits[0].count_ones() > clear_bits as u32 {
+        if self.len() < clear_bits as u64 {
+            return;
+        }
+        let mut removed: u64 = 0;
+        let min = self.min().unwrap();
+        let key = key(min);
+        for index in key..BITMAP_LENGTH {
             let mut mask = 1;
-            while clear_bits > 0 {
-                if self.bits[0] & mask == mask {
-                    self.bits[0] &= !mask;
+            let mut count = self.bits[index].count_ones();
+            while count > 0 {
+                if self.bits[index] & mask == mask {
+                    self.bits[index] &= !mask;
                     clear_bits -= 1;
+                    removed += 1;
+                    if clear_bits <= 0 {
+                        self.len -= removed;
+                        return;
+                    }
                 }
                 mask <<= 1;
+                count -= 1;
+            }
+        }
+    }
             }
         }
         true
