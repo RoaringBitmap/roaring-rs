@@ -319,13 +319,13 @@ impl BitmapStore {
                     self.bits[index] &= !mask;
                     clear_bits -= 1;
                     removed += 1;
+                    count -= 1;
                     if clear_bits <= 0 {
                         self.len -= removed;
                         return;
                     }
                 }
                 mask <<= 1;
-                count -= 1;
             }
         }
     }
@@ -347,13 +347,13 @@ impl BitmapStore {
                     self.bits[index] &= !mask;
                     clear_bits -= 1;
                     removed += 1;
+                    count -= 1;
                     if clear_bits <= 0 {
                         self.len -= removed;
                         return;
                     }
                 }
                 mask >>= 1;
-                count -= 1;
             }
         }
     }
