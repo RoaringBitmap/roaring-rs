@@ -632,24 +632,21 @@ impl RoaringBitmap {
     /// rb.remove_last(1);
     /// assert_eq!(rb, RoaringBitmap::from_iter([1]));
     pub fn remove_last(&mut self, mut n: usize) {
-        let container_len = self.containers.len();
-        let potision = self.containers.iter().enumerate().rev().find_map(|(index, container)| {
         if n > self.len() as usize {
             return;
         }
+        // remove containers up to the back of the target
+        let position = self.containers.iter().rposition(|container| {
             let container_len = container.len() as usize;
-            if container_len >= n {
-                Some(index)
-            } else {
+            if container_len < n {
                 n -= container_len;
-                None
+                false
+            } else {
+                true
             }
         });
-        if let Some(position) = potision {
-            let remove_container = container_len - position - 1;
-            if remove_container > 0 {
-                self.containers.truncate(self.containers.len() - remove_container);
-            }
+        if let Some(position) = position {
+            self.containers.truncate(position + 1);
             if n > 0 {
                 self.containers[position].remove_last(n);
             }
