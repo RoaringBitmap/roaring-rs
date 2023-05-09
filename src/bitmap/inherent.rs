@@ -816,15 +816,18 @@ mod tests {
         assert_eq!(bitmap, RoaringBitmap::from_iter([7, 9, 11]));
 
         bitmap = RoaringBitmap::from_iter([1, 3]);
-        bitmap.remove_first(1);
-        assert_eq!(bitmap.len(), 1);
-        assert_eq!(bitmap, RoaringBitmap::from_iter([3]));
+        bitmap.remove_first(2);
+        assert_eq!(bitmap.len(), 0);
 
         bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..(1_u32 << 16) + 5);
         bitmap.remove_first(65537);
         assert_eq!(bitmap.len(), 4);
         assert_eq!(bitmap, RoaringBitmap::from_iter([65537, 65538, 65539, 65540]));
+
+        bitmap = RoaringBitmap::from_iter([1, 2, 5, 7, 9, 11]);
+        bitmap.remove_first(7);
+        assert_eq!(bitmap, RoaringBitmap::from_iter([1, 2, 5, 7, 9, 11]));
     }
 
     #[test]
@@ -845,6 +848,12 @@ mod tests {
         bitmap.insert_range(0..8000);
         bitmap.remove_first(10);
         assert_eq!(bitmap.len(), 7990);
+
+        bitmap = RoaringBitmap::new();
+        bitmap.insert_range(0..200000);
+        bitmap.remove_first(2000);
+        assert_eq!(bitmap.len(), 198000);
+        assert_eq!(bitmap, RoaringBitmap::from_iter(2000..200000));
 
         bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..2);
@@ -870,6 +879,12 @@ mod tests {
         bitmap.insert_range(0..200000);
         bitmap.remove_last(196000);
         assert_eq!(bitmap.len(), 4000);
+
+        bitmap = RoaringBitmap::new();
+        bitmap.insert_range(0..200000);
+        bitmap.remove_last(2000);
+        assert_eq!(bitmap.len(), 198000);
+        assert_eq!(bitmap, RoaringBitmap::from_iter(0..198000));
     }
 
     #[test]
@@ -878,10 +893,18 @@ mod tests {
         bitmap.remove_last(2);
         assert_eq!(bitmap, RoaringBitmap::from_iter([1, 2, 3, 7]));
 
+        bitmap = RoaringBitmap::from_iter([1, 2, 3, 7, 9, 11]);
+        bitmap.remove_last(6);
+        assert_eq!(bitmap.len(), 0);
+
         bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..(1_u32 << 16) + 5);
         bitmap.remove_last(65537);
         assert_eq!(bitmap.len(), 4);
         assert_eq!(bitmap, RoaringBitmap::from_iter([0, 1, 2, 3]));
+
+        let mut bitmap = RoaringBitmap::from_iter([1, 2, 3]);
+        bitmap.remove_last(4);
+        assert_eq!(bitmap, RoaringBitmap::from_iter([1, 2, 3]));
     }
 }
