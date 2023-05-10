@@ -315,6 +315,11 @@ impl BitmapStore {
         for index in key..BITMAP_LENGTH {
             let mut mask = 1;
             let mut count = self.bits[index].count_ones();
+            if clear_bits > count as usize {
+                self.bits[index] = 0;
+                clear_bits -= count as usize;
+                continue;
+            }
             while count > 0 {
                 if self.bits[index] & mask == mask {
                     self.bits[index] &= !mask;
@@ -342,6 +347,11 @@ impl BitmapStore {
             let bit = self.bits[index].count_ones();
             let mut mask = 1 << bit - 1;
             let mut count = self.bits[index].count_ones();
+            if clear_bits > count as usize {
+                self.bits[index] = 0;
+                clear_bits -= count as usize;
+                continue;
+            }
             while count > 0 {
                 if self.bits[index] & mask == mask {
                     self.bits[index] &= !mask;
