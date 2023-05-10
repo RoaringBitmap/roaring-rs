@@ -321,8 +321,7 @@ impl BitmapStore {
                     clear_bits -= 1;
                     removed += 1;
                     count -= 1;
-                    if clear_bits <= 0 {
-                        self.len -= removed;
+                    if clear_bits == 0 {
                         return;
                     }
                 }
@@ -350,8 +349,7 @@ impl BitmapStore {
                     clear_bits -= 1;
                     removed += 1;
                     count -= 1;
-                    if clear_bits <= 0 {
-                        self.len -= removed;
+                    if clear_bits == 0 {
                         return;
                     }
                 }
