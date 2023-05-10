@@ -606,11 +606,11 @@ impl RoaringBitmap {
                 true
             }
         });
-        if let Some(position) = position {
-            if position > 0 {
-                self.containers.rotate_left(position);
-                self.containers.truncate(position);
-            }
+        // It is checked at the beginning of the function, so it is usually never an Err
+        let position = position.expect("there are no containers to delete");
+        if position > 0 {
+            self.containers.rotate_left(position);
+            self.containers.truncate(position);
         }
         // remove data in containers if there are still targets for deletion
         if n > 0 {
@@ -645,11 +645,11 @@ impl RoaringBitmap {
                 true
             }
         });
-        if let Some(position) = position {
-            self.containers.truncate(position + 1);
-            if n > 0 {
-                self.containers[position].remove_last(n);
-            }
+        // It is checked at the beginning of the function, so it is usually never an Err
+        let position = position.expect("there are no containers to delete");
+        self.containers.truncate(position + 1);
+        if n > 0 {
+            self.containers[position].remove_last(n);
         }
     }
 }
