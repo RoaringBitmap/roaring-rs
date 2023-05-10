@@ -309,7 +309,7 @@ impl BitmapStore {
             *self = Self::default();
             return;
         }
-        let mut removed: u64 = 0;
+        self.len -= clear_bits as u64;
         let min = self.min().unwrap();
         let key = key(min);
         for index in key..BITMAP_LENGTH {
@@ -319,7 +319,6 @@ impl BitmapStore {
                 if self.bits[index] & mask == mask {
                     self.bits[index] &= !mask;
                     clear_bits -= 1;
-                    removed += 1;
                     count -= 1;
                     if clear_bits == 0 {
                         return;
@@ -336,7 +335,7 @@ impl BitmapStore {
             *self = Self::default();
             return;
         }
-        let mut removed: u64 = 0;
+        self.len -= clear_bits as u64;
         let max = self.max().unwrap();
         let key = key(max);
         for index in (0..=key).rev() {
@@ -347,7 +346,6 @@ impl BitmapStore {
                 if self.bits[index] & mask == mask {
                     self.bits[index] &= !mask;
                     clear_bits -= 1;
-                    removed += 1;
                     count -= 1;
                     if clear_bits == 0 {
                         return;
