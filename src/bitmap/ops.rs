@@ -101,11 +101,11 @@ impl RoaringBitmap {
     }
 }
 
-impl BitOr<RoaringBitmap> for RoaringBitmap {
-    type Output = RoaringBitmap;
+impl BitOr<Self> for RoaringBitmap {
+    type Output = Self;
 
     /// An `union` between two sets.
-    fn bitor(mut self, rhs: RoaringBitmap) -> RoaringBitmap {
+    fn bitor(mut self, rhs: Self) -> Self {
         BitOrAssign::bitor_assign(&mut self, rhs);
         self
     }
@@ -139,9 +139,9 @@ impl BitOr<&RoaringBitmap> for &RoaringBitmap {
 
         for pair in Pairs::new(&self.containers, &rhs.containers) {
             match pair {
+                (Some(lhs), Some(rhs)) => containers.push(BitOr::bitor(lhs, rhs)),
                 (Some(lhs), None) => containers.push(lhs.clone()),
                 (None, Some(rhs)) => containers.push(rhs.clone()),
-                (Some(lhs), Some(rhs)) => containers.push(BitOr::bitor(lhs, rhs)),
                 (None, None) => break,
             }
         }
@@ -230,9 +230,9 @@ impl BitAnd<&RoaringBitmap> for &RoaringBitmap {
     }
 }
 
-impl BitAndAssign<RoaringBitmap> for RoaringBitmap {
+impl BitAndAssign<Self> for RoaringBitmap {
     /// An `intersection` between two sets.
-    fn bitand_assign(&mut self, mut rhs: RoaringBitmap) {
+    fn bitand_assign(&mut self, mut rhs: Self) {
         // We make sure that we apply the intersection operation on the smallest map.
         if rhs.containers.len() < self.containers.len() {
             mem::swap(self, &mut rhs);
