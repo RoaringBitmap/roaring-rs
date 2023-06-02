@@ -27,12 +27,12 @@ pub enum Iter<'a> {
 }
 
 impl Store {
-    pub fn new() -> Store {
-        Store::Array(ArrayStore::new())
+    pub fn new() -> Self {
+        Self::Array(ArrayStore::new())
     }
 
-    pub fn full() -> Store {
-        Store::Bitmap(BitmapStore::full())
+    pub fn full() -> Self {
+        Self::Bitmap(BitmapStore::full())
     }
 
     pub fn insert(&mut self, index: u16) -> bool {
@@ -187,7 +187,7 @@ impl Store {
 
 impl Default for Store {
     fn default() -> Self {
-        Store::new()
+        Self::new()
     }
 }
 
@@ -216,8 +216,8 @@ impl BitOr<&Store> for &Store {
     }
 }
 
-impl BitOrAssign<Store> for Store {
-    fn bitor_assign(&mut self, mut rhs: Store) {
+impl BitOrAssign<Self> for Store {
+    fn bitor_assign(&mut self, mut rhs: Self) {
         match (self, &mut rhs) {
             (&mut Array(ref mut vec1), &mut Array(ref vec2)) => {
                 *vec1 = BitOr::bitor(&*vec1, vec2);
@@ -278,9 +278,9 @@ impl BitAnd<&Store> for &Store {
     }
 }
 
-impl BitAndAssign<Store> for Store {
+impl BitAndAssign<Self> for Store {
     #[allow(clippy::suspicious_op_assign_impl)]
-    fn bitand_assign(&mut self, mut rhs: Store) {
+    fn bitand_assign(&mut self, mut rhs: Self) {
         match (self, &mut rhs) {
             (&mut Array(ref mut vec1), &mut Array(ref mut vec2)) => {
                 if vec2.len() < vec1.len() {
@@ -302,9 +302,9 @@ impl BitAndAssign<Store> for Store {
     }
 }
 
-impl BitAndAssign<&Store> for Store {
+impl BitAndAssign<&Self> for Store {
     #[allow(clippy::suspicious_op_assign_impl)]
-    fn bitand_assign(&mut self, rhs: &Store) {
+    fn bitand_assign(&mut self, rhs: &Self) {
         match (self, rhs) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
                 let (mut lhs, rhs) = if vec2.len() < vec1.len() {
@@ -346,8 +346,8 @@ impl Sub<&Store> for &Store {
     }
 }
 
-impl SubAssign<&Store> for Store {
-    fn sub_assign(&mut self, rhs: &Store) {
+impl SubAssign<&Self> for Store {
+    fn sub_assign(&mut self, rhs: &Self) {
         match (self, rhs) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
                 SubAssign::sub_assign(vec1, vec2);
@@ -385,8 +385,8 @@ impl BitXor<&Store> for &Store {
     }
 }
 
-impl BitXorAssign<Store> for Store {
-    fn bitxor_assign(&mut self, mut rhs: Store) {
+impl BitXorAssign<Self> for Store {
+    fn bitxor_assign(&mut self, mut rhs: Self) {
         match (self, &mut rhs) {
             (&mut Array(ref mut vec1), &mut Array(ref vec2)) => {
                 *vec1 = BitXor::bitxor(&*vec1, vec2);
@@ -405,8 +405,8 @@ impl BitXorAssign<Store> for Store {
     }
 }
 
-impl BitXorAssign<&Store> for Store {
-    fn bitxor_assign(&mut self, rhs: &Store) {
+impl BitXorAssign<&Self> for Store {
+    fn bitxor_assign(&mut self, rhs: &Self) {
         match (self, rhs) {
             (&mut Array(ref mut vec1), &Array(ref vec2)) => {
                 let this = mem::take(vec1);

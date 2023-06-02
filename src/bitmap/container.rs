@@ -1,6 +1,9 @@
-use std::fmt;
-use std::ops::{
-    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
+use std::{
+    fmt,
+    ops::{
+        BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub,
+        SubAssign,
+    },
 };
 
 use super::store::{self, Store};
