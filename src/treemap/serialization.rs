@@ -69,9 +69,7 @@ impl RoaringTreemap {
     /// assert_eq!(rb1, rb2);
     /// ```
     pub fn deserialize_from<R: io::Read>(reader: R) -> io::Result<Self> {
-        RoaringTreemap::deserialize_from_impl(reader, |reader| {
-            RoaringBitmap::deserialize_from(reader)
-        })
+        Self::deserialize_from_impl(reader, |reader| RoaringBitmap::deserialize_from(reader))
     }
 
     /// Deserialize a bitmap into memory.
@@ -92,7 +90,7 @@ impl RoaringTreemap {
     /// assert_eq!(rb1, rb2);
     /// ```
     pub fn deserialize_unchecked_from<R: io::Read>(reader: R) -> io::Result<Self> {
-        RoaringTreemap::deserialize_from_impl(reader, |reader| {
+        Self::deserialize_from_impl(reader, |reader| {
             RoaringBitmap::deserialize_unchecked_from(reader)
         })
     }

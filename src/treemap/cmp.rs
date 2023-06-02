@@ -10,7 +10,7 @@ pub(crate) struct Pairs<'a>(
 );
 
 impl RoaringTreemap {
-    pub(crate) fn pairs<'a>(&'a self, other: &'a RoaringTreemap) -> Pairs<'a> {
+    pub(crate) fn pairs<'a>(&'a self, other: &'a Self) -> Pairs<'a> {
         Pairs(self.map.iter().peekable(), other.map.iter().peekable())
     }
 
