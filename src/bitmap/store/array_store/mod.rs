@@ -17,8 +17,8 @@ pub struct ArrayStore {
 }
 
 impl ArrayStore {
-    pub fn new() -> ArrayStore {
-        ArrayStore { vec: vec![] }
+    pub fn new() -> Self {
+        Self { vec: vec![] }
     }
 
     ///
@@ -30,11 +30,11 @@ impl ArrayStore {
     ///
     /// When debug_assertions are enabled and the above invariants are not met
     #[inline]
-    pub fn from_vec_unchecked(vec: Vec<u16>) -> ArrayStore {
+    pub fn from_vec_unchecked(vec: Vec<u16>) -> Self {
         if cfg!(debug_assertions) {
             vec.try_into().unwrap()
         } else {
-            ArrayStore { vec }
+            Self { vec }
         }
     }
 
@@ -145,8 +145,6 @@ impl ArrayStore {
         let (mut value1, mut value2) = (i1.next(), i2.next());
         loop {
             match (value1, value2) {
-                (None, _) => return true,
-                (Some(..), None) => return false,
                 (Some(v1), Some(v2)) => match v1.cmp(v2) {
                     Equal => {
                         value1 = i1.next();
@@ -155,6 +153,8 @@ impl ArrayStore {
                     Less => return false,
                     Greater => value2 = i2.next(),
                 },
+                (Some(..), None) => return false,
+                (None, _) => return true,
             }
         }
     }
@@ -233,7 +233,7 @@ impl ArrayStore {
 
 impl Default for ArrayStore {
     fn default() -> Self {
-        ArrayStore::new()
+        Self::new()
     }
 }
 
@@ -280,7 +280,7 @@ impl TryFrom<Vec<u16>> for ArrayStore {
             }
         }
 
-        Ok(ArrayStore { vec: value })
+        Ok(Self { vec: value })
     }
 }
 

@@ -22,9 +22,9 @@ pub struct VecWriter {
 }
 
 impl VecWriter {
-    pub fn new(capacity: usize) -> VecWriter {
+    pub fn new(capacity: usize) -> Self {
         let vec = Vec::with_capacity(capacity);
-        VecWriter { vec }
+        Self { vec }
     }
 
     pub fn into_inner(self) -> Vec<u16> {
@@ -64,8 +64,8 @@ pub struct CardinalityCounter {
 }
 
 impl CardinalityCounter {
-    pub fn new() -> CardinalityCounter {
-        CardinalityCounter { count: 0 }
+    pub fn new() -> Self {
+        Self { count: 0 }
     }
 
     pub fn into_inner(self) -> u64 {

@@ -1,11 +1,14 @@
-use std::mem;
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
+use std::{
+    mem,
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign},
+};
 
 use retain_mut::RetainMut;
 
-use crate::bitmap::container::Container;
-use crate::bitmap::Pairs;
-use crate::RoaringBitmap;
+use crate::{
+    bitmap::{container::Container, Pairs},
+    RoaringBitmap,
+};
 
 impl RoaringBitmap {
     /// Computes the len of the intersection with the specified other bitmap without creating a
