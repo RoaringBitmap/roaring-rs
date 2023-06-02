@@ -16,17 +16,17 @@ pub struct IntoIter {
     size_hint: u64,
 }
 
-impl Iter<'_> {
-    fn new(containers: &[Container]) -> Iter {
+impl<'a> Iter<'a> {
+    fn new(containers: &'a [Container]) -> Self {
         let size_hint = containers.iter().map(|c| c.len()).sum();
-        Iter { inner: containers.iter().flatten(), size_hint }
+        Self { inner: containers.iter().flatten(), size_hint }
     }
 }
 
 impl IntoIter {
-    fn new(containers: Vec<Container>) -> IntoIter {
+    fn new(containers: Vec<Container>) -> Self {
         let size_hint = containers.iter().map(|c| c.len()).sum();
-        IntoIter { inner: containers.into_iter().flatten(), size_hint }
+        Self { inner: containers.into_iter().flatten(), size_hint }
     }
 }
 
@@ -133,21 +133,21 @@ impl IntoIterator for RoaringBitmap {
 
 impl<const N: usize> From<[u32; N]> for RoaringBitmap {
     fn from(arr: [u32; N]) -> Self {
-        RoaringBitmap::from_iter(arr.into_iter())
+        Self::from_iter(arr.into_iter())
     }
 }
 
 impl FromIterator<u32> for RoaringBitmap {
-    fn from_iter<I: IntoIterator<Item = u32>>(iterator: I) -> RoaringBitmap {
-        let mut rb = RoaringBitmap::new();
+    fn from_iter<I: IntoIterator<Item = u32>>(iterator: I) -> Self {
+        let mut rb = Self::new();
         rb.extend(iterator);
         rb
     }
 }
 
 impl<'a> FromIterator<&'a u32> for RoaringBitmap {
-    fn from_iter<I: IntoIterator<Item = &'a u32>>(iterator: I) -> RoaringBitmap {
-        let mut rb = RoaringBitmap::new();
+    fn from_iter<I: IntoIterator<Item = &'a u32>>(iterator: I) -> Self {
+        let mut rb = Self::new();
         rb.extend(iterator);
         rb
     }
@@ -201,8 +201,8 @@ impl RoaringBitmap {
     /// ```
     pub fn from_sorted_iter<I: IntoIterator<Item = u32>>(
         iterator: I,
-    ) -> Result<RoaringBitmap, NonSortedIntegers> {
-        let mut rb = RoaringBitmap::new();
+    ) -> Result<Self, NonSortedIntegers> {
+        let mut rb = Self::new();
         rb.append(iterator).map(|_| rb)
     }
 
@@ -233,11 +233,11 @@ impl RoaringBitmap {
         let mut iterator = iterator.into_iter();
 
         let mut prev = match (iterator.next(), self.max()) {
-            (None, _) => return Ok(0),
             (Some(first), Some(max)) if first <= max => {
                 return Err(NonSortedIntegers { valid_until: 0 })
             }
             (Some(first), _) => first,
+            (None, _) => return Ok(0),
         };
 
         // It is now guaranteed that so long as the values of the iterator are

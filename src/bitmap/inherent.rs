@@ -15,8 +15,8 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     /// let rb = RoaringBitmap::new();
     /// ```
-    pub fn new() -> RoaringBitmap {
-        RoaringBitmap { containers: Vec::new() }
+    pub fn new() -> Self {
+        Self { containers: Vec::new() }
     }
 
     /// Creates a full `RoaringBitmap`.
@@ -27,8 +27,8 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     /// let rb = RoaringBitmap::full();
     /// ```
-    pub fn full() -> RoaringBitmap {
-        RoaringBitmap { containers: (0..=u16::MAX).map(Container::full).collect() }
+    pub fn full() -> Self {
+        Self { containers: (0..=u16::MAX).map(Container::full).collect() }
     }
 
     /// Adds a value to the set.
