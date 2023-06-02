@@ -10,8 +10,10 @@ use std::{
     slice, vec,
 };
 
-use self::bitmap_store::BITMAP_LENGTH;
-use self::Store::{Array, Bitmap};
+use self::{
+    bitmap_store::BITMAP_LENGTH,
+    Store::{Array, Bitmap},
+};
 
 pub use self::{
     array_store::ArrayStore,

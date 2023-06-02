@@ -237,7 +237,7 @@ impl<const N: usize> From<[u64; N]> for RoaringTreemap {
 }
 
 impl FromIterator<u64> for RoaringTreemap {
-    fn from_iter<I: IntoIterator<Item = u64>>(iterator: I) -> RoaringTreemap {
+    fn from_iter<I: IntoIterator<Item = u64>>(iterator: I) -> Self {
         let mut rb = Self::new();
         rb.extend(iterator);
         rb

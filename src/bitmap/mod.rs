@@ -17,8 +17,7 @@ mod serde;
 mod serialization;
 
 use self::cmp::Pairs;
-pub use self::iter::IntoIter;
-pub use self::iter::Iter;
+pub use self::iter::{IntoIter, Iter};
 
 /// A compressed bitmap using the [Roaring bitmap compression scheme](https://roaringbitmap.org/).
 ///

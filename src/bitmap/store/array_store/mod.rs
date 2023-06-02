@@ -3,11 +3,12 @@ mod vector;
 mod visitor;
 
 use crate::bitmap::store::array_store::visitor::{CardinalityCounter, VecWriter};
-use std::cmp::Ordering;
-use std::cmp::Ordering::*;
-use std::convert::{TryFrom, TryInto};
-use std::fmt::{Display, Formatter};
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitXor, RangeInclusive, Sub, SubAssign};
+use std::{
+    cmp::{Ordering, Ordering::*},
+    convert::{TryFrom, TryInto},
+    fmt::{Display, Formatter},
+    ops::{BitAnd, BitAndAssign, BitOr, BitXor, RangeInclusive, Sub, SubAssign},
+};
 
 use super::bitmap_store::{bit, key, BitmapStore, BITMAP_LENGTH};
 
