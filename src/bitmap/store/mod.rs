@@ -419,7 +419,7 @@ impl BitXorAssign<&Self> for Store {
                 BitXorAssign::bitxor_assign(bits1, bits2);
             }
             (this @ &mut Array(..), &Bitmap(ref bits2)) => {
-                let mut lhs: Store = Bitmap(bits2.clone());
+                let mut lhs: Self = Bitmap(bits2.clone());
                 BitXorAssign::bitxor_assign(&mut lhs, &*this);
                 *this = lhs;
             }
@@ -454,8 +454,7 @@ impl PartialEq for Store {
         match (self, other) {
             (Array(vec1), Array(vec2)) => vec1 == vec2,
             (Bitmap(bits1), Bitmap(bits2)) => {
-                bits1.len() == bits2.len()
-                    && bits1.iter().zip(bits2.iter()).all(|(i1, i2)| i1 == i2)
+                bits1.len() == bits2.len() && bits1.iter().eq(bits2.iter())
             }
             _ => false,
         }
@@ -467,10 +466,10 @@ impl<'a> Iterator for Iter<'a> {
 
     fn next(&mut self) -> Option<u16> {
         match self {
-            Iter::Array(inner) => inner.next().cloned(),
-            Iter::Vec(inner) => inner.next(),
-            Iter::BitmapBorrowed(inner) => inner.next(),
-            Iter::BitmapOwned(inner) => inner.next(),
+            Self::Array(inner) => inner.next().cloned(),
+            Self::Vec(inner) => inner.next(),
+            Self::BitmapBorrowed(inner) => inner.next(),
+            Self::BitmapOwned(inner) => inner.next(),
         }
     }
 }
@@ -478,10 +477,10 @@ impl<'a> Iterator for Iter<'a> {
 impl DoubleEndedIterator for Iter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         match self {
-            Iter::Array(inner) => inner.next_back().cloned(),
-            Iter::Vec(inner) => inner.next_back(),
-            Iter::BitmapBorrowed(inner) => inner.next_back(),
-            Iter::BitmapOwned(inner) => inner.next_back(),
+            Self::Array(inner) => inner.next_back().cloned(),
+            Self::Vec(inner) => inner.next_back(),
+            Self::BitmapBorrowed(inner) => inner.next_back(),
+            Self::BitmapOwned(inner) => inner.next_back(),
         }
     }
 }
