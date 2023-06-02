@@ -140,10 +140,10 @@ fn parse_datasets<P: AsRef<Path>>(path: P) -> Result<Vec<Dataset>, Box<dyn std::
 
     let dir = path.as_ref().read_dir()?;
 
-    let mut datasets = Vec::new();
+    let mut datasets = vec![];
 
     // Future work: Reuse this buffer to parse croaring bitmaps for comparison
-    let mut numbers = Vec::new();
+    let mut numbers = vec![];
 
     for dir_entry_result in dir {
         let dir_entry = dir_entry_result?;

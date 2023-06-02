@@ -16,7 +16,7 @@ impl RoaringBitmap {
     /// let rb = RoaringBitmap::new();
     /// ```
     pub fn new() -> Self {
-        Self { containers: Vec::new() }
+        Self { containers: vec![] }
     }
 
     /// Creates a full `RoaringBitmap`.

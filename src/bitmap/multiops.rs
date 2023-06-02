@@ -247,7 +247,7 @@ fn try_multi_xor_owned<E>(
 ) -> Result<RoaringBitmap, E> {
     let mut iter = bitmaps.into_iter();
     let mut containers = match iter.next().transpose()? {
-        None => Vec::new(),
+        None => vec![],
         Some(v) => v.containers,
     };
 
@@ -359,7 +359,7 @@ fn try_multi_xor_ref<'a, E: 'a>(
     // Phase 1. Borrow all the containers from the first element.
     let mut iter = bitmaps.into_iter();
     let mut containers: Vec<Cow<Container>> = match iter.next().transpose()? {
-        None => Vec::new(),
+        None => vec![],
         Some(v) => v.containers.iter().map(Cow::Borrowed).collect(),
     };
 

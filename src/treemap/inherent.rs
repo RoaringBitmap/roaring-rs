@@ -203,7 +203,7 @@ impl RoaringTreemap {
         let (start_container_key, start_index) = util::split(start);
         let (end_container_key, end_index) = util::split(end);
 
-        let mut keys_to_remove = Vec::new();
+        let mut keys_to_remove = vec![];
         let mut removed = 0;
 
         for (&key, rb) in &mut self.map {

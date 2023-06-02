@@ -80,7 +80,7 @@ where
         })
         .collect();
 
-    let mut bitmaps = Vec::new();
+    let mut bitmaps = vec![];
     let mut map = BTreeMap::new();
 
     while let Some(mut peek) = heap.peek_mut() {
@@ -198,7 +198,7 @@ where
         })
         .collect();
 
-    let mut bitmaps = Vec::new();
+    let mut bitmaps = vec![];
     let mut map = BTreeMap::new();
 
     while let Some(mut peek) = heap.peek_mut() {

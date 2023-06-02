@@ -33,7 +33,7 @@ impl<'de> Deserialize<'de> for RoaringBitmap {
             where
                 A: SeqAccess<'de>,
             {
-                let mut bytes: Vec<u8> = Vec::new();
+                let mut bytes: Vec<u8> = vec![];
                 while let Some(el) = seq.next_element()? {
                     bytes.push(el);
                 }
@@ -50,7 +50,7 @@ impl Serialize for RoaringBitmap {
     where
         S: serde::Serializer,
     {
-        let mut buf = Vec::new();
+        let mut buf = vec![];
         self.serialize_into(&mut buf).map_err(serde::ser::Error::custom)?;
 
         serializer.serialize_bytes(&buf)

@@ -138,7 +138,7 @@ impl BitOr<&RoaringBitmap> for &RoaringBitmap {
 
     /// An `union` between two sets.
     fn bitor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        let mut containers = Vec::new();
+        let mut containers = vec![];
 
         for pair in Pairs::new(&self.containers, &rhs.containers) {
             match pair {
@@ -218,7 +218,7 @@ impl BitAnd<&RoaringBitmap> for &RoaringBitmap {
 
     /// An `intersection` between two sets.
     fn bitand(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        let mut containers = Vec::new();
+        let mut containers = vec![];
 
         for pair in Pairs::new(&self.containers, &rhs.containers) {
             if let (Some(lhs), Some(rhs)) = pair {
@@ -306,7 +306,7 @@ impl Sub<&RoaringBitmap> for &RoaringBitmap {
 
     /// A `difference` between two sets.
     fn sub(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        let mut containers = Vec::new();
+        let mut containers = vec![];
 
         for pair in Pairs::new(&self.containers, &rhs.containers) {
             match pair {
@@ -382,7 +382,7 @@ impl BitXor<&RoaringBitmap> for &RoaringBitmap {
 
     /// A `symmetric difference` between two sets.
     fn bitxor(self, rhs: &RoaringBitmap) -> RoaringBitmap {
-        let mut containers = Vec::new();
+        let mut containers = vec![];
 
         for pair in Pairs::new(&self.containers, &rhs.containers) {
             match pair {

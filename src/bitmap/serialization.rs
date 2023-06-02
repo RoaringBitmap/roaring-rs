@@ -226,7 +226,7 @@ mod test {
         fn test_serialization(
             bitmap in RoaringBitmap::arbitrary(),
         ) {
-            let mut buffer = Vec::new();
+            let mut buffer = vec![];
             bitmap.serialize_into(&mut buffer).unwrap();
             prop_assert_eq!(bitmap, RoaringBitmap::deserialize_from(buffer.as_slice()).unwrap());
         }

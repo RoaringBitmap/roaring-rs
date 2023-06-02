@@ -236,7 +236,7 @@ impl BitAndAssign<Self> for RoaringTreemap {
 impl BitAndAssign<&RoaringTreemap> for RoaringTreemap {
     /// An `intersection` between two sets.
     fn bitand_assign(&mut self, rhs: &RoaringTreemap) {
-        let mut keys_to_remove: Vec<u32> = Vec::new();
+        let mut keys_to_remove: Vec<u32> = vec![];
         for (key, self_rb) in &mut self.map {
             match rhs.map.get(key) {
                 Some(other_rb) => {

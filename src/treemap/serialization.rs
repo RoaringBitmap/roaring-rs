@@ -125,7 +125,7 @@ mod test {
         fn test_serialization(
             treemap in RoaringTreemap::arbitrary(),
         ) {
-            let mut buffer = Vec::new();
+            let mut buffer = vec![];
             treemap.serialize_into(&mut buffer).unwrap();
             prop_assert_eq!(treemap, RoaringTreemap::deserialize_from(buffer.as_slice()).unwrap());
         }
