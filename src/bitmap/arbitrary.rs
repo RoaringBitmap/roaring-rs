@@ -36,21 +36,21 @@ mod test {
 
         fn test(&self, bit: usize) -> bool {
             assert!(bit <= Self::MAX);
-            self.contains(bit as u16)
+            self.contains(bit as _)
         }
 
         fn set(&mut self, bit: usize) {
             assert!(bit <= Self::MAX);
-            self.insert(bit as u16);
+            self.insert(bit as _);
         }
 
         fn clear(&mut self, bit: usize) {
             assert!(bit <= Self::MAX);
-            self.remove(bit as u16);
+            self.remove(bit as _);
         }
 
         fn count(&self) -> usize {
-            self.len() as usize
+            self.len() as _
         }
     }
 
@@ -58,7 +58,7 @@ mod test {
         const MAX: usize = u16::MAX as usize;
 
         pub fn universe() -> Self {
-            Self::try_from(1 + u16::MAX as u64, Box::new([u64::MAX; 1024])).unwrap()
+            Self::try_from(1 + u16::MAX as u64, [u64::MAX; 1024].into()).unwrap()
         }
 
         pub fn between(min: u16, max: u16) -> BitSetStrategy<Self> {
@@ -109,21 +109,21 @@ mod test {
 
         fn test(&self, bit: usize) -> bool {
             assert!(bit <= Self::MAX);
-            self.contains(bit as u16)
+            self.contains(bit as _)
         }
 
         fn set(&mut self, bit: usize) {
             assert!(bit <= Self::MAX);
-            self.insert(bit as u16);
+            self.insert(bit as _);
         }
 
         fn clear(&mut self, bit: usize) {
             assert!(bit <= Self::MAX);
-            self.remove(bit as u16);
+            self.remove(bit as _);
         }
 
         fn count(&self) -> usize {
-            self.len() as usize
+            self.len() as _
         }
     }
 

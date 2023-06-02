@@ -15,11 +15,11 @@ pub struct BitmapStore {
 
 impl BitmapStore {
     pub fn new() -> Self {
-        Self { len: 0, bits: Box::new([0; BITMAP_LENGTH]) }
+        Self { len: 0, bits: [0; BITMAP_LENGTH].into() }
     }
 
     pub fn full() -> Self {
-        Self { len: (BITMAP_LENGTH as u64) * 64, bits: Box::new([u64::MAX; BITMAP_LENGTH]) }
+        Self { len: (BITMAP_LENGTH as u64) * 64, bits: [u64::MAX; BITMAP_LENGTH].into() }
     }
 
     pub fn try_from(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> Result<Self, Error> {
@@ -222,7 +222,7 @@ impl BitmapStore {
     }
 
     pub fn to_array_store(&self) -> ArrayStore {
-        let mut vec = Vec::with_capacity(self.len as usize);
+        let mut vec = Vec::with_capacity(self.len as _);
         for (index, mut bit) in self.bits.iter().cloned().enumerate() {
             while bit != 0 {
                 vec.push((u64::trailing_zeros(bit) + (64 * index as u32)) as u16);
