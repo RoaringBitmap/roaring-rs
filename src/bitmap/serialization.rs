@@ -151,11 +151,7 @@ impl RoaringBitmap {
         )
     }
 
-    fn deserialize_from_impl<R, A, AErr, B, BErr>(
-        mut reader: R,
-        a: A,
-        b: B,
-    ) -> io::Result<Self>
+    fn deserialize_from_impl<R, A, AErr, B, BErr>(mut reader: R, a: A, b: B) -> io::Result<Self>
     where
         R: io::Read,
         A: Fn(Vec<u16>) -> Result<ArrayStore, AErr>,

@@ -1,5 +1,7 @@
-use std::iter::{self, FromIterator};
-use std::{slice, vec};
+use std::{
+    iter::{self, FromIterator},
+    slice, vec,
+};
 
 use super::container::Container;
 use crate::{NonSortedIntegers, RoaringBitmap};
@@ -57,7 +59,7 @@ impl DoubleEndedIterator for Iter<'_> {
 #[cfg(target_pointer_width = "64")]
 impl ExactSizeIterator for Iter<'_> {
     fn len(&self) -> usize {
-        self.size_hint as usize
+        self.size_hint as _
     }
 }
 
@@ -71,7 +73,7 @@ impl Iterator for IntoIter {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         if self.size_hint < usize::MAX as u64 {
-            (self.size_hint as usize, Some(self.size_hint as usize))
+            (self.size_hint as usize, Some(self.size_hint as _))
         } else {
             (usize::MAX, None)
         }

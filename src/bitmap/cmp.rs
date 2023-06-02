@@ -55,13 +55,13 @@ impl RoaringBitmap {
     pub fn is_subset(&self, other: &Self) -> bool {
         for pair in Pairs::new(&self.containers, &other.containers) {
             match pair {
-                (None, _) => (),
-                (_, None) => return false,
                 (Some(c1), Some(c2)) => {
                     if !c1.is_subset(c2) {
                         return false;
                     }
                 }
+                (None, _) => (),
+                (_, None) => return false,
             }
         }
         true

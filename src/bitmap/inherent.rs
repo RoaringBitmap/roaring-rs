@@ -1,5 +1,4 @@
-use std::cmp::Ordering;
-use std::ops::RangeBounds;
+use std::{cmp::Ordering, ops::RangeBounds};
 
 use crate::RoaringBitmap;
 
