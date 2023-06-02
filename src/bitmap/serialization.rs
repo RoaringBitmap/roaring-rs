@@ -120,8 +120,8 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
-    pub fn deserialize_from<R: io::Read>(reader: R) -> io::Result<RoaringBitmap> {
-        RoaringBitmap::deserialize_from_impl(reader, ArrayStore::try_from, BitmapStore::try_from)
+    pub fn deserialize_from<R: io::Read>(reader: R) -> io::Result<Self> {
+        Self::deserialize_from_impl(reader, ArrayStore::try_from, BitmapStore::try_from)
     }
 
     /// Deserialize a bitmap into memory from [the standard Roaring on-disk
@@ -143,8 +143,8 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
-    pub fn deserialize_unchecked_from<R: io::Read>(reader: R) -> io::Result<RoaringBitmap> {
-        RoaringBitmap::deserialize_from_impl::<R, _, Infallible, _, Infallible>(
+    pub fn deserialize_unchecked_from<R: io::Read>(reader: R) -> io::Result<Self> {
+        Self::deserialize_from_impl::<R, _, Infallible, _, Infallible>(
             reader,
             |values| Ok(ArrayStore::from_vec_unchecked(values)),
             |len, values| Ok(BitmapStore::from_unchecked(len, values)),
@@ -155,7 +155,7 @@ impl RoaringBitmap {
         mut reader: R,
         a: A,
         b: B,
-    ) -> io::Result<RoaringBitmap>
+    ) -> io::Result<Self>
     where
         R: io::Read,
         A: Fn(Vec<u16>) -> Result<ArrayStore, AErr>,
@@ -212,7 +212,7 @@ impl RoaringBitmap {
             containers.push(Container { key, store });
         }
 
-        Ok(RoaringBitmap { containers })
+        Ok(Self { containers })
     }
 }
 

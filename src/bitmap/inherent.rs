@@ -581,14 +581,14 @@ impl RoaringBitmap {
 }
 
 impl Default for RoaringBitmap {
-    fn default() -> RoaringBitmap {
-        RoaringBitmap::new()
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl Clone for RoaringBitmap {
     fn clone(&self) -> Self {
-        RoaringBitmap { containers: self.containers.clone() }
+        Self { containers: self.containers.clone() }
     }
 
     fn clone_from(&mut self, other: &Self) {
