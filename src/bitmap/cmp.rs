@@ -1,6 +1,4 @@
-use std::borrow::Borrow;
-use std::cmp::Ordering;
-use std::iter::Peekable;
+use std::{borrow::Borrow, cmp::Ordering, iter::Peekable};
 
 use super::container::Container;
 use crate::RoaringBitmap;
@@ -119,12 +117,12 @@ where
     L: Borrow<Container>,
     R: Borrow<Container>,
 {
-    pub fn new<A, B>(left: A, right: B) -> Pairs<I, J, L, R>
+    pub fn new<A, B>(left: A, right: B) -> Self
     where
         A: IntoIterator<Item = L, IntoIter = I>,
         B: IntoIterator<Item = R, IntoIter = J>,
     {
-        Pairs { left: left.into_iter().peekable(), right: right.into_iter().peekable() }
+        Self { left: left.into_iter().peekable(), right: right.into_iter().peekable() }
     }
 }
 
@@ -139,14 +137,14 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         match (self.left.peek(), self.right.peek()) {
-            (None, None) => None,
-            (Some(_), None) => Some((self.left.next(), None)),
-            (None, Some(_)) => Some((None, self.right.next())),
             (Some(c1), Some(c2)) => match c1.borrow().key.cmp(&c2.borrow().key) {
                 Ordering::Equal => Some((self.left.next(), self.right.next())),
                 Ordering::Less => Some((self.left.next(), None)),
                 Ordering::Greater => Some((None, self.right.next())),
             },
+            (Some(_), None) => Some((self.left.next(), None)),
+            (None, Some(_)) => Some((None, self.right.next())),
+            (None, None) => None,
         }
     }
 }

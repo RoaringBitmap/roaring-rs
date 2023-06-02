@@ -20,12 +20,12 @@ pub struct Iter<'a> {
 }
 
 impl Container {
-    pub fn new(key: u16) -> Container {
-        Container { key, store: Store::new() }
+    pub fn new(key: u16) -> Self {
+        Self { key, store: Store::new() }
     }
 
-    pub fn full(key: u16) -> Container {
-        Container { key, store: Store::full() }
+    pub fn full(key: u16) -> Self {
+        Self { key, store: Store::full() }
     }
 }
 
@@ -157,15 +157,15 @@ impl BitOr<&Container> for &Container {
     }
 }
 
-impl BitOrAssign<Container> for Container {
-    fn bitor_assign(&mut self, rhs: Container) {
+impl BitOrAssign<Self> for Container {
+    fn bitor_assign(&mut self, rhs: Self) {
         BitOrAssign::bitor_assign(&mut self.store, rhs.store);
         self.ensure_correct_store();
     }
 }
 
-impl BitOrAssign<&Container> for Container {
-    fn bitor_assign(&mut self, rhs: &Container) {
+impl BitOrAssign<&Self> for Container {
+    fn bitor_assign(&mut self, rhs: &Self) {
         BitOrAssign::bitor_assign(&mut self.store, &rhs.store);
         self.ensure_correct_store();
     }
@@ -182,15 +182,15 @@ impl BitAnd<&Container> for &Container {
     }
 }
 
-impl BitAndAssign<Container> for Container {
-    fn bitand_assign(&mut self, rhs: Container) {
+impl BitAndAssign<Self> for Container {
+    fn bitand_assign(&mut self, rhs: Self) {
         BitAndAssign::bitand_assign(&mut self.store, rhs.store);
         self.ensure_correct_store();
     }
 }
 
-impl BitAndAssign<&Container> for Container {
-    fn bitand_assign(&mut self, rhs: &Container) {
+impl BitAndAssign<&Self> for Container {
+    fn bitand_assign(&mut self, rhs: &Self) {
         BitAndAssign::bitand_assign(&mut self.store, &rhs.store);
         self.ensure_correct_store();
     }
@@ -225,8 +225,8 @@ impl BitXor<&Container> for &Container {
     }
 }
 
-impl BitXorAssign<Container> for Container {
-    fn bitxor_assign(&mut self, rhs: Container) {
+impl BitXorAssign<Self> for Container {
+    fn bitxor_assign(&mut self, rhs: Self) {
         BitXorAssign::bitxor_assign(&mut self.store, rhs.store);
         self.ensure_correct_store();
     }

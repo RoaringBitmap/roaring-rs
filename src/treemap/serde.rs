@@ -1,8 +1,7 @@
-use serde::de::SeqAccess;
-use serde::de::Visitor;
-use serde::Deserialize;
-use serde::Deserializer;
-use serde::Serialize;
+use serde::{
+    de::{SeqAccess, Visitor},
+    Deserialize, Deserializer, Serialize,
+};
 
 use crate::RoaringTreemap;
 
