@@ -4,8 +4,7 @@ use std::{
     ops::RangeBounds,
 };
 
-use crate::RoaringBitmap;
-use crate::RoaringTreemap;
+use crate::{RoaringBitmap, RoaringTreemap};
 
 use super::util;
 

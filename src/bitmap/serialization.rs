@@ -1,12 +1,16 @@
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use std::convert::{Infallible, TryFrom};
-use std::error::Error;
-use std::io;
+use std::{
+    convert::{Infallible, TryFrom},
+    error::Error,
+    io,
+};
 
 use super::container::Container;
-use crate::bitmap::store::{ArrayStore, BitmapStore, Store};
-use crate::RoaringBitmap;
+use crate::{
+    bitmap::store::{ArrayStore, BitmapStore, Store},
+    RoaringBitmap,
+};
 
 const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
 const SERIAL_COOKIE: u16 = 12347;

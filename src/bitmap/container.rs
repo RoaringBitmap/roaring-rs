@@ -37,6 +37,10 @@ impl Container {
         self.store.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() != 0
+    }
+
     pub fn insert(&mut self, index: u16) -> bool {
         if self.store.insert(index) {
             self.ensure_correct_store();
