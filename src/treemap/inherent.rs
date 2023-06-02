@@ -1,6 +1,8 @@
-use std::collections::btree_map::{BTreeMap, Entry};
-use std::iter;
-use std::ops::RangeBounds;
+use std::{
+    collections::btree_map::{BTreeMap, Entry},
+    iter,
+    ops::RangeBounds,
+};
 
 use crate::RoaringBitmap;
 use crate::RoaringTreemap;
@@ -16,8 +18,8 @@ impl RoaringTreemap {
     /// use roaring::RoaringTreemap;
     /// let rb = RoaringTreemap::new();
     /// ```
-    pub fn new() -> RoaringTreemap {
-        RoaringTreemap { map: BTreeMap::new() }
+    pub fn new() -> Self {
+        Self { map: BTreeMap::new() }
     }
 
     /// Creates a full `RoaringTreemap`.
@@ -28,8 +30,8 @@ impl RoaringTreemap {
     /// use roaring::RoaringTreemap;
     /// let rb = RoaringTreemap::full();
     /// ```
-    pub fn full() -> RoaringTreemap {
-        RoaringTreemap { map: (0..=u32::MAX).zip(iter::repeat(RoaringBitmap::full())).collect() }
+    pub fn full() -> Self {
+        Self { map: (0..=u32::MAX).zip(iter::repeat(RoaringBitmap::full())).collect() }
     }
 
     /// Adds a value to the set. Returns `true` if the value was not already present in the set.
@@ -416,14 +418,14 @@ impl RoaringTreemap {
 }
 
 impl Default for RoaringTreemap {
-    fn default() -> RoaringTreemap {
-        RoaringTreemap::new()
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl Clone for RoaringTreemap {
     fn clone(&self) -> Self {
-        RoaringTreemap { map: self.map.clone() }
+        Self { map: self.map.clone() }
     }
 
     fn clone_from(&mut self, other: &Self) {

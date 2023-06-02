@@ -14,20 +14,20 @@ pub struct BitmapStore {
 }
 
 impl BitmapStore {
-    pub fn new() -> BitmapStore {
-        BitmapStore { len: 0, bits: Box::new([0; BITMAP_LENGTH]) }
+    pub fn new() -> Self {
+        Self { len: 0, bits: Box::new([0; BITMAP_LENGTH]) }
     }
 
-    pub fn full() -> BitmapStore {
-        BitmapStore { len: (BITMAP_LENGTH as u64) * 64, bits: Box::new([u64::MAX; BITMAP_LENGTH]) }
+    pub fn full() -> Self {
+        Self { len: (BITMAP_LENGTH as u64) * 64, bits: Box::new([u64::MAX; BITMAP_LENGTH]) }
     }
 
-    pub fn try_from(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> Result<BitmapStore, Error> {
+    pub fn try_from(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> Result<Self, Error> {
         let actual_len = bits.iter().map(|v| v.count_ones() as u64).sum();
         if len != actual_len {
             Err(Error { kind: ErrorKind::Cardinality { expected: len, actual: actual_len } })
         } else {
-            Ok(BitmapStore { len, bits })
+            Ok(Self { len, bits })
         }
     }
 
@@ -39,11 +39,11 @@ impl BitmapStore {
     /// # Panics
     ///
     /// When debug_assertions are enabled and the above invariant is not met
-    pub fn from_unchecked(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> BitmapStore {
+    pub fn from_unchecked(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> Self {
         if cfg!(debug_assertions) {
-            BitmapStore::try_from(len, bits).unwrap()
+            Self::try_from(len, bits).unwrap()
         } else {
-            BitmapStore { len, bits }
+            Self { len, bits }
         }
     }
 
@@ -213,7 +213,7 @@ impl BitmapStore {
         }
     }
 
-    pub fn is_disjoint(&self, other: &BitmapStore) -> bool {
+    pub fn is_disjoint(&self, other: &Self) -> bool {
         self.bits.iter().zip(other.bits.iter()).all(|(&i1, &i2)| (i1 & i2) == 0)
     }
 
@@ -275,7 +275,7 @@ impl BitmapStore {
         None
     }
 
-    pub fn intersection_len_bitmap(&self, other: &BitmapStore) -> u64 {
+    pub fn intersection_len_bitmap(&self, other: &Self) -> u64 {
         self.bits.iter().zip(other.bits.iter()).map(|(&a, &b)| (a & b).count_ones() as u64).sum()
     }
 
@@ -316,7 +316,7 @@ fn select(mut value: u64, n: u64) -> u64 {
 
 impl Default for BitmapStore {
     fn default() -> Self {
-        BitmapStore::new()
+        Self::new()
     }
 }
 
@@ -351,8 +351,8 @@ pub struct BitmapIter<B: Borrow<[u64; BITMAP_LENGTH]>> {
 }
 
 impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
-    fn new(bits: B) -> BitmapIter<B> {
-        BitmapIter {
+    fn new(bits: B) -> Self {
+        Self {
             key: 0,
             value: bits.borrow()[0],
             key_back: BITMAP_LENGTH - 1,
