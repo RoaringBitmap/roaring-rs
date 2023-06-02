@@ -75,18 +75,18 @@ pub struct IntoIter {
 }
 
 impl<'a> Iter<'a> {
-    fn new(map: &BTreeMap<u32, RoaringBitmap>) -> Iter {
+    fn new(map: &'a BTreeMap<u32, RoaringBitmap>) -> Self {
         let size_hint: u64 = map.iter().map(|(_, r)| r.len()).sum();
         let i = map.iter().flat_map(to64iter as _);
-        Iter { inner: i, size_hint }
+        Self { inner: i, size_hint }
     }
 }
 
 impl IntoIter {
-    fn new(map: BTreeMap<u32, RoaringBitmap>) -> IntoIter {
+    fn new(map: BTreeMap<u32, RoaringBitmap>) -> Self {
         let size_hint = map.values().map(|r| r.len()).sum();
         let i = map.into_iter().flat_map(to64intoiter as _);
-        IntoIter { inner: i, size_hint }
+        Self { inner: i, size_hint }
     }
 }
 
@@ -208,7 +208,7 @@ impl RoaringTreemap {
     /// assert_eq!(clone, original);
     /// ```
     pub fn from_bitmaps<I: IntoIterator<Item = (u32, RoaringBitmap)>>(iterator: I) -> Self {
-        RoaringTreemap { map: iterator.into_iter().collect() }
+        Self { map: iterator.into_iter().collect() }
     }
 }
 
@@ -232,21 +232,21 @@ impl IntoIterator for RoaringTreemap {
 
 impl<const N: usize> From<[u64; N]> for RoaringTreemap {
     fn from(arr: [u64; N]) -> Self {
-        RoaringTreemap::from_iter(arr.into_iter())
+        Self::from_iter(arr.into_iter())
     }
 }
 
 impl FromIterator<u64> for RoaringTreemap {
     fn from_iter<I: IntoIterator<Item = u64>>(iterator: I) -> RoaringTreemap {
-        let mut rb = RoaringTreemap::new();
+        let mut rb = Self::new();
         rb.extend(iterator);
         rb
     }
 }
 
 impl<'a> FromIterator<&'a u64> for RoaringTreemap {
-    fn from_iter<I: IntoIterator<Item = &'a u64>>(iterator: I) -> RoaringTreemap {
-        let mut rb = RoaringTreemap::new();
+    fn from_iter<I: IntoIterator<Item = &'a u64>>(iterator: I) -> Self {
+        let mut rb = Self::new();
         rb.extend(iterator);
         rb
     }
@@ -289,8 +289,8 @@ impl RoaringTreemap {
     /// ```
     pub fn from_sorted_iter<I: IntoIterator<Item = u64>>(
         iterator: I,
-    ) -> Result<RoaringTreemap, NonSortedIntegers> {
-        let mut rt = RoaringTreemap::new();
+    ) -> Result<Self, NonSortedIntegers> {
+        let mut rt = Self::new();
         rt.append(iterator).map(|_| rt)
     }
 
@@ -361,7 +361,7 @@ impl<'a> Iterator for BitmapIter<'a> {
 }
 
 impl FromIterator<(u32, RoaringBitmap)> for RoaringTreemap {
-    fn from_iter<I: IntoIterator<Item = (u32, RoaringBitmap)>>(iterator: I) -> RoaringTreemap {
+    fn from_iter<I: IntoIterator<Item = (u32, RoaringBitmap)>>(iterator: I) -> Self {
         Self::from_bitmaps(iterator)
     }
 }

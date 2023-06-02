@@ -11,7 +11,7 @@ mod test {
     impl Debug for BitmapStore {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             if self.len() < 16 {
-                write!(f, "BitmapStore<{:?}>", self.iter().collect::<Vec<u16>>())
+                write!(f, "BitmapStore<{:?}>", self.iter().collect::<Vec<_>>())
             } else {
                 write!(
                     f,
@@ -26,26 +26,26 @@ mod test {
 
     impl BitSetLike for BitmapStore {
         fn new_bitset(max: usize) -> Self {
-            assert!(max <= BitmapStore::MAX + 1);
-            BitmapStore::new()
+            assert!(max <= Self::MAX + 1);
+            Self::new()
         }
 
         fn len(&self) -> usize {
-            BitmapStore::MAX + 1
+            Self::MAX + 1
         }
 
         fn test(&self, bit: usize) -> bool {
-            assert!(bit <= BitmapStore::MAX);
+            assert!(bit <= Self::MAX);
             self.contains(bit as u16)
         }
 
         fn set(&mut self, bit: usize) {
-            assert!(bit <= BitmapStore::MAX);
+            assert!(bit <= Self::MAX);
             self.insert(bit as u16);
         }
 
         fn clear(&mut self, bit: usize) {
-            assert!(bit <= BitmapStore::MAX);
+            assert!(bit <= Self::MAX);
             self.remove(bit as u16);
         }
 
@@ -58,7 +58,7 @@ mod test {
         const MAX: usize = u16::MAX as usize;
 
         pub fn universe() -> Self {
-            BitmapStore::try_from(1 + u16::MAX as u64, Box::new([u64::MAX; 1024])).unwrap()
+            Self::try_from(1 + u16::MAX as u64, Box::new([u64::MAX; 1024])).unwrap()
         }
 
         pub fn between(min: u16, max: u16) -> BitSetStrategy<Self> {
@@ -99,26 +99,26 @@ mod test {
 
     impl BitSetLike for ArrayStore {
         fn new_bitset(max: usize) -> Self {
-            assert!(max <= ArrayStore::MAX + 1);
-            ArrayStore::new()
+            assert!(max <= Self::MAX + 1);
+            Self::new()
         }
 
         fn len(&self) -> usize {
-            ArrayStore::MAX + 1
+            Self::MAX + 1
         }
 
         fn test(&self, bit: usize) -> bool {
-            assert!(bit <= ArrayStore::MAX);
+            assert!(bit <= Self::MAX);
             self.contains(bit as u16)
         }
 
         fn set(&mut self, bit: usize) {
-            assert!(bit <= ArrayStore::MAX);
+            assert!(bit <= Self::MAX);
             self.insert(bit as u16);
         }
 
         fn clear(&mut self, bit: usize) {
-            assert!(bit <= ArrayStore::MAX);
+            assert!(bit <= Self::MAX);
             self.remove(bit as u16);
         }
 
@@ -130,22 +130,22 @@ mod test {
     impl ArrayStore {
         const MAX: usize = u16::MAX as usize;
 
-        pub fn between(min: u16, max: u16) -> BitSetStrategy<ArrayStore> {
+        pub fn between(min: u16, max: u16) -> BitSetStrategy<Self> {
             BitSetStrategy::new(min as usize, max as usize)
         }
 
-        pub fn masked(mask: ArrayStore) -> BitSetStrategy<ArrayStore> {
+        pub fn masked(mask: Self) -> BitSetStrategy<Self> {
             BitSetStrategy::masked(mask)
         }
 
         pub fn sampled(
             size: impl Into<SizeRange>,
             bits: impl Into<SizeRange>,
-        ) -> SampledBitSetStrategy<ArrayStore> {
+        ) -> SampledBitSetStrategy<Self> {
             SampledBitSetStrategy::new(size.into(), bits.into())
         }
 
-        pub fn arbitrary() -> SampledBitSetStrategy<ArrayStore> {
+        pub fn arbitrary() -> SampledBitSetStrategy<Self> {
             Self::sampled(..=4096_usize, ..=u16::MAX as usize)
         }
     }
@@ -153,18 +153,18 @@ mod test {
     impl Debug for Store {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
             match self {
-                Store::Array(a) => write!(f, "Store({:?})", a),
-                Store::Bitmap(b) => write!(f, "Store({:?})", b),
+                Self::Array(a) => write!(f, "Store({:?})", a),
+                Self::Bitmap(b) => write!(f, "Store({:?})", b),
             }
         }
     }
 
     impl Store {
-        fn arbitrary() -> impl Strategy<Value = Store> {
+        fn arbitrary() -> impl Strategy<Value = Self> {
             prop_oneof![
-                ArrayStore::sampled(1..=4096, ..=u16::MAX as usize).prop_map(Store::Array),
+                ArrayStore::sampled(1..=4096, ..=u16::MAX as usize).prop_map(Self::Array),
                 BitmapStore::sampled(4097..u16::MAX as usize, ..=u16::MAX as usize)
-                    .prop_map(Store::Bitmap),
+                    .prop_map(Self::Bitmap),
             ]
         }
     }
@@ -184,7 +184,7 @@ mod test {
 
     impl RoaringBitmap {
         prop_compose! {
-            pub fn arbitrary()(bitmap in (0usize..=16).prop_flat_map(containers)) -> RoaringBitmap {
+            pub fn arbitrary()(bitmap in (0usize..=16).prop_flat_map(containers)) -> Self {
                 bitmap
             }
         }

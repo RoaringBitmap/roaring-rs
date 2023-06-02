@@ -1,17 +1,22 @@
 mod array_store;
 mod bitmap_store;
 
-use std::mem;
-use std::ops::{
-    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
+use std::{
+    mem,
+    ops::{
+        BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub,
+        SubAssign,
+    },
+    slice, vec,
 };
-use std::{slice, vec};
 
 use self::bitmap_store::BITMAP_LENGTH;
 use self::Store::{Array, Bitmap};
 
-pub use self::array_store::ArrayStore;
-pub use self::bitmap_store::{BitmapIter, BitmapStore};
+pub use self::{
+    array_store::ArrayStore,
+    bitmap_store::{BitmapIter, BitmapStore},
+};
 
 #[derive(Clone)]
 pub enum Store {
