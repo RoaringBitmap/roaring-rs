@@ -33,12 +33,14 @@ impl Container {
 }
 
 impl Container {
+    #[inline]
     pub fn len(&self) -> u64 {
         self.store.len()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
-        self.len() != 0
+        self.len() == 0
     }
 
     pub fn insert(&mut self, index: u16) -> bool {
@@ -101,18 +103,22 @@ impl Container {
         result
     }
 
+    #[inline]
     pub fn contains(&self, index: u16) -> bool {
         self.store.contains(index)
     }
 
+    #[inline]
     pub fn contains_range(&self, range: RangeInclusive<u16>) -> bool {
         self.store.contains_range(range)
     }
 
+    #[inline]
     pub fn is_full(&self) -> bool {
         self.store.is_full()
     }
 
+    #[inline]
     pub fn is_disjoint(&self, other: &Self) -> bool {
         self.store.is_disjoint(&other.store)
     }
@@ -125,14 +131,17 @@ impl Container {
         self.store.intersection_len(&other.store)
     }
 
+    #[inline]
     pub fn min(&self) -> Option<u16> {
         self.store.min()
     }
 
+    #[inline]
     pub fn max(&self) -> Option<u16> {
         self.store.max()
     }
 
+    #[inline]
     pub fn rank(&self, index: u16) -> u64 {
         self.store.rank(index)
     }
