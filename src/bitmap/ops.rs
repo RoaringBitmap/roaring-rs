@@ -143,8 +143,7 @@ impl BitOr<&RoaringBitmap> for &RoaringBitmap {
         for pair in Pairs::new(&self.containers, &rhs.containers) {
             match pair {
                 (Some(lhs), Some(rhs)) => containers.push(BitOr::bitor(lhs, rhs)),
-                (Some(lhs), None) => containers.push(lhs.clone()),
-                (None, Some(rhs)) => containers.push(rhs.clone()),
+                (Some(c), None) | (None, Some(c)) => containers.push(c.clone()),
                 (None, None) => break,
             }
         }
