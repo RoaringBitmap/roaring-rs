@@ -6,7 +6,7 @@ use std::ops::{
 use super::store::{self, Store};
 use super::util;
 
-const ARRAY_LIMIT: u64 = 4096;
+pub const ARRAY_LIMIT: u64 = 4096;
 
 #[derive(PartialEq, Clone)]
 pub struct Container {
