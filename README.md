@@ -49,7 +49,8 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you shall be dual licensed as above, without any
 additional terms or conditions.
 
-[github-actions-badge]: https://img.shields.io/github/workflow/status/RoaringBitmap/roaring-rs/Continuous%20integration.svg?style=flat-square
+[github-actions-badge]:
+https://github.com/RoaringBitmap/roaring-rs/actions/workflows/test.yml/badge.svg
 [github-actions]: https://github.com/RoaringBitmap/roaring-rs/actions
 [release-badge]: https://img.shields.io/github/release/RoaringBitmap/roaring-rs.svg?style=flat-square
 [cargo]: https://crates.io/crates/roaring
