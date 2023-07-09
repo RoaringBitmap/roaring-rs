@@ -5,7 +5,7 @@ on:
       - trying
   pull_request:
     branches:
-      - master
+      - main
 
 name: Continuous integration
 
