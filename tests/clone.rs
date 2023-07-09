@@ -2,6 +2,7 @@ extern crate roaring;
 use roaring::RoaringBitmap;
 
 #[test]
+#[allow(clippy::redundant_clone)]
 fn array() {
     let original = (0..2000).collect::<RoaringBitmap>();
     let clone = original.clone();
@@ -10,6 +11,7 @@ fn array() {
 }
 
 #[test]
+#[allow(clippy::redundant_clone)]
 fn bitmap() {
     let original = (0..6000).collect::<RoaringBitmap>();
     let clone = original.clone();
@@ -18,6 +20,7 @@ fn bitmap() {
 }
 
 #[test]
+#[allow(clippy::redundant_clone)]
 fn arrays() {
     let original = (0..2000)
         .chain(1_000_000..1_002_000)
@@ -29,6 +32,7 @@ fn arrays() {
 }
 
 #[test]
+#[allow(clippy::redundant_clone)]
 fn bitmaps() {
     let original = (0..6000)
         .chain(1_000_000..1_012_000)

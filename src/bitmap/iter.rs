@@ -133,7 +133,7 @@ impl IntoIterator for RoaringBitmap {
 
 impl<const N: usize> From<[u32; N]> for RoaringBitmap {
     fn from(arr: [u32; N]) -> Self {
-        RoaringBitmap::from_iter(arr.into_iter())
+        RoaringBitmap::from_iter(arr)
     }
 }
 

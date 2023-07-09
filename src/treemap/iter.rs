@@ -232,7 +232,7 @@ impl IntoIterator for RoaringTreemap {
 
 impl<const N: usize> From<[u64; N]> for RoaringTreemap {
     fn from(arr: [u64; N]) -> Self {
-        RoaringTreemap::from_iter(arr.into_iter())
+        RoaringTreemap::from_iter(arr)
     }
 }
 

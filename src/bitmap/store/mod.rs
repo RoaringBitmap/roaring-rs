@@ -196,7 +196,7 @@ impl BitOr<&Store> for &Store {
 
     fn bitor(self, rhs: &Store) -> Store {
         match (self, rhs) {
-            (&Array(ref vec1), &Array(ref vec2)) => Array(BitOr::bitor(vec1, vec2)),
+            (Array(vec1), Array(vec2)) => Array(BitOr::bitor(vec1, vec2)),
             (&Bitmap(..), &Array(..)) => {
                 let mut lhs = self.clone();
                 BitOrAssign::bitor_assign(&mut lhs, rhs);
@@ -239,17 +239,17 @@ impl BitOrAssign<Store> for Store {
 impl BitOrAssign<&Store> for Store {
     fn bitor_assign(&mut self, rhs: &Store) {
         match (self, rhs) {
-            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
+            (&mut Array(ref mut vec1), Array(vec2)) => {
                 let this = mem::take(vec1);
                 *vec1 = BitOr::bitor(&this, vec2);
             }
-            (&mut Bitmap(ref mut bits1), &Array(ref vec2)) => {
+            (&mut Bitmap(ref mut bits1), Array(vec2)) => {
                 BitOrAssign::bitor_assign(bits1, vec2);
             }
-            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
+            (&mut Bitmap(ref mut bits1), Bitmap(bits2)) => {
                 BitOrAssign::bitor_assign(bits1, bits2);
             }
-            (this @ &mut Array(..), &Bitmap(ref bits2)) => {
+            (this @ &mut Array(..), Bitmap(bits2)) => {
                 let mut lhs: Store = Bitmap(bits2.clone());
                 BitOrAssign::bitor_assign(&mut lhs, &*this);
                 *this = lhs;
@@ -263,7 +263,7 @@ impl BitAnd<&Store> for &Store {
 
     fn bitand(self, rhs: &Store) -> Store {
         match (self, rhs) {
-            (&Array(ref vec1), &Array(ref vec2)) => Array(BitAnd::bitand(vec1, vec2)),
+            (Array(vec1), Array(vec2)) => Array(BitAnd::bitand(vec1, vec2)),
             (&Bitmap(..), &Array(..)) => {
                 let mut rhs = rhs.clone();
                 BitAndAssign::bitand_assign(&mut rhs, self);
@@ -306,7 +306,7 @@ impl BitAndAssign<&Store> for Store {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn bitand_assign(&mut self, rhs: &Store) {
         match (self, rhs) {
-            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
+            (&mut Array(ref mut vec1), Array(vec2)) => {
                 let (mut lhs, rhs) = if vec2.len() < vec1.len() {
                     (vec2.clone(), &*vec1)
                 } else {
@@ -316,10 +316,10 @@ impl BitAndAssign<&Store> for Store {
                 BitAndAssign::bitand_assign(&mut lhs, rhs);
                 *vec1 = lhs;
             }
-            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
+            (&mut Bitmap(ref mut bits1), Bitmap(bits2)) => {
                 BitAndAssign::bitand_assign(bits1, bits2);
             }
-            (&mut Array(ref mut vec1), &Bitmap(ref bits2)) => {
+            (&mut Array(ref mut vec1), Bitmap(bits2)) => {
                 BitAndAssign::bitand_assign(vec1, bits2);
             }
             (this @ &mut Bitmap(..), &Array(..)) => {
@@ -336,7 +336,7 @@ impl Sub<&Store> for &Store {
 
     fn sub(self, rhs: &Store) -> Store {
         match (self, rhs) {
-            (&Array(ref vec1), &Array(ref vec2)) => Array(Sub::sub(vec1, vec2)),
+            (Array(vec1), Array(vec2)) => Array(Sub::sub(vec1, vec2)),
             _ => {
                 let mut lhs = self.clone();
                 SubAssign::sub_assign(&mut lhs, rhs);
@@ -349,16 +349,16 @@ impl Sub<&Store> for &Store {
 impl SubAssign<&Store> for Store {
     fn sub_assign(&mut self, rhs: &Store) {
         match (self, rhs) {
-            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
+            (&mut Array(ref mut vec1), Array(vec2)) => {
                 SubAssign::sub_assign(vec1, vec2);
             }
-            (&mut Bitmap(ref mut bits1), &Array(ref vec2)) => {
+            (&mut Bitmap(ref mut bits1), Array(vec2)) => {
                 SubAssign::sub_assign(bits1, vec2);
             }
-            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
+            (&mut Bitmap(ref mut bits1), Bitmap(bits2)) => {
                 SubAssign::sub_assign(bits1, bits2);
             }
-            (&mut Array(ref mut vec1), &Bitmap(ref bits2)) => {
+            (&mut Array(ref mut vec1), Bitmap(bits2)) => {
                 SubAssign::sub_assign(vec1, bits2);
             }
         }
@@ -370,7 +370,7 @@ impl BitXor<&Store> for &Store {
 
     fn bitxor(self, rhs: &Store) -> Store {
         match (self, rhs) {
-            (&Array(ref vec1), &Array(ref vec2)) => Array(BitXor::bitxor(vec1, vec2)),
+            (Array(vec1), Array(vec2)) => Array(BitXor::bitxor(vec1, vec2)),
             (&Array(..), &Bitmap(..)) => {
                 let mut lhs = rhs.clone();
                 BitXorAssign::bitxor_assign(&mut lhs, self);
@@ -408,17 +408,17 @@ impl BitXorAssign<Store> for Store {
 impl BitXorAssign<&Store> for Store {
     fn bitxor_assign(&mut self, rhs: &Store) {
         match (self, rhs) {
-            (&mut Array(ref mut vec1), &Array(ref vec2)) => {
+            (&mut Array(ref mut vec1), Array(vec2)) => {
                 let this = mem::take(vec1);
                 *vec1 = BitXor::bitxor(&this, vec2);
             }
-            (&mut Bitmap(ref mut bits1), &Array(ref vec2)) => {
+            (&mut Bitmap(ref mut bits1), Array(vec2)) => {
                 BitXorAssign::bitxor_assign(bits1, vec2);
             }
-            (&mut Bitmap(ref mut bits1), &Bitmap(ref bits2)) => {
+            (&mut Bitmap(ref mut bits1), Bitmap(bits2)) => {
                 BitXorAssign::bitxor_assign(bits1, bits2);
             }
-            (this @ &mut Array(..), &Bitmap(ref bits2)) => {
+            (this @ &mut Array(..), Bitmap(bits2)) => {
                 let mut lhs: Store = Bitmap(bits2.clone());
                 BitXorAssign::bitxor_assign(&mut lhs, &*this);
                 *this = lhs;

@@ -64,7 +64,7 @@ proptest! {
     fn iter(values in btree_set(any::<u32>(), ..=10_000)) {
         let bitmap = RoaringBitmap::from_sorted_iter(values.iter().cloned()).unwrap();
         // Iterator::eq != PartialEq::eq - cannot use assert_eq macro
-        assert!(values.into_iter().eq(bitmap.into_iter()));
+        assert!(values.into_iter().eq(bitmap));
     }
 }
 
@@ -99,7 +99,7 @@ fn from_iter() {
     // with u32 as well as &u32 elements.
     let vals = vec![1, 5, 10000];
     let a = RoaringBitmap::from_iter(vals.iter());
-    let b = RoaringBitmap::from_iter(vals.into_iter());
+    let b = RoaringBitmap::from_iter(vals);
     assert_eq!(a, b);
 }
 
@@ -131,7 +131,7 @@ where
 #[test]
 fn outside_in_iterator() {
     let values = 0..10;
-    assert!(outside_in(values).eq(vec![0, 9, 1, 8, 2, 7, 3, 6, 4, 5].into_iter()));
+    assert!(outside_in(values).eq(vec![0, 9, 1, 8, 2, 7, 3, 6, 4, 5]));
 }
 
 #[test]

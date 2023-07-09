@@ -399,6 +399,7 @@ mod test {
         fn the_empty_set_is_the_identity_for_union(a in RoaringBitmap::arbitrary()) {
             prop_assert_eq!(&(&a | &empty_set()), &a);
 
+            #[allow(clippy::redundant_clone)]
             { // op_assign_ref
                 let mut x = a.clone();
                 x |= &empty_set();
@@ -419,6 +420,7 @@ mod test {
         fn the_empty_set_is_the_identity_for_symmetric_difference(a in RoaringBitmap::arbitrary()) {
             prop_assert_eq!(&(&a ^ &empty_set()), &a);
 
+            #[allow(clippy::redundant_clone)]
             { // op_assign_ref
                 let mut x = a.clone();
                 x ^= &empty_set();
