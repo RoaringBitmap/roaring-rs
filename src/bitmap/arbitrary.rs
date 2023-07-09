@@ -173,7 +173,7 @@ mod test {
         fn containers(n: usize)
                      (keys in ArrayStore::sampled(..=n, ..=n),
                       stores in vec(Store::arbitrary(), n)) -> RoaringBitmap {
-            let containers = keys.into_iter().zip(stores.into_iter()).map(|(key, store)| {
+            let containers = keys.into_iter().zip(stores).map(|(key, store)| {
                 let mut container = Container { key, store };
                 container.ensure_correct_store();
                 container

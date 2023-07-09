@@ -74,7 +74,7 @@ proptest! {
     fn iter(values in btree_set(any::<u64>(), ..=10_000)) {
         let bitmap = RoaringTreemap::from_sorted_iter(values.iter().cloned()).unwrap();
 
-        assert!(values.into_iter().eq(bitmap.into_iter()));
+        assert!(values.into_iter().eq(bitmap));
     }
 }
 
@@ -104,7 +104,7 @@ fn from_iter() {
     // with u64 as well as &u64 elements.
     let vals = vec![1, 5, 1_000_000_000_000_000];
     let a = RoaringTreemap::from_iter(vals.iter());
-    let b = RoaringTreemap::from_iter(vals.into_iter());
+    let b = RoaringTreemap::from_iter(vals);
     assert_eq!(a, b);
 }
 

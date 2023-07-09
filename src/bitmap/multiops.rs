@@ -125,7 +125,7 @@ fn try_multi_and_owned<E>(
     let mut start = start.into_iter();
 
     if let Some(mut lhs) = start.next() {
-        for rhs in start.into_iter().map(Ok).chain(iter) {
+        for rhs in start.map(Ok).chain(iter) {
             if lhs.is_empty() {
                 return Ok(lhs);
             }
@@ -151,7 +151,7 @@ fn try_multi_and_ref<'a, E>(
     let mut start = start.into_iter();
 
     if let Some(mut lhs) = start.next().cloned() {
-        for rhs in start.into_iter().map(Ok).chain(iter) {
+        for rhs in start.map(Ok).chain(iter) {
             if lhs.is_empty() {
                 return Ok(lhs);
             }
@@ -225,7 +225,7 @@ fn try_multi_or_owned<E>(
         return Ok(RoaringBitmap::new());
     };
 
-    for bitmap in start.into_iter().map(Ok).chain(iter) {
+    for bitmap in start.map(Ok).chain(iter) {
         merge_container_owned(&mut containers, bitmap?.containers, BitOrAssign::bitor_assign);
     }
 
@@ -323,7 +323,7 @@ fn try_multi_or_ref<'a, E: 'a>(
     };
 
     // Phase 2: Operate on the remaining containers
-    for bitmap in start.into_iter().map(Ok).chain(iter) {
+    for bitmap in start.map(Ok).chain(iter) {
         merge_container_ref(&mut containers, &bitmap?.containers, |a, b| *a |= b);
     }
 
