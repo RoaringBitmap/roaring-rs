@@ -7,11 +7,13 @@ use std::ops::{
 };
 use std::{slice, vec};
 
-use self::bitmap_store::BITMAP_LENGTH;
+pub use self::bitmap_store::BITMAP_LENGTH;
 use self::Store::{Array, Bitmap};
 
 pub use self::array_store::ArrayStore;
 pub use self::bitmap_store::{BitmapIter, BitmapStore};
+
+use crate::bitmap::container::ARRAY_LIMIT;
 
 #[derive(Clone)]
 pub enum Store {
@@ -29,6 +31,14 @@ pub enum Iter<'a> {
 impl Store {
     pub fn new() -> Store {
         Store::Array(ArrayStore::new())
+    }
+
+    pub fn with_capacity(capacity: usize) -> Store {
+        if capacity <= ARRAY_LIMIT as usize {
+            Store::Array(ArrayStore::with_capacity(capacity))
+        } else {
+            Store::Bitmap(BitmapStore::new())
+        }
     }
 
     pub fn full() -> Store {

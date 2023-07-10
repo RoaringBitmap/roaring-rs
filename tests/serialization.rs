@@ -4,6 +4,7 @@ use roaring::RoaringBitmap;
 
 // Test data from https://github.com/RoaringBitmap/RoaringFormatSpec/tree/master/testdata
 static BITMAP_WITHOUT_RUNS: &[u8] = include_bytes!("bitmapwithoutruns.bin");
+static BITMAP_WITH_RUNS: &[u8] = include_bytes!("bitmapwithruns.bin");
 
 fn test_data_bitmap() -> RoaringBitmap {
     (0..100)
@@ -21,8 +22,16 @@ fn serialize_and_deserialize(bitmap: &RoaringBitmap) -> RoaringBitmap {
 }
 
 #[test]
-fn test_deserialize_from_provided_data() {
+fn test_deserialize_without_runs_from_provided_data() {
     assert_eq!(RoaringBitmap::deserialize_from(BITMAP_WITHOUT_RUNS).unwrap(), test_data_bitmap());
+}
+
+#[test]
+fn test_deserialize_with_runs_from_provided_data() {
+    assert_eq!(
+        RoaringBitmap::deserialize_from(&mut &BITMAP_WITH_RUNS[..]).unwrap(),
+        test_data_bitmap()
+    );
 }
 
 #[test]

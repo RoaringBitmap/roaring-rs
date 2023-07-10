@@ -21,6 +21,10 @@ impl ArrayStore {
         ArrayStore { vec: vec![] }
     }
 
+    pub fn with_capacity(capacity: usize) -> ArrayStore {
+        ArrayStore { vec: Vec::with_capacity(capacity) }
+    }
+
     ///
     /// Create a new SortedU16Vec from a given vec
     /// It is up to the caller to ensure the vec is sorted and deduplicated
