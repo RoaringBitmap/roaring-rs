@@ -593,13 +593,13 @@ impl RoaringBitmap {
     /// let mut rb = RoaringBitmap::from_iter([1, 3, 7, 9]);
     /// rb.remove_first(2);
     /// assert_eq!(rb, RoaringBitmap::from_iter([7, 9]));
-    pub fn remove_first(&mut self, mut n: usize) {
-        if n > self.len() as usize {
+    pub fn remove_first(&mut self, mut n: u64) {
+        if n > self.len() {
             return;
         }
         // remove containers up to the front of the target
         let position = self.containers.iter().position(|container| {
-            let container_len = container.len() as usize;
+            let container_len = container.len();
             if container_len < n {
                 n -= container_len;
                 false
@@ -632,13 +632,13 @@ impl RoaringBitmap {
     /// assert_eq!(rb, RoaringBitmap::from_iter([1, 5]));
     /// rb.remove_last(1);
     /// assert_eq!(rb, RoaringBitmap::from_iter([1]));
-    pub fn remove_last(&mut self, mut n: usize) {
-        if n > self.len() as usize {
+    pub fn remove_last(&mut self, mut n: u64) {
+        if n > self.len() {
             return;
         }
         // remove containers up to the back of the target
         let position = self.containers.iter().rposition(|container| {
-            let container_len = container.len() as usize;
+            let container_len = container.len();
             if container_len < n {
                 n -= container_len;
                 false

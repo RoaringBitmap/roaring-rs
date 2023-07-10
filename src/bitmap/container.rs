@@ -94,12 +94,12 @@ impl Container {
         result
     }
 
-    pub fn remove_first(&mut self, n: usize) {
+    pub fn remove_first(&mut self, n: u64) {
         match &self.store {
             Store::Bitmap(bits) => {
-                if bits.len() - n as u64 <= ARRAY_LIMIT {
-                    let mut replace_array = Vec::with_capacity(bits.len() as usize - n);
-                    replace_array.extend(bits.clone().into_iter().skip(n));
+                if bits.len() - n <= ARRAY_LIMIT {
+                    let mut replace_array = Vec::with_capacity((bits.len() - n) as usize);
+                    replace_array.extend(bits.clone().into_iter().skip(n as usize));
                     self.store = Store::Array(store::ArrayStore::from_vec_unchecked(replace_array));
                 } else {
                     self.store.remove_first(n)
@@ -109,13 +109,13 @@ impl Container {
         };
     }
 
-    pub fn remove_last(&mut self, n: usize) {
+    pub fn remove_last(&mut self, n: u64) {
         match &self.store {
             Store::Bitmap(bits) => {
-                if bits.len() - n as u64 <= ARRAY_LIMIT {
-                    let mut replace_array = Vec::with_capacity(bits.len() as usize - n);
+                if bits.len() - n <= ARRAY_LIMIT {
+                    let mut replace_array = Vec::with_capacity((bits.len() - n) as usize);
                     replace_array.extend(bits.clone().into_iter());
-                    replace_array.truncate(replace_array.len() - n);
+                    replace_array.truncate(replace_array.len() - n as usize);
                     self.store = Store::Array(store::ArrayStore::from_vec_unchecked(replace_array));
                 } else {
                     self.store.remove_last(n)

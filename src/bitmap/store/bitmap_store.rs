@@ -304,8 +304,8 @@ impl BitmapStore {
     }
 
     /// Set N bits that are currently 1 bit from the lower bit to 0.
-    pub fn remove_first(&mut self, mut clear_bits: usize) {
-        if self.len() < clear_bits as u64 {
+    pub fn remove_first(&mut self, mut clear_bits: u64) {
+        if self.len() < clear_bits {
             *self = Self::default();
             return;
         }
@@ -314,10 +314,10 @@ impl BitmapStore {
         let key = key(min);
         for index in key..BITMAP_LENGTH {
             let mut mask = 1;
-            let mut count = self.bits[index].count_ones();
-            if clear_bits > count as usize {
+            let mut count = self.bits[index].count_ones() as u64;
+            if clear_bits > count {
                 self.bits[index] = 0;
-                clear_bits -= count as usize;
+                clear_bits -= count;
                 continue;
             }
             while count > 0 {
@@ -335,21 +335,21 @@ impl BitmapStore {
     }
 
     /// Set N bits that are currently 1 bit from the lower bit to 0.
-    pub fn remove_last(&mut self, mut clear_bits: usize) {
-        if self.len() < clear_bits as u64 {
+    pub fn remove_last(&mut self, mut clear_bits: u64) {
+        if self.len() < clear_bits {
             *self = Self::default();
             return;
         }
-        self.len -= clear_bits as u64;
+        self.len -= clear_bits;
         let max = self.max().unwrap();
         let key = key(max);
         for index in (0..=key).rev() {
             let bit = self.bits[index].count_ones();
             let mut mask = 1 << bit - 1;
-            let mut count = self.bits[index].count_ones();
-            if clear_bits > count as usize {
+            let mut count = self.bits[index].count_ones() as u64;
+            if clear_bits > count {
                 self.bits[index] = 0;
-                clear_bits -= count as usize;
+                clear_bits -= count;
                 continue;
             }
             while count > 0 {

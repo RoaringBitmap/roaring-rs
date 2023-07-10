@@ -110,12 +110,12 @@ impl ArrayStore {
         (pos_end - pos_start) as u64
     }
 
-    pub fn remove_first(&mut self, n: usize) {
-        self.vec.rotate_left(n.into());
+    pub fn remove_first(&mut self, n: u64) {
+        self.vec.rotate_left(n as usize);
         self.vec.truncate(self.vec.len() - n as usize);
     }
 
-    pub fn remove_last(&mut self, n: usize) {
+    pub fn remove_last(&mut self, n: u64) {
         self.vec.truncate(self.vec.len() - n as usize);
     }
 
