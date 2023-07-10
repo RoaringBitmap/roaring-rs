@@ -589,7 +589,8 @@ impl RoaringBitmap {
     /// let mut rb = RoaringBitmap::from_iter([1, 5, 7, 9]);
     /// rb.remove_first(2);
     /// assert_eq!(rb, RoaringBitmap::from_iter([7, 9]));
-    /// rb = RoaringBitmap::from_iter([1, 3, 7, 9]);
+    ///
+    /// let mut rb = RoaringBitmap::from_iter([1, 3, 7, 9]);
     /// rb.remove_first(2);
     /// assert_eq!(rb, RoaringBitmap::from_iter([7, 9]));
     pub fn remove_first(&mut self, mut n: usize) {
