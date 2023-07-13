@@ -600,7 +600,7 @@ impl RoaringBitmap {
         // remove containers up to the front of the target
         let position = self.containers.iter().position(|container| {
             let container_len = container.len();
-            if container_len < n {
+            if container_len <= n {
                 n -= container_len;
                 false
             } else {
@@ -639,7 +639,7 @@ impl RoaringBitmap {
         // remove containers up to the back of the target
         let position = self.containers.iter().rposition(|container| {
             let container_len = container.len();
-            if container_len < n {
+            if container_len <= n {
                 n -= container_len;
                 false
             } else {
