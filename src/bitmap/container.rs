@@ -114,8 +114,7 @@ impl Container {
             Store::Bitmap(bits) => {
                 if bits.len() - n <= ARRAY_LIMIT {
                     let mut replace_array = Vec::with_capacity((bits.len() - n) as usize);
-                    replace_array.extend(bits.clone().into_iter());
-                    replace_array.truncate(replace_array.len() - n as usize);
+                    replace_array.extend(bits.iter().take((bits.len() - n) as usize));
                     self.store = Store::Array(store::ArrayStore::from_vec_unchecked(replace_array));
                 } else {
                     self.store.remove_back(n)
