@@ -315,26 +315,18 @@ impl BitmapStore {
             return;
         }
         self.len -= clear_bits;
-        let min = self.min().unwrap();
-        let key = key(min);
-        for index in key..BITMAP_LENGTH {
-            let mut mask = 1;
-            let mut count = self.bits[index].count_ones() as u64;
-            if clear_bits > count {
-                self.bits[index] = 0;
-                clear_bits -= count;
-                continue;
-            }
-            while count > 0 {
-                if self.bits[index] & mask == mask {
-                    self.bits[index] &= !mask;
-                    clear_bits -= 1;
-                    count -= 1;
-                    if clear_bits == 0 {
-                        return;
-                    }
+        for word in self.bits.iter_mut() {
+            let count = word.count_ones() as u64;
+            if clear_bits < count {
+                for _ in 0..clear_bits {
+                    *word = *word & (*word - 1);
                 }
-                mask <<= 1;
+                return;
+            }
+            *word = 0;
+            clear_bits -= count;
+            if clear_bits == 0 {
+                return;
             }
         }
     }
@@ -346,27 +338,18 @@ impl BitmapStore {
             return;
         }
         self.len -= clear_bits;
-        let max = self.max().unwrap();
-        let key = key(max);
-        for index in (0..=key).rev() {
-            let bit = self.bits[index].count_ones();
-            let mut mask = 1 << (bit - 1);
-            let mut count = self.bits[index].count_ones() as u64;
-            if clear_bits > count {
-                self.bits[index] = 0;
-                clear_bits -= count;
-                continue;
-            }
-            while count > 0 {
-                if self.bits[index] & mask == mask {
-                    self.bits[index] &= !mask;
-                    clear_bits -= 1;
-                    count -= 1;
-                    if clear_bits == 0 {
-                        return;
-                    }
+        for word in self.bits.iter_mut().rev() {
+            let count = word.count_ones() as u64;
+            if clear_bits < count {
+                for _ in 0..clear_bits {
+                    *word &= !(1 << (63 - word.leading_zeros()));
                 }
-                mask >>= 1;
+                return;
+            }
+            *word = 0;
+            clear_bits -= count;
+            if clear_bits == 0 {
+                return;
             }
         }
     }
@@ -575,6 +558,21 @@ mod tests {
         assert_eq!(
             store.bits[0],
             0b1111111111111111111111111111111111111111111111111111111111101000
+        );
+    }
+
+    #[test]
+    fn test_bitmap_remove_back() {
+        let mut store = BitmapStore::new();
+        let range = RangeInclusive::new(1, 3);
+        store.insert_range(range);
+        let range_second = RangeInclusive::new(5, 65535);
+        // store.bits[1023] = 0b1111111111111111111111111111111111111111111111111111111111111111
+        store.insert_range(range_second);
+        store.remove_back(2);
+        assert_eq!(
+            store.bits[1023],
+            0b11111111111111111111111111111111111111111111111111111111111111
         );
     }
 }
