@@ -607,8 +607,7 @@ impl RoaringBitmap {
                 true
             }
         });
-        // It is checked at the beginning of the function, so it is usually never an Err
-        let position = position.expect("there are no containers to delete");
+        let position = position.unwrap_or(self.containers.len());
         if position > 0 {
             self.containers.drain(..position);
         }
