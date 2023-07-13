@@ -594,9 +594,6 @@ impl RoaringBitmap {
     /// rb.remove_front(2);
     /// assert_eq!(rb, RoaringBitmap::from_iter([7, 9]));
     pub fn remove_front(&mut self, mut n: u64) {
-        if n > self.len() {
-            return;
-        }
         // remove containers up to the front of the target
         let position = self.containers.iter().position(|container| {
             let container_len = container.len();
@@ -612,7 +609,7 @@ impl RoaringBitmap {
             self.containers.drain(..position);
         }
         // remove data in containers if there are still targets for deletion
-        if n > 0 {
+        if n > 0 && !self.containers.is_empty() {
             // container immediately before should have been deleted, so the target is 0 index
             self.containers[0].remove_front(n);
         }
@@ -631,9 +628,6 @@ impl RoaringBitmap {
     /// rb.remove_back(1);
     /// assert_eq!(rb, RoaringBitmap::from_iter([1]));
     pub fn remove_back(&mut self, mut n: u64) {
-        if n > self.len() {
-            return;
-        }
         // remove containers up to the back of the target
         let position = self.containers.iter().rposition(|container| {
             let container_len = container.len();
@@ -645,11 +639,13 @@ impl RoaringBitmap {
             }
         });
         // It is checked at the beginning of the function, so it is usually never an Err
-        let position = position.expect("there are no containers to delete");
-        self.containers.truncate(position + 1);
-        if n > 0 {
-            self.containers[position].remove_back(n);
+        if let Some(position) = position {
             self.containers.drain(position + 1..);
+            if n > 0 && !self.containers.is_empty() {
+                self.containers[position].remove_back(n);
+            }
+        } else {
+            self.containers.clear();
         }
     }
 }
@@ -832,7 +828,7 @@ mod tests {
 
         bitmap = RoaringBitmap::from_iter([1, 2, 5, 7, 9, 11]);
         bitmap.remove_front(7);
-        assert_eq!(bitmap, RoaringBitmap::from_iter([1, 2, 5, 7, 9, 11]));
+        assert_eq!(bitmap, RoaringBitmap::default());
     }
 
     #[test]
@@ -925,6 +921,6 @@ mod tests {
 
         let mut bitmap = RoaringBitmap::from_iter([1, 2, 3]);
         bitmap.remove_back(4);
-        assert_eq!(bitmap, RoaringBitmap::from_iter([1, 2, 3]));
+        assert_eq!(bitmap, RoaringBitmap::default());
     }
 }
