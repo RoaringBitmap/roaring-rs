@@ -610,8 +610,7 @@ impl RoaringBitmap {
         // It is checked at the beginning of the function, so it is usually never an Err
         let position = position.expect("there are no containers to delete");
         if position > 0 {
-            self.containers.rotate_left(position);
-            self.containers.truncate(position);
+            self.containers.drain(..position);
         }
         // remove data in containers if there are still targets for deletion
         if n > 0 {
@@ -651,6 +650,7 @@ impl RoaringBitmap {
         self.containers.truncate(position + 1);
         if n > 0 {
             self.containers[position].remove_back(n);
+            self.containers.drain(position + 1..);
         }
     }
 }
