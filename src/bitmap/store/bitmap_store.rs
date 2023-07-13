@@ -303,10 +303,15 @@ impl BitmapStore {
         &self.bits
     }
 
+    pub fn clear(&mut self) {
+        self.bits.fill(0);
+        self.len = 0;
+    }
+
     /// Set N bits that are currently 1 bit from the lower bit to 0.
     pub fn remove_front(&mut self, mut clear_bits: u64) {
         if self.len() < clear_bits {
-            *self = Self::default();
+            self.clear();
             return;
         }
         self.len -= clear_bits as u64;
@@ -337,7 +342,7 @@ impl BitmapStore {
     /// Set N bits that are currently 1 bit from the lower bit to 0.
     pub fn remove_back(&mut self, mut clear_bits: u64) {
         if self.len() < clear_bits {
-            *self = Self::default();
+            self.clear();
             return;
         }
         self.len -= clear_bits;
