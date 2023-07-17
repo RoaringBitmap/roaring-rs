@@ -302,6 +302,57 @@ impl BitmapStore {
     pub fn as_array(&self) -> &[u64; BITMAP_LENGTH] {
         &self.bits
     }
+
+    pub fn clear(&mut self) {
+        self.bits.fill(0);
+        self.len = 0;
+    }
+
+    /// Set N bits that are currently 1 bit from the lower bit to 0.
+    pub fn remove_front(&mut self, mut clear_bits: u64) {
+        if self.len() < clear_bits {
+            self.clear();
+            return;
+        }
+        self.len -= clear_bits;
+        for word in self.bits.iter_mut() {
+            let count = word.count_ones() as u64;
+            if clear_bits < count {
+                for _ in 0..clear_bits {
+                    *word = *word & (*word - 1);
+                }
+                return;
+            }
+            *word = 0;
+            clear_bits -= count;
+            if clear_bits == 0 {
+                return;
+            }
+        }
+    }
+
+    /// Set N bits that are currently 1 bit from the lower bit to 0.
+    pub fn remove_back(&mut self, mut clear_bits: u64) {
+        if self.len() < clear_bits {
+            self.clear();
+            return;
+        }
+        self.len -= clear_bits;
+        for word in self.bits.iter_mut().rev() {
+            let count = word.count_ones() as u64;
+            if clear_bits < count {
+                for _ in 0..clear_bits {
+                    *word &= !(1 << (63 - word.leading_zeros()));
+                }
+                return;
+            }
+            *word = 0;
+            clear_bits -= count;
+            if clear_bits == 0 {
+                return;
+            }
+        }
+    }
 }
 
 // this can be done in 3 instructions on x86-64 with bmi2 with: tzcnt(pdep(1 << rank, value))
@@ -488,5 +539,40 @@ impl BitXorAssign<&ArrayStore> for BitmapStore {
             self.bits[key] = new_w;
         }
         self.len = len as u64;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bitmap_remove_front() {
+        let mut store = BitmapStore::new();
+        let range = RangeInclusive::new(1, 3);
+        store.insert_range(range);
+        let range_second = RangeInclusive::new(5, 65535);
+        // store.bits[0] = 0b1111111111111111111111111111111111111111111111111111111111101110
+        store.insert_range(range_second);
+        store.remove_front(2);
+        assert_eq!(
+            store.bits[0],
+            0b1111111111111111111111111111111111111111111111111111111111101000
+        );
+    }
+
+    #[test]
+    fn test_bitmap_remove_back() {
+        let mut store = BitmapStore::new();
+        let range = RangeInclusive::new(1, 3);
+        store.insert_range(range);
+        let range_second = RangeInclusive::new(5, 65535);
+        // store.bits[1023] = 0b1111111111111111111111111111111111111111111111111111111111111111
+        store.insert_range(range_second);
+        store.remove_back(2);
+        assert_eq!(
+            store.bits[1023],
+            0b11111111111111111111111111111111111111111111111111111111111111
+        );
     }
 }

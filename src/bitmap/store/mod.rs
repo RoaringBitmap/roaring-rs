@@ -106,6 +106,20 @@ impl Store {
         }
     }
 
+    pub fn remove_front(&mut self, index: u64) {
+        match self {
+            Array(vec) => vec.remove_front(index),
+            Bitmap(bits) => bits.remove_front(index),
+        }
+    }
+
+    pub fn remove_back(&mut self, index: u64) {
+        match self {
+            Array(vec) => vec.remove_back(index),
+            Bitmap(bits) => bits.remove_back(index),
+        }
+    }
+
     pub fn contains(&self, index: u16) -> bool {
         match self {
             Array(vec) => vec.contains(index),
