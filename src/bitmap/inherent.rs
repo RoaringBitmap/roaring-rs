@@ -579,7 +579,7 @@ impl RoaringBitmap {
         None
     }
 
-    /// Removes the specified number of elements from the top.
+    /// Removes the `n` smallests values from this bitmap.
     ///
     /// # Examples
     ///
@@ -587,13 +587,13 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     ///
     /// let mut rb = RoaringBitmap::from_iter([1, 5, 7, 9]);
-    /// rb.remove_front(2);
+    /// rb.remove_smallest(2);
     /// assert_eq!(rb, RoaringBitmap::from_iter([7, 9]));
     ///
     /// let mut rb = RoaringBitmap::from_iter([1, 3, 7, 9]);
-    /// rb.remove_front(2);
+    /// rb.remove_smallest(2);
     /// assert_eq!(rb, RoaringBitmap::from_iter([7, 9]));
-    pub fn remove_front(&mut self, mut n: u64) {
+    pub fn remove_smallest(&mut self, mut n: u64) {
         // remove containers up to the front of the target
         let position = self.containers.iter().position(|container| {
             let container_len = container.len();
@@ -611,11 +611,11 @@ impl RoaringBitmap {
         // remove data in containers if there are still targets for deletion
         if n > 0 && !self.containers.is_empty() {
             // container immediately before should have been deleted, so the target is 0 index
-            self.containers[0].remove_front(n);
+            self.containers[0].remove_smallest(n);
         }
     }
 
-    /// Removes the specified number of elements from the tail.
+    /// Removes the `n` biggests values from this bitmap.
     ///
     /// # Examples
     ///
@@ -623,11 +623,11 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     ///
     /// let mut rb = RoaringBitmap::from_iter([1, 5, 7, 9]);
-    /// rb.remove_back(2);
+    /// rb.remove_biggest(2);
     /// assert_eq!(rb, RoaringBitmap::from_iter([1, 5]));
-    /// rb.remove_back(1);
+    /// rb.remove_biggest(1);
     /// assert_eq!(rb, RoaringBitmap::from_iter([1]));
-    pub fn remove_back(&mut self, mut n: u64) {
+    pub fn remove_biggest(&mut self, mut n: u64) {
         // remove containers up to the back of the target
         let position = self.containers.iter().rposition(|container| {
             let container_len = container.len();
@@ -642,7 +642,7 @@ impl RoaringBitmap {
         if let Some(position) = position {
             self.containers.drain(position + 1..);
             if n > 0 && !self.containers.is_empty() {
-                self.containers[position].remove_back(n);
+                self.containers[position].remove_biggest(n);
             }
         } else {
             self.containers.clear();
@@ -800,59 +800,59 @@ mod tests {
     }
 
     #[test]
-    fn remove_front_for_vec() {
+    fn remove_smallest_for_vec() {
         let mut bitmap = RoaringBitmap::from_iter([1, 2, 3, 7, 9, 11]);
-        bitmap.remove_front(3);
+        bitmap.remove_smallest(3);
         assert_eq!(bitmap.len(), 3);
         assert_eq!(bitmap, RoaringBitmap::from_iter([7, 9, 11]));
 
         bitmap = RoaringBitmap::from_iter([1, 2, 5, 7, 9, 11]);
-        bitmap.remove_front(3);
+        bitmap.remove_smallest(3);
         assert_eq!(bitmap.len(), 3);
         assert_eq!(bitmap, RoaringBitmap::from_iter([7, 9, 11]));
 
         bitmap = RoaringBitmap::from_iter([1, 3]);
-        bitmap.remove_front(2);
+        bitmap.remove_smallest(2);
         assert_eq!(bitmap.len(), 0);
 
         bitmap = RoaringBitmap::from_iter([1, 2, 3, 7, 9, 11]);
-        bitmap.remove_front(0);
+        bitmap.remove_smallest(0);
         assert_eq!(bitmap.len(), 6);
         assert_eq!(bitmap, RoaringBitmap::from_iter([1, 2, 3, 7, 9, 11]));
 
         bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..(1_u32 << 16) + 5);
-        bitmap.remove_front(65537);
+        bitmap.remove_smallest(65537);
         assert_eq!(bitmap.len(), 4);
         assert_eq!(bitmap, RoaringBitmap::from_iter([65537, 65538, 65539, 65540]));
 
         bitmap = RoaringBitmap::from_iter([1, 2, 5, 7, 9, 11]);
-        bitmap.remove_front(7);
+        bitmap.remove_smallest(7);
         assert_eq!(bitmap, RoaringBitmap::default());
     }
 
     #[test]
-    fn remove_front_for_bit() {
+    fn remove_smallest_for_bit() {
         let mut bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..4098);
-        bitmap.remove_front(4095);
+        bitmap.remove_smallest(4095);
         assert_eq!(bitmap.len(), 3);
         // removed bit to vec
         assert_eq!(bitmap, RoaringBitmap::from_iter([4095, 4096, 4097]));
 
         bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..6000);
-        bitmap.remove_front(999);
+        bitmap.remove_smallest(999);
         assert_eq!(bitmap.len(), 5001);
 
         bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..8000);
-        bitmap.remove_front(10);
+        bitmap.remove_smallest(10);
         assert_eq!(bitmap.len(), 7990);
 
         bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..200000);
-        bitmap.remove_front(2000);
+        bitmap.remove_smallest(2000);
         assert_eq!(bitmap.len(), 198000);
         assert_eq!(bitmap, RoaringBitmap::from_iter(2000..200000));
 
@@ -860,67 +860,67 @@ mod tests {
         bitmap.insert_range(0..2);
         bitmap.insert_range(4..7);
         bitmap.insert_range(1000..6000);
-        bitmap.remove_front(30);
+        bitmap.remove_smallest(30);
         assert_eq!(bitmap.len(), 4975);
 
         bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..65535);
-        bitmap.remove_front(0);
+        bitmap.remove_smallest(0);
         assert_eq!(bitmap.len(), 65535);
     }
 
     #[test]
-    fn remove_back_for_bit() {
+    fn remove_biggest_for_bit() {
         let mut bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..5000);
-        bitmap.remove_back(1000);
+        bitmap.remove_biggest(1000);
         assert_eq!(bitmap.len(), 4000);
 
         bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..6000);
-        bitmap.remove_back(1000);
+        bitmap.remove_biggest(1000);
         assert_eq!(bitmap.len(), 5000);
 
         bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..200000);
-        bitmap.remove_back(196000);
+        bitmap.remove_biggest(196000);
         assert_eq!(bitmap.len(), 4000);
 
         bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..200000);
-        bitmap.remove_back(2000);
+        bitmap.remove_biggest(2000);
         assert_eq!(bitmap.len(), 198000);
         assert_eq!(bitmap, RoaringBitmap::from_iter(0..198000));
 
         bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..65535);
-        bitmap.remove_back(0);
+        bitmap.remove_biggest(0);
         assert_eq!(bitmap.len(), 65535);
     }
 
     #[test]
-    fn remove_back_for_vec() {
+    fn remove_biggest_for_vec() {
         let mut bitmap = RoaringBitmap::from_iter([1, 2, 3, 7, 9, 11]);
-        bitmap.remove_back(2);
+        bitmap.remove_biggest(2);
         assert_eq!(bitmap, RoaringBitmap::from_iter([1, 2, 3, 7]));
 
         bitmap = RoaringBitmap::from_iter([1, 2, 3, 7, 9, 11]);
-        bitmap.remove_back(6);
+        bitmap.remove_biggest(6);
         assert_eq!(bitmap.len(), 0);
 
         bitmap = RoaringBitmap::from_iter([1, 2, 3, 7, 9, 11]);
-        bitmap.remove_back(0);
+        bitmap.remove_biggest(0);
         assert_eq!(bitmap.len(), 6);
         assert_eq!(bitmap, RoaringBitmap::from_iter([1, 2, 3, 7, 9, 11]));
 
         bitmap = RoaringBitmap::new();
         bitmap.insert_range(0..(1_u32 << 16) + 5);
-        bitmap.remove_back(65537);
+        bitmap.remove_biggest(65537);
         assert_eq!(bitmap.len(), 4);
         assert_eq!(bitmap, RoaringBitmap::from_iter([0, 1, 2, 3]));
 
         let mut bitmap = RoaringBitmap::from_iter([1, 2, 3]);
-        bitmap.remove_back(4);
+        bitmap.remove_biggest(4);
         assert_eq!(bitmap, RoaringBitmap::default());
     }
 }
