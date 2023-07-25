@@ -309,7 +309,7 @@ impl BitmapStore {
     }
 
     /// Set N bits that are currently 1 bit from the lower bit to 0.
-    pub fn remove_front(&mut self, mut clear_bits: u64) {
+    pub fn remove_smallest(&mut self, mut clear_bits: u64) {
         if self.len() < clear_bits {
             self.clear();
             return;
@@ -332,7 +332,7 @@ impl BitmapStore {
     }
 
     /// Set N bits that are currently 1 bit from the lower bit to 0.
-    pub fn remove_back(&mut self, mut clear_bits: u64) {
+    pub fn remove_biggest(&mut self, mut clear_bits: u64) {
         if self.len() < clear_bits {
             self.clear();
             return;
@@ -547,14 +547,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_bitmap_remove_front() {
+    fn test_bitmap_remove_smallest() {
         let mut store = BitmapStore::new();
         let range = RangeInclusive::new(1, 3);
         store.insert_range(range);
         let range_second = RangeInclusive::new(5, 65535);
         // store.bits[0] = 0b1111111111111111111111111111111111111111111111111111111111101110
         store.insert_range(range_second);
-        store.remove_front(2);
+        store.remove_smallest(2);
         assert_eq!(
             store.bits[0],
             0b1111111111111111111111111111111111111111111111111111111111101000
@@ -562,14 +562,14 @@ mod tests {
     }
 
     #[test]
-    fn test_bitmap_remove_back() {
+    fn test_bitmap_remove_biggest() {
         let mut store = BitmapStore::new();
         let range = RangeInclusive::new(1, 3);
         store.insert_range(range);
         let range_second = RangeInclusive::new(5, 65535);
         // store.bits[1023] = 0b1111111111111111111111111111111111111111111111111111111111111111
         store.insert_range(range_second);
-        store.remove_back(2);
+        store.remove_biggest(2);
         assert_eq!(
             store.bits[1023],
             0b11111111111111111111111111111111111111111111111111111111111111

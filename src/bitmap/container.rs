@@ -94,7 +94,7 @@ impl Container {
         result
     }
 
-    pub fn remove_front(&mut self, n: u64) {
+    pub fn remove_smallest(&mut self, n: u64) {
         match &self.store {
             Store::Bitmap(bits) => {
                 if bits.len() - n <= ARRAY_LIMIT {
@@ -102,14 +102,14 @@ impl Container {
                     replace_array.extend(bits.iter().skip(n as usize));
                     self.store = Store::Array(store::ArrayStore::from_vec_unchecked(replace_array));
                 } else {
-                    self.store.remove_front(n)
+                    self.store.remove_smallest(n)
                 }
             }
-            Store::Array(_) => self.store.remove_front(n),
+            Store::Array(_) => self.store.remove_smallest(n),
         };
     }
 
-    pub fn remove_back(&mut self, n: u64) {
+    pub fn remove_biggest(&mut self, n: u64) {
         match &self.store {
             Store::Bitmap(bits) => {
                 if bits.len() - n <= ARRAY_LIMIT {
@@ -117,10 +117,10 @@ impl Container {
                     replace_array.extend(bits.iter().take((bits.len() - n) as usize));
                     self.store = Store::Array(store::ArrayStore::from_vec_unchecked(replace_array));
                 } else {
-                    self.store.remove_back(n)
+                    self.store.remove_biggest(n)
                 }
             }
-            Store::Array(_) => self.store.remove_back(n),
+            Store::Array(_) => self.store.remove_biggest(n),
         };
     }
 

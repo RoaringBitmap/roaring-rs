@@ -106,17 +106,17 @@ impl Store {
         }
     }
 
-    pub fn remove_front(&mut self, index: u64) {
+    pub fn remove_smallest(&mut self, index: u64) {
         match self {
-            Array(vec) => vec.remove_front(index),
-            Bitmap(bits) => bits.remove_front(index),
+            Array(vec) => vec.remove_smallest(index),
+            Bitmap(bits) => bits.remove_smallest(index),
         }
     }
 
-    pub fn remove_back(&mut self, index: u64) {
+    pub fn remove_biggest(&mut self, index: u64) {
         match self {
-            Array(vec) => vec.remove_back(index),
-            Bitmap(bits) => bits.remove_back(index),
+            Array(vec) => vec.remove_biggest(index),
+            Bitmap(bits) => bits.remove_biggest(index),
         }
     }
 

@@ -110,12 +110,12 @@ impl ArrayStore {
         (pos_end - pos_start) as u64
     }
 
-    pub fn remove_front(&mut self, n: u64) {
+    pub fn remove_smallest(&mut self, n: u64) {
         self.vec.rotate_left(n as usize);
         self.vec.truncate(self.vec.len() - n as usize);
     }
 
-    pub fn remove_back(&mut self, n: u64) {
+    pub fn remove_biggest(&mut self, n: u64) {
         self.vec.truncate(self.vec.len() - n as usize);
     }
 
@@ -573,16 +573,16 @@ mod tests {
     }
 
     #[test]
-    fn test_bitmap_remove_front() {
+    fn test_bitmap_remove_smallest() {
         let mut store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 130, 500]));
-        store.remove_front(3);
+        store.remove_smallest(3);
         assert_eq!(into_vec(store), vec![500]);
     }
 
     #[test]
-    fn test_bitmap_remove_back() {
+    fn test_bitmap_remove_biggest() {
         let mut store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 130, 500]));
-        store.remove_back(2);
+        store.remove_biggest(2);
         assert_eq!(into_vec(store), vec![1, 2]);
     }
 }
