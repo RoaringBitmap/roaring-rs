@@ -1,11 +1,10 @@
+use crate::{RoaringBitmap, Value};
 use std::fmt;
 
-use crate::RoaringBitmap;
-
-impl fmt::Debug for RoaringBitmap {
+impl<V: Value> fmt::Debug for RoaringBitmap<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.len() < 16 {
-            write!(f, "RoaringBitmap<{:?}>", self.iter().collect::<Vec<u32>>())
+            write!(f, "RoaringBitmap<{:?}>", self.iter().collect::<Vec<V>>())
         } else {
             write!(
                 f,

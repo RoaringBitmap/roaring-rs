@@ -1,5 +1,5 @@
 #[cfg(feature = "simd")]
-use crate::bitmap::store::array_store::vector::swizzle_to_front;
+use crate::core::store::array_store::vector::swizzle_to_front;
 
 /// This visitor pattern allows multiple different algorithms to be written over the same data
 /// For example: vectorized algorithms can pass a visitor off to a scalar algorithm to finish off

@@ -2,14 +2,13 @@ mod scalar;
 mod vector;
 mod visitor;
 
-use crate::bitmap::store::array_store::visitor::{CardinalityCounter, VecWriter};
+use super::array_store::visitor::{CardinalityCounter, VecWriter};
+use super::bitmap_store::{bit, key, BitmapStore, BITMAP_LENGTH};
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::{Display, Formatter};
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitXor, RangeInclusive, Sub, SubAssign};
-
-use super::bitmap_store::{bit, key, BitmapStore, BITMAP_LENGTH};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct ArrayStore {
@@ -408,7 +407,7 @@ impl BitXor<Self> for &ArrayStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bitmap::store::Store;
+    use crate::core::store::Store;
 
     fn into_vec(s: Store) -> Vec<u16> {
         match s {

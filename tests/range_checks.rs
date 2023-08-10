@@ -1,10 +1,9 @@
-use proptest::collection::hash_set;
-use proptest::prelude::*;
-use roaring::RoaringBitmap;
+use proptest::{collection::hash_set, prelude::*};
+use roaring::Roaring32;
 
 #[test]
 fn u32_max() {
-    let mut bitmap = RoaringBitmap::new();
+    let mut bitmap = Roaring32::new();
     bitmap.insert(u32::MAX);
     assert!(bitmap.contains_range(u32::MAX..=u32::MAX));
     assert!(!bitmap.contains_range(u32::MAX - 1..=u32::MAX));
@@ -27,7 +26,7 @@ proptest! {
         let range = start..end;
         let inverse_empty_range = (start+len)..start;
 
-        let mut bitmap = RoaringBitmap::new();
+        let mut bitmap = Roaring32::new();
         bitmap.insert_range(range.clone());
         assert!(bitmap.contains_range(range.clone()));
         assert!(bitmap.contains_range(inverse_empty_range.clone()));
@@ -54,7 +53,7 @@ proptest! {
         start in 1..=262_143_u32,
         len in 0..=262_143_u32,
     ) {
-        let mut bitmap = RoaringBitmap::new();
+        let mut bitmap = Roaring32::new();
         let end = start + len;
         let half = start + len / 2;
         bitmap.insert_range(start..end);

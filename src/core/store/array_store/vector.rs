@@ -444,7 +444,7 @@ fn matrix_cmp_u16(a: Simd<u16, 8>, b: Simd<u16, 8>) -> Mask<i16, 8> {
         | a.simd_eq(b.rotate_lanes_left::<7>())
 }
 
-use crate::bitmap::store::array_store::visitor::BinaryOperationVisitor;
+use crate::core::store::array_store::visitor::BinaryOperationVisitor;
 use core::simd::{Swizzle2, Which, Which::First as A, Which::Second as B};
 
 /// Append to vectors to an imaginary 16 lane vector,  shift the lanes right by 1, then

@@ -13,7 +13,7 @@ use self::Store::{Array, Bitmap};
 pub use self::array_store::ArrayStore;
 pub use self::bitmap_store::{BitmapIter, BitmapStore};
 
-use crate::bitmap::container::ARRAY_LIMIT;
+use crate::core::container::ARRAY_LIMIT;
 
 #[derive(Clone)]
 pub enum Store {

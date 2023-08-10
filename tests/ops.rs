@@ -1,11 +1,10 @@
-extern crate roaring;
-use roaring::RoaringBitmap;
+use roaring::Roaring32;
 
 #[test]
 fn or() {
-    let mut rb1 = (1..4).collect::<RoaringBitmap>();
-    let rb2 = (3..6).collect::<RoaringBitmap>();
-    let rb3 = (1..6).collect::<RoaringBitmap>();
+    let mut rb1 = (1..4).collect::<Roaring32>();
+    let rb2 = (3..6).collect::<Roaring32>();
+    let rb3 = (1..6).collect::<Roaring32>();
 
     assert_eq!(rb3, &rb1 | &rb2);
     assert_eq!(rb3, &rb1 | rb2.clone());
@@ -21,9 +20,9 @@ fn or() {
 
 #[test]
 fn and() {
-    let mut rb1 = (1..4).collect::<RoaringBitmap>();
-    let rb2 = (3..6).collect::<RoaringBitmap>();
-    let rb3 = (3..4).collect::<RoaringBitmap>();
+    let mut rb1 = (1..4).collect::<Roaring32>();
+    let rb2 = (3..6).collect::<Roaring32>();
+    let rb3 = (3..4).collect::<Roaring32>();
 
     assert_eq!(rb3, &rb1 & &rb2);
     assert_eq!(rb3, &rb1 & rb2.clone());
@@ -39,9 +38,9 @@ fn and() {
 
 #[test]
 fn sub() {
-    let mut rb1 = (1..4000).collect::<RoaringBitmap>();
-    let rb2 = (3..5000).collect::<RoaringBitmap>();
-    let rb3 = (1..3).collect::<RoaringBitmap>();
+    let mut rb1 = (1..4000).collect::<Roaring32>();
+    let rb2 = (3..5000).collect::<Roaring32>();
+    let rb3 = (1..3).collect::<Roaring32>();
 
     assert_eq!(rb3, &rb1 - &rb2);
     assert_eq!(rb3, &rb1 - rb2.clone());
@@ -57,10 +56,10 @@ fn sub() {
 
 #[test]
 fn xor() {
-    let mut rb1 = (1..4).collect::<RoaringBitmap>();
-    let rb2 = (3..6).collect::<RoaringBitmap>();
-    let rb3 = (1..3).chain(4..6).collect::<RoaringBitmap>();
-    let rb4 = (0..0).collect::<RoaringBitmap>();
+    let mut rb1 = (1..4).collect::<Roaring32>();
+    let rb2 = (3..6).collect::<Roaring32>();
+    let rb3 = (1..3).chain(4..6).collect::<Roaring32>();
+    let rb4 = (0..0).collect::<Roaring32>();
 
     assert_eq!(rb3, &rb1 ^ &rb2);
     assert_eq!(rb3, &rb1 ^ rb2.clone());

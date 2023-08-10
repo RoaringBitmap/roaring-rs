@@ -1,12 +1,12 @@
-extern crate roaring;
-
-use proptest::collection::{btree_set, vec};
-use proptest::prelude::*;
-use roaring::RoaringBitmap;
+use proptest::{
+    collection::{btree_set, vec},
+    prelude::*,
+};
+use roaring::Roaring32;
 
 #[test]
 fn rank() {
-    let mut bitmap = RoaringBitmap::from_sorted_iter(0..2000).unwrap();
+    let mut bitmap = Roaring32::from_sorted_iter(0..2000).unwrap();
     bitmap.insert_range(200_000..210_000);
 
     // No matching container
@@ -25,7 +25,7 @@ fn rank() {
 
 #[test]
 fn rank_array() {
-    let bitmap = RoaringBitmap::from_sorted_iter(0..2000).unwrap();
+    let bitmap = Roaring32::from_sorted_iter(0..2000).unwrap();
 
     // No matching container
     assert_eq!(bitmap.rank(u32::MAX), 2000);
@@ -39,7 +39,7 @@ fn rank_array() {
 
 #[test]
 fn rank_bitmap() {
-    let bitmap = RoaringBitmap::from_sorted_iter(0..5000).unwrap();
+    let bitmap = Roaring32::from_sorted_iter(0..5000).unwrap();
 
     // key: 0, bit: 0
     assert_eq!(bitmap.rank(0), 1);
@@ -65,7 +65,7 @@ proptest! {
         values in btree_set(..=262_143_u32, ..=1000),
         checks in vec(..=262_143_u32, ..=100)
     ){
-        let bitmap = RoaringBitmap::from_sorted_iter(values.iter().cloned()).unwrap();
+        let bitmap = Roaring32::from_sorted_iter(values.iter().cloned()).unwrap();
         for i in checks {
             let expected = values.iter().take_while(|&&x| x <= i).count() as u64;
             assert_eq!(bitmap.rank(i), expected);

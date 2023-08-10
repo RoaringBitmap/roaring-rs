@@ -1,21 +1,18 @@
-use std::borrow::Borrow;
-use std::cmp::Ordering;
-use std::iter::Peekable;
-
 use super::container::Container;
-use crate::RoaringBitmap;
+use crate::{RoaringBitmap, Value};
+use std::{borrow::Borrow, cmp::Ordering, iter::Peekable, marker::PhantomData};
 
-impl RoaringBitmap {
+impl<V: Value> RoaringBitmap<V> {
     /// Returns true if the set has no elements in common with other. This is equivalent to
     /// checking for an empty intersection.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap;
+    /// use roaring::Roaring32;
     ///
-    /// let mut rb1 = RoaringBitmap::new();
-    /// let mut rb2 = RoaringBitmap::new();
+    /// let mut rb1 = Roaring32::new();
+    /// let mut rb2 = Roaring32::new();
     ///
     /// rb1.insert(1);
     ///
@@ -37,10 +34,10 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap;
+    /// use roaring::Roaring32;
     ///
-    /// let mut rb1 = RoaringBitmap::new();
-    /// let mut rb2 = RoaringBitmap::new();
+    /// let mut rb1 = Roaring32::new();
+    /// let mut rb2 = Roaring32::new();
     ///
     /// rb1.insert(1);
     ///
@@ -74,10 +71,10 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap;
+    /// use roaring::Roaring32;
     ///
-    /// let mut rb1 = RoaringBitmap::new();
-    /// let mut rb2 = RoaringBitmap::new();
+    /// let mut rb1 = Roaring32::new();
+    /// let mut rb2 = Roaring32::new();
     ///
     /// rb1.insert(1);
     ///
@@ -101,39 +98,45 @@ impl RoaringBitmap {
 /// Returns the smallest container according to its key
 /// or both if the key is the same. It is useful when you need
 /// to iterate over two containers to do operations on them.
-pub struct Pairs<I, J, L, R>
+pub struct Pairs<V, I, J, L, R>
 where
+    V: Value,
     I: Iterator<Item = L>,
     J: Iterator<Item = R>,
-    L: Borrow<Container>,
-    R: Borrow<Container>,
+    L: Borrow<Container<V>>,
+    R: Borrow<Container<V>>,
 {
     left: Peekable<I>,
     right: Peekable<J>,
+    value_type: PhantomData<V>,
 }
 
-impl<I, J, L, R> Pairs<I, J, L, R>
+impl<V: Value, I, J, L, R> Pairs<V, I, J, L, R>
 where
     I: Iterator<Item = L>,
     J: Iterator<Item = R>,
-    L: Borrow<Container>,
-    R: Borrow<Container>,
+    L: Borrow<Container<V>>,
+    R: Borrow<Container<V>>,
 {
-    pub fn new<A, B>(left: A, right: B) -> Pairs<I, J, L, R>
+    pub fn new<A, B>(left: A, right: B) -> Pairs<V, I, J, L, R>
     where
         A: IntoIterator<Item = L, IntoIter = I>,
         B: IntoIterator<Item = R, IntoIter = J>,
     {
-        Pairs { left: left.into_iter().peekable(), right: right.into_iter().peekable() }
+        Pairs {
+            left: left.into_iter().peekable(),
+            right: right.into_iter().peekable(),
+            value_type: PhantomData,
+        }
     }
 }
 
-impl<I, J, L, R> Iterator for Pairs<I, J, L, R>
+impl<V: Value, I, J, L, R> Iterator for Pairs<V, I, J, L, R>
 where
     I: Iterator<Item = L>,
     J: Iterator<Item = R>,
-    L: Borrow<Container>,
-    R: Borrow<Container>,
+    L: Borrow<Container<V>>,
+    R: Borrow<Container<V>>,
 {
     type Item = (Option<L>, Option<R>);
 

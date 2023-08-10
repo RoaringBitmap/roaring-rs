@@ -1,11 +1,17 @@
 #[cfg(test)]
 mod test {
-    use crate::bitmap::container::Container;
-    use crate::bitmap::store::{ArrayStore, BitmapStore, Store};
-    use crate::RoaringBitmap;
-    use proptest::bits::{BitSetLike, BitSetStrategy, SampledBitSetStrategy};
-    use proptest::collection::{vec, SizeRange};
-    use proptest::prelude::*;
+    use crate::{
+        core::{
+            container::Container,
+            store::{ArrayStore, BitmapStore, Store},
+        },
+        RoaringBitmap, Value,
+    };
+    use proptest::{
+        bits::{BitSetLike, BitSetStrategy, SampledBitSetStrategy},
+        collection::{vec, SizeRange},
+        prelude::*,
+    };
     use std::fmt::{Debug, Formatter};
 
     impl Debug for BitmapStore {
@@ -172,19 +178,19 @@ mod test {
     prop_compose! {
         fn containers(n: usize)
                      (keys in ArrayStore::sampled(..=n, ..=n),
-                      stores in vec(Store::arbitrary(), n)) -> RoaringBitmap {
+                      stores in vec(Store::arbitrary(), n)) -> RoaringBitmap<u32> {
             let containers = keys.into_iter().zip(stores).map(|(key, store)| {
                 let mut container = Container { key, store };
                 container.ensure_correct_store();
                 container
-            }).collect::<Vec<Container>>();
+            }).collect::<Vec<Container<u32>>>();
             RoaringBitmap { containers }
        }
     }
 
-    impl RoaringBitmap {
+    impl<V: Value> RoaringBitmap<V> {
         prop_compose! {
-            pub fn arbitrary()(bitmap in (0usize..=16).prop_flat_map(containers)) -> RoaringBitmap {
+            pub fn arbitrary()(bitmap in (0usize..=16).prop_flat_map(containers)) -> RoaringBitmap<u32> {
                 bitmap
             }
         }

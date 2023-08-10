@@ -1,3 +1,5 @@
+use super::{container::Container, store::Store};
+use crate::{MultiOps, RoaringBitmap, Value};
 use std::{
     borrow::Cow,
     cmp::Reverse,
@@ -5,12 +7,6 @@ use std::{
     mem,
     ops::{BitOrAssign, BitXorAssign},
 };
-
-use retain_mut::RetainMut;
-
-use crate::{MultiOps, RoaringBitmap};
-
-use super::{container::Container, store::Store};
 
 /// When collecting bitmaps for optimizing the computation. If we don't know how many
 // elements are in the iterator we collect 10 elements.
@@ -20,11 +16,11 @@ const BASE_COLLECT: usize = 10;
 /// much faster without impacting the memory usage too much (in most cases).
 const MAX_COLLECT: usize = 50;
 
-impl<I> MultiOps<RoaringBitmap> for I
+impl<I, V: Value> MultiOps<RoaringBitmap<V>> for I
 where
-    I: IntoIterator<Item = RoaringBitmap>,
+    I: IntoIterator<Item = RoaringBitmap<V>>,
 {
-    type Output = RoaringBitmap;
+    type Output = RoaringBitmap<V>;
 
     fn union(self) -> Self::Output {
         try_multi_or_owned(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
@@ -43,11 +39,11 @@ where
     }
 }
 
-impl<I, E> MultiOps<Result<RoaringBitmap, E>> for I
+impl<V: Value, I, E> MultiOps<Result<RoaringBitmap<V>, E>> for I
 where
-    I: IntoIterator<Item = Result<RoaringBitmap, E>>,
+    I: IntoIterator<Item = Result<RoaringBitmap<V>, E>>,
 {
-    type Output = Result<RoaringBitmap, E>;
+    type Output = Result<RoaringBitmap<V>, E>;
 
     fn union(self) -> Self::Output {
         try_multi_or_owned(self)
@@ -66,11 +62,11 @@ where
     }
 }
 
-impl<'a, I> MultiOps<&'a RoaringBitmap> for I
+impl<'a, V: Value, I> MultiOps<&'a RoaringBitmap<V>> for I
 where
-    I: IntoIterator<Item = &'a RoaringBitmap>,
+    I: IntoIterator<Item = &'a RoaringBitmap<V>>,
 {
-    type Output = RoaringBitmap;
+    type Output = RoaringBitmap<V>;
 
     fn union(self) -> Self::Output {
         try_multi_or_ref(self.into_iter().map(Ok::<_, Infallible>)).unwrap()
@@ -89,11 +85,11 @@ where
     }
 }
 
-impl<'a, I, E: 'a> MultiOps<Result<&'a RoaringBitmap, E>> for I
+impl<'a, V: Value, I, E: 'a> MultiOps<Result<&'a RoaringBitmap<V>, E>> for I
 where
-    I: IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
+    I: IntoIterator<Item = Result<&'a RoaringBitmap<V>, E>>,
 {
-    type Output = Result<RoaringBitmap, E>;
+    type Output = Result<RoaringBitmap<V>, E>;
 
     fn union(self) -> Self::Output {
         try_multi_or_ref(self)
@@ -113,9 +109,9 @@ where
 }
 
 #[inline]
-fn try_multi_and_owned<E>(
-    bitmaps: impl IntoIterator<Item = Result<RoaringBitmap, E>>,
-) -> Result<RoaringBitmap, E> {
+fn try_multi_and_owned<V: Value, E>(
+    bitmaps: impl IntoIterator<Item = Result<RoaringBitmap<V>, E>>,
+) -> Result<RoaringBitmap<V>, E> {
     let mut iter = bitmaps.into_iter();
 
     // We're going to take a bunch of elements at the start of the iterator and sort
@@ -139,9 +135,9 @@ fn try_multi_and_owned<E>(
 }
 
 #[inline]
-fn try_multi_and_ref<'a, E>(
-    bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
-) -> Result<RoaringBitmap, E> {
+fn try_multi_and_ref<'a, V: Value + 'a, E>(
+    bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap<V>, E>>,
+) -> Result<RoaringBitmap<V>, E> {
     let mut iter = bitmaps.into_iter();
 
     // We're going to take a bunch of elements at the start of the iterator and sort
@@ -164,9 +160,9 @@ fn try_multi_and_ref<'a, E>(
 }
 
 #[inline]
-fn try_multi_sub_owned<E>(
-    bitmaps: impl IntoIterator<Item = Result<RoaringBitmap, E>>,
-) -> Result<RoaringBitmap, E> {
+fn try_multi_sub_owned<V: Value, E>(
+    bitmaps: impl IntoIterator<Item = Result<RoaringBitmap<V>, E>>,
+) -> Result<RoaringBitmap<V>, E> {
     let mut iter = bitmaps.into_iter();
     match iter.next().transpose()? {
         Some(mut lhs) => {
@@ -183,9 +179,9 @@ fn try_multi_sub_owned<E>(
 }
 
 #[inline]
-fn try_multi_sub_ref<'a, E>(
-    bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
-) -> Result<RoaringBitmap, E> {
+fn try_multi_sub_ref<'a, V: Value + 'a, E>(
+    bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap<V>, E>>,
+) -> Result<RoaringBitmap<V>, E> {
     let mut iter = bitmaps.into_iter();
     match iter.next().transpose()?.cloned() {
         Some(mut lhs) => {
@@ -203,9 +199,9 @@ fn try_multi_sub_ref<'a, E>(
 }
 
 #[inline]
-fn try_multi_or_owned<E>(
-    bitmaps: impl IntoIterator<Item = Result<RoaringBitmap, E>>,
-) -> Result<RoaringBitmap, E> {
+fn try_multi_or_owned<V: Value, E>(
+    bitmaps: impl IntoIterator<Item = Result<RoaringBitmap<V>, E>>,
+) -> Result<RoaringBitmap<V>, E> {
     let mut iter = bitmaps.into_iter();
 
     // We're going to take a bunch of elements at the start of the iterator and
@@ -229,7 +225,7 @@ fn try_multi_or_owned<E>(
         merge_container_owned(&mut containers, bitmap?.containers, BitOrAssign::bitor_assign);
     }
 
-    RetainMut::retain_mut(&mut containers, |container| {
+    containers.retain_mut(|container| {
         if container.len() > 0 {
             container.ensure_correct_store();
             true
@@ -242,9 +238,9 @@ fn try_multi_or_owned<E>(
 }
 
 #[inline]
-fn try_multi_xor_owned<E>(
-    bitmaps: impl IntoIterator<Item = Result<RoaringBitmap, E>>,
-) -> Result<RoaringBitmap, E> {
+fn try_multi_xor_owned<V: Value, E>(
+    bitmaps: impl IntoIterator<Item = Result<RoaringBitmap<V>, E>>,
+) -> Result<RoaringBitmap<V>, E> {
     let mut iter = bitmaps.into_iter();
     let mut containers = match iter.next().transpose()? {
         None => Vec::new(),
@@ -255,7 +251,7 @@ fn try_multi_xor_owned<E>(
         merge_container_owned(&mut containers, bitmap?.containers, BitXorAssign::bitxor_assign);
     }
 
-    RetainMut::retain_mut(&mut containers, |container| {
+    containers.retain_mut(|container| {
         if container.len() > 0 {
             container.ensure_correct_store();
             true
@@ -267,9 +263,9 @@ fn try_multi_xor_owned<E>(
     Ok(RoaringBitmap { containers })
 }
 
-fn merge_container_owned(
-    lhs: &mut Vec<Container>,
-    rhs: Vec<Container>,
+fn merge_container_owned<V: Value>(
+    lhs: &mut Vec<Container<V>>,
+    rhs: Vec<Container<V>>,
     op: impl Fn(&mut Store, Store),
 ) {
     for mut rhs in rhs {
@@ -289,9 +285,9 @@ fn merge_container_owned(
 }
 
 #[inline]
-fn try_multi_or_ref<'a, E: 'a>(
-    bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
-) -> Result<RoaringBitmap, E> {
+fn try_multi_or_ref<'a, V: Value + 'a, E: 'a>(
+    bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap<V>, E>>,
+) -> Result<RoaringBitmap<V>, E> {
     // This algorithm operates on bitmaps. It must deal with arrays for which there are not (yet)
     // any others with the same key.
     //
@@ -310,7 +306,7 @@ fn try_multi_or_ref<'a, E: 'a>(
     let mut start = start.into_iter();
     let mut containers = match start.next() {
         Some(c) => {
-            let c: Vec<Cow<Container>> = c.containers.iter().map(Cow::Borrowed).collect();
+            let c: Vec<Cow<Container<V>>> = c.containers.iter().map(Cow::Borrowed).collect();
             if c.is_empty() {
                 // everything must be empty if the max is empty
                 start.by_ref().nth(start_size);
@@ -343,9 +339,9 @@ fn try_multi_or_ref<'a, E: 'a>(
 }
 
 #[inline]
-fn try_multi_xor_ref<'a, E: 'a>(
-    bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap, E>>,
-) -> Result<RoaringBitmap, E> {
+fn try_multi_xor_ref<'a, V: Value + 'a, E: 'a>(
+    bitmaps: impl IntoIterator<Item = Result<&'a RoaringBitmap<V>, E>>,
+) -> Result<RoaringBitmap<V>, E> {
     //
     // This algorithm operates on bitmaps. It must deal with arrays for which there are not (yet)
     // any others with the same key.
@@ -358,7 +354,7 @@ fn try_multi_xor_ref<'a, E: 'a>(
 
     // Phase 1. Borrow all the containers from the first element.
     let mut iter = bitmaps.into_iter();
-    let mut containers: Vec<Cow<Container>> = match iter.next().transpose()? {
+    let mut containers: Vec<Cow<Container<V>>> = match iter.next().transpose()? {
         None => Vec::new(),
         Some(v) => v.containers.iter().map(Cow::Borrowed).collect(),
     };
@@ -383,9 +379,9 @@ fn try_multi_xor_ref<'a, E: 'a>(
     Ok(RoaringBitmap { containers })
 }
 
-fn merge_container_ref<'a>(
-    containers: &mut Vec<Cow<'a, Container>>,
-    rhs: &'a [Container],
+fn merge_container_ref<'a, V: Value>(
+    containers: &mut Vec<Cow<'a, Container<V>>>,
+    rhs: &'a [Container<V>],
     op: impl Fn(&mut Store, &Store),
 ) {
     for rhs in rhs {

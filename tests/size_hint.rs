@@ -1,9 +1,8 @@
-extern crate roaring;
-use roaring::RoaringBitmap;
+use roaring::Roaring32;
 
 #[test]
 fn array() {
-    let bitmap = (0..2000).collect::<RoaringBitmap>();
+    let bitmap = (0..2000).collect::<Roaring32>();
     let mut iter = bitmap.iter();
     assert_eq!((2000, Some(2000)), iter.size_hint());
     iter.by_ref().take(1000).for_each(drop);
@@ -14,7 +13,7 @@ fn array() {
 
 #[test]
 fn bitmap() {
-    let bitmap = (0..6000).collect::<RoaringBitmap>();
+    let bitmap = (0..6000).collect::<Roaring32>();
     let mut iter = bitmap.iter();
     assert_eq!((6000, Some(6000)), iter.size_hint());
     iter.by_ref().take(3000).for_each(drop);
@@ -25,10 +24,8 @@ fn bitmap() {
 
 #[test]
 fn arrays() {
-    let bitmap = (0..2000)
-        .chain(1_000_000..1_002_000)
-        .chain(2_000_000..2_001_000)
-        .collect::<RoaringBitmap>();
+    let bitmap =
+        (0..2000).chain(1_000_000..1_002_000).chain(2_000_000..2_001_000).collect::<Roaring32>();
     let mut iter = bitmap.iter();
     assert_eq!((5000, Some(5000)), iter.size_hint());
     iter.by_ref().take(3000).for_each(drop);
@@ -39,10 +36,8 @@ fn arrays() {
 
 #[test]
 fn bitmaps() {
-    let bitmap = (0..6000)
-        .chain(1_000_000..1_012_000)
-        .chain(2_000_000..2_010_000)
-        .collect::<RoaringBitmap>();
+    let bitmap =
+        (0..6000).chain(1_000_000..1_012_000).chain(2_000_000..2_010_000).collect::<Roaring32>();
     let mut iter = bitmap.iter();
     assert_eq!((28000, Some(28000)), iter.size_hint());
     iter.by_ref().take(2000).for_each(drop);

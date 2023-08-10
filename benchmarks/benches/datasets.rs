@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use git2::FetchOptions;
 use once_cell::sync::OnceCell as SyncOnceCell;
 
-use roaring::RoaringBitmap;
+use roaring::Roaring32;
 
 static INSTANCE: SyncOnceCell<Vec<Dataset>> = SyncOnceCell::new();
 
@@ -41,7 +41,7 @@ impl IntoIterator for Datasets {
 
 pub struct Dataset {
     pub name: String,
-    pub bitmaps: Vec<RoaringBitmap>,
+    pub bitmaps: Vec<Roaring32>,
 }
 
 fn init_datasets() -> Result<PathBuf, Box<dyn std::error::Error>> {
@@ -186,7 +186,7 @@ fn parse_datasets<P: AsRef<Path>>(path: P) -> Result<Vec<Dataset>, Box<dyn std::
                     numbers.push(n);
                 }
 
-                let bitmap = RoaringBitmap::from_sorted_iter(numbers.iter().copied())?;
+                let bitmap = Roaring32::from_sorted_iter(numbers.iter().copied())?;
                 numbers.clear();
                 bitmaps.push(bitmap);
 

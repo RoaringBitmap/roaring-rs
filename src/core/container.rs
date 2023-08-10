@@ -1,35 +1,35 @@
-use std::fmt;
-use std::ops::{
-    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
-};
-
 use super::store::{self, Store};
-use super::util;
+use crate::Value;
+use std::{
+    fmt,
+    ops::{
+        BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub,
+        SubAssign,
+    },
+};
 
 pub const ARRAY_LIMIT: u64 = 4096;
 
 #[derive(PartialEq, Clone)]
-pub struct Container {
-    pub key: u16,
+pub struct Container<V: Value> {
+    pub key: V::Key,
     pub store: Store,
 }
 
-pub struct Iter<'a> {
-    pub key: u16,
+pub struct Iter<'a, V: Value> {
+    pub key: V::Key,
     inner: store::Iter<'a>,
 }
 
-impl Container {
-    pub fn new(key: u16) -> Container {
-        Container { key, store: Store::new() }
+impl<V: Value> Container<V> {
+    pub fn new(key: V::Key) -> Self {
+        Self { key, store: Store::new() }
     }
 
-    pub fn full(key: u16) -> Container {
-        Container { key, store: Store::full() }
+    pub fn full(key: V::Key) -> Self {
+        Self { key, store: Store::full() }
     }
-}
 
-impl Container {
     pub fn len(&self) -> u64 {
         self.store.len()
     }
@@ -176,132 +176,132 @@ impl Container {
     }
 }
 
-impl BitOr<&Container> for &Container {
-    type Output = Container;
+impl<V: Value> BitOr<&Container<V>> for &Container<V> {
+    type Output = Container<V>;
 
-    fn bitor(self, rhs: &Container) -> Container {
+    fn bitor(self, rhs: &Container<V>) -> Self::Output {
         let store = BitOr::bitor(&self.store, &rhs.store);
-        let mut container = Container { key: self.key, store };
+        let mut container = Self::Output { key: self.key, store };
         container.ensure_correct_store();
         container
     }
 }
 
-impl BitOrAssign<Container> for Container {
-    fn bitor_assign(&mut self, rhs: Container) {
+impl<V: Value> BitOrAssign<Container<V>> for Container<V> {
+    fn bitor_assign(&mut self, rhs: Container<V>) {
         BitOrAssign::bitor_assign(&mut self.store, rhs.store);
         self.ensure_correct_store();
     }
 }
 
-impl BitOrAssign<&Container> for Container {
-    fn bitor_assign(&mut self, rhs: &Container) {
+impl<V: Value> BitOrAssign<&Container<V>> for Container<V> {
+    fn bitor_assign(&mut self, rhs: &Container<V>) {
         BitOrAssign::bitor_assign(&mut self.store, &rhs.store);
         self.ensure_correct_store();
     }
 }
 
-impl BitAnd<&Container> for &Container {
-    type Output = Container;
+impl<V: Value> BitAnd<&Container<V>> for &Container<V> {
+    type Output = Container<V>;
 
-    fn bitand(self, rhs: &Container) -> Container {
+    fn bitand(self, rhs: &Container<V>) -> Self::Output {
         let store = BitAnd::bitand(&self.store, &rhs.store);
-        let mut container = Container { key: self.key, store };
+        let mut container = Self::Output { key: self.key, store };
         container.ensure_correct_store();
         container
     }
 }
 
-impl BitAndAssign<Container> for Container {
-    fn bitand_assign(&mut self, rhs: Container) {
+impl<V: Value> BitAndAssign<Container<V>> for Container<V> {
+    fn bitand_assign(&mut self, rhs: Container<V>) {
         BitAndAssign::bitand_assign(&mut self.store, rhs.store);
         self.ensure_correct_store();
     }
 }
 
-impl BitAndAssign<&Container> for Container {
-    fn bitand_assign(&mut self, rhs: &Container) {
+impl<V: Value> BitAndAssign<&Container<V>> for Container<V> {
+    fn bitand_assign(&mut self, rhs: &Container<V>) {
         BitAndAssign::bitand_assign(&mut self.store, &rhs.store);
         self.ensure_correct_store();
     }
 }
 
-impl Sub<&Container> for &Container {
-    type Output = Container;
+impl<V: Value> Sub<&Container<V>> for &Container<V> {
+    type Output = Container<V>;
 
-    fn sub(self, rhs: &Container) -> Container {
+    fn sub(self, rhs: &Container<V>) -> Self::Output {
         let store = Sub::sub(&self.store, &rhs.store);
-        let mut container = Container { key: self.key, store };
+        let mut container = Self::Output { key: self.key, store };
         container.ensure_correct_store();
         container
     }
 }
 
-impl SubAssign<&Container> for Container {
-    fn sub_assign(&mut self, rhs: &Container) {
+impl<V: Value> SubAssign<&Container<V>> for Container<V> {
+    fn sub_assign(&mut self, rhs: &Container<V>) {
         SubAssign::sub_assign(&mut self.store, &rhs.store);
         self.ensure_correct_store();
     }
 }
 
-impl BitXor<&Container> for &Container {
-    type Output = Container;
+impl<V: Value> BitXor<&Container<V>> for &Container<V> {
+    type Output = Container<V>;
 
-    fn bitxor(self, rhs: &Container) -> Container {
+    fn bitxor(self, rhs: &Container<V>) -> Self::Output {
         let store = BitXor::bitxor(&self.store, &rhs.store);
-        let mut container = Container { key: self.key, store };
+        let mut container = Self::Output { key: self.key, store };
         container.ensure_correct_store();
         container
     }
 }
 
-impl BitXorAssign<Container> for Container {
-    fn bitxor_assign(&mut self, rhs: Container) {
+impl<V: Value> BitXorAssign<Container<V>> for Container<V> {
+    fn bitxor_assign(&mut self, rhs: Container<V>) {
         BitXorAssign::bitxor_assign(&mut self.store, rhs.store);
         self.ensure_correct_store();
     }
 }
 
-impl BitXorAssign<&Container> for Container {
-    fn bitxor_assign(&mut self, rhs: &Container) {
+impl<V: Value> BitXorAssign<&Container<V>> for Container<V> {
+    fn bitxor_assign(&mut self, rhs: &Container<V>) {
         BitXorAssign::bitxor_assign(&mut self.store, &rhs.store);
         self.ensure_correct_store();
     }
 }
 
-impl<'a> IntoIterator for &'a Container {
-    type Item = u32;
-    type IntoIter = Iter<'a>;
+impl<'a, V: Value> IntoIterator for &'a Container<V> {
+    type Item = V;
+    type IntoIter = Iter<'a, V>;
 
-    fn into_iter(self) -> Iter<'a> {
+    fn into_iter(self) -> Iter<'a, V> {
         let store: &Store = &self.store;
         Iter { key: self.key, inner: store.into_iter() }
     }
 }
 
-impl IntoIterator for Container {
-    type Item = u32;
-    type IntoIter = Iter<'static>;
+impl<V: Value> IntoIterator for Container<V> {
+    type Item = V;
+    type IntoIter = Iter<'static, V>;
 
-    fn into_iter(self) -> Iter<'static> {
+    fn into_iter(self) -> Iter<'static, V> {
         Iter { key: self.key, inner: self.store.into_iter() }
     }
 }
 
-impl<'a> Iterator for Iter<'a> {
-    type Item = u32;
-    fn next(&mut self) -> Option<u32> {
-        self.inner.next().map(|i| util::join(self.key, i))
+impl<'a, V: Value> Iterator for Iter<'a, V> {
+    type Item = V;
+    fn next(&mut self) -> Option<V> {
+        self.inner.next().map(|i| V::join(self.key, i))
     }
 }
 
-impl DoubleEndedIterator for Iter<'_> {
+impl<V: Value> DoubleEndedIterator for Iter<'_, V> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.inner.next_back().map(|i| util::join(self.key, i))
+        self.inner.next_back().map(|i| V::join(self.key, i))
     }
 }
 
-impl fmt::Debug for Container {
+impl<V: Value> fmt::Debug for Container<V> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         format!("Container<{:?} @ {:?}>", self.len(), self.key).fmt(formatter)
     }

@@ -18,14 +18,18 @@ extern crate byteorder;
 use std::error::Error;
 use std::fmt;
 
-/// A compressed bitmap using the [Roaring bitmap compression scheme](https://roaringbitmap.org/).
-pub mod bitmap;
+mod core;
 
 /// A compressed bitmap with u64 values.  Implemented as a `BTreeMap` of `RoaringBitmap`s.
-pub mod treemap;
+// pub mod treemap;
+// pub use treemap::RoaringTreemap;
+mod value;
+pub use value::{ContainerKey, Value, ValueRange};
 
-pub use bitmap::RoaringBitmap;
-pub use treemap::RoaringTreemap;
+mod roaring32;
+pub use roaring32::Roaring32;
+
+pub use self::core::RoaringBitmap;
 
 /// An error type that is returned when an iterator isn't sorted.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -48,7 +52,7 @@ impl fmt::Display for NonSortedIntegers {
 
 impl Error for NonSortedIntegers {}
 
-/// A [`Iterator::collect`] blanket implementation that provides extra methods for [`RoaringBitmap`]
+/// A [`Iterator::collect`] blanket implementation that provides extra methods for [`Roaring32`]
 /// and [`RoaringTreemap`].
 ///
 /// When merging multiple bitmap with the same operation it's usually faster to call the
@@ -56,12 +60,12 @@ impl Error for NonSortedIntegers {}
 ///
 /// # Examples
 /// ```
-/// use roaring::{MultiOps, RoaringBitmap};
+/// use roaring::{MultiOps, Roaring32};
 ///
 /// let bitmaps = [
-///     RoaringBitmap::from_iter(0..10),
-///     RoaringBitmap::from_iter(10..20),
-///     RoaringBitmap::from_iter(20..30),
+///     Roaring32::from_iter(0..10),
+///     Roaring32::from_iter(10..20),
+///     Roaring32::from_iter(20..30),
 /// ];
 ///
 /// // Stop doing this

@@ -8,7 +8,7 @@ use criterion::{
     Throughput,
 };
 
-use roaring::{MultiOps, RoaringBitmap, RoaringTreemap};
+use roaring::{MultiOps, Roaring32};
 
 use crate::datasets::Datasets;
 
@@ -18,13 +18,13 @@ mod datasets;
 fn pairwise_binary_op_matrix(
     c: &mut Criterion,
     op_name: &str,
-    op_own_own: impl Fn(RoaringBitmap, RoaringBitmap) -> RoaringBitmap,
-    op_own_ref: impl Fn(RoaringBitmap, &RoaringBitmap) -> RoaringBitmap,
-    op_ref_own: impl Fn(&RoaringBitmap, RoaringBitmap) -> RoaringBitmap,
-    op_ref_ref: impl Fn(&RoaringBitmap, &RoaringBitmap) -> RoaringBitmap,
-    mut op_assign_owned: impl FnMut(&mut RoaringBitmap, RoaringBitmap),
-    mut op_assign_ref: impl FnMut(&mut RoaringBitmap, &RoaringBitmap),
-    op_len: impl Fn(&RoaringBitmap, &RoaringBitmap) -> u64,
+    op_own_own: impl Fn(Roaring32, Roaring32) -> Roaring32,
+    op_own_ref: impl Fn(Roaring32, &Roaring32) -> Roaring32,
+    op_ref_own: impl Fn(&Roaring32, Roaring32) -> Roaring32,
+    op_ref_ref: impl Fn(&Roaring32, &Roaring32) -> Roaring32,
+    mut op_assign_owned: impl FnMut(&mut Roaring32, Roaring32),
+    mut op_assign_ref: impl FnMut(&mut Roaring32, &Roaring32),
+    op_len: impl Fn(&Roaring32, &Roaring32) -> u64,
 ) {
     let mut group = c.benchmark_group(format!("pairwise_{}", op_name));
 
@@ -120,7 +120,7 @@ fn pairwise_binary_op_matrix(
 fn pairwise_binary_op<R, M: Measurement>(
     group: &mut BenchmarkGroup<M>,
     op_name: &str,
-    op: impl Fn(RoaringBitmap, RoaringBitmap) -> R,
+    op: impl Fn(Roaring32, Roaring32) -> R,
 ) {
     for dataset in Datasets {
         group.bench_function(BenchmarkId::new(op_name, &dataset.name), |b| {
@@ -152,9 +152,7 @@ fn creation(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("from_sorted_iter", &dataset.name), |b| {
             b.iter(|| {
                 for bitmap_numbers in &dataset_numbers {
-                    black_box(
-                        RoaringBitmap::from_sorted_iter(bitmap_numbers.iter().copied()).unwrap(),
-                    );
+                    black_box(Roaring32::from_sorted_iter(bitmap_numbers.iter().copied()).unwrap());
                 }
             })
         });
@@ -162,7 +160,7 @@ fn creation(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("collect", &dataset.name), |b| {
             b.iter(|| {
                 for bitmap_numbers in &dataset_numbers {
-                    black_box(bitmap_numbers.iter().copied().collect::<RoaringBitmap>());
+                    black_box(bitmap_numbers.iter().copied().collect::<Roaring32>());
                 }
             })
         });
@@ -408,7 +406,7 @@ fn deserialization(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("deserialize_from", &dataset.name), |b| {
             b.iter(|| {
                 for buf in input.iter() {
-                    black_box(RoaringBitmap::deserialize_from(buf.as_slice()).unwrap());
+                    black_box(Roaring32::deserialize_from(buf.as_slice()).unwrap());
                 }
             });
         });
@@ -416,7 +414,7 @@ fn deserialization(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("deserialize_unchecked_from", &dataset.name), |b| {
             b.iter(|| {
                 for buf in input.iter() {
-                    black_box(RoaringBitmap::deserialize_unchecked_from(buf.as_slice()).unwrap());
+                    black_box(Roaring32::deserialize_unchecked_from(buf.as_slice()).unwrap());
                 }
             });
         });
@@ -476,7 +474,7 @@ fn successive_and(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("Multi And Owned", &dataset.name), |b| {
             b.iter_batched(
                 || dataset.bitmaps.clone(),
-                |bitmaps: Vec<RoaringBitmap>| black_box(bitmaps.intersection()),
+                |bitmaps: Vec<Roaring32>| black_box(bitmaps.intersection()),
                 BatchSize::LargeInput,
             );
         });
@@ -491,7 +489,7 @@ fn successive_or(c: &mut Criterion) {
     for dataset in Datasets {
         group.bench_function(BenchmarkId::new("Successive Or Assign Ref", &dataset.name), |b| {
             b.iter(|| {
-                let mut output = RoaringBitmap::new();
+                let mut output = Roaring32::new();
                 for bitmap in &dataset.bitmaps {
                     output |= bitmap;
                 }
@@ -501,8 +499,8 @@ fn successive_or(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("Successive Or Assign Owned", &dataset.name), |b| {
             b.iter_batched(
                 || dataset.bitmaps.clone(),
-                |bitmaps: Vec<RoaringBitmap>| {
-                    let mut output = RoaringBitmap::new();
+                |bitmaps: Vec<Roaring32>| {
+                    let mut output = Roaring32::new();
                     for bitmap in bitmaps {
                         output |= bitmap;
                     }
@@ -513,7 +511,7 @@ fn successive_or(c: &mut Criterion) {
 
         group.bench_function(BenchmarkId::new("Successive Or Ref Ref", &dataset.name), |b| {
             b.iter(|| {
-                let mut output = RoaringBitmap::new();
+                let mut output = Roaring32::new();
                 for bitmap in &dataset.bitmaps {
                     output = (&output) | bitmap;
                 }
@@ -527,7 +525,7 @@ fn successive_or(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("Multi Or Owned", &dataset.name), |b| {
             b.iter_batched(
                 || dataset.bitmaps.clone(),
-                |bitmaps: Vec<RoaringBitmap>| black_box(bitmaps.union()),
+                |bitmaps: Vec<Roaring32>| black_box(bitmaps.union()),
                 BatchSize::LargeInput,
             );
         });
@@ -541,13 +539,13 @@ fn successive_or(c: &mut Criterion) {
 
 fn is_empty(c: &mut Criterion) {
     c.bench_function("is_empty true", |b| {
-        let bitmap = RoaringBitmap::new();
+        let bitmap = Roaring32::new();
         b.iter(|| {
             bitmap.is_empty();
         });
     });
     c.bench_function("is_empty false", |b| {
-        let mut bitmap = RoaringBitmap::new();
+        let mut bitmap = Roaring32::new();
         bitmap.insert(1);
         b.iter(|| {
             bitmap.is_empty();
@@ -558,13 +556,13 @@ fn is_empty(c: &mut Criterion) {
 fn insert(c: &mut Criterion) {
     c.bench_function("create & insert 1", |b| {
         b.iter(|| {
-            let mut bitmap = RoaringBitmap::new();
+            let mut bitmap = Roaring32::new();
             bitmap.insert(black_box(1));
         });
     });
 
     c.bench_function("insert 1", |b| {
-        let mut bitmap = RoaringBitmap::new();
+        let mut bitmap = Roaring32::new();
         b.iter(|| {
             bitmap.insert(black_box(1));
         });
@@ -572,7 +570,7 @@ fn insert(c: &mut Criterion) {
 
     c.bench_function("create & insert several", |b| {
         b.iter(|| {
-            let mut bitmap = RoaringBitmap::new();
+            let mut bitmap = Roaring32::new();
             bitmap.insert(black_box(1));
             bitmap.insert(black_box(10));
             bitmap.insert(black_box(100));
@@ -584,7 +582,7 @@ fn insert(c: &mut Criterion) {
     });
 
     c.bench_function("insert several", |b| {
-        let mut bitmap = RoaringBitmap::new();
+        let mut bitmap = Roaring32::new();
         b.iter(|| {
             bitmap.insert(black_box(1));
             bitmap.insert(black_box(10));
@@ -599,7 +597,7 @@ fn insert(c: &mut Criterion) {
 
 fn contains(c: &mut Criterion) {
     c.bench_function("contains true", |b| {
-        let mut bitmap: RoaringBitmap = RoaringBitmap::new();
+        let mut bitmap: Roaring32 = Roaring32::new();
         bitmap.insert(1);
 
         b.iter(|| {
@@ -608,7 +606,7 @@ fn contains(c: &mut Criterion) {
     });
 
     c.bench_function("contains false", |b| {
-        let bitmap: RoaringBitmap = RoaringBitmap::new();
+        let bitmap: Roaring32 = Roaring32::new();
 
         b.iter(|| {
             bitmap.contains(black_box(1));
@@ -618,7 +616,7 @@ fn contains(c: &mut Criterion) {
 
 fn remove(c: &mut Criterion) {
     c.bench_function("remove 1", |b| {
-        let mut sub: RoaringBitmap = (0..65_536).collect();
+        let mut sub: Roaring32 = (0..65_536).collect();
         b.iter(|| {
             black_box(sub.remove(1000));
         });
@@ -627,7 +625,7 @@ fn remove(c: &mut Criterion) {
 
 fn remove_range_bitmap(c: &mut Criterion) {
     c.bench_function("remove_range 1", |b| {
-        let mut sub: RoaringBitmap = (0..65_536).collect();
+        let mut sub: Roaring32 = (0..65_536).collect();
         b.iter(|| {
             // carefully delete part of the bitmap
             // only the first iteration will actually change something
@@ -641,7 +639,7 @@ fn remove_range_bitmap(c: &mut Criterion) {
         // Slower bench that creates a new bitmap on each iteration so that can benchmark
         // bitmap to array conversion
         b.iter(|| {
-            let mut sub: RoaringBitmap = (0..65_536).collect();
+            let mut sub: Roaring32 = (0..65_536).collect();
             black_box(sub.remove_range(100..65_536));
             assert_eq!(sub.len(), 100);
         });
@@ -653,7 +651,7 @@ fn insert_range_bitmap(c: &mut Criterion) {
         let mut group = c.benchmark_group("insert_range");
         group.throughput(criterion::Throughput::Elements(size as u64));
         group.bench_function(format!("from_empty_{}", size), |b| {
-            let bm = RoaringBitmap::new();
+            let bm = Roaring32::new();
             b.iter_batched(
                 || bm.clone(),
                 |mut bm| black_box(bm.insert_range(0..size)),
@@ -661,7 +659,7 @@ fn insert_range_bitmap(c: &mut Criterion) {
             )
         });
         group.bench_function(format!("pre_populated_{}", size), |b| {
-            let mut bm = RoaringBitmap::new();
+            let mut bm = Roaring32::new();
             bm.insert_range(0..size);
             b.iter_batched(
                 || bm.clone(),
@@ -672,29 +670,29 @@ fn insert_range_bitmap(c: &mut Criterion) {
     }
 }
 
-fn insert_range_treemap(c: &mut Criterion) {
-    for &size in &[1_000_u64, 10_000u64, 2 * (u32::MAX as u64)] {
-        let mut group = c.benchmark_group("insert_range_treemap");
-        group.throughput(criterion::Throughput::Elements(size));
-        group.bench_function(format!("from_empty_{}", size), |b| {
-            let bm = RoaringTreemap::new();
-            b.iter_batched(
-                || bm.clone(),
-                |mut bm| black_box(bm.insert_range(0..size)),
-                criterion::BatchSize::SmallInput,
-            )
-        });
-        group.bench_function(format!("pre_populated_{}", size), |b| {
-            let mut bm = RoaringTreemap::new();
-            bm.insert_range(0..size);
-            b.iter_batched(
-                || bm.clone(),
-                |mut bm| black_box(bm.insert_range(0..size)),
-                criterion::BatchSize::SmallInput,
-            )
-        });
-    }
-}
+// fn insert_range_treemap(c: &mut Criterion) {
+//     for &size in &[1_000_u64, 10_000u64, 2 * (u32::MAX as u64)] {
+//         let mut group = c.benchmark_group("insert_range_treemap");
+//         group.throughput(criterion::Throughput::Elements(size));
+//         group.bench_function(format!("from_empty_{}", size), |b| {
+//             let bm = RoaringTreemap::new();
+//             b.iter_batched(
+//                 || bm.clone(),
+//                 |mut bm| black_box(bm.insert_range(0..size)),
+//                 criterion::BatchSize::SmallInput,
+//             )
+//         });
+//         group.bench_function(format!("pre_populated_{}", size), |b| {
+//             let mut bm = RoaringTreemap::new();
+//             bm.insert_range(0..size);
+//             b.iter_batched(
+//                 || bm.clone(),
+//                 |mut bm| black_box(bm.insert_range(0..size)),
+//                 criterion::BatchSize::SmallInput,
+//             )
+//         });
+//     }
+// }
 
 criterion_group!(
     benches,
@@ -713,7 +711,7 @@ criterion_group!(
     remove,
     remove_range_bitmap,
     insert_range_bitmap,
-    insert_range_treemap,
+    // insert_range_treemap,
     iteration,
     is_empty,
     serialization,

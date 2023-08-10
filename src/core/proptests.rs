@@ -1,7 +1,7 @@
 #[cfg(test)]
 #[allow(clippy::eq_op)] // Allow equal expressions as operands
 mod test {
-    use crate::RoaringBitmap;
+    use crate::Roaring32;
     use proptest::prelude::*;
 
     //
@@ -29,8 +29,8 @@ mod test {
     proptest! {
         #[test]
         fn unions_are_commutative(
-            a in RoaringBitmap::arbitrary(),
-            b in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary(),
+            b in Roaring32::arbitrary()
         ) {
             prop_assert_eq!(&a | &b, &b | &a);
 
@@ -57,8 +57,8 @@ mod test {
 
         #[test]
         fn intersections_are_commutative(
-            a in RoaringBitmap::arbitrary(),
-            b in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary(),
+            b in Roaring32::arbitrary()
         ) {
             prop_assert_eq!(&a & &b, &b & &a);
 
@@ -85,8 +85,8 @@ mod test {
 
         #[test]
         fn symmetric_differences_are_commutative(
-            a in RoaringBitmap::arbitrary(),
-            b in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary(),
+            b in Roaring32::arbitrary()
         ) {
             prop_assert_eq!(&a ^ &b, &b ^ &a);
 
@@ -119,9 +119,9 @@ mod test {
     proptest! {
         #[test]
         fn unions_are_associative(
-            a in RoaringBitmap::arbitrary(),
-            b in RoaringBitmap::arbitrary(),
-            c in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary(),
+            b in Roaring32::arbitrary(),
+            c in Roaring32::arbitrary()
         ) {
             prop_assert_eq!(
                 &a | ( &b | &c ),
@@ -157,9 +157,9 @@ mod test {
 
         #[test]
         fn intersections_are_associative(
-            a in RoaringBitmap::arbitrary(),
-            b in RoaringBitmap::arbitrary(),
-            c in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary(),
+            b in Roaring32::arbitrary(),
+            c in Roaring32::arbitrary()
         ) {
             prop_assert_eq!(
                 &a & ( &b & &c ),
@@ -195,9 +195,9 @@ mod test {
 
         #[test]
         fn symmetric_differences_are_associative(
-            a in RoaringBitmap::arbitrary(),
-            b in RoaringBitmap::arbitrary(),
-            c in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary(),
+            b in Roaring32::arbitrary(),
+            c in Roaring32::arbitrary()
         ) {
             prop_assert_eq!(
                 &a ^ ( &b ^ &c ),
@@ -239,9 +239,9 @@ mod test {
     proptest! {
         #[test]
         fn union_distributes_over_intersection(
-            a in RoaringBitmap::arbitrary(),
-            b in RoaringBitmap::arbitrary(),
-            c in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary(),
+            b in Roaring32::arbitrary(),
+            c in Roaring32::arbitrary()
         ) {
             prop_assert_eq!(
                 &a | ( &b & &c),
@@ -290,9 +290,9 @@ mod test {
 
         #[test]
         fn intersection_distributes_over_union(
-            a in RoaringBitmap::arbitrary(),
-            b in RoaringBitmap::arbitrary(),
-            c in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary(),
+            b in Roaring32::arbitrary(),
+            c in Roaring32::arbitrary()
         ) {
             prop_assert_eq!(
                 &a & ( &b | &c),
@@ -341,9 +341,9 @@ mod test {
 
         #[test]
         fn intersection_distributes_over_symmetric_difference(
-            a in RoaringBitmap::arbitrary(),
-            b in RoaringBitmap::arbitrary(),
-            c in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary(),
+            b in Roaring32::arbitrary(),
+            c in Roaring32::arbitrary()
         ) {
             prop_assert_eq!(
                 &a & ( &b ^ &c),
@@ -396,10 +396,9 @@ mod test {
 
     proptest! {
         #[test]
-        fn the_empty_set_is_the_identity_for_union(a in RoaringBitmap::arbitrary()) {
+        fn the_empty_set_is_the_identity_for_union(a in Roaring32::arbitrary()) {
             prop_assert_eq!(&(&a | &empty_set()), &a);
 
-            #[allow(clippy::redundant_clone)]
             { // op_assign_ref
                 let mut x = a.clone();
                 x |= &empty_set();
@@ -417,10 +416,9 @@ mod test {
         }
 
         #[test]
-        fn the_empty_set_is_the_identity_for_symmetric_difference(a in RoaringBitmap::arbitrary()) {
+        fn the_empty_set_is_the_identity_for_symmetric_difference(a in Roaring32::arbitrary()) {
             prop_assert_eq!(&(&a ^ &empty_set()), &a);
 
-            #[allow(clippy::redundant_clone)]
             { // op_assign_ref
                 let mut x = a.clone();
                 x ^= &empty_set();
@@ -448,7 +446,7 @@ mod test {
 
     proptest! {
         #[test]
-        fn unions_are_idempotent(a in RoaringBitmap::arbitrary()) {
+        fn unions_are_idempotent(a in Roaring32::arbitrary()) {
             prop_assert_eq!(&(&a | &a), &a);
 
             { // op_assign_ref
@@ -467,7 +465,7 @@ mod test {
         }
 
         #[test]
-        fn intersections_are_idempotent(a in RoaringBitmap::arbitrary()) {
+        fn intersections_are_idempotent(a in Roaring32::arbitrary()) {
             prop_assert_eq!(&(&a & &a), &a);
 
             { // op_assign_ref
@@ -492,7 +490,7 @@ mod test {
 
     proptest! {
         #[test]
-        fn empty_set_domination(a in RoaringBitmap::arbitrary()) {
+        fn empty_set_domination(a in Roaring32::arbitrary()) {
             prop_assert_eq!(&a & &empty_set(), empty_set());
 
             { // op_assign_ref
@@ -520,18 +518,18 @@ mod test {
 
     proptest! {
         #[test]
-        fn reflexivity(a in RoaringBitmap::arbitrary()) {
+        fn reflexivity(a in Roaring32::arbitrary()) {
             prop_assert!(a.is_subset(&a));
         }
 
         #[test]
-        fn antisymmetry(a in RoaringBitmap::arbitrary()) {
+        fn antisymmetry(a in Roaring32::arbitrary()) {
             let mut b = a.clone();
             prop_assert_eq!(&a, &b);
             prop_assert!(a.is_subset(&b) && b.is_subset(&a));
 
             // Flip one bit
-            let mut c = RoaringBitmap::new();
+            let mut c = Roaring32::new();
             c.insert(0);
             b ^= c;
 
@@ -541,9 +539,9 @@ mod test {
 
         #[test]
         fn transitivity(
-            a in RoaringBitmap::arbitrary(),
-            mut b in RoaringBitmap::arbitrary(),
-            mut c in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary(),
+            mut b in Roaring32::arbitrary(),
+            mut c in Roaring32::arbitrary()
         ) {
             b |= &a;
             c |= &b;
@@ -560,12 +558,12 @@ mod test {
 
     proptest! {
         #[test]
-        fn existence_of_joins(a in RoaringBitmap::arbitrary(), b in RoaringBitmap::arbitrary()) {
+        fn existence_of_joins(a in Roaring32::arbitrary(), b in Roaring32::arbitrary()) {
             prop_assert!(a.is_subset(&(&a | &b)));
         }
 
         #[test]
-        fn existence_of_meets(a in RoaringBitmap::arbitrary(), b in RoaringBitmap::arbitrary()) {
+        fn existence_of_meets(a in Roaring32::arbitrary(), b in Roaring32::arbitrary()) {
             prop_assert!(&(&a & &b).is_subset(&a));
         }
     }
@@ -575,8 +573,8 @@ mod test {
     proptest! {
         #[test]
         fn inclusion_can_be_characterized_by_union_or_inersection(
-            b in RoaringBitmap::arbitrary(),
-            c in RoaringBitmap::arbitrary()
+            b in Roaring32::arbitrary(),
+            c in Roaring32::arbitrary()
         ) {
             let a = &b - &c;
 
@@ -599,9 +597,9 @@ mod test {
     proptest! {
         #[test]
         fn relative_compliments(
-            a in RoaringBitmap::arbitrary(),
-            b in RoaringBitmap::arbitrary(),
-            c in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary(),
+            b in Roaring32::arbitrary(),
+            c in Roaring32::arbitrary()
         ) {
             let u = &a | &b | &c;
 
@@ -938,9 +936,9 @@ mod test {
     proptest! {
         #[test]
         fn symmetric_difference_triangle_inequality(
-            a in RoaringBitmap::arbitrary(),
-            b in RoaringBitmap::arbitrary(),
-            c in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary(),
+            b in Roaring32::arbitrary(),
+            c in Roaring32::arbitrary()
         ) {
             prop_assert_eq!(
                 &((&a ^ &b) ^ (&b ^ &c)),
@@ -982,7 +980,7 @@ mod test {
 
         #[test]
         fn symmetric_difference_empty_set_neutral(
-            a in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary()
         ) {
             prop_assert_eq!(
                 &(&a ^ &empty_set()),
@@ -1006,7 +1004,7 @@ mod test {
 
         #[test]
         fn symmetric_difference_inverse_of_itself(
-            a in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary()
         ) {
 
             prop_assert_eq!(
@@ -1031,8 +1029,8 @@ mod test {
 
         #[test]
         fn symmetric_difference_relative_compliments(
-            a in RoaringBitmap::arbitrary(),
-            b in RoaringBitmap::arbitrary()
+            a in Roaring32::arbitrary(),
+            b in Roaring32::arbitrary()
         ) {
 
             prop_assert_eq!(
@@ -1111,7 +1109,7 @@ mod test {
         }
     }
 
-    fn empty_set() -> RoaringBitmap {
-        RoaringBitmap::new()
+    fn empty_set() -> Roaring32 {
+        Roaring32::new()
     }
 }

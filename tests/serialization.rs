@@ -1,35 +1,33 @@
-extern crate roaring;
-
-use roaring::RoaringBitmap;
+use roaring::Roaring32;
 
 // Test data from https://github.com/RoaringBitmap/RoaringFormatSpec/tree/master/testdata
 static BITMAP_WITHOUT_RUNS: &[u8] = include_bytes!("bitmapwithoutruns.bin");
 static BITMAP_WITH_RUNS: &[u8] = include_bytes!("bitmapwithruns.bin");
 
-fn test_data_bitmap() -> RoaringBitmap {
+fn test_data_bitmap() -> Roaring32 {
     (0..100)
         .map(|i| i * 1000)
         .chain((100_000..200_000).map(|i| i * 3))
         .chain(700_000..800_000)
-        .collect::<RoaringBitmap>()
+        .collect::<Roaring32>()
 }
 
-fn serialize_and_deserialize(bitmap: &RoaringBitmap) -> RoaringBitmap {
+fn serialize_and_deserialize(bitmap: &Roaring32) -> Roaring32 {
     let mut buffer = vec![];
     bitmap.serialize_into(&mut buffer).unwrap();
     assert_eq!(buffer.len(), bitmap.serialized_size());
-    RoaringBitmap::deserialize_from(&buffer[..]).unwrap()
+    Roaring32::deserialize_from(&buffer[..]).unwrap()
 }
 
 #[test]
 fn test_deserialize_without_runs_from_provided_data() {
-    assert_eq!(RoaringBitmap::deserialize_from(BITMAP_WITHOUT_RUNS).unwrap(), test_data_bitmap());
+    assert_eq!(Roaring32::deserialize_from(BITMAP_WITHOUT_RUNS).unwrap(), test_data_bitmap());
 }
 
 #[test]
 fn test_deserialize_with_runs_from_provided_data() {
     assert_eq!(
-        RoaringBitmap::deserialize_from(&mut &BITMAP_WITH_RUNS[..]).unwrap(),
+        Roaring32::deserialize_from(&mut &BITMAP_WITH_RUNS[..]).unwrap(),
         test_data_bitmap()
     );
 }
@@ -44,42 +42,42 @@ fn test_serialize_into_provided_data() {
 
 #[test]
 fn test_empty() {
-    let original = RoaringBitmap::new();
+    let original = Roaring32::new();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
 
 #[test]
 fn test_one() {
-    let original = (1..2).collect::<RoaringBitmap>();
+    let original = (1..2).collect::<Roaring32>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
 
 #[test]
 fn test_array() {
-    let original = (1000..3000).collect::<RoaringBitmap>();
+    let original = (1000..3000).collect::<Roaring32>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
 
 #[test]
 fn test_array_boundary() {
-    let original = (1000..5096).collect::<RoaringBitmap>();
+    let original = (1000..5096).collect::<Roaring32>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
 
 #[test]
 fn test_bitmap_boundary() {
-    let original = (1000..5097).collect::<RoaringBitmap>();
+    let original = (1000..5097).collect::<Roaring32>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
 
 #[test]
 fn test_bitmap_high16bits() {
-    let mut bitmap = RoaringBitmap::new();
+    let mut bitmap = Roaring32::new();
     for i in 0..1 << 16 {
         let value = i << 16;
         bitmap.insert(value);
@@ -88,35 +86,35 @@ fn test_bitmap_high16bits() {
     let mut buffer = vec![];
     bitmap.serialize_into(&mut buffer).unwrap();
 
-    let new = RoaringBitmap::deserialize_from(&buffer[..]);
+    let new = Roaring32::deserialize_from(&buffer[..]);
     assert!(new.is_ok());
     assert_eq!(bitmap, new.unwrap());
 }
 
 #[test]
 fn test_bitmap() {
-    let original = (1000..6000).collect::<RoaringBitmap>();
+    let original = (1000..6000).collect::<Roaring32>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
 
 #[test]
 fn test_arrays() {
-    let original = (1000..3000).chain(70000..74000).collect::<RoaringBitmap>();
+    let original = (1000..3000).chain(70000..74000).collect::<Roaring32>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
 
 #[test]
 fn test_bitmaps() {
-    let original = (1000..6000).chain(70000..77000).collect::<RoaringBitmap>();
+    let original = (1000..6000).chain(70000..77000).collect::<Roaring32>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
 
 #[test]
 fn test_mixed() {
-    let original = (1000..3000).chain(70000..77000).collect::<RoaringBitmap>();
+    let original = (1000..3000).chain(70000..77000).collect::<Roaring32>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
@@ -535,7 +533,7 @@ fn test_strange() {
         6684416, 6684424, 6684472, 6684563, 6684574, 6684575, 6684576, 6684577, 6684601, 6684635,
         6684636, 6684639, 6684640, 6684641, 6684642, 6684666, 108658947,
     ];
-    let original = ARRAY.iter().cloned().collect::<RoaringBitmap>();
+    let original = ARRAY.iter().cloned().collect::<Roaring32>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }

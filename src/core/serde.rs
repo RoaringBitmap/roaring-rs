@@ -1,26 +1,27 @@
-use serde::de::SeqAccess;
-use serde::de::Visitor;
-use serde::Deserialize;
-use serde::Deserializer;
-use serde::Serialize;
+use crate::{RoaringBitmap, Value};
+use serde::{
+    de::{SeqAccess, Visitor},
+    Deserialize, Deserializer, Serialize,
+};
+use std::marker::PhantomData;
 
-use crate::RoaringBitmap;
-
-impl<'de> Deserialize<'de> for RoaringBitmap {
+impl<'de, V: Value> Deserialize<'de> for RoaringBitmap<V> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        struct BitmapVisitor;
+        struct BitmapVisitor<V> {
+            value_type: PhantomData<V>,
+        }
 
-        impl<'de> Visitor<'de> for BitmapVisitor {
-            type Value = RoaringBitmap;
+        impl<'de, V: Value> Visitor<'de> for BitmapVisitor<V> {
+            type Value = RoaringBitmap<V>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
                 formatter.write_str("roaring bitmap")
             }
 
-            fn visit_bytes<E>(self, bytes: &[u8]) -> Result<RoaringBitmap, E>
+            fn visit_bytes<E>(self, bytes: &[u8]) -> Result<RoaringBitmap<V>, E>
             where
                 E: serde::de::Error,
             {
@@ -29,7 +30,7 @@ impl<'de> Deserialize<'de> for RoaringBitmap {
 
             // in some case bytes will be serialized as a sequence thus we need to accept both
             // even if it means non optimal performance
-            fn visit_seq<A>(self, mut seq: A) -> Result<RoaringBitmap, A::Error>
+            fn visit_seq<A>(self, mut seq: A) -> Result<RoaringBitmap<V>, A::Error>
             where
                 A: SeqAccess<'de>,
             {
@@ -41,11 +42,11 @@ impl<'de> Deserialize<'de> for RoaringBitmap {
             }
         }
 
-        deserializer.deserialize_bytes(BitmapVisitor)
+        deserializer.deserialize_bytes(BitmapVisitor { value_type: PhantomData })
     }
 }
 
-impl Serialize for RoaringBitmap {
+impl<V: Value> Serialize for RoaringBitmap<V> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -59,13 +60,13 @@ impl Serialize for RoaringBitmap {
 
 #[cfg(test)]
 mod test {
-    use crate::RoaringBitmap;
+    use crate::Roaring32;
     use proptest::prelude::*;
 
     proptest! {
         #[test]
         fn test_serde_json(
-            bitmap in RoaringBitmap::arbitrary(),
+            bitmap in Roaring32::arbitrary()
         ) {
             let json = serde_json::to_vec(&bitmap).unwrap();
             prop_assert_eq!(bitmap, serde_json::from_slice(&json).unwrap());
@@ -73,7 +74,7 @@ mod test {
 
         #[test]
         fn test_bincode(
-            bitmap in RoaringBitmap::arbitrary(),
+            bitmap in Roaring32::arbitrary()
         ) {
             let buffer = bincode::serialize(&bitmap).unwrap();
             prop_assert_eq!(bitmap, bincode::deserialize(&buffer).unwrap());

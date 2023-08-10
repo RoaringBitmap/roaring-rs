@@ -385,7 +385,7 @@ impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self.kind {
             ErrorKind::Cardinality { expected, actual } => {
-                write!(f, "Expected cardinality was {} but was {}", expected, actual)
+                write!(f, "Expected cardinality was {expected} but was {actual}")
             }
         }
     }

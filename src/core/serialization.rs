@@ -1,35 +1,35 @@
+use super::{
+    container::{Container, ARRAY_LIMIT},
+    store::{ArrayStore, BitmapStore, Store, BITMAP_LENGTH},
+};
+use crate::{ContainerKey, RoaringBitmap, Value};
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use std::convert::{Infallible, TryFrom};
-use std::error::Error;
-use std::io;
-use std::ops::RangeInclusive;
+use std::{
+    convert::{Infallible, TryFrom},
+    error::Error,
+    io, mem,
+    ops::RangeInclusive,
+};
 
-use crate::bitmap::container::{Container, ARRAY_LIMIT};
-use crate::bitmap::store::{ArrayStore, BitmapStore, Store, BITMAP_LENGTH};
-use crate::RoaringBitmap;
-
+const COOKIE_HEADER_SIZE: usize = 8; // In bytes.
 const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
 const SERIAL_COOKIE: u16 = 12347;
 const NO_OFFSET_THRESHOLD: usize = 4;
 
-// Sizes of header structures
-const DESCRIPTION_BYTES: usize = 4;
-const OFFSET_BYTES: usize = 4;
-
-impl RoaringBitmap {
+impl<V: Value> RoaringBitmap<V> {
     /// Return the size in bytes of the serialized output.
     /// This is compatible with the official C/C++, Java and Go implementations.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap;
+    /// use roaring::Roaring32;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
+    /// let rb1: Roaring32 = (1..4).collect();
     /// let mut bytes = Vec::with_capacity(rb1.serialized_size());
     /// rb1.serialize_into(&mut bytes).unwrap();
-    /// let rb2 = RoaringBitmap::deserialize_from(&bytes[..]).unwrap();
+    /// let rb2 = Roaring32::deserialize_from(&bytes[..]).unwrap();
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
@@ -37,14 +37,25 @@ impl RoaringBitmap {
         let container_sizes: usize = self
             .containers
             .iter()
-            .map(|container| match container.store {
-                Store::Array(ref values) => 8 + values.len() as usize * 2,
-                Store::Bitmap(..) => 8 + 8 * 1024,
+            .map(|container| {
+                // Descriptive header: key + cardinality.
+                let key_size = V::Key::size();
+                let card_size = mem::size_of::<u16>();
+                // Offset header.
+                let offset_size = mem::size_of::<u32>();
+
+                key_size
+                    + card_size
+                    + offset_size
+                    + match container.store {
+                        Store::Array(ref values) => values.len() as usize * mem::size_of::<u16>(),
+                        Store::Bitmap(..) => 1024 * mem::size_of::<u64>(),
+                    }
             })
             .sum();
 
-        // header + container sizes
-        8 + container_sizes
+        // Cookie header + container sizes
+        COOKIE_HEADER_SIZE + container_sizes
     }
 
     /// Serialize this bitmap into [the standard Roaring on-disk format][format].
@@ -55,12 +66,12 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap;
+    /// use roaring::Roaring32;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
+    /// let rb1: Roaring32 = (1..4).collect();
     /// let mut bytes = vec![];
     /// rb1.serialize_into(&mut bytes).unwrap();
-    /// let rb2 = RoaringBitmap::deserialize_from(&bytes[..]).unwrap();
+    /// let rb2 = Roaring32::deserialize_from(&bytes[..]).unwrap();
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
@@ -69,19 +80,26 @@ impl RoaringBitmap {
         writer.write_u32::<LittleEndian>(self.containers.len() as u32)?;
 
         for container in &self.containers {
-            writer.write_u16::<LittleEndian>(container.key)?;
+            container.key.write(&mut writer)?;
             writer.write_u16::<LittleEndian>((container.len() - 1) as u16)?;
         }
 
-        let mut offset = 8 + 8 * self.containers.len() as u32;
+        // Descriptive header: key + cardinality.
+        let key_size = V::Key::size();
+        let card_size = mem::size_of::<u16>();
+        // Offset header.
+        let offset_size = mem::size_of::<u32>();
+
+        let mut offset =
+            COOKIE_HEADER_SIZE + (key_size + card_size + offset_size) * self.containers.len();
         for container in &self.containers {
-            writer.write_u32::<LittleEndian>(offset)?;
+            writer.write_u32::<LittleEndian>(offset as u32)?;
             match container.store {
                 Store::Array(ref values) => {
-                    offset += values.len() as u32 * 2;
+                    offset += values.len() as usize * mem::size_of::<u16>();
                 }
                 Store::Bitmap(..) => {
-                    offset += 8 * 1024;
+                    offset += 1024 * mem::size_of::<u64>();
                 }
             }
         }
@@ -115,16 +133,16 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap;
+    /// use roaring::Roaring32;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
+    /// let rb1: Roaring32 = (1..4).collect();
     /// let mut bytes = vec![];
     /// rb1.serialize_into(&mut bytes).unwrap();
-    /// let rb2 = RoaringBitmap::deserialize_from(&bytes[..]).unwrap();
+    /// let rb2 = Roaring32::deserialize_from(&bytes[..]).unwrap();
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
-    pub fn deserialize_from<R: io::Read>(reader: R) -> io::Result<RoaringBitmap> {
+    pub fn deserialize_from<R: io::Read>(reader: R) -> io::Result<RoaringBitmap<V>> {
         RoaringBitmap::deserialize_from_impl(reader, ArrayStore::try_from, BitmapStore::try_from)
     }
 
@@ -138,16 +156,16 @@ impl RoaringBitmap {
     /// # Examples
     ///
     /// ```rust
-    /// use roaring::RoaringBitmap;
+    /// use roaring::Roaring32;
     ///
-    /// let rb1: RoaringBitmap = (1..4).collect();
+    /// let rb1: Roaring32 = (1..4).collect();
     /// let mut bytes = vec![];
     /// rb1.serialize_into(&mut bytes).unwrap();
-    /// let rb2 = RoaringBitmap::deserialize_unchecked_from(&bytes[..]).unwrap();
+    /// let rb2 = Roaring32::deserialize_unchecked_from(&bytes[..]).unwrap();
     ///
     /// assert_eq!(rb1, rb2);
     /// ```
-    pub fn deserialize_unchecked_from<R: io::Read>(reader: R) -> io::Result<RoaringBitmap> {
+    pub fn deserialize_unchecked_from<R: io::Read>(reader: R) -> io::Result<RoaringBitmap<V>> {
         RoaringBitmap::deserialize_from_impl::<R, _, Infallible, _, Infallible>(
             reader,
             |values| Ok(ArrayStore::from_vec_unchecked(values)),
@@ -159,7 +177,7 @@ impl RoaringBitmap {
         mut reader: R,
         a: A,
         b: B,
-    ) -> io::Result<RoaringBitmap>
+    ) -> io::Result<RoaringBitmap<V>>
     where
         R: io::Read,
         A: Fn(Vec<u16>) -> Result<ArrayStore, AErr>,
@@ -189,17 +207,19 @@ impl RoaringBitmap {
             None
         };
 
-        if size > u16::MAX as usize + 1 {
+        if size > V::max_containers() {
             return Err(io::Error::new(io::ErrorKind::Other, "size is greater than supported"));
         }
 
         // Read the container descriptions
-        let mut description_bytes = vec![0u8; size * DESCRIPTION_BYTES];
+        let key_size = V::Key::size();
+        let card_size = mem::size_of::<u16>();
+        let mut description_bytes = vec![0u8; size * (key_size + card_size)];
         reader.read_exact(&mut description_bytes)?;
         let mut description_bytes = &description_bytes[..];
 
         if has_offsets {
-            let mut offsets = vec![0u8; size * OFFSET_BYTES];
+            let mut offsets = vec![0u8; size * mem::size_of::<u32>()];
             reader.read_exact(&mut offsets)?;
             drop(offsets); // Not useful when deserializing into memory
         }
@@ -208,7 +228,7 @@ impl RoaringBitmap {
 
         // Read each container
         for i in 0..size {
-            let key = description_bytes.read_u16::<LittleEndian>()?;
+            let key = <V::Key as ContainerKey>::read(&mut description_bytes)?;
             let cardinality = u64::from(description_bytes.read_u16::<LittleEndian>()?) + 1;
 
             // If the run container bitmap is present, check if this container is a run container
@@ -254,17 +274,15 @@ impl RoaringBitmap {
 
 #[cfg(test)]
 mod test {
-    use crate::RoaringBitmap;
+    use crate::Roaring32;
     use proptest::prelude::*;
 
     proptest! {
         #[test]
-        fn test_serialization(
-            bitmap in RoaringBitmap::arbitrary(),
-        ) {
+        fn test_serialization(bitmap in Roaring32::arbitrary()) {
             let mut buffer = Vec::new();
             bitmap.serialize_into(&mut buffer).unwrap();
-            prop_assert_eq!(bitmap, RoaringBitmap::deserialize_from(buffer.as_slice()).unwrap());
+            prop_assert_eq!(bitmap, Roaring32::deserialize_from(buffer.as_slice()).unwrap());
         }
     }
 }
