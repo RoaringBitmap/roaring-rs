@@ -1,4 +1,4 @@
-use roaring::Roaring32;
+use roaring::{Roaring32, Roaring64};
 use std::iter::FromIterator;
 
 /// macro created to reduce code duplication
@@ -50,8 +50,8 @@ fn append_error() {
     }
 }
 
-// #[test]
-// fn append_tree() {
-//     test_from_sorted_iter!((0..1_000_000).map(|x| 13 * x).collect::<Vec<u64>>(), RoaringTreemap);
-//     test_from_sorted_iter!(vec![1, 2, 4, 5, 7, 8, 9], RoaringTreemap);
-// }
+#[test]
+fn append_roaring64() {
+    test_from_sorted_iter!((0..1_000_000).map(|x| 13 * x).collect::<Vec<u64>>(), Roaring64);
+    test_from_sorted_iter!(vec![1, 2, 4, 5, 7, 8, 9], Roaring64);
+}

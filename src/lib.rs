@@ -20,14 +20,14 @@ use std::fmt;
 
 mod core;
 
-/// A compressed bitmap with u64 values.  Implemented as a `BTreeMap` of `RoaringBitmap`s.
-// pub mod treemap;
-// pub use treemap::RoaringTreemap;
 mod value;
 pub use value::{ContainerKey, Value, ValueRange};
 
 mod roaring32;
 pub use roaring32::Roaring32;
+
+mod roaring64;
+pub use roaring64::Roaring64;
 
 pub use self::core::RoaringBitmap;
 
@@ -53,7 +53,7 @@ impl fmt::Display for NonSortedIntegers {
 impl Error for NonSortedIntegers {}
 
 /// A [`Iterator::collect`] blanket implementation that provides extra methods for [`Roaring32`]
-/// and [`RoaringTreemap`].
+/// and [`Roaring64`].
 ///
 /// When merging multiple bitmap with the same operation it's usually faster to call the
 /// method in this trait than to write your own for loop and merging the bitmaps yourself.

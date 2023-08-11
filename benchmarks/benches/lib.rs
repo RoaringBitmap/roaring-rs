@@ -1,16 +1,14 @@
-use itertools::Itertools;
-use std::cmp::Reverse;
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
-
-use criterion::measurement::Measurement;
-use criterion::{
-    black_box, criterion_group, criterion_main, BatchSize, BenchmarkGroup, BenchmarkId, Criterion,
-    Throughput,
-};
-
-use roaring::{MultiOps, Roaring32};
-
 use crate::datasets::Datasets;
+use criterion::{
+    black_box, criterion_group, criterion_main, measurement::Measurement, BatchSize,
+    BenchmarkGroup, BenchmarkId, Criterion, Throughput,
+};
+use itertools::Itertools;
+use roaring::{MultiOps, Roaring32, Roaring64};
+use std::{
+    cmp::Reverse,
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign},
+};
 
 mod datasets;
 
@@ -670,29 +668,29 @@ fn insert_range_bitmap(c: &mut Criterion) {
     }
 }
 
-// fn insert_range_treemap(c: &mut Criterion) {
-//     for &size in &[1_000_u64, 10_000u64, 2 * (u32::MAX as u64)] {
-//         let mut group = c.benchmark_group("insert_range_treemap");
-//         group.throughput(criterion::Throughput::Elements(size));
-//         group.bench_function(format!("from_empty_{}", size), |b| {
-//             let bm = RoaringTreemap::new();
-//             b.iter_batched(
-//                 || bm.clone(),
-//                 |mut bm| black_box(bm.insert_range(0..size)),
-//                 criterion::BatchSize::SmallInput,
-//             )
-//         });
-//         group.bench_function(format!("pre_populated_{}", size), |b| {
-//             let mut bm = RoaringTreemap::new();
-//             bm.insert_range(0..size);
-//             b.iter_batched(
-//                 || bm.clone(),
-//                 |mut bm| black_box(bm.insert_range(0..size)),
-//                 criterion::BatchSize::SmallInput,
-//             )
-//         });
-//     }
-// }
+fn insert_range_roaring64(c: &mut Criterion) {
+    for &size in &[1_000_u64, 10_000u64, 2 * (u32::MAX as u64)] {
+        let mut group = c.benchmark_group("insert_range_roaring64");
+        group.throughput(criterion::Throughput::Elements(size));
+        group.bench_function(format!("from_empty_{}", size), |b| {
+            let bm = Roaring64::new();
+            b.iter_batched(
+                || bm.clone(),
+                |mut bm| black_box(bm.insert_range(0..size)),
+                criterion::BatchSize::SmallInput,
+            )
+        });
+        group.bench_function(format!("pre_populated_{}", size), |b| {
+            let mut bm = Roaring64::new();
+            bm.insert_range(0..size);
+            b.iter_batched(
+                || bm.clone(),
+                |mut bm| black_box(bm.insert_range(0..size)),
+                criterion::BatchSize::SmallInput,
+            )
+        });
+    }
+}
 
 criterion_group!(
     benches,
@@ -711,7 +709,7 @@ criterion_group!(
     remove,
     remove_range_bitmap,
     insert_range_bitmap,
-    // insert_range_treemap,
+    insert_range_roaring64,
     iteration,
     is_empty,
     serialization,
