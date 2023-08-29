@@ -1,9 +1,8 @@
-extern crate roaring;
-use roaring::RoaringBitmap;
+use roaring::Roaring32;
 
 #[test]
 fn smoke() {
-    let mut bitmap = RoaringBitmap::new();
+    let mut bitmap = Roaring32::new();
     assert_eq!(bitmap.len(), 0);
     assert!(bitmap.is_empty());
     bitmap.remove(0);
@@ -38,9 +37,9 @@ fn remove_range() {
     let ranges = [0u32, 1, 63, 64, 65, 100, 4096 - 1, 4096, 4096 + 1, 65536 - 1, 65536, 65536 + 1];
     for (i, &a) in ranges.iter().enumerate() {
         for &b in &ranges[i..] {
-            let mut bitmap = (0..=65536).collect::<RoaringBitmap>();
+            let mut bitmap = (0..=65536).collect::<Roaring32>();
             assert_eq!(bitmap.remove_range(a..b), u64::from(b - a));
-            assert_eq!(bitmap, (0..a).chain(b..=65536).collect::<RoaringBitmap>());
+            assert_eq!(bitmap, (0..a).chain(b..=65536).collect::<Roaring32>());
         }
     }
 }
@@ -48,7 +47,7 @@ fn remove_range() {
 #[test]
 #[allow(clippy::range_plus_one)] // remove_range needs an exclusive range
 fn remove_range_array() {
-    let mut bitmap = (0..1000).collect::<RoaringBitmap>();
+    let mut bitmap = (0..1000).collect::<Roaring32>();
     for i in 0..1000 {
         assert_eq!(bitmap.remove_range(i..i), 0);
         assert_eq!(bitmap.remove_range(i..i + 1), 1);
@@ -56,13 +55,13 @@ fn remove_range_array() {
 
     // insert 0, 2, 4, ..
     // remove [0, 2), [2, 4), ..
-    let mut bitmap = (0..1000).map(|x| x * 2).collect::<RoaringBitmap>();
+    let mut bitmap = (0..1000).map(|x| x * 2).collect::<Roaring32>();
     for i in 0..1000 {
         assert_eq!(bitmap.remove_range(i * 2..(i + 1) * 2), 1);
     }
 
     // remove [0, 2), [2, 4), ..
-    let mut bitmap = (0..1000).collect::<RoaringBitmap>();
+    let mut bitmap = (0..1000).collect::<Roaring32>();
     for i in 0..1000 / 2 {
         assert_eq!(bitmap.remove_range(i * 2..(i + 1) * 2), 2);
     }
@@ -71,7 +70,7 @@ fn remove_range_array() {
 #[test]
 #[allow(clippy::range_plus_one)] // remove_range needs an exclusive range
 fn remove_range_bitmap() {
-    let mut bitmap = (0..4096 + 1000).collect::<RoaringBitmap>();
+    let mut bitmap = (0..4096 + 1000).collect::<Roaring32>();
     for i in 0..1000 {
         assert_eq!(bitmap.remove_range(i..i), 0);
         assert_eq!(bitmap.remove_range(i..i + 1), 1);
@@ -79,19 +78,19 @@ fn remove_range_bitmap() {
 
     // insert 0, 2, 4, ..
     // remove [0, 2), [2, 4), ..
-    let mut bitmap = ((0..4096 + 1000).map(|x| x * 2)).collect::<RoaringBitmap>();
+    let mut bitmap = ((0..4096 + 1000).map(|x| x * 2)).collect::<Roaring32>();
     for i in 0..1000 {
         assert_eq!(bitmap.remove_range(i * 2..(i + 1) * 2), 1);
     }
 
     // remove [0, 2), [2, 4), ..
-    let mut bitmap = (0..4096 + 1000).collect::<RoaringBitmap>();
+    let mut bitmap = (0..4096 + 1000).collect::<Roaring32>();
     for i in 0..1000 / 2 {
         assert_eq!(bitmap.remove_range(i * 2..(i + 1) * 2), 2);
     }
 
     // remove [1, 3), [3, 5), ..
-    let mut bitmap = (0..4096 + 1000).collect::<RoaringBitmap>();
+    let mut bitmap = (0..4096 + 1000).collect::<Roaring32>();
     for i in 0..1000 / 2 {
         assert_eq!(bitmap.remove_range(i * 2 + 1..(i + 1) * 2 + 1), 2);
     }
@@ -99,7 +98,7 @@ fn remove_range_bitmap() {
 
 #[test]
 fn to_bitmap() {
-    let bitmap = (0..5000).collect::<RoaringBitmap>();
+    let bitmap = (0..5000).collect::<Roaring32>();
     assert_eq!(bitmap.len(), 5000);
     for i in 1..5000 {
         assert!(bitmap.contains(i));
@@ -109,7 +108,7 @@ fn to_bitmap() {
 
 #[test]
 fn to_array() {
-    let mut bitmap = (0..5000).collect::<RoaringBitmap>();
+    let mut bitmap = (0..5000).collect::<Roaring32>();
     for i in 3000..5000 {
         bitmap.remove(i);
     }

@@ -1,5 +1,4 @@
-extern crate roaring;
-use roaring::{RoaringBitmap, RoaringTreemap};
+use roaring::{Roaring32, Roaring64};
 use std::iter::FromIterator;
 
 /// macro created to reduce code duplication
@@ -21,18 +20,18 @@ macro_rules! test_from_sorted_iter {
 
 #[test]
 fn append() {
-    test_from_sorted_iter!((0..1_000_000).map(|x| 13 * x).collect::<Vec<u32>>(), RoaringBitmap);
-    test_from_sorted_iter!(vec![1, 2, 4, 5, 7, 8, 9], RoaringBitmap);
+    test_from_sorted_iter!((0..1_000_000).map(|x| 13 * x).collect::<Vec<u32>>(), Roaring32);
+    test_from_sorted_iter!(vec![1, 2, 4, 5, 7, 8, 9], Roaring32);
 }
 
 #[test]
 fn append_empty() {
-    assert_eq!(RoaringBitmap::new().append(vec![]), Ok(0u64))
+    assert_eq!(Roaring32::new().append(vec![]), Ok(0u64))
 }
 
 #[test]
 fn append_error() {
-    match [100u32].iter().cloned().collect::<RoaringBitmap>().append(vec![10, 20, 0]) {
+    match [100u32].iter().cloned().collect::<Roaring32>().append(vec![10, 20, 0]) {
         Ok(_) => {
             panic!("The 0th element in the iterator was < the max of the bitmap")
         }
@@ -41,7 +40,7 @@ fn append_error() {
         }
     }
 
-    match [100u32].iter().cloned().collect::<RoaringBitmap>().append(vec![200, 201, 201]) {
+    match [100u32].iter().cloned().collect::<Roaring32>().append(vec![200, 201, 201]) {
         Ok(_) => {
             panic!("The 3rd element in the iterator was < 2nd")
         }
@@ -52,7 +51,7 @@ fn append_error() {
 }
 
 #[test]
-fn append_tree() {
-    test_from_sorted_iter!((0..1_000_000).map(|x| 13 * x).collect::<Vec<u64>>(), RoaringTreemap);
-    test_from_sorted_iter!(vec![1, 2, 4, 5, 7, 8, 9], RoaringTreemap);
+fn append_roaring64() {
+    test_from_sorted_iter!((0..1_000_000).map(|x| 13 * x).collect::<Vec<u64>>(), Roaring64);
+    test_from_sorted_iter!(vec![1, 2, 4, 5, 7, 8, 9], Roaring64);
 }

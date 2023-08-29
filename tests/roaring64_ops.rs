@@ -1,10 +1,10 @@
-use roaring::Roaring32;
+use roaring::Roaring64;
 
 #[test]
 fn or() {
-    let mut rb1 = (1..4).collect::<Roaring32>();
-    let rb2 = (3..6).collect::<Roaring32>();
-    let rb3 = (1..6).collect::<Roaring32>();
+    let mut rb1 = (1..4).collect::<Roaring64>();
+    let rb2 = (3..6).collect::<Roaring64>();
+    let rb3 = (1..6).collect::<Roaring64>();
 
     assert_eq!(rb3, &rb1 | &rb2);
     assert_eq!(rb3, &rb1 | rb2.clone());
@@ -20,9 +20,9 @@ fn or() {
 
 #[test]
 fn and() {
-    let mut rb1 = (1..4).collect::<Roaring32>();
-    let rb2 = (3..6).collect::<Roaring32>();
-    let rb3 = (3..4).collect::<Roaring32>();
+    let mut rb1 = (1..4).collect::<Roaring64>();
+    let rb2 = (3..6).collect::<Roaring64>();
+    let rb3 = (3..4).collect::<Roaring64>();
 
     assert_eq!(rb3, &rb1 & &rb2);
     assert_eq!(rb3, &rb1 & rb2.clone());
@@ -38,9 +38,9 @@ fn and() {
 
 #[test]
 fn sub() {
-    let mut rb1 = (1..4000).collect::<Roaring32>();
-    let rb2 = (3..5000).collect::<Roaring32>();
-    let rb3 = (1..3).collect::<Roaring32>();
+    let mut rb1 = (1..4).collect::<Roaring64>();
+    let rb2 = (3..6).collect::<Roaring64>();
+    let rb3 = (1..3).collect::<Roaring64>();
 
     assert_eq!(rb3, &rb1 - &rb2);
     assert_eq!(rb3, &rb1 - rb2.clone());
@@ -56,10 +56,10 @@ fn sub() {
 
 #[test]
 fn xor() {
-    let mut rb1 = (1..4).collect::<Roaring32>();
-    let rb2 = (3..6).collect::<Roaring32>();
-    let rb3 = (1..3).chain(4..6).collect::<Roaring32>();
-    let rb4 = (0..0).collect::<Roaring32>();
+    let mut rb1 = (1..4).collect::<Roaring64>();
+    let rb2 = (3..6).collect::<Roaring64>();
+    let rb3 = ((1..3).chain(4..6)).collect::<Roaring64>();
+    let rb4 = (0..0).collect::<Roaring64>();
 
     assert_eq!(rb3, &rb1 ^ &rb2);
     assert_eq!(rb3, &rb1 ^ rb2.clone());
