@@ -6,8 +6,6 @@ use std::{
     ops::{BitOrAssign, BitXorAssign},
 };
 
-use retain_mut::RetainMut;
-
 use crate::{MultiOps, RoaringBitmap};
 
 use super::{container::Container, store::Store};
@@ -229,7 +227,7 @@ fn try_multi_or_owned<E>(
         merge_container_owned(&mut containers, bitmap?.containers, BitOrAssign::bitor_assign);
     }
 
-    RetainMut::retain_mut(&mut containers, |container| {
+    containers.retain_mut(|container| {
         if container.len() > 0 {
             container.ensure_correct_store();
             true
@@ -255,7 +253,7 @@ fn try_multi_xor_owned<E>(
         merge_container_owned(&mut containers, bitmap?.containers, BitXorAssign::bitxor_assign);
     }
 
-    RetainMut::retain_mut(&mut containers, |container| {
+    containers.retain_mut(|container| {
         if container.len() > 0 {
             container.ensure_correct_store();
             true
