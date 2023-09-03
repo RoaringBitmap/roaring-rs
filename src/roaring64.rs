@@ -22,6 +22,10 @@ use std::{
 /// println!("total bits set to true: {}", rb.len());
 /// ```
 pub type Roaring64 = RoaringBitmap<u64>;
+/// An iterator for `Roaring64.
+pub type Iter64<'a> = crate::core::Iter<'a, u64>;
+/// An iterator for `Roaring64`.
+pub type IntoIter64 = crate::core::IntoIter<u64>;
 
 impl Value for u64 {
     type Key = u64;

@@ -22,6 +22,10 @@ use std::{
 /// println!("total bits set to true: {}", rb.len());
 /// ```
 pub type Roaring32 = RoaringBitmap<u32>;
+/// An iterator for `Roaring32`.
+pub type Iter32<'a> = crate::core::Iter<'a, u32>;
+/// An iterator for `Roaring32`.
+pub type IntoIter32 = crate::core::IntoIter<u32>;
 
 impl Value for u32 {
     type Key = u16;
