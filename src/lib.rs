@@ -29,7 +29,7 @@ pub use roaring32::Roaring32;
 mod roaring64;
 pub use roaring64::Roaring64;
 
-pub use self::core::RoaringBitmap;
+pub use self::core::{IntoIter, Iter, RoaringBitmap};
 
 /// An error type that is returned when an iterator isn't sorted.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
