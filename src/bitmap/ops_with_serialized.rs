@@ -16,7 +16,25 @@ const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
 const SERIAL_COOKIE: u16 = 12347;
 
 impl RoaringBitmap {
-    pub fn union_with_serialized(&mut self, mut reader: impl Read) -> io::Result<()> {
+    /// Returns the union between a roaring bitmap and a serialized roaring bitmap.
+    ///
+    /// Example
+    /// =======
+    ///
+    /// ```
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut a = RoaringBitmap::from_sorted_iter(0..3000).unwrap();
+    /// let b = RoaringBitmap::from_sorted_iter(2000..6000).unwrap();
+    /// let union = &a | &b;
+    ///
+    /// let mut b_ser = Vec::new();
+    /// b.serialize_into(&mut b_ser).unwrap();
+    /// a.union_with_serialized_unchecked(&*b_ser).unwrap();
+    ///
+    /// assert_eq!(a, union);
+    /// ```
+    pub fn union_with_serialized_unchecked(&mut self, mut reader: impl Read) -> io::Result<()> {
         let (size, has_offsets) = {
             let cookie = reader.read_u32::<LittleEndian>()?;
             if cookie == SERIAL_COOKIE_NO_RUNCONTAINER {
@@ -122,7 +140,7 @@ mod test {
 
             let mut b_ser = Vec::new();
             b.serialize_into(&mut b_ser).unwrap();
-            a.union_with_serialized(&*b_ser).unwrap();
+            a.union_with_serialized_unchecked(&*b_ser).unwrap();
 
             prop_assert_eq!(a, union);
         }
@@ -165,7 +183,7 @@ mod test {
 
             let mut b_ser = Vec::new();
             b.serialize_into(&mut b_ser).unwrap();
-            a.union_with_serialized(&*b_ser).unwrap();
+            a.union_with_serialized_unchecked(&*b_ser).unwrap();
 
             assert_eq!(a, union, "When testing: {a:?} | {b:?}");
         }
