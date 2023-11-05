@@ -104,6 +104,46 @@ impl RoaringBitmap {
         Ok(())
     }
 
+    pub fn serialize_into_slice(&self, mut slice: &mut [u8]) -> io::Result<()> {
+        slice.write_u32::<LittleEndian>(SERIAL_COOKIE_NO_RUNCONTAINER)?;
+        slice.write_u32::<LittleEndian>(self.containers.len() as u32)?;
+
+        for container in &self.containers {
+            slice.write_u16::<LittleEndian>(container.key)?;
+            slice.write_u16::<LittleEndian>((container.len() - 1) as u16)?;
+        }
+
+        let mut offset = 8 + 8 * self.containers.len() as u32;
+        for container in &self.containers {
+            slice.write_u32::<LittleEndian>(offset)?;
+            match container.store {
+                Store::Array(ref values) => {
+                    offset += values.len() as u32 * 2;
+                }
+                Store::Bitmap(..) => {
+                    offset += 8 * 1024;
+                }
+            }
+        }
+
+        for container in &self.containers {
+            match container.store {
+                Store::Array(ref values) => {
+                    for &value in values.iter() {
+                        slice.write_u16::<LittleEndian>(value)?;
+                    }
+                }
+                Store::Bitmap(ref bits) => {
+                    for &value in bits.as_array() {
+                        slice.write_u64::<LittleEndian>(value)?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Deserialize a bitmap into memory from [the standard Roaring on-disk
     /// format][format]. This is compatible with the official C/C++, Java and
     /// Go implementations. This method checks that all of the internal values
