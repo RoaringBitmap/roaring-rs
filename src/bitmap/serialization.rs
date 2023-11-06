@@ -3,6 +3,7 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::convert::{Infallible, TryFrom};
 use std::error::Error;
 use std::io;
+use std::mem::MaybeUninit;
 use std::ops::RangeInclusive;
 
 use crate::bitmap::container::{Container, ARRAY_LIMIT};
@@ -104,7 +105,11 @@ impl RoaringBitmap {
         Ok(())
     }
 
-    pub fn serialize_into_slice(&self, mut slice: &mut [u8]) -> io::Result<()> {
+    pub fn serialize_into_uninit_slice(&self, mut slice: &mut [MaybeUninit<u8>]) -> io::Result<()> {
+        // We must use MaybeUninit::slice_as_mut_ptr combined with write_unaligned
+        // https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.slice_as_mut_ptr
+        // https://doc.rust-lang.org/std/ptr/fn.write_unaligned.html
+
         slice.write_u32::<LittleEndian>(SERIAL_COOKIE_NO_RUNCONTAINER)?;
         slice.write_u32::<LittleEndian>(self.containers.len() as u32)?;
 
