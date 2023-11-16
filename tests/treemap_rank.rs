@@ -3,7 +3,7 @@ extern crate roaring;
 use proptest::collection::{btree_set, vec};
 use proptest::prelude::*;
 use roaring::RoaringTreemap;
-use std::ops::RangeInclusive;
+use core::ops::RangeInclusive;
 
 const BITMAP_MAX: u64 = u32::MAX as u64;
 

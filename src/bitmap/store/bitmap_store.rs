@@ -1,7 +1,10 @@
-use std::borrow::Borrow;
-use std::cmp::Ordering;
-use std::fmt::{Display, Formatter};
-use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
+use core::borrow::Borrow;
+use core::cmp::Ordering;
+use core::fmt::{Display, Formatter};
+use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
+
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 
 use super::ArrayStore;
 
@@ -382,7 +385,7 @@ pub enum ErrorKind {
 }
 
 impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self.kind {
             ErrorKind::Cardinality { expected, actual } => {
                 write!(f, "Expected cardinality was {} but was {}", expected, actual)
@@ -391,6 +394,7 @@ impl Display for Error {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 pub struct BitmapIter<B: Borrow<[u64; BITMAP_LENGTH]>> {

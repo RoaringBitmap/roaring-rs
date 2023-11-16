@@ -72,4 +72,4 @@ https://github.com/RoaringBitmap/roaring-rs/actions/workflows/test.yml/badge.svg
 ## Experimental features
 
 The `simd` feature is in active development. It has not been tested. If you would like to build with `simd` note that
-`std::simd` is only available in Rust nightly.
+`core::simd` is only available in Rust nightly.

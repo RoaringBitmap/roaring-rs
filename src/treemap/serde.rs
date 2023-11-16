@@ -16,7 +16,7 @@ impl<'de> Deserialize<'de> for RoaringTreemap {
         impl<'de> Visitor<'de> for TreemapVisitor {
             type Value = RoaringTreemap;
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
                 formatter.write_str("roaring bitmap")
             }
 

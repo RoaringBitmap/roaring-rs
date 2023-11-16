@@ -2,12 +2,15 @@ mod scalar;
 mod vector;
 mod visitor;
 
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+
 use crate::bitmap::store::array_store::visitor::{CardinalityCounter, VecWriter};
-use std::cmp::Ordering;
-use std::cmp::Ordering::*;
-use std::convert::{TryFrom, TryInto};
-use std::fmt::{Display, Formatter};
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitXor, RangeInclusive, Sub, SubAssign};
+use core::cmp::Ordering;
+use core::cmp::Ordering::*;
+use core::convert::TryFrom;
+use core::fmt::{Display, Formatter};
+use core::ops::{BitAnd, BitAndAssign, BitOr, BitXor, RangeInclusive, Sub, SubAssign};
 
 use super::bitmap_store::{bit, key, BitmapStore, BITMAP_LENGTH};
 
@@ -214,11 +217,11 @@ impl ArrayStore {
         self.vec.get(n as usize).cloned()
     }
 
-    pub fn iter(&self) -> std::slice::Iter<u16> {
+    pub fn iter(&self) -> core::slice::Iter<u16> {
         self.vec.iter()
     }
 
-    pub fn into_iter(self) -> std::vec::IntoIter<u16> {
+    pub fn into_iter(self) -> alloc::vec::IntoIter<u16> {
         self.vec.into_iter()
     }
 
@@ -263,7 +266,7 @@ pub enum ErrorKind {
 }
 
 impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self.kind {
             ErrorKind::Duplicate => {
                 write!(f, "Duplicate element found at index: {}", self.index)
@@ -275,6 +278,7 @@ impl Display for Error {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl TryFrom<Vec<u16>> for ArrayStore {

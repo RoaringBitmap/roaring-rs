@@ -1,6 +1,7 @@
-use std::collections::btree_map::{BTreeMap, Entry};
-use std::iter;
-use std::ops::RangeBounds;
+use alloc::collections::btree_map::{BTreeMap, Entry};
+use alloc::vec::Vec;
+use core::iter;
+use core::ops::RangeBounds;
 
 use crate::RoaringBitmap;
 use crate::RoaringTreemap;

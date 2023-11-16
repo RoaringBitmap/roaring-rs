@@ -1,6 +1,5 @@
-use std::collections::btree_map;
-use std::collections::BTreeMap;
-use std::iter::{self, FromIterator};
+use alloc::collections::{btree_map, BTreeMap};
+use core::iter::{self, FromIterator};
 
 use super::util;
 use crate::bitmap::IntoIter as IntoIter32;
@@ -160,7 +159,7 @@ impl RoaringTreemap {
     ///
     /// ```rust
     /// use roaring::RoaringTreemap;
-    /// use std::iter::FromIterator;
+    /// use core::iter::FromIterator;
     ///
     /// let bitmap = (1..3).collect::<RoaringTreemap>();
     /// let mut iter = bitmap.iter();
@@ -180,7 +179,7 @@ impl RoaringTreemap {
     ///
     /// ```rust
     /// use roaring::{RoaringBitmap, RoaringTreemap};
-    /// use std::iter::FromIterator;
+    /// use core::iter::FromIterator;
     ///
     /// let original = (0..6000).collect::<RoaringTreemap>();
     /// let mut bitmaps = original.bitmaps();
@@ -200,7 +199,7 @@ impl RoaringTreemap {
     ///
     /// ```rust
     /// use roaring::RoaringTreemap;
-    /// use std::iter::FromIterator;
+    /// use core::iter::FromIterator;
     ///
     /// let original = (0..6000).collect::<RoaringTreemap>();
     /// let clone = RoaringTreemap::from_bitmaps(original.bitmaps().map(|(p, b)| (p, b.clone())));

@@ -1,7 +1,7 @@
 use proptest::arbitrary::any;
 use proptest::collection::btree_set;
 use proptest::proptest;
-use std::iter::FromIterator;
+use core::iter::FromIterator;
 
 use roaring::RoaringBitmap;
 

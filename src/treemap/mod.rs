@@ -1,5 +1,5 @@
 use crate::RoaringBitmap;
-use std::collections::BTreeMap;
+use alloc::collections::BTreeMap;
 
 mod fmt;
 mod multiops;
@@ -14,6 +14,7 @@ mod iter;
 mod ops;
 #[cfg(feature = "serde")]
 mod serde;
+#[cfg(feature = "std")]
 mod serialization;
 
 pub use self::iter::{IntoIter, Iter};

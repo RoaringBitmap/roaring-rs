@@ -1,6 +1,6 @@
 use itertools::Itertools;
-use std::cmp::Reverse;
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
+use core::cmp::Reverse;
+use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
 use criterion::measurement::Measurement;
 use criterion::{

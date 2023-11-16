@@ -17,11 +17,13 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 bytemuck = "1.7.3"
-byteorder = "1.4.3"
+byteorder = { version = "1.4.3", default-features = false }
 serde = { version = "1.0.139", optional = true }
 
 [features]
+default = ["std"]
 simd = []
+std = ["byteorder/std"]
 
 [dev-dependencies]
 proptest = "1.2.0"

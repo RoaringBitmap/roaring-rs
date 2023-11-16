@@ -1,6 +1,6 @@
-use std::borrow::Borrow;
-use std::cmp::Ordering;
-use std::iter::Peekable;
+use core::borrow::Borrow;
+use core::cmp::Ordering;
+use core::iter::Peekable;
 
 use super::container::Container;
 use crate::RoaringBitmap;

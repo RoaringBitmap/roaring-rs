@@ -14,7 +14,10 @@ mod iter;
 mod ops;
 #[cfg(feature = "serde")]
 mod serde;
+#[cfg(feature = "std")]
 mod serialization;
+
+use alloc::vec::Vec;
 
 use self::cmp::Pairs;
 pub use self::iter::IntoIter;

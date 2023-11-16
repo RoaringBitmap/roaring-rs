@@ -1,5 +1,5 @@
-use std::collections::btree_map;
-use std::iter::Peekable;
+use alloc::collections::btree_map;
+use core::iter::Peekable;
 
 use crate::RoaringBitmap;
 use crate::RoaringTreemap;

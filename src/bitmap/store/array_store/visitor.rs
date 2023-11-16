@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+
 #[cfg(feature = "simd")]
 use crate::bitmap::store::array_store::vector::swizzle_to_front;
 

@@ -390,7 +390,7 @@ where
     U: SimdElement + PartialOrd,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    unsafe { std::ptr::read_unaligned(src as *const _ as *const Simd<U, LANES>) }
+    unsafe { core::ptr::read_unaligned(src as *const _ as *const Simd<U, LANES>) }
 }
 
 /// write `v` to slice `out`
@@ -416,7 +416,7 @@ where
     U: SimdElement + PartialOrd,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    unsafe { std::ptr::write_unaligned(out as *mut _ as *mut Simd<U, LANES>, v) }
+    unsafe { core::ptr::write_unaligned(out as *mut _ as *mut Simd<U, LANES>, v) }
 }
 
 /// Compare all lanes in `a` to all lanes in `b`

@@ -1,5 +1,7 @@
-use std::cmp::Ordering;
-use std::ops::RangeBounds;
+use core::cmp::Ordering;
+use core::ops::RangeBounds;
+
+use alloc::vec::Vec;
 
 use crate::RoaringBitmap;
 

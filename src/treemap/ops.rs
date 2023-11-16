@@ -1,6 +1,7 @@
-use std::collections::btree_map::Entry;
-use std::mem;
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
+use alloc::collections::btree_map::Entry;
+use alloc::vec::Vec;
+use core::mem;
+use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
 use crate::RoaringTreemap;
 
