@@ -1,7 +1,7 @@
-use core::env;
-use core::fs::File;
-use core::io::BufReader;
-use core::path::{Path, PathBuf};
+use std::env;
+use std::fs::File;
+use std::io::BufReader;
+use std::path::{Path, PathBuf};
 
 use git2::FetchOptions;
 use once_cell::sync::OnceCell as SyncOnceCell;
@@ -13,7 +13,7 @@ static INSTANCE: SyncOnceCell<Vec<Dataset>> = SyncOnceCell::new();
 pub struct Datasets;
 
 pub struct DatasetsIter {
-    iter: core::slice::Iter<'static, Dataset>,
+    iter: std::slice::Iter<'static, Dataset>,
 }
 
 impl Iterator for DatasetsIter {
@@ -44,7 +44,7 @@ pub struct Dataset {
     pub bitmaps: Vec<RoaringBitmap>,
 }
 
-fn init_datasets() -> Result<PathBuf, Box<dyn core::error::Error>> {
+fn init_datasets() -> Result<PathBuf, Box<dyn std::error::Error>> {
     let out_dir = env::var_os("CARGO_MANIFEST_DIR").ok_or(env::VarError::NotPresent)?;
 
     let out_path = Path::new(&out_dir);
@@ -122,7 +122,7 @@ fn init_datasets() -> Result<PathBuf, Box<dyn core::error::Error>> {
     Ok(repo_path)
 }
 
-fn parse_datasets<P: AsRef<Path>>(path: P) -> Result<Vec<Dataset>, Box<dyn core::error::Error>> {
+fn parse_datasets<P: AsRef<Path>>(path: P) -> Result<Vec<Dataset>, Box<dyn std::error::Error>> {
     const DATASET_FILENAME_WHITELIST: &[&str] = &[
         "census-income.zip",
         "census-income_srt.zip",
@@ -135,7 +135,7 @@ fn parse_datasets<P: AsRef<Path>>(path: P) -> Result<Vec<Dataset>, Box<dyn core:
     ];
 
     use indicatif::{ProgressBar, ProgressStyle};
-    use core::io::BufRead;
+    use std::io::BufRead;
     use zip::ZipArchive;
 
     let dir = path.as_ref().read_dir()?;
