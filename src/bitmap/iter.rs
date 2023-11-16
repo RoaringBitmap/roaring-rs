@@ -1,6 +1,6 @@
+use alloc::vec::{self, Vec};
 use core::iter::{self, FromIterator};
 use core::slice;
-use alloc::vec::{self, Vec};
 
 use super::container::Container;
 use crate::{NonSortedIntegers, RoaringBitmap};

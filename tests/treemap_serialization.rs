@@ -1,7 +1,7 @@
 #[cfg(feature = "std")]
-use roaring::RoaringTreemap;
-#[cfg(feature = "std")]
 use core::iter::FromIterator;
+#[cfg(feature = "std")]
+use roaring::RoaringTreemap;
 
 #[cfg(feature = "std")]
 fn serialize_deserialize<Dataset, I>(dataset: Dataset)

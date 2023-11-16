@@ -442,8 +442,8 @@ impl BitXorAssign<&RoaringBitmap> for RoaringBitmap {
 #[cfg(test)]
 mod test {
     use crate::{MultiOps, RoaringBitmap};
-    use proptest::prelude::*;
     use core::convert::Infallible;
+    use proptest::prelude::*;
 
     // fast count tests
     proptest! {

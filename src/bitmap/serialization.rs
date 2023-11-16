@@ -1,9 +1,9 @@
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use core::convert::{Infallible, TryFrom};
+use core::ops::RangeInclusive;
 use std::error::Error;
 use std::io;
-use core::ops::RangeInclusive;
 
 use crate::bitmap::container::{Container, ARRAY_LIMIT};
 use crate::bitmap::store::{ArrayStore, BitmapStore, Store, BITMAP_LENGTH};

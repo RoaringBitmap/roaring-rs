@@ -5,10 +5,10 @@ mod test {
     use crate::RoaringBitmap;
     use alloc::boxed::Box;
     use alloc::vec::Vec;
+    use core::fmt::{Debug, Formatter};
     use proptest::bits::{BitSetLike, BitSetStrategy, SampledBitSetStrategy};
     use proptest::collection::{vec, SizeRange};
     use proptest::prelude::*;
-    use core::fmt::{Debug, Formatter};
 
     impl Debug for BitmapStore {
         fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {

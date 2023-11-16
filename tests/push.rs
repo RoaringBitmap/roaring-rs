@@ -1,6 +1,6 @@
 extern crate roaring;
-use roaring::{RoaringBitmap, RoaringTreemap};
 use core::iter::FromIterator;
+use roaring::{RoaringBitmap, RoaringTreemap};
 
 /// macro created to reduce code duplication
 macro_rules! test_from_sorted_iter {

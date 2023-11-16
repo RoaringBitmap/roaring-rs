@@ -85,8 +85,8 @@ fn test_array_boundary() {
 #[test]
 #[cfg(feature = "std")]
 fn test_bitmap_boundary() {
-#[cfg(feature = "std")]
-let original = (1000..5097).collect::<RoaringBitmap>();
+    #[cfg(feature = "std")]
+    let original = (1000..5097).collect::<RoaringBitmap>();
     let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
