@@ -1,9 +1,8 @@
-#[cfg(feature = "std")]
+#![cfg(feature = "std")]
+
 use core::iter::FromIterator;
-#[cfg(feature = "std")]
 use roaring::RoaringTreemap;
 
-#[cfg(feature = "std")]
 fn serialize_deserialize<Dataset, I>(dataset: Dataset)
 where
     Dataset: IntoIterator<Item = u64, IntoIter = I>,
@@ -22,25 +21,21 @@ where
 }
 
 #[test]
-#[cfg(feature = "std")]
 fn empty() {
     serialize_deserialize(vec![])
 }
 
 #[test]
-#[cfg(feature = "std")]
 fn basic() {
     serialize_deserialize(vec![1, 2, 3, 4, 5, 100, 1000])
 }
 
 #[test]
-#[cfg(feature = "std")]
 fn basic_2() {
     serialize_deserialize(vec![1, 2, 3, 4, 5, 100, 1000, 10000, 100000, 1000000])
 }
 
 #[test]
-#[cfg(feature = "std")]
 fn basic_3() {
     let u32max = u32::MAX as u64;
     serialize_deserialize(
