@@ -14,6 +14,7 @@
 #![warn(variant_size_differences)]
 #![allow(unknown_lints)] // For clippy
 
+#[cfg(feature = "std")]
 extern crate byteorder;
 
 #[macro_use]
