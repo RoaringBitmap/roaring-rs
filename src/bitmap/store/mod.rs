@@ -1,11 +1,12 @@
 mod array_store;
 mod bitmap_store;
 
-use std::mem;
-use std::ops::{
+use alloc::{boxed::Box, vec};
+use core::mem;
+use core::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
 };
-use std::{slice, vec};
+use core::slice;
 
 pub use self::bitmap_store::BITMAP_LENGTH;
 use self::Store::{Array, Bitmap};

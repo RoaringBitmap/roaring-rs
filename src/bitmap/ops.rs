@@ -1,5 +1,7 @@
-use std::mem;
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
+use core::mem;
+use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
+
+use alloc::vec::Vec;
 
 use crate::bitmap::container::Container;
 use crate::bitmap::Pairs;
@@ -440,8 +442,8 @@ impl BitXorAssign<&RoaringBitmap> for RoaringBitmap {
 #[cfg(test)]
 mod test {
     use crate::{MultiOps, RoaringBitmap};
+    use core::convert::Infallible;
     use proptest::prelude::*;
-    use std::convert::Infallible;
 
     // fast count tests
     proptest! {

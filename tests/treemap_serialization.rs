@@ -1,5 +1,7 @@
+#![cfg(feature = "std")]
+
+use core::iter::FromIterator;
 use roaring::RoaringTreemap;
-use std::iter::FromIterator;
 
 fn serialize_deserialize<Dataset, I>(dataset: Dataset)
 where

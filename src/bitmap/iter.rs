@@ -1,5 +1,6 @@
-use std::iter::{self, FromIterator};
-use std::{slice, vec};
+use alloc::vec::{self, Vec};
+use core::iter::{self, FromIterator};
+use core::slice;
 
 use super::container::Container;
 use crate::{NonSortedIntegers, RoaringBitmap};
@@ -99,7 +100,7 @@ impl RoaringBitmap {
     ///
     /// ```rust
     /// use roaring::RoaringBitmap;
-    /// use std::iter::FromIterator;
+    /// use core::iter::FromIterator;
     ///
     /// let bitmap = (1..3).collect::<RoaringBitmap>();
     /// let mut iter = bitmap.iter();

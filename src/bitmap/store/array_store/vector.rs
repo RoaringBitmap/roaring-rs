@@ -11,9 +11,9 @@
 #![cfg(feature = "simd")]
 
 use super::scalar;
+use core::simd::cmp::{SimdPartialEq, SimdPartialOrd};
 use core::simd::{
-    mask16x8, simd_swizzle, u16x8, LaneCount, Mask, Simd, SimdElement, SimdPartialEq,
-    SimdPartialOrd, SupportedLaneCount, ToBitMask,
+    mask16x8, simd_swizzle, u16x8, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount,
 };
 
 // a one-pass SSE union algorithm
@@ -35,8 +35,8 @@ pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
 
     #[inline]
     fn handle_vector(old: u16x8, new: u16x8, f: impl FnOnce(u16x8, u8)) {
-        let tmp: u16x8 = Shr1::swizzle2(new, old);
-        let mask = 255 - tmp.simd_eq(new).to_bitmask();
+        let tmp: u16x8 = Shr1::concat_swizzle(new, old);
+        let mask = 255 - tmp.simd_eq(new).to_bitmask() as u8;
         f(new, mask);
     }
 
@@ -119,8 +119,8 @@ pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
 }
 
 pub fn and(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
-    let st_a = (lhs.len() / u16x8::LANES) * u16x8::LANES;
-    let st_b = (rhs.len() / u16x8::LANES) * u16x8::LANES;
+    let st_a = (lhs.len() / u16x8::LEN) * u16x8::LEN;
+    let st_b = (rhs.len() / u16x8::LEN) * u16x8::LEN;
 
     let mut i: usize = 0;
     let mut j: usize = 0;
@@ -128,20 +128,20 @@ pub fn and(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
         let mut v_a: u16x8 = load(&lhs[i..]);
         let mut v_b: u16x8 = load(&rhs[j..]);
         loop {
-            let mask = matrix_cmp_u16(v_a, v_b).to_bitmask();
+            let mask = matrix_cmp_u16(v_a, v_b).to_bitmask() as u8;
             visitor.visit_vector(v_a, mask);
 
-            let a_max: u16 = lhs[i + u16x8::LANES - 1];
-            let b_max: u16 = rhs[j + u16x8::LANES - 1];
+            let a_max: u16 = lhs[i + u16x8::LEN - 1];
+            let b_max: u16 = rhs[j + u16x8::LEN - 1];
             if a_max <= b_max {
-                i += u16x8::LANES;
+                i += u16x8::LEN;
                 if i == st_a {
                     break;
                 }
                 v_a = load(&lhs[i..]);
             }
             if b_max <= a_max {
-                j += u16x8::LANES;
+                j += u16x8::LEN;
                 if j == st_b {
                     break;
                 }
@@ -177,12 +177,12 @@ pub fn xor(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
     // written vector was "old"
     #[inline]
     fn handle_vector(old: u16x8, new: u16x8, f: impl FnOnce(u16x8, u8)) {
-        let tmp1: u16x8 = Shr2::swizzle2(new, old);
-        let tmp2: u16x8 = Shr1::swizzle2(new, old);
+        let tmp1: u16x8 = Shr2::concat_swizzle(new, old);
+        let tmp2: u16x8 = Shr1::concat_swizzle(new, old);
         let eq_l: mask16x8 = tmp2.simd_eq(tmp1);
         let eq_r: mask16x8 = tmp2.simd_eq(new);
         let eq_l_or_r: mask16x8 = eq_l | eq_r;
-        let mask: u8 = eq_l_or_r.to_bitmask();
+        let mask: u8 = eq_l_or_r.to_bitmask() as u8;
         f(tmp2, 255 - mask);
     }
 
@@ -282,8 +282,8 @@ pub fn sub(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
         return;
     }
 
-    let st_a = (lhs.len() / u16x8::LANES) * u16x8::LANES;
-    let st_b = (rhs.len() / u16x8::LANES) * u16x8::LANES;
+    let st_a = (lhs.len() / u16x8::LEN) * u16x8::LEN;
+    let st_b = (rhs.len() / u16x8::LEN) * u16x8::LEN;
 
     let mut i = 0;
     let mut j = 0;
@@ -296,18 +296,18 @@ pub fn sub(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
         loop {
             // a_found_in_b will contain a mask indicate for each entry in A
             // whether it is seen in B
-            let a_found_in_b: u8 = matrix_cmp_u16(v_a, v_b).to_bitmask();
+            let a_found_in_b: u8 = matrix_cmp_u16(v_a, v_b).to_bitmask() as u8;
             runningmask_a_found_in_b |= a_found_in_b;
             // we always compare the last values of A and B
-            let a_max: u16 = lhs[i + u16x8::LANES - 1];
-            let b_max: u16 = rhs[j + u16x8::LANES - 1];
+            let a_max: u16 = lhs[i + u16x8::LEN - 1];
+            let b_max: u16 = rhs[j + u16x8::LEN - 1];
             if a_max <= b_max {
                 // Ok. In this code path, we are ready to write our v_a
                 // because there is no need to read more from B, they will
                 // all be large values.
                 let bitmask_belongs_to_difference = runningmask_a_found_in_b ^ 0xFF;
                 visitor.visit_vector(v_a, bitmask_belongs_to_difference);
-                i += u16x8::LANES;
+                i += u16x8::LEN;
                 if i == st_a {
                     break;
                 }
@@ -316,7 +316,7 @@ pub fn sub(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
             }
             if b_max <= a_max {
                 // in this code path, the current v_b has become useless
-                j += u16x8::LANES;
+                j += u16x8::LEN;
                 if j == st_b {
                     break;
                 }
@@ -334,11 +334,11 @@ pub fn sub(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
             let mut buffer: [u16; 8] = [0; 8]; // buffer to do a masked load
             buffer[..rhs.len() - j].copy_from_slice(&rhs[j..]);
             v_b = Simd::from_array(buffer);
-            let a_found_in_b: u8 = matrix_cmp_u16(v_a, v_b).to_bitmask();
+            let a_found_in_b: u8 = matrix_cmp_u16(v_a, v_b).to_bitmask() as u8;
             runningmask_a_found_in_b |= a_found_in_b;
             let bitmask_belongs_to_difference: u8 = runningmask_a_found_in_b ^ 0xFF;
             visitor.visit_vector(v_a, bitmask_belongs_to_difference);
-            i += u16x8::LANES;
+            i += u16x8::LEN;
         }
     }
 
@@ -390,7 +390,7 @@ where
     U: SimdElement + PartialOrd,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    unsafe { std::ptr::read_unaligned(src as *const _ as *const Simd<U, LANES>) }
+    unsafe { core::ptr::read_unaligned(src as *const _ as *const Simd<U, LANES>) }
 }
 
 /// write `v` to slice `out`
@@ -416,7 +416,7 @@ where
     U: SimdElement + PartialOrd,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    unsafe { std::ptr::write_unaligned(out as *mut _ as *mut Simd<U, LANES>, v) }
+    unsafe { core::ptr::write_unaligned(out as *mut _ as *mut Simd<U, LANES>, v) }
 }
 
 /// Compare all lanes in `a` to all lanes in `b`
@@ -435,30 +435,30 @@ where
 // However, we currently only support u16x8 so it's not really necessary
 fn matrix_cmp_u16(a: Simd<u16, 8>, b: Simd<u16, 8>) -> Mask<i16, 8> {
     a.simd_eq(b)
-        | a.simd_eq(b.rotate_lanes_left::<1>())
-        | a.simd_eq(b.rotate_lanes_left::<2>())
-        | a.simd_eq(b.rotate_lanes_left::<3>())
-        | a.simd_eq(b.rotate_lanes_left::<4>())
-        | a.simd_eq(b.rotate_lanes_left::<5>())
-        | a.simd_eq(b.rotate_lanes_left::<6>())
-        | a.simd_eq(b.rotate_lanes_left::<7>())
+        | a.simd_eq(b.rotate_elements_left::<1>())
+        | a.simd_eq(b.rotate_elements_left::<2>())
+        | a.simd_eq(b.rotate_elements_left::<3>())
+        | a.simd_eq(b.rotate_elements_left::<4>())
+        | a.simd_eq(b.rotate_elements_left::<5>())
+        | a.simd_eq(b.rotate_elements_left::<6>())
+        | a.simd_eq(b.rotate_elements_left::<7>())
 }
 
 use crate::bitmap::store::array_store::visitor::BinaryOperationVisitor;
-use core::simd::{Swizzle2, Which, Which::First as A, Which::Second as B};
+use core::simd::Swizzle;
 
 /// Append to vectors to an imaginary 16 lane vector,  shift the lanes right by 1, then
 /// truncate to the low order 8 lanes
 pub struct Shr1;
-impl Swizzle2<8, 8> for Shr1 {
-    const INDEX: [Which; 8] = [B(7), A(0), A(1), A(2), A(3), A(4), A(5), A(6)];
+impl Swizzle<8> for Shr1 {
+    const INDEX: [usize; 8] = [15, 0, 1, 2, 3, 4, 5, 6];
 }
 
 /// Append to vectors to an imaginary 16 lane vector,  shift the lanes right by 2, then
 /// truncate to the low order 8 lanes
 pub struct Shr2;
-impl Swizzle2<8, 8> for Shr2 {
-    const INDEX: [Which; 8] = [B(6), B(7), A(0), A(1), A(2), A(3), A(4), A(5)];
+impl Swizzle<8> for Shr2 {
+    const INDEX: [usize; 8] = [14, 15, 0, 1, 2, 3, 4, 5];
 }
 
 /// Assuming that a and b are sorted, returns an array of the sorted output.
@@ -469,15 +469,15 @@ impl Swizzle2<8, 8> for Shr2 {
 fn simd_merge_u16(a: Simd<u16, 8>, b: Simd<u16, 8>) -> [Simd<u16, 8>; 2] {
     let mut tmp: Simd<u16, 8> = lanes_min_u16(a, b);
     let mut max: Simd<u16, 8> = lanes_max_u16(a, b);
-    tmp = tmp.rotate_lanes_left::<1>();
+    tmp = tmp.rotate_elements_left::<1>();
     let mut min: Simd<u16, 8> = lanes_min_u16(tmp, max);
     for _ in 0..6 {
         max = lanes_max_u16(tmp, max);
-        tmp = min.rotate_lanes_left::<1>();
+        tmp = min.rotate_elements_left::<1>();
         min = lanes_min_u16(tmp, max);
     }
     max = lanes_max_u16(tmp, max);
-    min = min.rotate_lanes_left::<1>();
+    min = min.rotate_elements_left::<1>();
     [min, max]
 }
 

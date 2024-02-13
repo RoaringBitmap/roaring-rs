@@ -7,16 +7,20 @@
 //! [roaring-java]: https://github.com/lemire/RoaringBitmap
 //! [roaring-paper]: https://arxiv.org/pdf/1402.6407v4
 
+#![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "simd", feature(portable_simd))]
 #![warn(missing_docs)]
 #![warn(unsafe_op_in_unsafe_fn)]
 #![warn(variant_size_differences)]
 #![allow(unknown_lints)] // For clippy
 
+#[cfg(feature = "std")]
 extern crate byteorder;
 
-use std::error::Error;
-use std::fmt;
+#[macro_use]
+extern crate alloc;
+
+use core::fmt;
 
 /// A compressed bitmap using the [Roaring bitmap compression scheme](https://roaringbitmap.org/).
 pub mod bitmap;
@@ -46,7 +50,8 @@ impl fmt::Display for NonSortedIntegers {
     }
 }
 
-impl Error for NonSortedIntegers {}
+#[cfg(feature = "std")]
+impl std::error::Error for NonSortedIntegers {}
 
 /// A [`Iterator::collect`] blanket implementation that provides extra methods for [`RoaringBitmap`]
 /// and [`RoaringTreemap`].
