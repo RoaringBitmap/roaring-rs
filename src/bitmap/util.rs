@@ -1,4 +1,4 @@
-use std::ops::{Bound, RangeBounds, RangeInclusive};
+use core::ops::{Bound, RangeBounds, RangeInclusive};
 
 /// Returns the container key and the index
 /// in this container for a given integer.
@@ -38,7 +38,7 @@ where
 #[cfg(test)]
 mod test {
     use super::{convert_range_to_inclusive, join, split};
-    use std::ops::Bound;
+    use core::ops::Bound;
 
     #[test]
     fn test_split_u32() {

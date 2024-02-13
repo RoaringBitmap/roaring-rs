@@ -1,7 +1,9 @@
-use std::fmt;
-use std::ops::{
+use core::fmt;
+use core::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
 };
+
+use alloc::vec::Vec;
 
 use super::store::{self, Store};
 use super::util;

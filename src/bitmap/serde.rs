@@ -16,7 +16,7 @@ impl<'de> Deserialize<'de> for RoaringBitmap {
         impl<'de> Visitor<'de> for BitmapVisitor {
             type Value = RoaringBitmap;
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
                 formatter.write_str("roaring bitmap")
             }
 

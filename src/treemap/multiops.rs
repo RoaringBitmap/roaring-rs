@@ -1,9 +1,8 @@
-use std::{
-    borrow::Borrow,
-    cmp::Ordering,
+use alloc::{
     collections::{binary_heap::PeekMut, BTreeMap, BinaryHeap},
-    mem,
+    vec::Vec,
 };
+use core::{borrow::Borrow, cmp::Ordering, mem};
 
 use crate::{MultiOps, RoaringBitmap, RoaringTreemap};
 
@@ -15,28 +14,28 @@ where
 
     fn union(self) -> Self::Output {
         try_simple_multi_op_owned::<_, _, UnionOp>(
-            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+            self.into_iter().map(Ok::<_, core::convert::Infallible>),
         )
         .unwrap()
     }
 
     fn intersection(self) -> Self::Output {
         try_ordered_multi_op_owned::<_, _, IntersectionOp>(
-            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+            self.into_iter().map(Ok::<_, core::convert::Infallible>),
         )
         .unwrap()
     }
 
     fn difference(self) -> Self::Output {
         try_ordered_multi_op_owned::<_, _, DifferenceOp>(
-            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+            self.into_iter().map(Ok::<_, core::convert::Infallible>),
         )
         .unwrap()
     }
 
     fn symmetric_difference(self) -> Self::Output {
         try_simple_multi_op_owned::<_, _, SymmetricDifferenceOp>(
-            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+            self.into_iter().map(Ok::<_, core::convert::Infallible>),
         )
         .unwrap()
     }
@@ -140,7 +139,7 @@ where
         // the unwrap is safe since we're iterating on our keys
         let current_bitmap = treemap.map.remove(&k).unwrap();
         let new_bitmap =
-            O::op_owned(std::iter::once(current_bitmap).chain(
+            O::op_owned(core::iter::once(current_bitmap).chain(
                 treemaps.iter_mut().map(|treemap| treemap.map.remove(&k).unwrap_or_default()),
             ));
         if !new_bitmap.is_empty() {
@@ -172,7 +171,7 @@ where
         // the unwrap is safe since we're iterating on our keys
         let current_bitmap = treemap.map.get(&k).unwrap();
         let new_bitmap = O::op_ref(
-            std::iter::once(current_bitmap)
+            core::iter::once(current_bitmap)
                 .chain(treemaps.iter().map(|treemap| treemap.map.get(&k).unwrap_or(&empty_bitmap))),
         );
         if !new_bitmap.is_empty() {
@@ -300,28 +299,28 @@ where
 
     fn union(self) -> Self::Output {
         try_simple_multi_op_ref::<_, _, UnionOp>(
-            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+            self.into_iter().map(Ok::<_, core::convert::Infallible>),
         )
         .unwrap()
     }
 
     fn intersection(self) -> Self::Output {
         try_ordered_multi_op_ref::<_, _, IntersectionOp>(
-            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+            self.into_iter().map(Ok::<_, core::convert::Infallible>),
         )
         .unwrap()
     }
 
     fn difference(self) -> Self::Output {
         try_ordered_multi_op_ref::<_, _, DifferenceOp>(
-            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+            self.into_iter().map(Ok::<_, core::convert::Infallible>),
         )
         .unwrap()
     }
 
     fn symmetric_difference(self) -> Self::Output {
         try_simple_multi_op_ref::<_, _, SymmetricDifferenceOp>(
-            self.into_iter().map(Ok::<_, std::convert::Infallible>),
+            self.into_iter().map(Ok::<_, core::convert::Infallible>),
         )
         .unwrap()
     }

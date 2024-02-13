@@ -1,4 +1,4 @@
-use std::ops::{Bound, RangeBounds, RangeInclusive};
+use core::ops::{Bound, RangeBounds, RangeInclusive};
 
 #[inline]
 pub fn split(value: u64) -> (u32, u32) {

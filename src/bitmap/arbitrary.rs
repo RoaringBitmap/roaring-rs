@@ -3,13 +3,15 @@ mod test {
     use crate::bitmap::container::Container;
     use crate::bitmap::store::{ArrayStore, BitmapStore, Store};
     use crate::RoaringBitmap;
+    use alloc::boxed::Box;
+    use alloc::vec::Vec;
+    use core::fmt::{Debug, Formatter};
     use proptest::bits::{BitSetLike, BitSetStrategy, SampledBitSetStrategy};
     use proptest::collection::{vec, SizeRange};
     use proptest::prelude::*;
-    use std::fmt::{Debug, Formatter};
 
     impl Debug for BitmapStore {
-        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
             if self.len() < 16 {
                 write!(f, "BitmapStore<{:?}>", self.iter().collect::<Vec<u16>>())
             } else {
@@ -82,7 +84,7 @@ mod test {
     }
 
     impl Debug for ArrayStore {
-        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
             if self.len() < 16 {
                 write!(f, "ArrayStore<{:?}>", self.as_slice())
             } else {
@@ -151,7 +153,7 @@ mod test {
     }
 
     impl Debug for Store {
-        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
             match self {
                 Store::Array(a) => write!(f, "Store({:?})", a),
                 Store::Bitmap(b) => write!(f, "Store({:?})", b),

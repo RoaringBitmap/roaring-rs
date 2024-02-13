@@ -1,10 +1,11 @@
-use std::{
-    borrow::Cow,
+use core::{
     cmp::Reverse,
     convert::Infallible,
     mem,
     ops::{BitOrAssign, BitXorAssign},
 };
+
+use alloc::{borrow::Cow, vec::Vec};
 
 use crate::{MultiOps, RoaringBitmap};
 
