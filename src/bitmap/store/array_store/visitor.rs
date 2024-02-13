@@ -47,7 +47,7 @@ impl BinaryOperationVisitor for VecWriter {
         // first write the entire vector
         self.vec.extend_from_slice(&result.as_array()[..]);
         // next truncate the masked out values
-        self.vec.truncate(self.vec.len() - (result.lanes() - mask.count_ones() as usize));
+        self.vec.truncate(self.vec.len() - (result.len() - mask.count_ones() as usize));
     }
 
     fn visit_scalar(&mut self, value: u16) {
