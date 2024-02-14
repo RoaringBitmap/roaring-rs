@@ -386,7 +386,7 @@ impl RoaringTreemap {
             + iter.map(|(_, bitmap)| bitmap.len()).sum::<u64>()
     }
 
-    /// Returns the `n`th integer in the set or `None` if `n <= len()`
+    /// Returns the `n`th integer in the set or `None` if `n >= len()`
     ///
     /// # Examples
     ///
