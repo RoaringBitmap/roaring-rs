@@ -226,9 +226,11 @@ impl RoaringBitmap {
 
                 let cardinality = intervals.iter().map(|[_, len]| *len as usize).sum();
                 let mut store = Store::with_capacity(cardinality);
-                intervals.into_iter().for_each(|[s, len]| {
-                    store.insert_range(RangeInclusive::new(s, s + len));
-                });
+                intervals.into_iter().try_for_each(|[s, len]| -> Result<(), io::ErrorKind> {
+                    let end = s.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
+                    store.insert_range(RangeInclusive::new(s, end));
+                    Ok(())
+                })?;
                 store
             } else if cardinality <= ARRAY_LIMIT {
                 let mut values = vec![0; cardinality as usize];
@@ -266,5 +268,12 @@ mod test {
             bitmap.serialize_into(&mut buffer).unwrap();
             prop_assert_eq!(bitmap, RoaringBitmap::deserialize_from(buffer.as_slice()).unwrap());
         }
+    }
+
+    #[test]
+    fn test_deserialize_overflow_s_plus_len() {
+        let data = vec![59, 48, 0, 0, 255, 130, 254, 59, 48, 2, 0, 41, 255, 255, 166, 197, 4, 0, 2];
+        let res = RoaringBitmap::deserialize_from(data.as_slice());
+        assert!(res.is_err());
     }
 }
