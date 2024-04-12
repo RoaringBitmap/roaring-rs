@@ -1,7 +1,4 @@
-use alloc::{
-    collections::{binary_heap::PeekMut, BTreeMap, BinaryHeap},
-    vec::Vec,
-};
+use alloc::collections::{binary_heap::PeekMut, BTreeMap, BinaryHeap};
 use core::{borrow::Borrow, cmp::Ordering, mem};
 
 use crate::{MultiOps, RoaringBitmap, RoaringTreemap};

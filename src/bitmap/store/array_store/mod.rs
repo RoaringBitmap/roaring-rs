@@ -2,13 +2,9 @@ mod scalar;
 mod vector;
 mod visitor;
 
-use alloc::boxed::Box;
-use alloc::vec::Vec;
-
 use crate::bitmap::store::array_store::visitor::{CardinalityCounter, VecWriter};
 use core::cmp::Ordering;
 use core::cmp::Ordering::*;
-use core::convert::TryFrom;
 use core::fmt::{Display, Formatter};
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitXor, RangeInclusive, Sub, SubAssign};
 

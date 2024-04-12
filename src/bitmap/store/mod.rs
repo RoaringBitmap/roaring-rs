@@ -1,7 +1,7 @@
 mod array_store;
 mod bitmap_store;
 
-use alloc::{boxed::Box, vec};
+use alloc::vec;
 use core::mem;
 use core::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,

@@ -1,6 +1,6 @@
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use core::convert::{Infallible, TryFrom};
+use core::convert::Infallible;
 use core::ops::RangeInclusive;
 use std::error::Error;
 use std::io;

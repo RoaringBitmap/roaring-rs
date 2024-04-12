@@ -1,8 +1,6 @@
 use core::mem;
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
-use alloc::vec::Vec;
-
 use crate::bitmap::container::Container;
 use crate::bitmap::Pairs;
 use crate::RoaringBitmap;

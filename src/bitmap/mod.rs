@@ -17,8 +17,6 @@ mod serde;
 #[cfg(feature = "std")]
 mod serialization;
 
-use alloc::vec::Vec;
-
 use self::cmp::Pairs;
 pub use self::iter::IntoIter;
 pub use self::iter::Iter;

@@ -1,8 +1,6 @@
 use core::cmp::Ordering;
 use core::ops::RangeBounds;
 
-use alloc::vec::Vec;
-
 use crate::RoaringBitmap;
 
 use super::container::Container;
