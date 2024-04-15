@@ -1,5 +1,4 @@
 extern crate roaring;
-use core::iter::FromIterator;
 use roaring::{RoaringBitmap, RoaringTreemap};
 
 /// macro created to reduce code duplication

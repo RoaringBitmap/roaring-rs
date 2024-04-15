@@ -1,6 +1,5 @@
 #![cfg(feature = "std")]
 
-use core::iter::FromIterator;
 use roaring::RoaringTreemap;
 
 fn serialize_deserialize<Dataset, I>(dataset: Dataset)

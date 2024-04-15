@@ -3,8 +3,6 @@ mod test {
     use crate::bitmap::container::Container;
     use crate::bitmap::store::{ArrayStore, BitmapStore, Store};
     use crate::RoaringBitmap;
-    use alloc::boxed::Box;
-    use alloc::vec::Vec;
     use core::fmt::{Debug, Formatter};
     use proptest::bits::{BitSetLike, BitSetStrategy, SampledBitSetStrategy};
     use proptest::collection::{vec, SizeRange};
