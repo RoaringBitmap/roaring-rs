@@ -2,7 +2,6 @@ extern crate roaring;
 mod iter;
 use roaring::RoaringTreemap;
 
-use core::iter::FromIterator;
 use iter::outside_in;
 use proptest::arbitrary::any;
 use proptest::collection::btree_set;

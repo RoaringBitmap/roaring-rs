@@ -1,4 +1,3 @@
-use core::iter::FromIterator;
 use proptest::arbitrary::any;
 use proptest::collection::btree_set;
 use proptest::proptest;

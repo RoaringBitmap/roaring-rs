@@ -1,5 +1,5 @@
-use alloc::vec::{self, Vec};
-use core::iter::{self, FromIterator};
+use alloc::vec;
+use core::iter;
 use core::slice;
 
 use super::container::Container;

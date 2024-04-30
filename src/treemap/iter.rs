@@ -1,5 +1,5 @@
 use alloc::collections::{btree_map, BTreeMap};
-use core::iter::{self, FromIterator};
+use core::iter;
 
 use super::util;
 use crate::bitmap::IntoIter as IntoIter32;

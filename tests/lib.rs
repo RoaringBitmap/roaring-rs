@@ -13,11 +13,11 @@ fn smoke() {
     assert!(bitmap.contains(1));
     assert_eq!(bitmap.len(), 1);
     assert!(!bitmap.is_empty());
-    bitmap.insert(u32::max_value() - 2);
-    assert!(bitmap.contains(u32::max_value() - 2));
+    bitmap.insert(u32::MAX - 2);
+    assert!(bitmap.contains(u32::MAX - 2));
     assert_eq!(bitmap.len(), 2);
-    bitmap.insert(u32::max_value());
-    assert!(bitmap.contains(u32::max_value()));
+    bitmap.insert(u32::MAX);
+    assert!(bitmap.contains(u32::MAX));
     assert_eq!(bitmap.len(), 3);
     bitmap.insert(2);
     assert!(bitmap.contains(2));
@@ -28,9 +28,9 @@ fn smoke() {
     assert!(!bitmap.contains(0));
     assert!(bitmap.contains(1));
     assert!(!bitmap.contains(100));
-    assert!(bitmap.contains(u32::max_value() - 2));
-    assert!(!bitmap.contains(u32::max_value() - 1));
-    assert!(bitmap.contains(u32::max_value()));
+    assert!(bitmap.contains(u32::MAX - 2));
+    assert!(!bitmap.contains(u32::MAX - 1));
+    assert!(bitmap.contains(u32::MAX));
 }
 
 #[test]

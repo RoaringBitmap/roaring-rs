@@ -5,7 +5,7 @@ use core::{
     ops::{BitOrAssign, BitXorAssign},
 };
 
-use alloc::{borrow::Cow, vec::Vec};
+use alloc::borrow::Cow;
 
 use crate::{MultiOps, RoaringBitmap};
 

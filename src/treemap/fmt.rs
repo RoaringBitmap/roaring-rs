@@ -1,7 +1,5 @@
 use core::fmt;
 
-use alloc::vec::Vec;
-
 use crate::RoaringTreemap;
 
 impl fmt::Debug for RoaringTreemap {

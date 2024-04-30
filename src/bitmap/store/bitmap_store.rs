@@ -3,9 +3,6 @@ use core::cmp::Ordering;
 use core::fmt::{Display, Formatter};
 use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
-use alloc::boxed::Box;
-use alloc::vec::Vec;
-
 use super::ArrayStore;
 
 pub const BITMAP_LENGTH: usize = 1024;
