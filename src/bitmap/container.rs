@@ -8,6 +8,9 @@ use super::util;
 
 pub const ARRAY_LIMIT: u64 = 4096;
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 #[derive(PartialEq, Clone)]
 pub struct Container {
     pub key: u16,

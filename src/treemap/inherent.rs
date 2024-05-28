@@ -7,6 +7,9 @@ use crate::RoaringTreemap;
 
 use super::util;
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 impl RoaringTreemap {
     /// Creates an empty `RoaringTreemap`.
     ///

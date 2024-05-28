@@ -11,6 +11,9 @@ use crate::{MultiOps, RoaringBitmap};
 
 use super::{container::Container, store::Store};
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 /// When collecting bitmaps for optimizing the computation. If we don't know how many
 // elements are in the iterator we collect 10 elements.
 const BASE_COLLECT: usize = 10;
