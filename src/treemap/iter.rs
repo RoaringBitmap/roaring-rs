@@ -16,11 +16,29 @@ impl<'a> Iterator for To64Iter<'a> {
     fn next(&mut self) -> Option<u64> {
         self.inner.next().map(|n| util::join(self.hi, n))
     }
+
+    #[inline]
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, move |b, lo| f(b, ((self.hi as u64) << 32) + (lo as u64)))
+    }
 }
 
 impl DoubleEndedIterator for To64Iter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner.next_back().map(|n| util::join(self.hi, n))
+    }
+
+    #[inline]
+    fn rfold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.rfold(init, move |b, lo| f(b, ((self.hi as u64) << 32) + (lo as u64)))
     }
 }
 
@@ -38,11 +56,29 @@ impl Iterator for To64IntoIter {
     fn next(&mut self) -> Option<u64> {
         self.inner.next().map(|n| util::join(self.hi, n))
     }
+
+    #[inline]
+    fn fold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, move |b, lo| f(b, ((self.hi as u64) << 32) + (lo as u64)))
+    }
 }
 
 impl DoubleEndedIterator for To64IntoIter {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner.next_back().map(|n| util::join(self.hi, n))
+    }
+
+    #[inline]
+    fn rfold<B, F>(self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.rfold(init, move |b, lo| f(b, ((self.hi as u64) << 32) + (lo as u64)))
     }
 }
 
@@ -104,12 +140,29 @@ impl<'a> Iterator for Iter<'a> {
             (usize::MAX, None)
         }
     }
+
+    #[inline]
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, f)
+    }
 }
 
 impl DoubleEndedIterator for Iter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.size_hint = self.size_hint.saturating_sub(1);
         self.inner.next_back()
+    }
+
+    #[inline]
+    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.inner.rfold(init, fold)
     }
 }
 
@@ -135,12 +188,29 @@ impl Iterator for IntoIter {
             (usize::MAX, None)
         }
     }
+
+    #[inline]
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.inner.fold(init, f)
+    }
 }
 
 impl DoubleEndedIterator for IntoIter {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.size_hint = self.size_hint.saturating_sub(1);
         self.inner.next_back()
+    }
+
+    #[inline]
+    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.inner.rfold(init, fold)
     }
 }
 
