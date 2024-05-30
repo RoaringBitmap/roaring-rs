@@ -3,6 +3,9 @@ use core::{borrow::Borrow, cmp::Ordering, mem};
 
 use crate::{MultiOps, RoaringBitmap, RoaringTreemap};
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 impl<I> MultiOps<RoaringTreemap> for I
 where
     I: IntoIterator<Item = RoaringTreemap>,

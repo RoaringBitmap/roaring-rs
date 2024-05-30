@@ -4,6 +4,9 @@ use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, 
 
 use crate::RoaringTreemap;
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 impl RoaringTreemap {
     /// Computes the len of the union with the specified other treemap without creating a new
     /// treemap.

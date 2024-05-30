@@ -16,6 +16,9 @@ pub use self::bitmap_store::{BitmapIter, BitmapStore};
 
 use crate::bitmap::container::ARRAY_LIMIT;
 
+#[cfg(not(feature = "std"))]
+use alloc::boxed::Box;
+
 #[derive(Clone)]
 pub enum Store {
     Array(ArrayStore),

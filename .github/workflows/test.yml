@@ -94,6 +94,12 @@ jobs:
           command: test
           args: --features serde
 
+      - name: Test no default features
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --no-default-features
+
       - name: Test benchmarks
         uses: actions-rs/cargo@v1
         with:

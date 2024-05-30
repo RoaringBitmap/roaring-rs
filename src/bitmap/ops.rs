@@ -5,6 +5,9 @@ use crate::bitmap::container::Container;
 use crate::bitmap::Pairs;
 use crate::RoaringBitmap;
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 impl RoaringBitmap {
     /// Computes the len of the intersection with the specified other bitmap without creating a
     /// new bitmap.

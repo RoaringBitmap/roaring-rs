@@ -6,6 +6,9 @@ use crate::RoaringBitmap;
 use super::container::Container;
 use super::util;
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 impl RoaringBitmap {
     /// Creates an empty `RoaringBitmap`.
     ///

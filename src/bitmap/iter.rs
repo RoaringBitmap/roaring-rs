@@ -5,6 +5,9 @@ use core::slice;
 use super::container::Container;
 use crate::{NonSortedIntegers, RoaringBitmap};
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a> {
     inner: iter::Flatten<slice::Iter<'a, Container>>,

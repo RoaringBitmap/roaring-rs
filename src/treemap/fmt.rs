@@ -2,6 +2,9 @@ use core::fmt;
 
 use crate::RoaringTreemap;
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 impl fmt::Debug for RoaringTreemap {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.len() < 16 {

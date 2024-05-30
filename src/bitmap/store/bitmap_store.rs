@@ -5,6 +5,11 @@ use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssi
 
 use super::ArrayStore;
 
+#[cfg(not(feature = "std"))]
+use alloc::boxed::Box;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 pub const BITMAP_LENGTH: usize = 1024;
 
 #[derive(Clone, Eq, PartialEq)]

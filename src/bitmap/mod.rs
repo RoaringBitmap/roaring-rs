@@ -21,6 +21,9 @@ use self::cmp::Pairs;
 pub use self::iter::IntoIter;
 pub use self::iter::Iter;
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 /// A compressed bitmap using the [Roaring bitmap compression scheme](https://roaringbitmap.org/).
 ///
 /// # Examples

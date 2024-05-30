@@ -1,6 +1,9 @@
 #[cfg(feature = "simd")]
 use crate::bitmap::store::array_store::vector::swizzle_to_front;
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 /// This visitor pattern allows multiple different algorithms to be written over the same data
 /// For example: vectorized algorithms can pass a visitor off to a scalar algorithm to finish off
 /// a tail that is not a multiple of the vector width.

@@ -8,6 +8,11 @@ mod test {
     use proptest::collection::{vec, SizeRange};
     use proptest::prelude::*;
 
+    #[cfg(not(feature = "std"))]
+    use alloc::boxed::Box;
+    #[cfg(not(feature = "std"))]
+    use alloc::vec::Vec;
+
     impl Debug for BitmapStore {
         fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
             if self.len() < 16 {
