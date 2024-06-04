@@ -12,6 +12,7 @@ mod cmp;
 mod inherent;
 mod iter;
 mod ops;
+mod ops_with_serialized;
 #[cfg(feature = "serde")]
 mod serde;
 #[cfg(feature = "std")]
