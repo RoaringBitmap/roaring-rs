@@ -67,6 +67,20 @@ proptest! {
     }
 }
 
+proptest! {
+    #[test]
+    fn fold(values in btree_set(any::<u32>(), ..=10_000)) {
+        let bitmap = RoaringBitmap::from_sorted_iter(values.iter().cloned()).unwrap();
+        let mut val_iter = values.into_iter();
+        // `Iterator::all` uses currently unimplementable `try_fold`, we test `fold`
+        #[allow(clippy::unnecessary_fold)]
+        let r = bitmap.into_iter().fold(true, |b, i| {
+            b && i == val_iter.next().unwrap()
+        });
+        assert!(r)
+    }
+}
+
 #[test]
 fn rev_array() {
     let values = 0..100;
