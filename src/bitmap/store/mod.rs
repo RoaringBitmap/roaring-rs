@@ -177,6 +177,13 @@ impl Store {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Array(vec) => vec.is_empty(),
+            Bitmap(bits) => bits.is_empty(),
+        }
+    }
+
     pub fn min(&self) -> Option<u16> {
         match self {
             Array(vec) => vec.min(),

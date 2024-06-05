@@ -241,6 +241,10 @@ impl BitmapStore {
         self.len
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     pub fn min(&self) -> Option<u16> {
         self.bits
             .iter()

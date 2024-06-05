@@ -1,9 +1,10 @@
-use bytemuck::{cast_slice_mut, pod_collect_to_vec};
+use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::convert::Infallible;
-use core::ops::{BitAndAssign, RangeInclusive};
+use core::mem;
+use core::ops::RangeInclusive;
 use std::error::Error;
-use std::io;
+use std::io::{self, SeekFrom};
 
 use crate::bitmap::container::Container;
 use crate::bitmap::serialization::{
@@ -39,7 +40,7 @@ impl RoaringBitmap {
     // TODO convert this into a trait
     pub fn intersection_with_serialized_unchecked<R>(&self, other: R) -> io::Result<RoaringBitmap>
     where
-        R: io::Read,
+        R: io::Read + io::Seek,
     {
         RoaringBitmap::intersection_with_serialized_impl::<R, _, Infallible, _, Infallible>(
             self,
@@ -56,7 +57,7 @@ impl RoaringBitmap {
         b: B,
     ) -> io::Result<RoaringBitmap>
     where
-        R: io::Read,
+        R: io::Read + io::Seek,
         A: Fn(Vec<u16>) -> Result<ArrayStore, AErr>,
         AErr: Error + Send + Sync + 'static,
         B: Fn(u64, Box<[u64; 1024]>) -> Result<BitmapStore, BErr>,
@@ -101,7 +102,7 @@ impl RoaringBitmap {
 
         let mut containers = Vec::with_capacity(size);
 
-        // Read each container
+        // Read each container and skip the useless ones
         for i in 0..size {
             let key = description_bytes.read_u16::<LittleEndian>()?;
             let container = match self.containers.binary_search_by_key(&key, |c| c.key) {
@@ -114,53 +115,100 @@ impl RoaringBitmap {
             let is_run_container =
                 run_container_bitmap.as_ref().map_or(false, |bm| bm[i / 8] & (1 << (i % 8)) != 0);
 
-            let mut store = if is_run_container {
+            let store = if is_run_container {
                 let runs = reader.read_u16::<LittleEndian>()?;
-                let mut intervals = vec![[0, 0]; runs as usize];
-                reader.read_exact(cast_slice_mut(&mut intervals))?;
-                if container.is_none() {
-                    continue;
-                }
-                intervals.iter_mut().for_each(|[s, len]| {
-                    *s = u16::from_le(*s);
-                    *len = u16::from_le(*len);
-                });
+                match container {
+                    Some(_) => {
+                        let mut intervals = vec![[0, 0]; runs as usize];
+                        reader.read_exact(cast_slice_mut(&mut intervals))?;
+                        intervals.iter_mut().for_each(|[s, len]| {
+                            *s = u16::from_le(*s);
+                            *len = u16::from_le(*len);
+                        });
 
-                let cardinality = intervals.iter().map(|[_, len]| *len as usize).sum();
-                let mut store = Store::with_capacity(cardinality);
-                intervals.into_iter().try_for_each(|[s, len]| -> Result<(), io::ErrorKind> {
-                    let end = s.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
-                    store.insert_range(RangeInclusive::new(s, end));
-                    Ok(())
-                })?;
-                store
+                        let cardinality = intervals.iter().map(|[_, len]| *len as usize).sum();
+                        let mut store = Store::with_capacity(cardinality);
+                        intervals.into_iter().try_for_each(
+                            |[s, len]| -> Result<(), io::ErrorKind> {
+                                let end = s.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
+                                store.insert_range(RangeInclusive::new(s, end));
+                                Ok(())
+                            },
+                        )?;
+                        store
+                    }
+                    None => {
+                        let runs_size = mem::size_of::<u16>() * 2 * runs as usize;
+                        reader.seek(SeekFrom::Current(runs_size as i64))?;
+                        continue;
+                    }
+                }
             } else if cardinality <= ARRAY_LIMIT {
-                let mut values = vec![0; cardinality as usize];
-                reader.read_exact(cast_slice_mut(&mut values))?;
-                if container.is_none() {
-                    continue;
+                match container {
+                    Some(_) => {
+                        let mut values = vec![0; cardinality as usize];
+                        reader.read_exact(cast_slice_mut(&mut values))?;
+                        values.iter_mut().for_each(|n| *n = u16::from_le(*n));
+                        let array =
+                            a(values).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                        Store::Array(array)
+                    }
+                    None => {
+                        let array_size = mem::size_of::<u16>() * cardinality as usize;
+                        reader.seek(SeekFrom::Current(array_size as i64))?;
+                        continue;
+                    }
                 }
-                values.iter_mut().for_each(|n| *n = u16::from_le(*n));
-                let array = a(values).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-                Store::Array(array)
             } else {
-                let mut values = Box::new([0; BITMAP_LENGTH]);
-                reader.read_exact(cast_slice_mut(&mut values[..]))?;
-                if container.is_none() {
-                    continue;
+                match container {
+                    Some(_) => {
+                        let mut values = Box::new([0; BITMAP_LENGTH]);
+                        reader.read_exact(cast_slice_mut(&mut values[..]))?;
+                        values.iter_mut().for_each(|n| *n = u64::from_le(*n));
+                        let bitmap = b(cardinality, values)
+                            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                        Store::Bitmap(bitmap)
+                    }
+                    None => {
+                        let bitmap_size = mem::size_of::<u64>() * BITMAP_LENGTH;
+                        reader.seek(SeekFrom::Current(bitmap_size as i64))?;
+                        continue;
+                    }
                 }
-                values.iter_mut().for_each(|n| *n = u64::from_le(*n));
-                let bitmap = b(cardinality, values)
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-                Store::Bitmap(bitmap)
             };
 
             if let Some(container) = container {
-                store &= &container.store;
-                containers.push(Container { key, store });
+                let mut tmp_container = Container { key, store };
+                tmp_container &= container;
+                if !tmp_container.is_empty() {
+                    containers.push(tmp_container);
+                }
             }
         }
 
         Ok(RoaringBitmap { containers })
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "std")] // We need this to serialize bitmaps
+mod test {
+    use crate::RoaringBitmap;
+    use proptest::prelude::*;
+    use std::io::Cursor;
+
+    // fast count tests
+    proptest! {
+        #[test]
+        fn intersection_with_serialized_eq_materialized_intersection(
+            a in RoaringBitmap::arbitrary(),
+            b in RoaringBitmap::arbitrary()
+        ) {
+            let mut serialized_bytes_b = Vec::new();
+            b.serialize_into(&mut serialized_bytes_b).unwrap();
+            let serialized_bytes_b = &serialized_bytes_b[..];
+
+            prop_assert_eq!(a.intersection_with_serialized_unchecked(Cursor::new(serialized_bytes_b)).unwrap(), a & b);
+        }
     }
 }

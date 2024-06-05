@@ -200,6 +200,10 @@ impl ArrayStore {
         self.vec.len() as u64
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.vec.is_empty()
+    }
+
     pub fn min(&self) -> Option<u16> {
         self.vec.first().copied()
     }
