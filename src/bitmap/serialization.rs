@@ -9,13 +9,13 @@ use crate::bitmap::container::{Container, ARRAY_LIMIT};
 use crate::bitmap::store::{ArrayStore, BitmapStore, Store, BITMAP_LENGTH};
 use crate::RoaringBitmap;
 
-const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
-const SERIAL_COOKIE: u16 = 12347;
-const NO_OFFSET_THRESHOLD: usize = 4;
+pub const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
+pub const SERIAL_COOKIE: u16 = 12347;
+pub const NO_OFFSET_THRESHOLD: usize = 4;
 
 // Sizes of header structures
-const DESCRIPTION_BYTES: usize = 4;
-const OFFSET_BYTES: usize = 4;
+pub const DESCRIPTION_BYTES: usize = 4;
+pub const OFFSET_BYTES: usize = 4;
 
 impl RoaringBitmap {
     /// Return the size in bytes of the serialized output.
