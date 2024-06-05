@@ -232,7 +232,7 @@ fn try_multi_or_owned<E>(
     }
 
     containers.retain_mut(|container| {
-        if container.len() > 0 {
+        if !container.is_empty() {
             container.ensure_correct_store();
             true
         } else {
@@ -258,7 +258,7 @@ fn try_multi_xor_owned<E>(
     }
 
     containers.retain_mut(|container| {
-        if container.len() > 0 {
+        if !container.is_empty() {
             container.ensure_correct_store();
             true
         } else {
