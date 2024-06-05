@@ -1,10 +1,10 @@
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::convert::Infallible;
-use core::mem;
-use core::ops::RangeInclusive;
 use std::error::Error;
 use std::io::{self, SeekFrom};
+use std::mem;
+use std::ops::RangeInclusive;
 
 use crate::bitmap::container::Container;
 use crate::bitmap::serialization::{
@@ -12,9 +12,6 @@ use crate::bitmap::serialization::{
     SERIAL_COOKIE_NO_RUNCONTAINER,
 };
 use crate::RoaringBitmap;
-
-#[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
 
 use super::container::ARRAY_LIMIT;
 use super::store::{ArrayStore, BitmapStore, Store, BITMAP_LENGTH};
