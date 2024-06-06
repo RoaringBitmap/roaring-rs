@@ -8,8 +8,7 @@ use std::ops::RangeInclusive;
 
 use crate::bitmap::container::Container;
 use crate::bitmap::serialization::{
-    DESCRIPTION_BYTES, NO_OFFSET_THRESHOLD, OFFSET_BYTES, SERIAL_COOKIE,
-    SERIAL_COOKIE_NO_RUNCONTAINER,
+    NO_OFFSET_THRESHOLD, OFFSET_BYTES, SERIAL_COOKIE, SERIAL_COOKIE_NO_RUNCONTAINER,
 };
 use crate::RoaringBitmap;
 
@@ -94,25 +93,26 @@ impl RoaringBitmap {
         }
 
         // Read the container descriptions
-        let mut description_bytes = vec![0u8; size * DESCRIPTION_BYTES];
-        reader.read_exact(&mut description_bytes)?;
-        let mut description_bytes = &description_bytes[..];
+        let mut description_bytes = vec![[0u16; 2]; size];
+        reader.read_exact(cast_slice_mut(&mut description_bytes))?;
+        description_bytes.iter_mut().for_each(|[ref mut key, ref mut len]| {
+            *key = u16::from_le(*key);
+            *len = u16::from_le(*len);
+        });
+
 
         if has_offsets {
             // I could use these offsets but I am a lazy developer (for now)
             reader.seek(SeekFrom::Current((size * OFFSET_BYTES) as i64))?;
         }
 
-        let mut containers = Vec::new();
-
         // Read each container and skip the useless ones
-        for i in 0..size {
-            let key = description_bytes.read_u16::<LittleEndian>()?;
+        for (i, &[key, len_minus_one]) in description_bytes.iter().enumerate() {
             let container = match self.containers.binary_search_by_key(&key, |c| c.key) {
                 Ok(index) => self.containers.get(index),
                 Err(_) => None,
             };
-            let cardinality = u64::from(description_bytes.read_u16::<LittleEndian>()?) + 1;
+            let cardinality = u64::from(len_minus_one) + 1;
 
             // If the run container bitmap is present, check if this container is a run container
             let is_run_container =
