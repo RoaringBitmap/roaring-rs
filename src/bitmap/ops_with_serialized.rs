@@ -97,7 +97,7 @@ impl RoaringBitmap {
             drop(offsets); // We could use these offsets but we are lazy
         }
 
-        let mut containers = Vec::with_capacity(size);
+        let mut containers = Vec::new();
 
         // Read each container and skip the useless ones
         for i in 0..size {
