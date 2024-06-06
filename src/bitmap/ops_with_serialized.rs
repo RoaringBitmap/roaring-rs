@@ -17,24 +17,31 @@ use super::container::ARRAY_LIMIT;
 use super::store::{ArrayStore, BitmapStore, Store, BITMAP_LENGTH};
 
 impl RoaringBitmap {
-    /// Computes the len of the intersection with the specified other bitmap without creating a
-    /// new bitmap.
+    /// Computes the intersection between a materialized [`RoaringBitmap`] and a serialized one.
     ///
-    /// This is faster and more space efficient when you're only interested in the cardinality of
-    /// the intersection.
+    /// This is faster and more space efficient when you only need the intersection result.
+    /// It reduces the number of deserialized internal container and therefore
+    /// the number of allocations and copies of bytes.
     ///
     /// # Examples
     ///
     /// ```rust
     /// use roaring::RoaringBitmap;
+    /// use std::io::Cursor;
     ///
     /// let rb1: RoaringBitmap = (1..4).collect();
     /// let rb2: RoaringBitmap = (3..5).collect();
     ///
+    /// // Let's say the rb2 bitmap is serialized
+    /// let mut bytes = Vec::new();
+    /// rb2.serialize_into(&mut bytes).unwrap();
+    /// let rb2_bytes = Cursor::new(bytes);
     ///
-    /// assert_eq!(rb1.intersection_len(&rb2), (rb1 & rb2).len());
+    /// assert_eq!(
+    ///     rb1.intersection_with_serialized_unchecked(rb2_bytes).unwrap(),
+    ///     rb1 & rb2,
+    /// );
     /// ```
-    // TODO convert this into a trait
     pub fn intersection_with_serialized_unchecked<R>(&self, other: R) -> io::Result<RoaringBitmap>
     where
         R: io::Read + io::Seek,
@@ -92,7 +99,7 @@ impl RoaringBitmap {
         let mut description_bytes = &description_bytes[..];
 
         if has_offsets {
-            // We could use these offsets but we are lazy
+            // I could use these offsets but I am a lazy developer (for now)
             reader.seek(SeekFrom::Current((size * OFFSET_BYTES) as i64))?;
         }
 
