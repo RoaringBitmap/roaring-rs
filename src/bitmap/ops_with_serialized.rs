@@ -92,9 +92,8 @@ impl RoaringBitmap {
         let mut description_bytes = &description_bytes[..];
 
         if has_offsets {
-            let mut offsets = vec![0u8; size * OFFSET_BYTES];
-            reader.read_exact(&mut offsets)?;
-            drop(offsets); // We could use these offsets but we are lazy
+            // We could use these offsets but we are lazy
+            reader.seek(SeekFrom::Current((size * OFFSET_BYTES) as i64))?;
         }
 
         let mut containers = Vec::new();
@@ -175,10 +174,10 @@ impl RoaringBitmap {
             };
 
             if let Some(container) = container {
-                let mut tmp_container = Container { key, store };
-                tmp_container &= container;
-                if !tmp_container.is_empty() {
-                    containers.push(tmp_container);
+                let mut other_container = Container { key, store };
+                other_container &= container;
+                if !other_container.is_empty() {
+                    containers.push(other_container);
                 }
             }
         }
