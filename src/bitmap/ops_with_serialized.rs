@@ -104,19 +104,14 @@ impl RoaringBitmap {
             let mut offsets = vec![0; size];
             reader.read_exact(cast_slice_mut(&mut offsets))?;
             offsets.iter_mut().for_each(|offset| *offset = u32::from_le(*offset));
-
-            // Loop on the materialized containers if there
-            // are less or as many of them than serialized ones.
-            if self.containers.len() <= size {
-                return self.intersection_with_serialized_impl_with_offsets(
-                    reader,
-                    a,
-                    b,
-                    &descriptions,
-                    &offsets,
-                    run_container_bitmap.as_deref(),
-                );
-            }
+            return self.intersection_with_serialized_impl_with_offsets(
+                reader,
+                a,
+                b,
+                &descriptions,
+                &offsets,
+                run_container_bitmap.as_deref(),
+            );
         }
 
         // Read each container and skip the useless ones
