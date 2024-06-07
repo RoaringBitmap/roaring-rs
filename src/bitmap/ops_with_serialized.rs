@@ -278,7 +278,6 @@ impl RoaringBitmap {
 }
 
 #[cfg(test)]
-#[cfg(feature = "std")] // We need this to serialize bitmaps
 mod test {
     use crate::RoaringBitmap;
     use proptest::prelude::*;
