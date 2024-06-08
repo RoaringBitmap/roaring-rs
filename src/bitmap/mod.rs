@@ -12,10 +12,12 @@ mod cmp;
 mod inherent;
 mod iter;
 mod ops;
+#[cfg(feature = "std")]
+mod ops_with_serialized;
 #[cfg(feature = "serde")]
 mod serde;
 #[cfg(feature = "std")]
-mod serialization;
+pub(crate) mod serialization;
 
 use self::cmp::Pairs;
 pub use self::iter::IntoIter;
