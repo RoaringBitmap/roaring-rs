@@ -46,23 +46,11 @@ jobs:
         with:
           command: fetch
 
-      - name: Fetch benchmarks
-        uses: actions-rs/cargo@v1
-        with:
-          command: fetch
-          args: --manifest-path benchmarks/Cargo.toml
-
       - name: Build
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --all-targets
-
-      - name: Build benchmarks
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --manifest-path benchmarks/Cargo.toml --all-targets
 
       - name: Check
         uses: actions-rs/cargo@v1
@@ -70,23 +58,11 @@ jobs:
           command: clippy
           args: --all-targets -- -D warnings
 
-      - name: Check benchmarks
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --manifest-path benchmarks/Cargo.toml --all-targets -- -D warnings
-
       - name: Check formatting
         uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: -- --check
-
-      - name: Check benchmark formatting
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --manifest-path benchmarks/Cargo.toml -- --check
 
       - name: Test
         uses: actions-rs/cargo@v1
@@ -103,8 +79,7 @@ jobs:
       - name: Test benchmarks
         uses: actions-rs/cargo@v1
         with:
-          command: test
-          args: --manifest-path benchmarks/Cargo.toml --benches
+          command: bench
 
       - name: SIMD test
         if: matrix.rust == 'nightly'
@@ -119,5 +94,5 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           toolchain: nightly
-          command: test
-          args: --manifest-path benchmarks/Cargo.toml --features "simd" --benches
+          command: bench
+          args: --features "simd"
