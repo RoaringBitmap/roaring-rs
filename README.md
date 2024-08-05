@@ -17,7 +17,6 @@ This project uses [Clippy][], [rustfmt][], and denies warnings in CI builds. Ava
 To ensure your changes will be accepted please check them with:
 ```
 cargo fmt -- --check
-cargo fmt --manifest-path benchmarks/Cargo.toml -- --check
 cargo clippy --all-targets -- -D warnings
 ```
 
@@ -25,10 +24,10 @@ In addition, ensure all tests are passing with `cargo test`
 
 ### Benchmarking
 
-It is recommended to run the `cargo bench` command inside of the `benchmarks` directory.
-This directory contains a library that is dedicated to benchmarking the Roaring library
-by using a set of [real-world datasets][]. It is also advised to run the benchmarks on
-a bare-metal machine, running them on the base branch and then on the contribution PR
+It is recommended to run the `cargo bench` command.
+The [benchmarks directory](./benchmarks) contains a library that is dedicated to benchmarking the 
+Roaring library by using a set of [real-world datasets][]. It is also advised to run the benchmarks
+on a bare-metal machine, running them on the base branch and then on the contribution PR
 branch to better see the changes.
 
 Those benchmarks are designed on top of the Criterion library,

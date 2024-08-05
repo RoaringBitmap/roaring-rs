@@ -81,6 +81,7 @@ fn init_datasets() -> Result<PathBuf, Box<dyn std::error::Error>> {
                             "{{prefix}}{{msg:.cyan/blue}} [{{bar}}] {{pos}}/{}",
                             progress.total_objects()
                         ))
+                        .expect("template string invalid")
                         .progress_chars("#> "),
                 )
                 .with_prefix("    ")
@@ -168,6 +169,7 @@ fn parse_datasets<P: AsRef<Path>>(path: P) -> Result<Vec<Dataset>, Box<dyn std::
                 .with_style(
                     ProgressStyle::default_bar()
                         .template("    {prefix:.green} [{bar}] {msg}")
+                        .expect("template string invalid")
                         .progress_chars("#> "),
                 )
                 .with_prefix("Parsing")
