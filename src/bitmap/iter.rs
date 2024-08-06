@@ -344,6 +344,9 @@ impl Iterator for SkipToIter<'_> {
     type Item = u32;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.containers.is_empty() {
+            return None
+        }
         let next = self.iter.next();
         if next.is_some() {
             next

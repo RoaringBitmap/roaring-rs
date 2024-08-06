@@ -10,3 +10,9 @@ fn basic() {
     assert_eq!(i.next(), None);
 
 }
+
+#[test]
+fn empty() {
+    let bm = RoaringBitmap::new();
+    assert_eq!(bm.iter().skip_to(31337).next(), None)
+}
