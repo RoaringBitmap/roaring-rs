@@ -230,7 +230,7 @@ impl ArrayStore {
         match self.vec.as_slice().binary_search(&n) {
             Ok(index) | Err(index) => {
                 if index == self.vec.len() {
-                    Default::default()
+                    [].iter()
                 } else {
                     (&self.vec[index..]).into_iter()
                 }
