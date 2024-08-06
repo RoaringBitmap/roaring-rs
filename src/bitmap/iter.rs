@@ -3,13 +3,17 @@ use core::iter;
 use core::slice;
 
 use super::container::Container;
-use crate::{NonSortedIntegers, RoaringBitmap};
+use crate::{NonSortedIntegers, RoaringBitmap, SkipTo};
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
+use crate::bitmap::container;
+use crate::bitmap::util::split;
 
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a> {
+    // needed to support skip_to
+    containers: &'a [Container],
     inner: iter::Flatten<slice::Iter<'a, Container>>,
     size_hint: u64,
 }
@@ -23,7 +27,7 @@ pub struct IntoIter {
 impl Iter<'_> {
     fn new(containers: &[Container]) -> Iter {
         let size_hint = containers.iter().map(|c| c.len()).sum();
-        Iter { inner: containers.iter().flatten(), size_hint }
+        Iter { containers, inner: containers.iter().flatten(), size_hint }
     }
 }
 
@@ -296,5 +300,61 @@ impl RoaringBitmap {
         }
 
         Ok(count)
+    }
+}
+
+impl<'a> SkipTo for Iter<'a> {
+    type Iter = SkipToIter<'a>;
+
+    fn skip_to(self, n: u32) -> Self::Iter {
+        SkipToIter::new(&self.containers, n)
+    }
+}
+pub struct SkipToIter<'a> {
+    container_index: usize,
+    containers: &'a [Container],
+    iter: container::Iter<'a>
+}
+
+impl<'a> SkipToIter<'a> {
+    fn new(containers: &'a [Container], n: u32) -> Self {
+        let (key, v) = split(n);
+        match containers.binary_search_by_key(&key, |e| e.key) {
+            Ok(index) | Err(index) => {
+                if index == containers.len() {
+                    // there are no containers with a key <= n. Return empty
+                    Self {
+                        container_index: 0,
+                        containers: &[],
+                        iter: container::Iter::empty(),
+                    }
+                } else {
+                    Self {
+                        container_index: 0,
+                        containers: &containers[index..],
+                        iter: (&containers[index]).skip_to_iter(v),
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl Iterator for SkipToIter<'_> {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = self.iter.next();
+        if next.is_some() {
+            next
+        } else if self.container_index == self.containers.len() - 1 {
+            None
+        } else {
+            self.container_index += 1;
+            self.iter = (&self.containers[self.container_index]).into_iter();
+            // we can call self.iter.next() directly here if we know that a
+            // container can't be empty. Do we?
+            self.next()
+        }
     }
 }
