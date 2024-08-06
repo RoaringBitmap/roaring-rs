@@ -181,6 +181,13 @@ impl Container {
             }
         };
     }
+
+    pub(crate) fn skip_to_iter(&self, n: u16) -> Iter<'_> {
+        Iter {
+            key: self.key,
+            inner: self.store.skip_to_iter(n),
+        }
+    }
 }
 
 impl BitOr<&Container> for &Container {
@@ -311,5 +318,14 @@ impl DoubleEndedIterator for Iter<'_> {
 impl fmt::Debug for Container {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         format!("Container<{:?} @ {:?}>", self.len(), self.key).fmt(formatter)
+    }
+}
+
+impl<'a> Iter<'a> {
+    pub fn empty() -> Self {
+        Self {
+            key: 0,
+            inner: store::Iter::Empty,
+        }
     }
 }
