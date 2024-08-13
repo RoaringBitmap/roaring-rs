@@ -232,7 +232,7 @@ impl ArrayStore {
                 if index == self.vec.len() {
                     [].iter()
                 } else {
-                    (&self.vec[index..]).into_iter()
+                    self.vec[index..].iter()
                 }
             }
         }

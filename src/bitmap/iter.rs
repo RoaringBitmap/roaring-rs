@@ -307,7 +307,7 @@ impl<'a> SkipTo for Iter<'a> {
     type Iter = SkipToIter<'a>;
 
     fn skip_to(self, n: u32) -> Self::Iter {
-        SkipToIter::new(&self.containers, n)
+        SkipToIter::new(self.containers, n)
     }
 }
 pub struct SkipToIter<'a> {
@@ -332,7 +332,7 @@ impl<'a> SkipToIter<'a> {
                     Self {
                         container_index: 0,
                         containers: &containers[index..],
-                        iter: (&containers[index]).skip_to_iter(v),
+                        iter: containers[index].skip_to_iter(v),
                     }
                 }
             }
