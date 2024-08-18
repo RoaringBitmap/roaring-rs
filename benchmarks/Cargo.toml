@@ -4,18 +4,19 @@ description = "An external library for benchmarking the roaring crate with real 
 version = "0.1.0"
 authors = ["Kerollmops <renault.cle@gmail.com>"]
 edition = "2021"
+rust-version = "1.65.0"
 publish = false
 
 [dependencies]
-roaring = { path = ".." }
+roaring = { workspace = true }
 
 [dev-dependencies]
-once_cell = "1.9"
-git2 = { version = "0.17", default-features = false, features = ["https", "vendored-openssl"] }
-zip = { version = "0.5", default-features = false, features = ["deflate"] }
-indicatif = "0.16"
-criterion = { version = "0.3", features = ["html_reports"] }
-itertools = "0.10"
+criterion = { workspace = true, features = ["html_reports"] }
+git2 = { workspace = true, default-features = false, features = ["https", "vendored-openssl"] }
+indicatif = { workspace = true }
+itertools = { workspace = true }
+once_cell = { workspace = true }
+zip = { workspace = true, default-features = false, features = ["deflate"] }
 
 [features]
 simd = ["roaring/simd"]
