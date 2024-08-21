@@ -149,6 +149,27 @@ fn creation(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(dataset.bitmaps.iter().map(|rb| rb.len()).sum()));
 
+        group.bench_function(BenchmarkId::new("from_bitmap_bytes", &dataset.name), |b| {
+            let bitmap_bytes = dataset_numbers
+                .iter()
+                .map(|bitmap_numbers| {
+                    let max_number = *bitmap_numbers.iter().max().unwrap() as usize;
+                    let mut buf = vec![0u8; max_number / 8 + 1];
+                    for n in bitmap_numbers {
+                        let byte = (n / 8) as usize;
+                        let bit = n % 8;
+                        buf[byte] |= 1 << bit;
+                    }
+                    buf
+                })
+                .collect::<Vec<_>>();
+            b.iter(|| {
+                for bitmap_bytes in &bitmap_bytes {
+                    black_box(RoaringBitmap::from_bitmap_bytes(0, bitmap_bytes));
+                }
+            })
+        });
+
         group.bench_function(BenchmarkId::new("from_sorted_iter", &dataset.name), |b| {
             b.iter(|| {
                 for bitmap_numbers in &dataset_numbers {
