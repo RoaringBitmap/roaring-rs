@@ -7,6 +7,7 @@ use std::io;
 
 use crate::bitmap::container::{Container, ARRAY_LIMIT};
 use crate::bitmap::store::{ArrayStore, BitmapStore, Store, BITMAP_LENGTH};
+use crate::bitmap::util;
 use crate::RoaringBitmap;
 
 pub const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
@@ -45,6 +46,143 @@ impl RoaringBitmap {
 
         // header + container sizes
         8 + container_sizes
+    }
+
+    /// Creates a `RoaringBitmap` from a byte slice, interpreting the bytes as a bitmap with a specified offset.
+    ///
+    /// # Arguments
+    ///
+    /// - `offset: u32` - The starting position in the bitmap where the byte slice will be applied, specified in bits.
+    ///                   This means that if `offset` is `n`, the first byte in the slice will correspond to the `n`th bit(0-indexed) in the bitmap.
+    ///                   Must be a multiple of 8.
+    /// - `bytes: &[u8]` - The byte slice containing the bitmap data. The bytes are interpreted in little-endian order.
+    ///
+    /// # Interpretation of `bytes`
+    ///
+    /// The `bytes` slice is interpreted in little-endian order. Each byte is read from least significant bit (LSB) to most significant bit (MSB).
+    /// For example, the byte `0b00000101` represents the bits `1, 0, 1, 0, 0, 0, 0, 0` in that order (see Examples section).
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `offset` is not a multiple of 8.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let bytes = [0b00000101, 0b00000010, 0b00000000, 0b10000000];
+    /// //             ^^^^^^^^    ^^^^^^^^    ^^^^^^^^    ^^^^^^^^
+    /// //             76543210          98
+    /// let rb = RoaringBitmap::from_bitmap_bytes(0, &bytes);
+    /// assert!(rb.contains(0));
+    /// assert!(!rb.contains(1));
+    /// assert!(rb.contains(2));
+    /// assert!(rb.contains(9));
+    /// assert!(rb.contains(31));
+    ///
+    /// let rb = RoaringBitmap::from_bitmap_bytes(8, &bytes);
+    /// assert!(rb.contains(8));
+    /// assert!(!rb.contains(9));
+    /// assert!(rb.contains(10));
+    /// assert!(rb.contains(17));
+    /// assert!(rb.contains(39));
+    /// ```
+    #[inline]
+    pub fn from_bitmap_bytes(offset: u32, bytes: &[u8]) -> RoaringBitmap {
+        #[inline(always)]
+        fn next_multiple_of_u32(n: u32, multiple: u32) -> u32 {
+            (n + multiple - 1) / multiple * multiple
+        }
+        #[inline(always)]
+        fn next_multiple_of_usize(n: usize, multiple: usize) -> usize {
+            (n + multiple - 1) / multiple * multiple
+        }
+
+        const BITS_IN_ONE_CONTAINER: usize = u64::BITS as usize * BITMAP_LENGTH;
+        const BYTES_IN_ONE_CONTAINER: usize = BITS_IN_ONE_CONTAINER / 8;
+        assert_eq!(offset % 8, 0, "offset must be a multiple of 8");
+        let byte_offset = offset as usize / 8;
+        let n_containers_needed =
+            (bytes.len() + (BYTES_IN_ONE_CONTAINER - 1)) / BYTES_IN_ONE_CONTAINER + 1;
+        let mut containers = Vec::with_capacity(n_containers_needed);
+
+        let (offset, bytes) = if byte_offset % BYTES_IN_ONE_CONTAINER == 0 {
+            (offset, bytes)
+        } else {
+            let next_container_byte_offset =
+                next_multiple_of_usize(byte_offset, BYTES_IN_ONE_CONTAINER);
+
+            let number_of_bytes_in_first_container = next_container_byte_offset - byte_offset;
+            let number_of_bytes_copied_to_first_container =
+                bytes.len().min(number_of_bytes_in_first_container);
+
+            let (first_container_bytes, bytes_left) =
+                bytes.split_at(number_of_bytes_copied_to_first_container);
+            let (first_container_key, _) = util::split(offset);
+
+            let len: u64 = first_container_bytes.iter().map(|&b| b.count_ones() as u64).sum();
+            if len != 0 {
+                let mut bits: Box<[u64; BITMAP_LENGTH]> = Box::new([0; BITMAP_LENGTH]);
+                // Safety:
+                // * `first_container_bytes` is a slice of `bytes` and is guaranteed to be smaller than `BITMAP_LENGTH` u64s(= `BYTES_IN_ONE_CONTAINER` u8s)
+                // * `count` argument of `add` never equals to `BYTE_IN_ONE_CONTAINER` because at least one byte will be copied to the first container
+                //   This is guaranteed by the condition `byte_offset % BYTES_IN_ONE_CONTAINER != 0`
+                let bits_ptr = unsafe {
+                    bits.as_mut_ptr()
+                        .cast::<u8>()
+                        .add(BYTES_IN_ONE_CONTAINER - number_of_bytes_in_first_container)
+                };
+
+                debug_assert!(first_container_bytes.len() <= number_of_bytes_in_first_container);
+                // Safety:
+                // * `first_container_bytes` is a slice of `bytes` and is guaranteed to be smaller than or equal to `number_of_bytes_in_first_container`
+                unsafe {
+                    core::ptr::copy_nonoverlapping(
+                        first_container_bytes.as_ptr(),
+                        bits_ptr,
+                        first_container_bytes.len(),
+                    )
+                };
+
+                let store = BitmapStore::from_unchecked(len, bits);
+                let mut container =
+                    Container { key: first_container_key, store: Store::Bitmap(store) };
+                container.ensure_correct_store();
+
+                containers.push(container);
+            }
+
+            (next_multiple_of_u32(offset, BITS_IN_ONE_CONTAINER as u32), bytes_left)
+        };
+
+        let bitmap_store_chunks = bytes.chunks(BYTES_IN_ONE_CONTAINER);
+
+        let (offset_key, _) = util::split(offset);
+        for (i, chunk) in bitmap_store_chunks.enumerate() {
+            let len: u64 = chunk.iter().map(|&b| b.count_ones() as u64).sum();
+            if len == 0 {
+                continue;
+            }
+            let mut bits: Box<[u64; BITMAP_LENGTH]> = Box::new([0; BITMAP_LENGTH]);
+            let bits_ptr = bits.as_mut_ptr().cast::<u8>();
+
+            debug_assert!(chunk.len() <= BITMAP_LENGTH * size_of::<u64>());
+            // Safety:
+            // * `chunk` is a slice of `bytes` and is guaranteed to be smaller than `BITMAP_LENGTH` u64s
+            unsafe { core::ptr::copy_nonoverlapping(chunk.as_ptr(), bits_ptr, chunk.len()) };
+
+            let store = BitmapStore::from_unchecked(len, bits);
+
+            let mut container =
+                Container { key: offset_key + i as u16, store: Store::Bitmap(store) };
+            container.ensure_correct_store();
+
+            containers.push(container);
+        }
+
+        RoaringBitmap { containers }
     }
 
     /// Serialize this bitmap into [the standard Roaring on-disk format][format].
@@ -256,7 +394,7 @@ impl RoaringBitmap {
 
 #[cfg(test)]
 mod test {
-    use crate::RoaringBitmap;
+    use crate::{bitmap::store::BITMAP_LENGTH, RoaringBitmap};
     use proptest::prelude::*;
 
     proptest! {
@@ -268,6 +406,43 @@ mod test {
             bitmap.serialize_into(&mut buffer).unwrap();
             prop_assert_eq!(bitmap, RoaringBitmap::deserialize_from(buffer.as_slice()).unwrap());
         }
+    }
+
+    #[test]
+    fn test_from_bitmap_bytes() {
+        const CONTAINER_OFFSET: u32 = u64::BITS * BITMAP_LENGTH as u32;
+        const CONTAINER_OFFSET_IN_BYTES: u32 = CONTAINER_OFFSET / 8;
+        let mut bytes = vec![0xff; CONTAINER_OFFSET_IN_BYTES as usize];
+        bytes.extend(&[0x00; CONTAINER_OFFSET_IN_BYTES as usize]);
+        bytes.extend(&[0b00000001, 0b00000010, 0b00000011, 0b00000100]);
+
+        let offset = 32;
+        let rb = RoaringBitmap::from_bitmap_bytes(offset, &bytes);
+        for i in 0..offset {
+            assert!(!rb.contains(i), "{i} should not be in the bitmap");
+        }
+        for i in offset..offset + CONTAINER_OFFSET {
+            assert!(rb.contains(i), "{i} should be in the bitmap");
+        }
+        for i in offset + CONTAINER_OFFSET..offset + CONTAINER_OFFSET * 2 {
+            assert!(!rb.contains(i), "{i} should not be in the bitmap");
+        }
+        for bit in [0, 9, 16, 17, 26] {
+            let i = bit + offset + CONTAINER_OFFSET * 2;
+            assert!(rb.contains(i), "{i} should be in the bitmap");
+        }
+
+        assert_eq!(rb.len(), CONTAINER_OFFSET as u64 + 5);
+
+        // Ensure the empty container is not created
+        let mut bytes = vec![0x00u8; CONTAINER_OFFSET_IN_BYTES as usize];
+        bytes.extend(&[0xff]);
+        let rb = RoaringBitmap::from_bitmap_bytes(0, &bytes);
+
+        assert_eq!(rb.min(), Some(CONTAINER_OFFSET));
+
+        let rb = RoaringBitmap::from_bitmap_bytes(8, &bytes);
+        assert_eq!(rb.min(), Some(CONTAINER_OFFSET + 8));
     }
 
     #[test]
