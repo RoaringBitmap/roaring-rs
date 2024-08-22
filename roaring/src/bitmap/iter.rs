@@ -137,7 +137,6 @@ pub struct AdvanceToIter<'a, CI> {
     iter_back: Option<Peekable<container::Iter<'a>>>,
 }
 
-#[allow(private_bounds)]
 impl<'a, CI> AdvanceToIter<'a, CI>
 where
     Self: AdvanceIterContainer<'a>,
@@ -402,7 +401,7 @@ impl RoaringBitmap {
     }
 }
 
-trait AdvanceIterContainer<'a> {
+pub trait AdvanceIterContainer<'a> {
     fn advance_container(&mut self) -> Option<u16>;
 }
 
