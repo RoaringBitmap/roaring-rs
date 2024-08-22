@@ -67,3 +67,13 @@ fn iter_from() {
     assert_eq!(i.next(), Some(100001));
     assert_eq!(i.next(), None);
 }
+
+#[test]
+fn advance_to_with_tail_iter() {
+    let bm = RoaringBitmap::from([1, 2, 3, 100000, 100001]);
+    let mut i = bm.iter();
+    i.next_back();
+    let mut i = i.advance_to(100000);
+    assert_eq!(i.next(), Some(100000));
+    assert_eq!(i.next(), None);
+}

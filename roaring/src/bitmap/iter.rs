@@ -133,7 +133,8 @@ impl_iter!(IntoIter, Vec<Container>, vec::IntoIter<Container>, 'static);
 
 pub struct AdvanceToIter<'a, CI> {
     containers_iter: CI,
-    iter: Peekable<container::Iter<'a>>,
+    iter_front: Peekable<container::Iter<'a>>,
+    iter_back: Option<Peekable<container::Iter<'a>>>,
 }
 
 #[allow(private_bounds)]
@@ -141,9 +142,23 @@ impl<'a, CI> AdvanceToIter<'a, CI>
 where
     Self: AdvanceIterContainer<'a>,
 {
-    fn new(containers_iter: CI, iter: container::Iter<'a>, n: u32) -> Self {
-        let mut result = Self { containers_iter, iter: iter.peekable() };
-        if let Some(peek) = result.iter.peek().cloned() {
+    fn new(
+        containers_iter: CI,
+        iter_front: Option<container::Iter<'a>>,
+        iter_back: Option<container::Iter<'a>>,
+        n: u32,
+    ) -> Self {
+        let mut result = Self {
+            containers_iter,
+            iter_front: container::Iter::empty().peekable(),
+            iter_back: iter_back.map(|o| o.peekable()),
+        };
+        if let Some(iter_front) = iter_front {
+            result.iter_front = iter_front.peekable();
+        } else {
+            result.advance_container();
+        }
+        if let Some(peek) = result.iter_front.peek().cloned() {
             if peek < n {
                 let (peek_key, _) = util::split(peek);
                 let (target_key, _) = util::split(n);
@@ -154,11 +169,11 @@ where
                         }
                     }
                 }
-                while let Some(peek) = result.iter.peek() {
+                while let Some(peek) = result.iter_front.peek() {
                     if *peek >= n {
                         break;
                     } else {
-                        result.iter.next();
+                        result.iter_front.next();
                     }
                 }
             }
@@ -175,7 +190,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if let item @ Some(_) = self.iter.next() {
+            if let item @ Some(_) = self.iter_front.next() {
                 return item;
             }
             self.advance_container()?;
@@ -224,14 +239,14 @@ impl RoaringBitmap {
             Ok(index) | Err(index) => {
                 if index == self.containers.len() {
                     // no container has a key >= key(n)
-                    AdvanceToIter::new([].iter(), container::Iter::empty(), n)
+                    AdvanceToIter::new([].iter(), None, None, n)
                 } else {
                     let containers = &self.containers[index..];
                     let iter = (&containers[0]).into_iter();
                     if index + 1 < containers.len() - 1 {
-                        AdvanceToIter::new(containers[index + 1..].iter(), iter, n)
+                        AdvanceToIter::new(containers[index + 1..].iter(), Some(iter), None, n)
                     } else {
-                        AdvanceToIter::new([].iter(), iter, n)
+                        AdvanceToIter::new([].iter(), Some(iter), None, n)
                     }
                 }
             }
@@ -397,8 +412,17 @@ macro_rules! impl_advance_iter_container {
             fn advance_container(&mut self) -> Option<u16> {
                 if let Some(container) = self.containers_iter.next() {
                     let result = container.key;
-                    self.iter = container.into_iter().peekable();
+                    self.iter_front = container.into_iter().peekable();
                     Some(result)
+                } else if let Some(iter_back) = &mut self.iter_back {
+                    std::mem::swap(iter_back, &mut self.iter_front);
+                    self.iter_back = None;
+                    if let Some(v) = self.iter_front.peek().cloned() {
+                        let (key, _) = util::split(v);
+                        Some(key)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
@@ -415,12 +439,12 @@ macro_rules! impl_advance_to {
                 /// Advance the iterator to the first position where the item has a value >= `n`
                 pub fn advance_to(mut self, n: u32) -> $ret {
                     if let Some(iter_front) = self.iter_front {
-                        AdvanceToIter::new(self.containers_iter, iter_front, n)
+                        AdvanceToIter::new(self.containers_iter, Some(iter_front), self.iter_back, n)
                     } else {
                         if let Some(container) = self.containers_iter.next() {
-                            AdvanceToIter::new(self.containers_iter, container.into_iter(), n)
+                            AdvanceToIter::new(self.containers_iter, Some(container.into_iter()), self.iter_back, n)
                         } else {
-                            AdvanceToIter::new(self.containers_iter, container::Iter::empty(), n)
+                            AdvanceToIter::new(self.containers_iter, Some(container::Iter::empty()), self.iter_back, n)
                         }
                     }
                 }
