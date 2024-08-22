@@ -181,13 +181,6 @@ impl Container {
             }
         };
     }
-
-    pub(crate) fn skip_to_iter(&self, n: u16) -> Iter<'_> {
-        Iter {
-            key: self.key,
-            inner: self.store.skip_to_iter(n),
-        }
-    }
 }
 
 impl BitOr<&Container> for &Container {
@@ -307,6 +300,10 @@ impl<'a> Iterator for Iter<'a> {
     fn next(&mut self) -> Option<u32> {
         self.inner.next().map(|i| util::join(self.key, i))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
 }
 
 impl DoubleEndedIterator for Iter<'_> {
@@ -323,9 +320,12 @@ impl fmt::Debug for Container {
 
 impl<'a> Iter<'a> {
     pub fn empty() -> Self {
-        Self {
-            key: 0,
-            inner: store::Iter::Empty,
-        }
+        Self { key: 0, inner: store::Iter::Empty }
+    }
+}
+
+impl AsRef<Container> for Container {
+    fn as_ref(&self) -> &Container {
+        self
     }
 }

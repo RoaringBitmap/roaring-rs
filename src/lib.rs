@@ -94,11 +94,3 @@ pub trait MultiOps<T>: IntoIterator<Item = T> {
     /// The `symmetric difference` between all elements.
     fn symmetric_difference(self) -> Self::Output;
 }
-
-/// Get an iterator that yields values >= `n`
-pub trait SkipTo {
-    /// The type of iterator that will be returned
-    type Iter: Iterator;
-    /// Get an iterator that yields values >= `n`
-    fn skip_to(self, n: u32) -> Self::Iter;
-}

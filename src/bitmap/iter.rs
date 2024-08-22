@@ -1,136 +1,185 @@
 use alloc::vec;
-use core::iter;
 use core::slice;
 
 use super::container::Container;
-use crate::{NonSortedIntegers, RoaringBitmap, SkipTo};
+use crate::{NonSortedIntegers, RoaringBitmap};
 
+use crate::bitmap::{container, util};
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
-use crate::bitmap::container;
-use crate::bitmap::util::split;
+use std::iter::Peekable;
 
-/// An iterator for `RoaringBitmap`.
-pub struct Iter<'a> {
-    // needed to support skip_to
-    containers: &'a [Container],
-    inner: iter::Flatten<slice::Iter<'a, Container>>,
-    size_hint: u64,
+macro_rules! impl_iter {
+    ($t:ident,$c:ty, $c_iter:ty, $iter_lt:lifetime $(,$lt:lifetime)?) => {
+        /// An iterator for `RoaringBitmap`.
+        pub struct $t$(<$lt>)? {
+            containers_iter: $c_iter,
+            iter_front: Option<container::Iter<$iter_lt>>,
+            iter_back: Option<container::Iter<$iter_lt>>,
+            size_hint: u64,
+        }
+
+        impl$(<$lt>)? $t$(<$lt>)? {
+            fn new(containers: $c) -> Self {
+                let size_hint = containers.iter().map(|c| c.len()).sum();
+                let containers_iter = containers.into_iter();
+                Self {
+                    containers_iter,
+                    iter_front: None,
+                    iter_back: None,
+                    size_hint,
+                }
+            }
+        }
+
+        impl$(<$lt>)? Iterator for $t$(<$lt>)? {
+            type Item = u32;
+
+            fn next(&mut self) -> Option<u32> {
+                self.size_hint = self.size_hint.saturating_sub(1);
+                loop {
+                    if let Some(iter) = &mut self.iter_front {
+                        if let item @ Some(_) = iter.next() {
+                            return item
+                        }
+                    }
+                    if let Some(container) = self.containers_iter.next() {
+                        self.iter_front = Some(container.into_iter())
+                    } else if let Some(iter) = &mut self.iter_back {
+                        return iter.next()
+                    } else {
+                        return None
+                    }
+                }
+            }
+
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                if self.size_hint < usize::MAX as u64 {
+                    (self.size_hint as usize, Some(self.size_hint as usize))
+                } else {
+                    (usize::MAX, None)
+                }
+            }
+
+            #[inline]
+            fn fold<B, F>(self, init: B, f: F) -> B
+            where
+                Self: Sized,
+                F: FnMut(B, Self::Item) -> B,
+            {
+                match (self.iter_front, self.iter_back) {
+                    (Some(iter_front), Some(iter_back)) => {
+                        iter_front.chain(self.containers_iter.flatten()).chain(iter_back).fold(init, f)
+                    },
+                    (Some(iter_front), None) => {
+                        iter_front.chain(self.containers_iter.flatten()).fold(init, f)
+                    },
+                    (None, Some(iter_back)) => {
+                        self.containers_iter.flatten().chain(iter_back).fold(init, f)
+                    },
+                    (None, None) => self.containers_iter.flatten().fold(init, f)
+                }
+            }
+        }
+
+        impl$(<$lt>)? DoubleEndedIterator for $t$(<$lt>)? {
+            fn next_back(&mut self) -> Option<Self::Item> {
+                self.size_hint = self.size_hint.saturating_sub(1);
+                loop {
+                    if let Some(iter) = &mut self.iter_back {
+                        if let item @ Some(_) = iter.next_back() {
+                            return item
+                        }
+                    }
+                    if let Some(container) = self.containers_iter.next_back() {
+                        self.iter_back = Some(container.into_iter())
+                    } else if let Some(iter) = &mut self.iter_front {
+                        return iter.next_back()
+                    } else {
+                        return None
+                    }
+                }
+            }
+
+            #[inline]
+            fn rfold<Acc, Fold>(self, init: Acc, f: Fold) -> Acc
+            where
+                Fold: FnMut(Acc, Self::Item) -> Acc,
+            {
+                match (self.iter_front, self.iter_back) {
+                    (Some(iter_front), Some(iter_back)) => {
+                        iter_front.chain(self.containers_iter.flatten()).chain(iter_back).rfold(init, f)
+                    },
+                    (Some(iter_front), None) => {
+                        iter_front.chain(self.containers_iter.flatten()).rfold(init, f)
+                    },
+                    (None, Some(iter_back)) => {
+                        self.containers_iter.flatten().chain(iter_back).rfold(init, f)
+                    },
+                    (None, None) => self.containers_iter.flatten().rfold(init, f)
+                }
+            }
+        }
+        #[cfg(target_pointer_width = "64")]
+        impl$(<$lt>)? ExactSizeIterator for $t$(<$lt>)? {
+            fn len(&self) -> usize {
+                self.size_hint as usize
+            }
+        }
+    };
+}
+impl_iter!(Iter, &'a [Container], slice::Iter<'a, Container>, 'a, 'a);
+impl_iter!(IntoIter, Vec<Container>, vec::IntoIter<Container>, 'static);
+
+pub struct AdvanceToIter<'a, CI> {
+    containers_iter: CI,
+    iter: Peekable<container::Iter<'a>>,
 }
 
-/// An iterator for `RoaringBitmap`.
-pub struct IntoIter {
-    inner: iter::Flatten<vec::IntoIter<Container>>,
-    size_hint: u64,
-}
-
-impl Iter<'_> {
-    fn new(containers: &[Container]) -> Iter {
-        let size_hint = containers.iter().map(|c| c.len()).sum();
-        Iter { containers, inner: containers.iter().flatten(), size_hint }
+#[allow(private_bounds)]
+impl<'a, CI> AdvanceToIter<'a, CI>
+where
+    Self: AdvanceIterContainer<'a>,
+{
+    fn new(containers_iter: CI, iter: container::Iter<'a>, n: u32) -> Self {
+        let mut result = Self { containers_iter, iter: iter.peekable() };
+        if let Some(peek) = result.iter.peek().cloned() {
+            if peek < n {
+                let (peek_key, _) = util::split(peek);
+                let (target_key, _) = util::split(n);
+                if target_key > peek_key {
+                    while let Some(next_key) = result.advance_container() {
+                        if next_key >= target_key {
+                            break;
+                        }
+                    }
+                }
+                while let Some(peek) = result.iter.peek() {
+                    if *peek >= n {
+                        break;
+                    } else {
+                        result.iter.next();
+                    }
+                }
+            }
+        }
+        result
     }
 }
 
-impl IntoIter {
-    fn new(containers: Vec<Container>) -> IntoIter {
-        let size_hint = containers.iter().map(|c| c.len()).sum();
-        IntoIter { inner: containers.into_iter().flatten(), size_hint }
-    }
-}
-
-impl Iterator for Iter<'_> {
+impl<'a, CI> Iterator for AdvanceToIter<'a, CI>
+where
+    Self: AdvanceIterContainer<'a>,
+{
     type Item = u32;
 
-    fn next(&mut self) -> Option<u32> {
-        self.size_hint = self.size_hint.saturating_sub(1);
-        self.inner.next()
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.size_hint < usize::MAX as u64 {
-            (self.size_hint as usize, Some(self.size_hint as usize))
-        } else {
-            (usize::MAX, None)
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let item @ Some(_) = self.iter.next() {
+                return item;
+            }
+            self.advance_container()?;
         }
-    }
-
-    #[inline]
-    fn fold<B, F>(self, init: B, f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        self.inner.fold(init, f)
-    }
-}
-
-impl DoubleEndedIterator for Iter<'_> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        self.size_hint = self.size_hint.saturating_sub(1);
-        self.inner.next_back()
-    }
-
-    #[inline]
-    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        self.inner.rfold(init, fold)
-    }
-}
-
-#[cfg(target_pointer_width = "64")]
-impl ExactSizeIterator for Iter<'_> {
-    fn len(&self) -> usize {
-        self.size_hint as usize
-    }
-}
-
-impl Iterator for IntoIter {
-    type Item = u32;
-
-    fn next(&mut self) -> Option<u32> {
-        self.size_hint = self.size_hint.saturating_sub(1);
-        self.inner.next()
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.size_hint < usize::MAX as u64 {
-            (self.size_hint as usize, Some(self.size_hint as usize))
-        } else {
-            (usize::MAX, None)
-        }
-    }
-
-    #[inline]
-    fn fold<B, F>(self, init: B, f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        self.inner.fold(init, f)
-    }
-}
-
-impl DoubleEndedIterator for IntoIter {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        self.size_hint = self.size_hint.saturating_sub(1);
-        self.inner.next_back()
-    }
-
-    #[inline]
-    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        self.inner.rfold(init, fold)
-    }
-}
-
-#[cfg(target_pointer_width = "64")]
-impl ExactSizeIterator for IntoIter {
-    fn len(&self) -> usize {
-        self.size_hint as usize
     }
 }
 
@@ -152,6 +201,41 @@ impl RoaringBitmap {
     /// ```
     pub fn iter(&self) -> Iter {
         Iter::new(&self.containers)
+    }
+
+    /// Iterator over each value >= `n` stored in the RoaringBitmap, guarantees values are ordered
+    /// by value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    /// use core::iter::FromIterator;
+    ///
+    /// let bitmap = (1..3).collect::<RoaringBitmap>();
+    /// let mut iter = bitmap.iter_from(2);
+    ///
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    pub fn iter_from(&self, n: u32) -> AdvanceToIter<'_, slice::Iter<'_, Container>> {
+        let (key, _) = util::split(n);
+        match self.containers.binary_search_by_key(&key, |container| container.key) {
+            Ok(index) | Err(index) => {
+                if index == self.containers.len() {
+                    // no container has a key >= key(n)
+                    AdvanceToIter::new([].iter(), container::Iter::empty(), n)
+                } else {
+                    let containers = &self.containers[index..];
+                    let iter = (&containers[0]).into_iter();
+                    if index + 1 < containers.len() - 1 {
+                        AdvanceToIter::new(containers[index + 1..].iter(), iter, n)
+                    } else {
+                        AdvanceToIter::new([].iter(), iter, n)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -303,61 +387,45 @@ impl RoaringBitmap {
     }
 }
 
-impl<'a> SkipTo for Iter<'a> {
-    type Iter = SkipToIter<'a>;
-
-    fn skip_to(self, n: u32) -> Self::Iter {
-        SkipToIter::new(self.containers, n)
-    }
-}
-pub struct SkipToIter<'a> {
-    container_index: usize,
-    containers: &'a [Container],
-    iter: container::Iter<'a>
+trait AdvanceIterContainer<'a> {
+    fn advance_container(&mut self) -> Option<u16>;
 }
 
-impl<'a> SkipToIter<'a> {
-    fn new(containers: &'a [Container], n: u32) -> Self {
-        let (key, v) = split(n);
-        match containers.binary_search_by_key(&key, |e| e.key) {
-            Ok(index) | Err(index) => {
-                if index == containers.len() {
-                    // there are no containers with a key <= n. Return empty
-                    Self {
-                        container_index: 0,
-                        containers: &[],
-                        iter: container::Iter::empty(),
-                    }
+macro_rules! impl_advance_iter_container {
+    ($lt:lifetime,$ty:ty) => {
+        impl<$lt> AdvanceIterContainer<$lt> for AdvanceToIter<$lt, $ty> {
+            fn advance_container(&mut self) -> Option<u16> {
+                if let Some(container) = self.containers_iter.next() {
+                    let result = container.key;
+                    self.iter = container.into_iter().peekable();
+                    Some(result)
                 } else {
-                    Self {
-                        container_index: 0,
-                        containers: &containers[index..],
-                        iter: containers[index].skip_to_iter(v),
-                    }
+                    None
                 }
             }
         }
-    }
+    };
 }
+impl_advance_iter_container!('a, slice::Iter<'a, Container>);
+impl_advance_iter_container!('a ,vec::IntoIter<Container>);
 
-impl Iterator for SkipToIter<'_> {
-    type Item = u32;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.containers.is_empty() {
-            return None
-        }
-        let next = self.iter.next();
-        if next.is_some() {
-            next
-        } else if self.container_index == self.containers.len() - 1 {
-            None
-        } else {
-            self.container_index += 1;
-            self.iter = (&self.containers[self.container_index]).into_iter();
-            // we can call self.iter.next() directly here if we know that a
-            // container can't be empty. Do we?
-            self.next()
-        }
-    }
+macro_rules! impl_advance_to {
+    ($ty:ty, $ret:ty $(,$lt:lifetime)? ) => {
+             impl$(<$lt>)? $ty {
+                /// Advance the iterator to the first position where the item has a value >= `n`
+                pub fn advance_to(mut self, n: u32) -> $ret {
+                    if let Some(iter_front) = self.iter_front {
+                        AdvanceToIter::new(self.containers_iter, iter_front, n)
+                    } else {
+                        if let Some(container) = self.containers_iter.next() {
+                            AdvanceToIter::new(self.containers_iter, container.into_iter(), n)
+                        } else {
+                            AdvanceToIter::new(self.containers_iter, container::Iter::empty(), n)
+                        }
+                    }
+                }
+            }
+    };
 }
+impl_advance_to!(Iter<'a>, AdvanceToIter<'a, slice::Iter<'a, Container>>, 'a);
+impl_advance_to!(IntoIter, AdvanceToIter<'static, vec::IntoIter<Container>>);

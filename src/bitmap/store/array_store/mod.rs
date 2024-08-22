@@ -11,9 +11,9 @@ use core::ops::{BitAnd, BitAndAssign, BitOr, BitXor, RangeInclusive, Sub, SubAss
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
+use super::bitmap_store::{bit, key, BitmapStore, BITMAP_LENGTH};
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
-use super::bitmap_store::{bit, key, BitmapStore, BITMAP_LENGTH};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct ArrayStore {
@@ -226,18 +226,6 @@ impl ArrayStore {
         self.vec.iter()
     }
 
-    pub fn skip_to_iter(&self, n: u16) -> core::slice::Iter<u16> {
-        match self.vec.as_slice().binary_search(&n) {
-            Ok(index) | Err(index) => {
-                if index == self.vec.len() {
-                    [].iter()
-                } else {
-                    self.vec[index..].iter()
-                }
-            }
-        }
-    }
-
     pub fn into_iter(self) -> alloc::vec::IntoIter<u16> {
         self.vec.into_iter()
     }
@@ -443,36 +431,6 @@ mod tests {
             Store::Array(vec) => Store::Bitmap(vec.to_bitmap_store()),
             Store::Bitmap(..) => s,
         }
-    }
-
-    #[test]
-    fn test_skip_to_iter() {
-        let mut store = ArrayStore::new();
-        store.insert_range(0..=16);
-        store.insert_range(32..=64);
-
-        // test direct hits
-        let mut iter = store.skip_to_iter(32);
-        for n in 32..=64 {
-            assert_eq!(iter.next(), Some(&n));
-        }
-
-        // test index in gap
-        let mut i = store.skip_to_iter(17);
-        assert_eq!(i.next(), Some(&32));
-
-        // test index after end
-        let mut i = store.skip_to_iter(65);
-        assert_eq!(i.next(), None);
-
-        // test last value
-        let mut i = store.skip_to_iter(64);
-        assert_eq!(i.next(), Some(&64));
-
-        // test first value
-        let mut i = store.skip_to_iter(0);
-        assert_eq!(i.next(), Some(&0));
-
     }
 
     #[test]

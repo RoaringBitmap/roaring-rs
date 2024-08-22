@@ -304,10 +304,6 @@ impl BitmapStore {
         BitmapIter::new(&self.bits)
     }
 
-    pub(crate) fn skip_to_iter(&self, n: u16) -> BitmapIter<&[u64; BITMAP_LENGTH]> {
-        BitmapIter::new_from(&self.bits, n)
-    }
-
     pub fn into_iter(self) -> BitmapIter<Box<[u64; BITMAP_LENGTH]>> {
         BitmapIter::new(self.bits)
     }
@@ -420,34 +416,6 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
         BitmapIter {
             key: 0,
             value: bits.borrow()[0],
-            key_back: BITMAP_LENGTH - 1,
-            value_back: bits.borrow()[BITMAP_LENGTH - 1],
-            bits,
-        }
-    }
-
-    fn new_from(bits: B, n: u16) -> BitmapIter<B> {
-        let key = key(n);
-        let mut value = bits.borrow()[key];
-
-        // There is probably a way to calculate value much more efficiently
-        // using bit(n) and some bit magic, but I haven't figured that one out
-        let mut prev_value;
-        loop {
-            if value == 0 {
-                prev_value = 0;
-                break;
-            }
-            let index = value.trailing_zeros() as usize;
-            prev_value = value;
-            value &= value - 1;
-            if (64 * key + index) as u16 >= n {
-                break;
-            }
-        }
-        BitmapIter {
-            key,
-            value: prev_value,
             key_back: BITMAP_LENGTH - 1,
             value_back: bits.borrow()[BITMAP_LENGTH - 1],
             bits,
@@ -588,35 +556,6 @@ impl BitXorAssign<&ArrayStore> for BitmapStore {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_skip_to_iter() {
-        let mut store = BitmapStore::new();
-        store.insert_range(0..=16);
-        store.insert_range(32..=64);
-
-        // test direct hits
-        let mut iter = store.skip_to_iter(32);
-        for n in 32..=64 {
-            assert_eq!(iter.next(), Some(n));
-        }
-
-        // test index in gap
-        let mut i = store.skip_to_iter(17);
-        assert_eq!(i.next(), Some(32));
-
-        // test index after end
-        let mut i = store.skip_to_iter(65);
-        assert_eq!(i.next(), None);
-
-        // test last value
-        let mut i = store.skip_to_iter(64);
-        assert_eq!(i.next(), Some(64));
-
-        // test first value
-        let mut i = store.skip_to_iter(0);
-        assert_eq!(i.next(), Some(0));
-
-    }
     #[test]
     fn test_bitmap_remove_smallest() {
         let mut store = BitmapStore::new();
