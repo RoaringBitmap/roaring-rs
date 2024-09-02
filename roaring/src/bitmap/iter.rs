@@ -16,6 +16,7 @@ pub struct Iter<'a> {
 }
 
 /// An iterator for `RoaringBitmap`.
+#[derive(Clone)]
 pub struct IntoIter {
     inner: iter::Flatten<vec::IntoIter<Container>>,
     size_hint: u64,
