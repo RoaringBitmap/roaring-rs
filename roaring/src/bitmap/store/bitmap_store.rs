@@ -403,6 +403,7 @@ impl Display for Error {
 #[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
+#[derive(Clone)]
 pub struct BitmapIter<B: Borrow<[u64; BITMAP_LENGTH]>> {
     key: u16,
     value: u64,

@@ -10,6 +10,7 @@ use crate::{NonSortedIntegers, RoaringBitmap};
 use alloc::vec::Vec;
 
 /// An iterator for `RoaringBitmap`.
+#[derive(Clone)]
 pub struct Iter<'a> {
     front: Option<container::Iter<'a>>,
     containers: slice::Iter<'a, Container>,

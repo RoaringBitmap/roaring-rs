@@ -17,6 +17,7 @@ pub struct Container {
     pub store: Store,
 }
 
+#[derive(Clone)]
 pub struct Iter<'a> {
     pub key: u16,
     inner: store::Iter<'a>,

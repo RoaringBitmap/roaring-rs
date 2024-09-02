@@ -25,6 +25,7 @@ pub enum Store {
     Bitmap(BitmapStore),
 }
 
+#[derive(Clone)]
 pub enum Iter<'a> {
     Array(slice::Iter<'a, u16>),
     Vec(vec::IntoIter<u16>),
