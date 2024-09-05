@@ -70,6 +70,20 @@ jobs:
           command: test
           args: --features serde
 
+      - name: miri setup
+        if: matrix.rust == 'nightly'
+        uses: actions-rs/cargo@v1
+        with:
+          command: miri
+          args: setup
+
+      - name: Test bit endian
+        if: matrix.rust == 'nightly'
+        uses: actions-rs/cargo@v1
+        with:
+          command: miri
+          args: test --target s390x-unknown-linux-gnu --package roaring --lib -- bitmap::serialization::test::test_from_bitmap_bytes
+
       - name: Test no default features
         uses: actions-rs/cargo@v1
         with:
