@@ -99,6 +99,56 @@ impl RoaringBitmap {
         fn next_multiple_of_usize(n: usize, multiple: usize) -> usize {
             (n + multiple - 1) / multiple * multiple
         }
+        /// Copies bits from `src` to `dst` at `bits_offset` bits offset.
+        /// Safety: `src` must be smaller than or equal to `BYTES_IN_ONE_CONTAINER` u8s,
+        ///         considering `byte_offset`.
+        #[inline(always)]
+        #[cfg(target_endian = "little")]
+        unsafe fn copy_bits(src: &[u8], dst: &mut [u64; BITMAP_LENGTH], byte_offset: usize) {
+            debug_assert!(src.len() + byte_offset <= BYTES_IN_ONE_CONTAINER);
+
+            // Safety:
+            // * `byte_offset` is within the bounds of `dst`, guaranteed by the caller.
+            let bits_ptr = unsafe { dst.as_mut_ptr().cast::<u8>().add(byte_offset) };
+            // Safety:
+            // * `src` is a slice of `bytes` and is guaranteed to be smaller than or equal to `BYTES_IN_ONE_CONTAINER` u8s considering `byte_offset`,
+            //   guaranteed by the caller.
+            unsafe {
+                core::ptr::copy_nonoverlapping(src.as_ptr(), bits_ptr, src.len());
+            }
+        }
+        /// Copies bits from `src` to `dst` at `bits_offset` bits offset.
+        /// Safety: `src` must be smaller than or equal to `BYTES_IN_ONE_CONTAINER` u8s,
+        ///         considering `byte_offset`.
+        #[inline(always)]
+        #[cfg(target_endian = "big")]
+        unsafe fn copy_bits(src: &[u8], dst: &mut [u64; BITMAP_LENGTH], byte_offset: usize) {
+            debug_assert!(src.len() + byte_offset <= BYTES_IN_ONE_CONTAINER);
+
+            if byte_offset % 8 != 0 {
+                let mut bytes = [0u8; 8];
+
+                let src_range = 0..(8 - byte_offset % 8).min(src.len());
+                bytes[8 - src_range.len()..8].copy_from_slice(&src[src_range]);
+                dst[byte_offset / 8] = u64::from_le_bytes(bytes);
+            }
+
+            let aligned_u64_offset = (byte_offset + 7) / 8;
+
+            // Iterate over the src data and copy it to dst as little-endian u64 values
+            for i in aligned_u64_offset..((byte_offset + src.len() + 7) / 8) {
+                let mut bytes = [0u8; 8];
+
+                let src_range =
+                    (i - aligned_u64_offset) * 8..((i - aligned_u64_offset + 1) * 8).min(src.len());
+                // println!("src_range: {:?}", src_range);
+                bytes[0..src_range.len()].copy_from_slice(&src[src_range]);
+                // println!("bytes: {:x?}", &bytes);
+
+                // Write the updated u64 value back to dst
+                dst[i] = u64::from_le_bytes(bytes);
+            }
+        }
 
         const BITS_IN_ONE_CONTAINER: usize = u64::BITS as usize * BITMAP_LENGTH;
         const BYTES_IN_ONE_CONTAINER: usize = BITS_IN_ONE_CONTAINER / 8;
@@ -126,23 +176,12 @@ impl RoaringBitmap {
             if len != 0 {
                 let mut bits: Box<[u64; BITMAP_LENGTH]> = Box::new([0; BITMAP_LENGTH]);
                 // Safety:
-                // * `first_container_bytes` is a slice of `bytes` and is guaranteed to be smaller than `BITMAP_LENGTH` u64s(= `BYTES_IN_ONE_CONTAINER` u8s)
-                // * `count` argument of `add` never equals to `BYTE_IN_ONE_CONTAINER` because at least one byte will be copied to the first container
-                //   This is guaranteed by the condition `byte_offset % BYTES_IN_ONE_CONTAINER != 0`
-                let bits_ptr = unsafe {
-                    bits.as_mut_ptr()
-                        .cast::<u8>()
-                        .add(BYTES_IN_ONE_CONTAINER - number_of_bytes_in_first_container)
-                };
-
-                debug_assert!(first_container_bytes.len() <= number_of_bytes_in_first_container);
-                // Safety:
                 // * `first_container_bytes` is a slice of `bytes` and is guaranteed to be smaller than or equal to `number_of_bytes_in_first_container`
                 unsafe {
-                    core::ptr::copy_nonoverlapping(
-                        first_container_bytes.as_ptr(),
-                        bits_ptr,
-                        first_container_bytes.len(),
+                    copy_bits(
+                        first_container_bytes,
+                        bits.as_mut(),
+                        BYTES_IN_ONE_CONTAINER - number_of_bytes_in_first_container,
                     )
                 };
 
@@ -166,13 +205,11 @@ impl RoaringBitmap {
                 continue;
             }
             let mut bits: Box<[u64; BITMAP_LENGTH]> = Box::new([0; BITMAP_LENGTH]);
-            let bits_ptr = bits.as_mut_ptr().cast::<u8>();
-
-            debug_assert!(chunk.len() <= BITMAP_LENGTH * size_of::<u64>());
             // Safety:
             // * `chunk` is a slice of `bytes` and is guaranteed to be smaller than `BITMAP_LENGTH` u64s
-            unsafe { core::ptr::copy_nonoverlapping(chunk.as_ptr(), bits_ptr, chunk.len()) };
-
+            unsafe {
+                copy_bits(chunk, bits.as_mut(), 0);
+            }
             let store = BitmapStore::from_unchecked(len, bits);
 
             let mut container =
