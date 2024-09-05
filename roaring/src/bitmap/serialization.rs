@@ -55,12 +55,13 @@ impl RoaringBitmap {
     /// - `offset: u32` - The starting position in the bitmap where the byte slice will be applied, specified in bits.
     ///                   This means that if `offset` is `n`, the first byte in the slice will correspond to the `n`th bit(0-indexed) in the bitmap.
     ///                   Must be a multiple of 8.
-    /// - `bytes: &[u8]` - The byte slice containing the bitmap data. The bytes are interpreted in little-endian order.
+    /// - `bytes: &[u8]` - The byte slice containing the bitmap data. The bytes are interpreted in "Least-Significant-First" bit order.
     ///
     /// # Interpretation of `bytes`
     ///
-    /// The `bytes` slice is interpreted in little-endian order. Each byte is read from least significant bit (LSB) to most significant bit (MSB).
+    /// The `bytes` slice is interpreted in "Least-Significant-First" bit order. Each byte is read from least significant bit (LSB) to most significant bit (MSB).
     /// For example, the byte `0b00000101` represents the bits `1, 0, 1, 0, 0, 0, 0, 0` in that order (see Examples section).
+    ///
     ///
     /// # Panics
     ///
