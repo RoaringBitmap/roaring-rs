@@ -1,6 +1,7 @@
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::{Display, Formatter};
+use core::mem::size_of;
 use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
 use super::ArrayStore;
@@ -38,6 +39,33 @@ impl BitmapStore {
         } else {
             Ok(BitmapStore { len, bits })
         }
+    }
+
+    pub fn from_lsb0_bytes_unchecked(bytes: &[u8], byte_offset: usize, bits_set: u64) -> Self {
+        assert!(byte_offset + bytes.len() <= BITMAP_LENGTH * size_of::<u64>());
+
+        let mut bits = Box::new([0u64; BITMAP_LENGTH]);
+        // Safety: It's safe to reinterpret u64s as u8s because u8 has less alignment requirements,
+        // and has no padding/uninitialized data.
+        let dst = unsafe {
+            std::slice::from_raw_parts_mut(
+                bits.as_mut_ptr().cast::<u8>(),
+                BITMAP_LENGTH * size_of::<u64>(),
+            )
+        };
+        let dst = &mut dst[byte_offset..][..bytes.len()];
+        dst.copy_from_slice(bytes);
+
+        let start_word = byte_offset / size_of::<u64>();
+        let end_word = (byte_offset + bytes.len() + (size_of::<u64>() - 1)) / size_of::<u64>();
+
+        // The 0th byte is the least significant byte, so we've written the bytes in little-endian
+        // order, convert to native endian. Expect this to get optimized away for little-endian.
+        for word in &mut bits[start_word..end_word] {
+            *word = u64::from_le(*word);
+        }
+
+        Self::from_unchecked(bits_set, bits)
     }
 
     ///
