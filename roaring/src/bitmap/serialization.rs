@@ -413,10 +413,16 @@ mod test {
         assert_eq!(rb.min(), Some(CONTAINER_OFFSET + 8));
         
         
-        // Ensure we can set the last byte
+        // Ensure we can set the last byte in an array container
         let bytes = [0x80];
         let rb = RoaringBitmap::from_bitmap_bytes(0xFFFFFFF8, &bytes);
         assert_eq!(rb.len(), 1);
+        assert!(rb.contains(u32::MAX));
+        
+        // Ensure we can set the last byte in a bitmap container
+        let bytes = vec![0xFF; 0x1_0000 / 8];
+        let rb = RoaringBitmap::from_bitmap_bytes(0xFFFF0000, &bytes);
+        assert_eq!(rb.len(), 0x1_0000);
         assert!(rb.contains(u32::MAX));
     }
     
