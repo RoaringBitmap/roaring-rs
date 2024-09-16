@@ -52,6 +52,7 @@ impl BitmapStore {
         }
     }
 
+    #[inline]
     pub fn insert(&mut self, index: u16) -> bool {
         let (key, bit) = (key(index), bit(index));
         let old_w = self.bits[key];

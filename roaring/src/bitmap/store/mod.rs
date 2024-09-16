@@ -50,6 +50,7 @@ impl Store {
         Store::Bitmap(BitmapStore::full())
     }
 
+    #[inline]
     pub fn insert(&mut self, index: u16) -> bool {
         match self {
             Array(vec) => vec.insert(index),

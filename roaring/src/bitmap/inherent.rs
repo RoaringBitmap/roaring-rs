@@ -48,6 +48,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.insert(3), false);
     /// assert_eq!(rb.contains(3), true);
     /// ```
+    #[inline]
     pub fn insert(&mut self, value: u32) -> bool {
         let (key, index) = util::split(value);
         let container = match self.containers.binary_search_by_key(&key, |c| c.key) {

@@ -47,6 +47,7 @@ impl ArrayStore {
         }
     }
 
+    #[inline]
     pub fn insert(&mut self, index: u16) -> bool {
         self.vec.binary_search(&index).map_err(|loc| self.vec.insert(loc, index)).is_err()
     }
