@@ -193,6 +193,7 @@ impl Store {
         }
     }
 
+    #[inline]
     pub fn max(&self) -> Option<u16> {
         match self {
             Array(vec) => vec.max(),
