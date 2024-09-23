@@ -513,6 +513,7 @@ impl RoaringBitmap {
     /// rb.insert(4);
     /// assert_eq!(rb.max(), Some(4));
     /// ```
+    #[inline]
     pub fn max(&self) -> Option<u32> {
         self.containers.last().and_then(|tail| tail.max().map(|max| util::join(tail.key, max)))
     }

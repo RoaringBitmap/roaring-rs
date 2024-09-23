@@ -161,6 +161,7 @@ impl Container {
         self.store.min()
     }
 
+    #[inline]
     pub fn max(&self) -> Option<u16> {
         self.store.max()
     }

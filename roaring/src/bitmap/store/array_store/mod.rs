@@ -209,6 +209,7 @@ impl ArrayStore {
         self.vec.first().copied()
     }
 
+    #[inline]
     pub fn max(&self) -> Option<u16> {
         self.vec.last().copied()
     }

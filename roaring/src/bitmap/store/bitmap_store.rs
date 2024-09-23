@@ -254,6 +254,7 @@ impl BitmapStore {
             .map(|(index, bit)| (index * 64 + (bit.trailing_zeros() as usize)) as u16)
     }
 
+    #[inline]
     pub fn max(&self) -> Option<u16> {
         self.bits
             .iter()
