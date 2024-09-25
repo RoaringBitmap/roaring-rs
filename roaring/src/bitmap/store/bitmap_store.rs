@@ -1,8 +1,10 @@
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::{Display, Formatter};
+use core::ops::RangeBounds;
 use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
+use super::super::util;
 use super::ArrayStore;
 
 #[cfg(not(feature = "std"))]
@@ -308,6 +310,10 @@ impl BitmapStore {
         BitmapIter::new(self.bits)
     }
 
+    pub fn range_iter<'a>(&'a self, range: RangeInclusive<u16>) -> BlockRangeIter<'a> {
+        BlockRangeIter::new(&self.bits, range)
+    }
+
     pub fn as_array(&self) -> &[u64; BITMAP_LENGTH] {
         &self.bits
     }
@@ -402,6 +408,146 @@ impl Display for Error {
 
 #[cfg(feature = "std")]
 impl std::error::Error for Error {}
+
+/// Iterator over a consecutive subsequence of a BitmapStore.
+/// A 'Block' is one of the 1024 u64s forming the BitmapStore.
+pub struct BlockRangeIter<'a> {
+    first: BlockPartIter,
+    between: BlockSeqIter<'a>,
+    last: BlockPartIter,
+}
+
+impl<'a> Iterator for BlockRangeIter<'a> {
+    type Item = u16;
+    fn next(&mut self) -> Option<u16> {
+        if let f @ Some(_) = self.first.next() {
+            return f;
+        }
+        if let b @ Some(_) = self.between.next() {
+            return b;
+        }
+        self.last.next()
+    }
+}
+
+impl<'a> BlockRangeIter<'a> {
+    pub(crate) fn new<R>(bits: &'a [u64; BITMAP_LENGTH], range: R) -> BlockRangeIter<'a>
+    where
+        R: RangeBounds<u16>,
+    {
+        let inc_range = match util::convert_range_to_inclusive(range) {
+            Some(range) => range,
+            None => return BlockRangeIter::empty(),
+        };
+        let (start, end) = (*inc_range.start(), *inc_range.end());
+
+        let (start_key, start_bit) = (key(start), bit(start));
+        let (end_key, end_bit) = (key(end), bit(end));
+
+        if start_key == end_key {
+            // single u64
+            let block_iter =
+                Self::partial_block_iter(start_key, bits[start_key], start_bit..=end_bit);
+            return BlockRangeIter::single_block(block_iter);
+        }
+
+        let first = Self::partial_block_iter(start_key, bits[start_key], start_bit..=63);
+        let start_key_p1 = start_key + 1;
+        let between = BlockSeqIter::new(start_key_p1, &bits[start_key_p1..end_key]);
+        let last = Self::partial_block_iter(end_key, bits[end_key], 0..=end_bit);
+
+        BlockRangeIter { first, between, last }
+    }
+    #[inline]
+    fn start_mask(s: usize) -> u64 {
+        match s {
+            0 => u64::MAX,
+            _ if s >= 64 => u64::MIN,
+            _ => !((1u64 << s) - 1),
+        }
+    }
+    #[inline]
+    fn end_mask(e: usize) -> u64 {
+        match e {
+            _ if e >= 63 => u64::MAX,
+            _ => (1u64 << e + 1) - 1,
+        }
+    }
+    fn partial_block_iter(key: usize, block: u64, range: RangeInclusive<usize>) -> BlockPartIter {
+        let (start, end) = (*range.start(), *range.end());
+        let start_mask = Self::start_mask(start);
+        let end_mask = Self::end_mask(end);
+        BlockPartIter::new(key, block & start_mask & end_mask)
+    }
+    fn empty() -> BlockRangeIter<'a> {
+        BlockRangeIter {
+            first: BlockPartIter::empty(),
+            between: BlockSeqIter::empty(),
+            last: BlockPartIter::empty(),
+        }
+    }
+    fn single_block(block: BlockPartIter) -> BlockRangeIter<'a> {
+        BlockRangeIter {
+            first: block,
+            between: BlockSeqIter::empty(),
+            last: BlockPartIter::empty(),
+        }
+    }
+}
+
+struct BlockPartIter {
+    key: usize,
+    value: u64,
+}
+
+impl BlockPartIter {
+    fn new(key: usize, block: u64) -> BlockPartIter {
+        BlockPartIter { key, value: block }
+    }
+    fn empty() -> BlockPartIter {
+        Self::new(0, 0)
+    }
+}
+
+impl Iterator for BlockPartIter {
+    type Item = u16;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.value == 0 {
+            return None;
+        }
+        let index = self.value.trailing_zeros() as usize;
+        self.value &= self.value - 1;
+        return Some((64 * self.key + index) as u16);
+    }
+}
+
+struct BlockSeqIter<'a> {
+    start_key: usize,
+    block_range: &'a [u64],
+}
+impl<'a> BlockSeqIter<'a> {
+    fn new(start_key: usize, block_range: &'a [u64]) -> BlockSeqIter<'a> {
+        BlockSeqIter { start_key, block_range }
+    }
+    fn empty() -> BlockSeqIter<'a> {
+        BlockSeqIter { start_key: 0, block_range: &[] }
+    }
+}
+impl<'a> Iterator for BlockSeqIter<'a> {
+    type Item = u16;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.block_range.len() == 0 {
+            return None;
+        }
+        let mut current = BlockPartIter::new(self.start_key, self.block_range[0]);
+        if let c @ Some(_) = current.next() {
+            return c;
+        }
+        self.start_key += 1;
+        self.block_range = &self.block_range[1..];
+        self.next()
+    }
+}
 
 pub struct BitmapIter<B: Borrow<[u64; BITMAP_LENGTH]>> {
     key: usize,
@@ -555,6 +701,60 @@ impl BitXorAssign<&ArrayStore> for BitmapStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn partial_block_iter() {
+        let b = 0b1111111111111111111111111111111111111111111111111111111111111111;
+        let r = 0..=63;
+        let expected: Vec<u16> = (0..64).collect();
+        let actual: Vec<u16> = BlockRangeIter::partial_block_iter(0, b, r).collect();
+        assert_eq!(expected, actual);
+        let b = 0b0000000000000000000000000000000000000000000000000000000000111111;
+        let r = 0..=63;
+        let expected: Vec<u16> = (0..=5).collect();
+        let actual: Vec<u16> = BlockRangeIter::partial_block_iter(0, b, r).collect();
+        assert_eq!(expected, actual);
+        let b = 0b0000000000000000000000000000000000000000000000000000000000101010;
+        let r = 0..=63;
+        let expected: Vec<u16> = vec![1, 3, 5];
+        let actual: Vec<u16> = BlockRangeIter::partial_block_iter(0, b, r).collect();
+        assert_eq!(expected, actual);
+        let b = 0b0000000000000000000000000000000000000000000000000000000000101010;
+        let r = 2..=63;
+        let expected: Vec<u16> = vec![3, 5];
+        let actual: Vec<u16> = BlockRangeIter::partial_block_iter(0, b, r).collect();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn start_mask() {
+        let e = 0b1111111111111111111111111111111111111111111111111111111111111111;
+        assert_eq!(e, BlockRangeIter::start_mask(0));
+        let e = 0b1111111111111111111111111111111111111111111111111111111111111110;
+        assert_eq!(e, BlockRangeIter::start_mask(1));
+        let e = 0b1000000000000000000000000000000000000000000000000000000000000000;
+        assert_eq!(e, BlockRangeIter::start_mask(63));
+        let e = 0b0000000000000000000000000000000000000000000000000000000000000000;
+        assert_eq!(e, BlockRangeIter::start_mask(64));
+        let e = 0b0000000000000000000000000000000000000000000000000000000000000000;
+        assert_eq!(e, BlockRangeIter::start_mask(65));
+    }
+
+    #[test]
+    fn end_mask() {
+        let e = 0b0000000000000000000000000000000000000000000000000000000000000001;
+        assert_eq!(e, BlockRangeIter::end_mask(0));
+        let e = 0b0000000000000000000000000000000000000000000000000000000000000011;
+        assert_eq!(e, BlockRangeIter::end_mask(1));
+        let e = 0b0111111111111111111111111111111111111111111111111111111111111111;
+        assert_eq!(e, BlockRangeIter::end_mask(62));
+        let e = 0b1111111111111111111111111111111111111111111111111111111111111111;
+        assert_eq!(e, BlockRangeIter::end_mask(63));
+        let e = 0b1111111111111111111111111111111111111111111111111111111111111111;
+        assert_eq!(e, BlockRangeIter::end_mask(64));
+        let e = 0b1111111111111111111111111111111111111111111111111111111111111111;
+        assert_eq!(e, BlockRangeIter::end_mask(65));
+    }
 
     #[test]
     fn test_bitmap_remove_smallest() {

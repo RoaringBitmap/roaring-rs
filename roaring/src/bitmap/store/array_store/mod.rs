@@ -3,6 +3,7 @@ mod vector;
 mod visitor;
 
 use crate::bitmap::store::array_store::visitor::{CardinalityCounter, VecWriter};
+// use crate::bitmap::util;
 use core::cmp::Ordering;
 use core::cmp::Ordering::*;
 use core::fmt::{Display, Formatter};
@@ -233,6 +234,19 @@ impl ArrayStore {
 
     pub fn as_slice(&self) -> &[u16] {
         &self.vec
+    }
+
+    pub fn range_iter(&self, range: RangeInclusive<u16>) -> core::slice::Iter<u16> {
+        let start_index = match self.vec.binary_search(range.start()) {
+            Ok(i) => i,
+            Err(i) => i,
+        };
+        let end_index = match self.vec.binary_search(range.end()) {
+            Ok(i) => i + 1,
+            Err(i) => i,
+        };
+        let r = start_index..end_index;
+        self.vec[r].iter()
     }
 
     /// Retains only the elements specified by the predicate.

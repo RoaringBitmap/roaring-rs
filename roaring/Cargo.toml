@@ -19,6 +19,7 @@ license = "MIT OR Apache-2.0"
 bytemuck = { workspace = true, optional = true }
 byteorder = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
+num = "0.4"
 
 [features]
 default = ["std"]

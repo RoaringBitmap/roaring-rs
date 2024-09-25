@@ -10,6 +10,7 @@ use core::slice;
 
 pub use self::bitmap_store::BITMAP_LENGTH;
 use self::Store::{Array, Bitmap};
+use super::util;
 
 pub use self::array_store::ArrayStore;
 pub use self::bitmap_store::{BitmapIter, BitmapStore};
@@ -30,6 +31,51 @@ pub enum Iter<'a> {
     Vec(vec::IntoIter<u16>),
     BitmapBorrowed(BitmapIter<&'a [u64; BITMAP_LENGTH]>),
     BitmapOwned(BitmapIter<Box<[u64; BITMAP_LENGTH]>>),
+}
+
+/// Iterator over a consecutive subsequence of a Store,
+/// whether the Store contains an ArrayStore or a BitmapStore.
+pub enum StorePartIter<'a> {
+    Array { key: u16, values: slice::Iter<'a, u16> },
+    Bitmap { key: u16, values: bitmap_store::BlockRangeIter<'a> },
+}
+
+impl<'a> StorePartIter<'a> {
+    pub fn new(key: u16, store: &'a Store, range: RangeInclusive<u16>) -> StorePartIter<'a> {
+        match store {
+            Array(array_store) => {
+                StorePartIter::Array { key, values: array_store.range_iter(range) }
+            }
+            Bitmap(bitmap_store) => {
+                StorePartIter::Bitmap { key, values: bitmap_store.range_iter(range) }
+            }
+        }
+    }
+    pub fn empty() -> StorePartIter<'a> {
+        StorePartIter::Array { key: 0, values: [].iter() }
+    }
+}
+
+impl<'a> Iterator for StorePartIter<'a> {
+    type Item = u32;
+    fn next(&mut self) -> Option<u32> {
+        match self {
+            StorePartIter::Array { key, values } => {
+                if let Some(low) = values.next().cloned() {
+                    Some(util::join(*key, low))
+                } else {
+                    None
+                }
+            }
+            StorePartIter::Bitmap { key, values } => {
+                if let Some(low) = values.next() {
+                    Some(util::join(*key, low))
+                } else {
+                    None
+                }
+            }
+        }
+    }
 }
 
 impl Store {

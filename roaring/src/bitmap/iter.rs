@@ -20,10 +20,13 @@ pub struct IntoIter {
     size_hint: u64,
 }
 
-impl Iter<'_> {
-    fn new(containers: &[Container]) -> Iter {
+impl<'a> Iter<'a> {
+    pub(super) fn new(containers: &[Container]) -> Iter {
         let size_hint = containers.iter().map(|c| c.len()).sum();
         Iter { inner: containers.iter().flatten(), size_hint }
+    }
+    pub(super) fn empty() -> Iter<'a> {
+        Iter { inner: [].iter().flatten(), size_hint: 0 }
     }
 }
 
