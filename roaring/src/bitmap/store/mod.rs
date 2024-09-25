@@ -30,7 +30,6 @@ pub enum Iter<'a> {
     Vec(vec::IntoIter<u16>),
     BitmapBorrowed(BitmapIter<&'a [u64; BITMAP_LENGTH]>),
     BitmapOwned(BitmapIter<Box<[u64; BITMAP_LENGTH]>>),
-    Empty,
 }
 
 impl Store {
@@ -507,7 +506,6 @@ impl<'a> Iterator for Iter<'a> {
             Iter::Vec(inner) => inner.next(),
             Iter::BitmapBorrowed(inner) => inner.next(),
             Iter::BitmapOwned(inner) => inner.next(),
-            Iter::Empty => None,
         }
     }
 }
@@ -519,7 +517,6 @@ impl DoubleEndedIterator for Iter<'_> {
             Iter::Vec(inner) => inner.next_back(),
             Iter::BitmapBorrowed(inner) => inner.next_back(),
             Iter::BitmapOwned(inner) => inner.next_back(),
-            Iter::Empty => None,
         }
     }
 }

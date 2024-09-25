@@ -320,7 +320,7 @@ impl fmt::Debug for Container {
 
 impl<'a> Iter<'a> {
     pub fn empty() -> Self {
-        Self { key: 0, inner: store::Iter::Empty }
+        Self { key: 0, inner: store::Iter::Vec(vec![].into_iter()) }
     }
 }
 
