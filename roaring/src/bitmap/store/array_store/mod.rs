@@ -11,9 +11,10 @@ use core::ops::{BitAnd, BitAndAssign, BitOr, BitXor, RangeInclusive, Sub, SubAss
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
-use super::bitmap_store::{bit, key, BitmapStore, BITMAP_LENGTH};
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
+
+use super::bitmap_store::{bit, key, BitmapStore, BITMAP_LENGTH};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct ArrayStore {
