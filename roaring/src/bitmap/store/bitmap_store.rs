@@ -421,6 +421,28 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
             bits,
         }
     }
+
+    pub fn peek(&self) -> Option<u16> {
+        let mut key = self.key;
+        let mut value = self.value;
+        loop {
+            if value == 0 {
+                key += 1;
+                let cmp = self.key.cmp(&self.key_back);
+                // Match arms can be reordered, this ordering is perf sensitive
+                value = if cmp == Ordering::Less {
+                    unsafe { *self.bits.borrow().get_unchecked(self.key) }
+                } else if cmp == Ordering::Equal {
+                    self.value_back
+                } else {
+                    return None;
+                };
+                continue;
+            }
+            let index = value.trailing_zeros() as usize;
+            return Some((64 * key + index) as u16);
+        }
+    }
 }
 
 impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {

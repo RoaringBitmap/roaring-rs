@@ -6,20 +6,28 @@ use crate::bitmap::container;
 use alloc::vec::Vec;
 
 use alloc::collections::vec_deque::VecDeque;
-use core::iter::Peekable;
 
 use iter_inner::IterInternal;
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a> {
     containers: &'a [Container],
-    iter_front: Option<Peekable<container::Iter<'a>>>,
-    iter_back: Option<Peekable<container::Iter<'a>>>,
+    iter_front: container::Iter<'a>,
+    iter_back: Option<container::Iter<'a>>,
     size_hint: u64,
 }
 impl<'a> Iter<'a> {
     fn new(containers: &'a [Container]) -> Self {
         let size_hint = containers.iter().map(|c| c.len()).sum();
-        Self { containers, iter_front: None, iter_back: None, size_hint }
+        if let Some((first, rest)) = containers.split_first() {
+            Self { containers: rest, iter_front: first.into_iter(), iter_back: None, size_hint }
+        } else {
+            Self {
+                containers: &[],
+                iter_front: container::Iter::empty(),
+                iter_back: None,
+                size_hint,
+            }
+        }
     }
 
     /// Advance the iterator to the first position where the item has a value >= `n`
@@ -84,18 +92,23 @@ impl<'a> ExactSizeIterator for Iter<'a> {
 /// An iterator for `RoaringBitmap`.
 pub struct IntoIter {
     containers: VecDeque<Container>,
-    iter_front: Option<Peekable<container::Iter<'static>>>,
-    iter_back: Option<Peekable<container::Iter<'static>>>,
+    iter_front: container::Iter<'static>,
+    iter_back: Option<container::Iter<'static>>,
     size_hint: u64,
 }
 impl IntoIter {
     fn new(containers: Vec<Container>) -> Self {
         let size_hint = containers.iter().map(|c| c.len()).sum();
-        Self {
-            containers: VecDeque::from(containers),
-            iter_front: None,
-            iter_back: None,
-            size_hint,
+        let mut containers = VecDeque::from(containers);
+        if let Some(first) = containers.pop_front() {
+            Self { containers, iter_front: first.into_iter(), iter_back: None, size_hint }
+        } else {
+            Self {
+                containers: Default::default(),
+                iter_front: container::Iter::empty(),
+                iter_back: None,
+                size_hint,
+            }
         }
     }
 
@@ -310,14 +323,11 @@ impl RoaringBitmap {
 mod iter_inner {
     use crate::bitmap::container::Container;
     use crate::bitmap::{container, util, IntoIter, Iter};
-    use core::iter::Peekable;
     use core::slice;
 
     // To get rid of clippy complex type warning
-    pub(super) type DecomposeInnerIter<T> = Option<Peekable<T>>;
-    pub(super) trait IterInternal {
-        type InnerIter: Iterator<Item = u32> + DoubleEndedIterator;
-        type Container: IntoIterator<IntoIter = Self::InnerIter, Item = u32> + AsRef<Container>;
+    pub(super) trait IterInternal<'a> {
+        type Container: IntoIterator<IntoIter = container::Iter<'a>, Item = u32> + AsRef<Container>;
 
         type ContainerIterator: Iterator<Item = Self::Container> + DoubleEndedIterator;
         type IntoContainerIterator: IntoIterator<IntoIter = Self::ContainerIterator>;
@@ -331,27 +341,23 @@ mod iter_inner {
 
         fn find_container(&self, key: u16) -> Option<usize>;
 
-        fn iter_front_mut(&mut self) -> &mut Option<Peekable<Self::InnerIter>>;
-        fn iter_back_mut(&mut self) -> &mut Option<Peekable<Self::InnerIter>>;
+        fn iter_front_mut(&mut self) -> &mut container::Iter<'a>;
+        fn iter_back_mut(&mut self) -> &mut Option<container::Iter<'a>>;
 
         fn dec_size_hint(&mut self);
 
+        fn empty_inner_iter() -> container::Iter<'static>;
+
         fn decompose(
             self,
-        ) -> (
-            DecomposeInnerIter<Self::InnerIter>,
-            DecomposeInnerIter<Self::InnerIter>,
-            Self::IntoContainerIterator,
-        );
+        ) -> (container::Iter<'a>, Option<container::Iter<'a>>, Self::IntoContainerIterator);
 
         #[inline]
         fn next_inner(&mut self) -> Option<u32> {
             self.dec_size_hint();
             loop {
-                if let Some(iter) = self.iter_front_mut() {
-                    if let item @ Some(_) = iter.next() {
-                        return item;
-                    }
+                if let item @ Some(_) = self.iter_front_mut().next() {
+                    return item;
                 }
                 if self.advance_container().is_some() {
                     continue;
@@ -380,8 +386,8 @@ mod iter_inner {
 
         fn advance_to_inner(&mut self, n: u32) {
             let (key, _) = util::split(n);
-            fn advance_iter(iter: &mut Peekable<impl Iterator<Item = u32>>, n: u32) -> Option<u32> {
-                while let Some(next) = iter.peek().cloned() {
+            fn advance_iter(iter: &mut container::Iter<'_>, n: u32) -> Option<u32> {
+                while let Some(next) = iter.peek() {
                     if next < n {
                         iter.next();
                     } else {
@@ -393,26 +399,25 @@ mod iter_inner {
             if let Some(index) = self.find_container(key) {
                 self.drain_containers_until(index);
                 let container = self.pop_container_front().expect("bug!");
-                let mut iter = container.into_iter().peekable();
+                let mut iter = container.into_iter();
                 advance_iter(&mut iter, n);
-                *self.iter_front_mut() = Some(iter);
+                *self.iter_front_mut() = iter;
             } else {
                 // there are no containers with given key. Look in iter_front and iter_back.
-                self.clear_containers();
-                if let Some(iter_front) = self.iter_front_mut() {
-                    if iter_front.peek().cloned().map(|n| util::split(n).0) == Some(key) {
-                        advance_iter(iter_front, n);
-                        return;
-                    }
+                let iter_front = self.iter_front_mut();
+                if iter_front.peek().map(|n| util::split(n).0) == Some(key) {
+                    advance_iter(iter_front, n);
+                    return;
                 }
                 if let Some(iter_back) = self.iter_back_mut() {
-                    if iter_back.peek().cloned().map(|n| util::split(n).0) == Some(key) {
+                    if iter_back.peek().map(|n| util::split(n).0) == Some(key) {
                         advance_iter(iter_back, n);
-                        *self.iter_front_mut() = None;
+                        *self.iter_front_mut() = Self::empty_inner_iter();
                         return;
                     }
                 }
-                *self.iter_front_mut() = None;
+                self.clear_containers();
+                *self.iter_front_mut() = Self::empty_inner_iter();
                 *self.iter_back_mut() = None;
             }
         }
@@ -424,53 +429,38 @@ mod iter_inner {
             Self: Sized,
         {
             let (iter_front, iter_back, containers) = self.decompose();
-            match (iter_front, iter_back) {
-                (Some(iter_front), Some(iter_back)) => iter_front
-                    .chain(containers.into_iter().flatten())
-                    .chain(iter_back)
-                    .fold(init, f),
-                (Some(iter_front), None) => {
-                    iter_front.chain(containers.into_iter().flatten()).fold(init, f)
-                }
-                (None, Some(iter_back)) => {
-                    containers.into_iter().flatten().chain(iter_back).fold(init, f)
-                }
-                (None, None) => containers.into_iter().flatten().fold(init, f),
+            if let Some(iter_back) = iter_back {
+                iter_front.chain(containers.into_iter().flatten()).chain(iter_back).fold(init, f)
+            } else {
+                iter_front.chain(containers.into_iter().flatten()).fold(init, f)
             }
         }
 
+        #[inline]
         fn rfold_inner<Acc, Fold>(self, init: Acc, f: Fold) -> Acc
         where
             Fold: FnMut(Acc, u32) -> Acc,
             Self: Sized,
         {
             let (iter_front, iter_back, containers) = self.decompose();
-            match (iter_front, iter_back) {
-                (Some(iter_front), Some(iter_back)) => iter_front
-                    .chain(containers.into_iter().flatten())
-                    .chain(iter_back)
-                    .rfold(init, f),
-                (Some(iter_front), None) => {
-                    iter_front.chain(containers.into_iter().flatten()).rfold(init, f)
-                }
-                (None, Some(iter_back)) => {
-                    containers.into_iter().flatten().chain(iter_back).rfold(init, f)
-                }
-                (None, None) => containers.into_iter().flatten().rfold(init, f),
+            if let Some(iter_back) = iter_back {
+                iter_front.chain(containers.into_iter().flatten()).chain(iter_back).rfold(init, f)
+            } else {
+                iter_front.chain(containers.into_iter().flatten()).rfold(init, f)
             }
         }
 
+        #[inline]
         fn advance_container(&mut self) -> Option<u16> {
             if let Some(container) = self.pop_container_front() {
                 let result = container.as_ref().key;
-                *self.iter_front_mut() = Some(container.into_iter().peekable());
+                *self.iter_front_mut() = container.into_iter();
                 Some(result)
             } else if self.iter_back_mut().is_some() {
-                let mut iter_none = None;
-                core::mem::swap(&mut iter_none, self.iter_back_mut());
-                core::mem::swap(&mut iter_none, self.iter_front_mut());
-                *self.iter_back_mut() = None;
-                if let Some(v) = self.iter_front_mut().as_mut().and_then(|i| i.peek().cloned()) {
+                let mut iter_back = None;
+                core::mem::swap(&mut iter_back, self.iter_back_mut());
+                *self.iter_front_mut() = iter_back.expect("bug!");
+                if let Some(v) = self.iter_front_mut().peek() {
                     let (key, _) = util::split(v);
                     Some(key)
                 } else {
@@ -481,17 +471,18 @@ mod iter_inner {
             }
         }
 
+        #[inline]
         fn advance_container_back(&mut self) -> Option<u16> {
             if let Some(container) = self.pop_container_back() {
                 let result = container.as_ref().key;
-                *self.iter_back_mut() = Some(container.into_iter().peekable());
+                *self.iter_back_mut() = Some(container.into_iter());
                 Some(result)
-            } else if self.iter_front_mut().is_some() {
-                let mut iter_none = None;
-                core::mem::swap(&mut iter_none, self.iter_front_mut());
-                core::mem::swap(&mut iter_none, self.iter_back_mut());
+            } else if self.iter_front_mut().peek().is_some() {
+                let mut iter_front = Self::empty_inner_iter();
+                core::mem::swap(&mut iter_front, self.iter_front_mut());
+                *self.iter_back_mut() = Some(iter_front);
 
-                if let Some(v) = self.iter_back_mut().as_mut().and_then(|i| i.peek().cloned()) {
+                if let Some(v) = self.iter_back_mut().as_mut().and_then(|i| i.peek()) {
                     let (key, _) = util::split(v);
                     Some(key)
                 } else {
@@ -503,65 +494,70 @@ mod iter_inner {
         }
     }
 
-    impl IterInternal for IntoIter {
-        type InnerIter = container::Iter<'static>;
+    impl IterInternal<'static> for IntoIter {
         type Container = Container;
         type ContainerIterator = alloc::collections::vec_deque::IntoIter<Self::Container>;
         type IntoContainerIterator = alloc::collections::vec_deque::IntoIter<Self::Container>;
 
+        #[inline]
         fn pop_container_front(&mut self) -> Option<Self::Container> {
             self.containers.pop_front()
         }
 
+        #[inline]
         fn pop_container_back(&mut self) -> Option<Self::Container> {
             self.containers.pop_back()
         }
 
+        #[inline]
         fn drain_containers_until(&mut self, index: usize) {
             self.containers.drain(0..index);
         }
 
+        #[inline]
         fn clear_containers(&mut self) {
             self.containers.clear();
         }
 
+        #[inline]
         fn find_container(&self, key: u16) -> Option<usize> {
-            match self.containers.binary_search_by_key(&key, |container| container.key) {
-                Ok(index) | Err(index) if index < self.containers.len() => Some(index),
-                _ => None,
-            }
+            self.containers.binary_search_by_key(&key, |container| container.key).ok()
         }
 
-        fn iter_front_mut(&mut self) -> &mut Option<Peekable<Self::InnerIter>> {
+        #[inline]
+        fn iter_front_mut(&mut self) -> &mut container::Iter<'static> {
             &mut self.iter_front
         }
 
-        fn iter_back_mut(&mut self) -> &mut Option<Peekable<Self::InnerIter>> {
+        #[inline]
+        fn iter_back_mut(&mut self) -> &mut Option<container::Iter<'static>> {
             &mut self.iter_back
         }
 
+        #[inline]
         fn dec_size_hint(&mut self) {
             self.size_hint = self.size_hint.saturating_sub(1);
         }
 
+        fn empty_inner_iter() -> container::Iter<'static> {
+            container::Iter::empty()
+        }
+
         fn decompose(
             self,
-        ) -> (
-            Option<Peekable<Self::InnerIter>>,
-            Option<Peekable<Self::InnerIter>>,
-            Self::IntoContainerIterator,
-        ) {
+        ) -> (container::Iter<'static>, Option<container::Iter<'static>>, Self::IntoContainerIterator)
+        {
             (self.iter_front, self.iter_back, self.containers.into_iter())
         }
     }
 
-    impl<'a> IterInternal for Iter<'a> {
-        type InnerIter = container::Iter<'a>;
+    impl<'a> IterInternal<'a> for Iter<'a> {
         type Container = &'a Container;
         type ContainerIterator = slice::Iter<'a, Container>;
 
         type IntoContainerIterator = slice::Iter<'a, Container>;
 
+        #[inline]
         fn pop_container_front(&mut self) -> Option<Self::Container> {
             if let Some((first, rest)) = self.containers.split_first() {
                 self.containers = rest;
@@ -571,6 +567,7 @@ mod iter_inner {
             }
         }
 
+        #[inline]
         fn pop_container_back(&mut self) -> Option<Self::Container> {
             if let Some((last, rest)) = self.containers.split_last() {
                 self.containers = rest;
@@ -580,40 +577,44 @@ mod iter_inner {
             }
         }
 
+        #[inline]
         fn drain_containers_until(&mut self, index: usize) {
             self.containers = &self.containers[index..]
         }
 
+        #[inline]
         fn clear_containers(&mut self) {
             self.containers = &[];
         }
 
+        #[inline]
         fn find_container(&self, key: u16) -> Option<usize> {
-            match self.containers.binary_search_by_key(&key, |container| container.key) {
-                Ok(index) | Err(index) if index < self.containers.len() => Some(index),
-                _ => None,
-            }
+            self.containers.binary_search_by_key(&key, |container| container.key).ok()
         }
 
-        fn iter_front_mut(&mut self) -> &mut Option<Peekable<Self::InnerIter>> {
+        #[inline]
+        fn iter_front_mut(&mut self) -> &mut container::Iter<'a> {
             &mut self.iter_front
         }
 
-        fn iter_back_mut(&mut self) -> &mut Option<Peekable<Self::InnerIter>> {
+        #[inline]
+        fn iter_back_mut(&mut self) -> &mut Option<container::Iter<'a>> {
             &mut self.iter_back
         }
 
+        #[inline]
         fn dec_size_hint(&mut self) {
             self.size_hint = self.size_hint.saturating_sub(1);
         }
 
+        fn empty_inner_iter() -> container::Iter<'static> {
+            container::Iter::empty()
+        }
+
         fn decompose(
             self,
-        ) -> (
-            Option<Peekable<Self::InnerIter>>,
-            Option<Peekable<Self::InnerIter>>,
-            Self::IntoContainerIterator,
-        ) {
+        ) -> (container::Iter<'a>, Option<container::Iter<'a>>, Self::IntoContainerIterator)
+        {
             (self.iter_front, self.iter_back, self.containers.iter())
         }
     }

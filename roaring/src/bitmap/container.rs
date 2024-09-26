@@ -322,6 +322,11 @@ impl<'a> Iter<'a> {
     pub fn empty() -> Self {
         Self { key: 0, inner: store::Iter::Vec(vec![].into_iter()) }
     }
+
+    #[inline]
+    pub fn peek(&mut self) -> Option<u32> {
+        self.inner.peek().map(|i| util::join(self.key, i))
+    }
 }
 
 impl AsRef<Container> for Container {
