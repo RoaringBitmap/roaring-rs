@@ -32,7 +32,7 @@ impl VecWriter {
 
     pub fn into_inner(self) -> Vec<u16> {
         // Consider shrinking the vec here.
-        // Exacty len could be too aggressive. Len rounded up to next power of 2?
+        // Exactly len could be too aggressive. Len rounded up to next power of 2?
         // Related, but not exact issue: https://github.com/RoaringBitmap/roaring-rs/issues/136
         self.vec
     }
