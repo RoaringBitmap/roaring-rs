@@ -149,7 +149,7 @@ fn creation(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(dataset.bitmaps.iter().map(|rb| rb.len()).sum()));
 
-        group.bench_function(BenchmarkId::new("from_bitmap_bytes", &dataset.name), |b| {
+        group.bench_function(BenchmarkId::new("from_lsb0_bytes", &dataset.name), |b| {
             let bitmap_bytes = dataset_numbers
                 .iter()
                 .map(|bitmap_numbers| {
@@ -165,7 +165,7 @@ fn creation(c: &mut Criterion) {
                 .collect::<Vec<_>>();
             b.iter(|| {
                 for bitmap_bytes in &bitmap_bytes {
-                    black_box(RoaringBitmap::from_bitmap_bytes(0, bitmap_bytes));
+                    black_box(RoaringBitmap::from_lsb0_bytes(0, bitmap_bytes));
                 }
             })
         });

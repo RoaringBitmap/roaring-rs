@@ -75,21 +75,21 @@ impl RoaringBitmap {
     /// let bytes = [0b00000101, 0b00000010, 0b00000000, 0b10000000];
     /// //             ^^^^^^^^    ^^^^^^^^    ^^^^^^^^    ^^^^^^^^
     /// //             76543210          98
-    /// let rb = RoaringBitmap::from_bitmap_bytes(0, &bytes);
+    /// let rb = RoaringBitmap::from_lsb0_bytes(0, &bytes);
     /// assert!(rb.contains(0));
     /// assert!(!rb.contains(1));
     /// assert!(rb.contains(2));
     /// assert!(rb.contains(9));
     /// assert!(rb.contains(31));
     ///
-    /// let rb = RoaringBitmap::from_bitmap_bytes(8, &bytes);
+    /// let rb = RoaringBitmap::from_lsb0_bytes(8, &bytes);
     /// assert!(rb.contains(8));
     /// assert!(!rb.contains(9));
     /// assert!(rb.contains(10));
     /// assert!(rb.contains(17));
     /// assert!(rb.contains(39));
     /// ```
-    pub fn from_bitmap_bytes(offset: u32, mut bytes: &[u8]) -> RoaringBitmap {
+    pub fn from_lsb0_bytes(offset: u32, mut bytes: &[u8]) -> RoaringBitmap {
         assert_eq!(offset % 8, 0, "offset must be a multiple of 8");
 
         if bytes.is_empty() {
@@ -378,7 +378,7 @@ mod test {
     }
 
     #[test]
-    fn test_from_bitmap_bytes() {
+    fn test_from_lsb0_bytes() {
         const CONTAINER_OFFSET: u32 = u64::BITS * BITMAP_LENGTH as u32;
         const CONTAINER_OFFSET_IN_BYTES: u32 = CONTAINER_OFFSET / 8;
         let mut bytes = vec![0xff; CONTAINER_OFFSET_IN_BYTES as usize];
@@ -386,7 +386,7 @@ mod test {
         bytes.extend(&[0b00000001, 0b00000010, 0b00000011, 0b00000100]);
 
         let offset = 32;
-        let rb = RoaringBitmap::from_bitmap_bytes(offset, &bytes);
+        let rb = RoaringBitmap::from_lsb0_bytes(offset, &bytes);
         for i in 0..offset {
             assert!(!rb.contains(i), "{i} should not be in the bitmap");
         }
@@ -406,37 +406,37 @@ mod test {
         // Ensure the empty container is not created
         let mut bytes = vec![0x00u8; CONTAINER_OFFSET_IN_BYTES as usize];
         bytes.extend(&[0xff]);
-        let rb = RoaringBitmap::from_bitmap_bytes(0, &bytes);
+        let rb = RoaringBitmap::from_lsb0_bytes(0, &bytes);
         assert_eq!(rb.min(), Some(CONTAINER_OFFSET));
 
-        let rb = RoaringBitmap::from_bitmap_bytes(8, &bytes);
+        let rb = RoaringBitmap::from_lsb0_bytes(8, &bytes);
         assert_eq!(rb.min(), Some(CONTAINER_OFFSET + 8));
 
         // Ensure we can set the last byte in an array container
         let bytes = [0x80];
-        let rb = RoaringBitmap::from_bitmap_bytes(0xFFFFFFF8, &bytes);
+        let rb = RoaringBitmap::from_lsb0_bytes(0xFFFFFFF8, &bytes);
         assert_eq!(rb.len(), 1);
         assert!(rb.contains(u32::MAX));
 
         // Ensure we can set the last byte in a bitmap container
         let bytes = vec![0xFF; 0x1_0000 / 8];
-        let rb = RoaringBitmap::from_bitmap_bytes(0xFFFF0000, &bytes);
+        let rb = RoaringBitmap::from_lsb0_bytes(0xFFFF0000, &bytes);
         assert_eq!(rb.len(), 0x1_0000);
         assert!(rb.contains(u32::MAX));
     }
 
     #[test]
     #[should_panic(expected = "multiple of 8")]
-    fn test_from_bitmap_bytes_invalid_offset() {
+    fn test_from_lsb0_bytes_invalid_offset() {
         let bytes = [0x01];
-        RoaringBitmap::from_bitmap_bytes(1, &bytes);
+        RoaringBitmap::from_lsb0_bytes(1, &bytes);
     }
 
     #[test]
     #[should_panic(expected = "<= 2^32")]
-    fn test_from_bitmap_bytes_overflow() {
+    fn test_from_lsb0_bytes_overflow() {
         let bytes = [0x01, 0x01];
-        RoaringBitmap::from_bitmap_bytes(u32::MAX - 7, &bytes);
+        RoaringBitmap::from_lsb0_bytes(u32::MAX - 7, &bytes);
     }
 
     #[test]
