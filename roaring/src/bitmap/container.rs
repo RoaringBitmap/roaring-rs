@@ -30,12 +30,9 @@ impl Container {
     pub fn full(key: u16) -> Container {
         Container { key, store: Store::full() }
     }
-    
+
     pub fn from_lsb0_bytes(key: u16, bytes: &[u8], byte_offset: usize) -> Option<Self> {
-        Some(Container {
-            key,
-            store: Store::from_lsb0_bytes(bytes, byte_offset)?,
-        })
+        Some(Container { key, store: Store::from_lsb0_bytes(bytes, byte_offset)? })
     }
 }
 

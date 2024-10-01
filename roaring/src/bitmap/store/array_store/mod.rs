@@ -6,8 +6,8 @@ use crate::bitmap::store::array_store::visitor::{CardinalityCounter, VecWriter};
 use core::cmp::Ordering;
 use core::cmp::Ordering::*;
 use core::fmt::{Display, Formatter};
-use core::ops::{BitAnd, BitAndAssign, BitOr, BitXor, RangeInclusive, Sub, SubAssign};
 use core::mem::size_of;
+use core::ops::{BitAnd, BitAndAssign, BitOr, BitXor, RangeInclusive, Sub, SubAssign};
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
@@ -50,7 +50,7 @@ impl ArrayStore {
 
     pub fn from_lsb0_bytes(bytes: &[u8], byte_offset: usize, bits_set: u64) -> Self {
         type Word = u64;
-        
+
         let mut vec = Vec::with_capacity(bits_set as usize);
 
         let chunks = bytes.chunks_exact(size_of::<Word>());
@@ -71,7 +71,7 @@ impl ArrayStore {
                 byte &= byte - 1;
             }
         }
-        
+
         Self::from_vec_unchecked(vec)
     }
 

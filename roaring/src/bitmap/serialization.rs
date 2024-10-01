@@ -4,8 +4,8 @@ use crate::RoaringBitmap;
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use core::convert::Infallible;
-use core::ops::RangeInclusive;
 use core::mem::size_of;
+use core::ops::RangeInclusive;
 use std::error::Error;
 use std::io;
 
@@ -132,7 +132,7 @@ impl RoaringBitmap {
 
             start_container += 1;
         }
-        
+
         // Handle all full containers
         for full_container_key in start_container..end_container_inc {
             let (src, rest) = bytes.split_at(BITMAP_LENGTH * size_of::<u64>());
@@ -411,28 +411,27 @@ mod test {
 
         let rb = RoaringBitmap::from_bitmap_bytes(8, &bytes);
         assert_eq!(rb.min(), Some(CONTAINER_OFFSET + 8));
-        
-        
+
         // Ensure we can set the last byte in an array container
         let bytes = [0x80];
         let rb = RoaringBitmap::from_bitmap_bytes(0xFFFFFFF8, &bytes);
         assert_eq!(rb.len(), 1);
         assert!(rb.contains(u32::MAX));
-        
+
         // Ensure we can set the last byte in a bitmap container
         let bytes = vec![0xFF; 0x1_0000 / 8];
         let rb = RoaringBitmap::from_bitmap_bytes(0xFFFF0000, &bytes);
         assert_eq!(rb.len(), 0x1_0000);
         assert!(rb.contains(u32::MAX));
     }
-    
+
     #[test]
     #[should_panic(expected = "multiple of 8")]
     fn test_from_bitmap_bytes_invalid_offset() {
         let bytes = [0x01];
         RoaringBitmap::from_bitmap_bytes(1, &bytes);
     }
-    
+
     #[test]
     #[should_panic(expected = "<= 2^32")]
     fn test_from_bitmap_bytes_overflow() {
