@@ -25,11 +25,16 @@ pub enum Store {
     Bitmap(BitmapStore),
 }
 
-pub enum Iter<'a> {
+enum IterInner<'a> {
     Array(slice::Iter<'a, u16>),
     Vec(vec::IntoIter<u16>),
     BitmapBorrowed(BitmapIter<&'a [u64; BITMAP_LENGTH]>),
     BitmapOwned(BitmapIter<Box<[u64; BITMAP_LENGTH]>>),
+}
+
+pub struct Iter<'a> {
+    inner: IterInner<'a>,
+    size_hint: u64,
 }
 
 impl Store {
@@ -467,8 +472,10 @@ impl<'a> IntoIterator for &'a Store {
     type IntoIter = Iter<'a>;
     fn into_iter(self) -> Iter<'a> {
         match self {
-            Array(vec) => Iter::Array(vec.iter()),
-            Bitmap(bits) => Iter::BitmapBorrowed(bits.iter()),
+            Array(vec) => Iter { inner: IterInner::Array(vec.iter()), size_hint: vec.len() },
+            Bitmap(bits) => {
+                Iter { inner: IterInner::BitmapBorrowed(bits.iter()), size_hint: bits.len() }
+            }
         }
     }
 }
@@ -478,8 +485,14 @@ impl IntoIterator for Store {
     type IntoIter = Iter<'static>;
     fn into_iter(self) -> Iter<'static> {
         match self {
-            Array(vec) => Iter::Vec(vec.into_iter()),
-            Bitmap(bits) => Iter::BitmapOwned(bits.into_iter()),
+            Array(vec) => {
+                let size_hint = vec.len();
+                Iter { inner: IterInner::Vec(vec.into_iter()), size_hint }
+            }
+            Bitmap(bits) => {
+                let size_hint = bits.len();
+                Iter { inner: IterInner::BitmapOwned(bits.into_iter()), size_hint }
+            }
         }
     }
 }
@@ -499,34 +512,44 @@ impl PartialEq for Store {
 
 impl Iter<'_> {
     pub fn peek(&mut self) -> Option<u16> {
-        match self {
-            Iter::Array(inner) => inner.as_slice().first().cloned(),
-            Iter::Vec(inner) => inner.as_slice().first().cloned(),
-            Iter::BitmapBorrowed(inner) => inner.peek(),
-            Iter::BitmapOwned(inner) => inner.peek(),
+        match &self.inner {
+            IterInner::Array(inner) => inner.as_slice().first().cloned(),
+            IterInner::Vec(inner) => inner.as_slice().first().cloned(),
+            IterInner::BitmapBorrowed(inner) => inner.peek(),
+            IterInner::BitmapOwned(inner) => inner.peek(),
         }
+    }
+
+    pub fn empty() -> Self {
+        Self { inner: IterInner::Array([].iter()), size_hint: 0 }
     }
 }
 impl<'a> Iterator for Iter<'a> {
     type Item = u16;
 
     fn next(&mut self) -> Option<u16> {
-        match self {
-            Iter::Array(inner) => inner.next().cloned(),
-            Iter::Vec(inner) => inner.next(),
-            Iter::BitmapBorrowed(inner) => inner.next(),
-            Iter::BitmapOwned(inner) => inner.next(),
+        self.size_hint = self.size_hint.saturating_sub(1);
+        match &mut self.inner {
+            IterInner::Array(inner) => inner.next().cloned(),
+            IterInner::Vec(inner) => inner.next(),
+            IterInner::BitmapBorrowed(inner) => inner.next(),
+            IterInner::BitmapOwned(inner) => inner.next(),
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.size_hint as usize, Some(self.size_hint as usize))
     }
 }
 
 impl DoubleEndedIterator for Iter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        match self {
-            Iter::Array(inner) => inner.next_back().cloned(),
-            Iter::Vec(inner) => inner.next_back(),
-            Iter::BitmapBorrowed(inner) => inner.next_back(),
-            Iter::BitmapOwned(inner) => inner.next_back(),
+        self.size_hint = self.size_hint.saturating_sub(1);
+        match &mut self.inner {
+            IterInner::Array(inner) => inner.next_back().cloned(),
+            IterInner::Vec(inner) => inner.next_back(),
+            IterInner::BitmapBorrowed(inner) => inner.next_back(),
+            IterInner::BitmapOwned(inner) => inner.next_back(),
         }
     }
 }

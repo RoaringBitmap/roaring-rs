@@ -343,7 +343,8 @@ mod iter_inner {
         fn iter_front_mut(&mut self) -> &mut container::Iter<'a>;
         fn iter_back_mut(&mut self) -> &mut Option<container::Iter<'a>>;
 
-        fn dec_size_hint(&mut self);
+        fn dec_size_hint(&mut self, n: u64);
+        fn set_size_hint(&mut self, n: u64);
 
         fn empty_inner_iter() -> container::Iter<'static>;
 
@@ -353,7 +354,7 @@ mod iter_inner {
 
         #[inline]
         fn next_inner(&mut self) -> Option<u32> {
-            self.dec_size_hint();
+            self.dec_size_hint(1);
             loop {
                 if let item @ Some(_) = self.iter_front_mut().next() {
                     return item;
@@ -368,7 +369,7 @@ mod iter_inner {
 
         #[inline]
         fn next_back_inner(&mut self) -> Option<u32> {
-            self.dec_size_hint();
+            self.dec_size_hint(1);
             loop {
                 if let Some(iter) = self.iter_back_mut() {
                     if let item @ Some(_) = iter.next_back() {
@@ -384,40 +385,50 @@ mod iter_inner {
         }
 
         fn advance_to_inner(&mut self, n: u32) {
-            let (key, _) = util::split(n);
-            fn advance_iter(iter: &mut container::Iter<'_>, n: u32) -> Option<u32> {
+            fn advance_iter(iter: &mut container::Iter<'_>, n: u32) -> u64 {
+                let mut items_skipped = 0;
                 while let Some(next) = iter.peek() {
                     if next < n {
                         iter.next();
+                        items_skipped += 1;
                     } else {
-                        return Some(next);
+                        return items_skipped;
                     }
                 }
-                None
+                items_skipped
             }
+            let (key, _) = util::split(n);
             if let Some(index) = self.find_container(key) {
                 self.drain_containers_until(index);
                 let container = self.pop_container_front().expect("bug!");
                 let mut iter = container.into_iter();
-                advance_iter(&mut iter, n);
+                self.dec_size_hint(advance_iter(&mut iter, n));
                 *self.iter_front_mut() = iter;
             } else {
                 // there are no containers with given key. Look in iter_front and iter_back.
-                let iter_front = self.iter_front_mut();
-                if iter_front.peek().map(|n| util::split(n).0) == Some(key) {
-                    advance_iter(iter_front, n);
+                if self.iter_front_mut().peek().map(|n| util::split(n).0) == Some(key) {
+                    let skipped = advance_iter(self.iter_front_mut(), n);
+                    self.dec_size_hint(skipped);
                     return;
                 }
-                if let Some(iter_back) = self.iter_back_mut() {
-                    if iter_back.peek().map(|n| util::split(n).0) == Some(key) {
-                        advance_iter(iter_back, n);
-                        *self.iter_front_mut() = Self::empty_inner_iter();
-                        return;
-                    }
+                if self
+                    .iter_back_mut()
+                    .as_mut()
+                    .and_then(|i| i.peek().filter(|n| util::split(*n).0 == key))
+                    .is_some()
+                {
+                    let mut iter_back = None;
+                    std::mem::swap(&mut iter_back, self.iter_back_mut());
+                    let mut iter_back = iter_back.expect("bug!");
+                    advance_iter(&mut iter_back, n);
+                    self.set_size_hint(iter_back.size_hint().0 as u64);
+                    *self.iter_front_mut() = iter_back;
+                    return;
                 }
                 self.clear_containers();
                 *self.iter_front_mut() = Self::empty_inner_iter();
                 *self.iter_back_mut() = None;
+                self.set_size_hint(0);
             }
         }
 
@@ -452,6 +463,8 @@ mod iter_inner {
         #[inline]
         fn advance_container(&mut self) -> Option<u16> {
             if let Some(container) = self.pop_container_front() {
+                let front_size_hint = self.iter_front_mut().size_hint().0 as u64;
+                self.dec_size_hint(front_size_hint);
                 let result = container.as_ref().key;
                 *self.iter_front_mut() = container.into_iter();
                 Some(result)
@@ -459,6 +472,8 @@ mod iter_inner {
                 let mut iter_back = None;
                 core::mem::swap(&mut iter_back, self.iter_back_mut());
                 *self.iter_front_mut() = iter_back.expect("bug!");
+                let size_hint = self.iter_front_mut().size_hint().0 as u64;
+                self.set_size_hint(size_hint);
                 if let Some(v) = self.iter_front_mut().peek() {
                     let (key, _) = util::split(v);
                     Some(key)
@@ -510,11 +525,15 @@ mod iter_inner {
 
         #[inline]
         fn drain_containers_until(&mut self, index: usize) {
-            self.containers.drain(0..index);
+            let removed_elements =
+                self.containers.drain(0..index).map(|container| container.len()).sum();
+            self.size_hint = self.size_hint.saturating_sub(removed_elements);
         }
 
         #[inline]
         fn clear_containers(&mut self) {
+            let removed_elements = self.containers.iter().map(|container| container.len()).sum();
+            self.size_hint = self.size_hint.saturating_sub(removed_elements);
             self.containers.clear();
         }
 
@@ -534,8 +553,12 @@ mod iter_inner {
         }
 
         #[inline]
-        fn dec_size_hint(&mut self) {
-            self.size_hint = self.size_hint.saturating_sub(1);
+        fn dec_size_hint(&mut self, n: u64) {
+            self.size_hint = self.size_hint.saturating_sub(n);
+        }
+
+        fn set_size_hint(&mut self, n: u64) {
+            self.size_hint = n;
         }
 
         fn empty_inner_iter() -> container::Iter<'static> {
@@ -578,11 +601,16 @@ mod iter_inner {
 
         #[inline]
         fn drain_containers_until(&mut self, index: usize) {
+            let removed_elements =
+                self.containers[..index].iter().map(|container| container.len()).sum();
+            self.size_hint = self.size_hint.saturating_sub(removed_elements);
             self.containers = &self.containers[index..]
         }
 
         #[inline]
         fn clear_containers(&mut self) {
+            let removed_elements = self.containers.iter().map(|container| container.len()).sum();
+            self.size_hint = self.size_hint.saturating_sub(removed_elements);
             self.containers = &[];
         }
 
@@ -602,8 +630,12 @@ mod iter_inner {
         }
 
         #[inline]
-        fn dec_size_hint(&mut self) {
-            self.size_hint = self.size_hint.saturating_sub(1);
+        fn dec_size_hint(&mut self, n: u64) {
+            self.size_hint = self.size_hint.saturating_sub(n);
+        }
+
+        fn set_size_hint(&mut self, n: u64) {
+            self.size_hint = n;
         }
 
         fn empty_inner_iter() -> container::Iter<'static> {
