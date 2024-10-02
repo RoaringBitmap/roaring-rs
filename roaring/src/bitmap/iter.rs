@@ -325,7 +325,6 @@ mod iter_inner {
     use crate::bitmap::{container, util, IntoIter, Iter};
     use core::slice;
 
-    // To get rid of clippy complex type warning
     pub(super) trait IterInternal<'a> {
         type Container: IntoIterator<IntoIter = container::Iter<'a>, Item = u32> + AsRef<Container>;
 
