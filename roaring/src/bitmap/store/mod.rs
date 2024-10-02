@@ -500,8 +500,8 @@ impl PartialEq for Store {
 impl Iter<'_> {
     pub fn peek(&mut self) -> Option<u16> {
         match self {
-            Iter::Array(inner) => inner.as_slice().iter().next().cloned(),
-            Iter::Vec(inner) => inner.as_slice().iter().next().cloned(),
+            Iter::Array(inner) => inner.as_slice().first().cloned(),
+            Iter::Vec(inner) => inner.as_slice().first().cloned(),
             Iter::BitmapBorrowed(inner) => inner.peek(),
             Iter::BitmapOwned(inner) => inner.peek(),
         }
