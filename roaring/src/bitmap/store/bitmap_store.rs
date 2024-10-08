@@ -27,6 +27,10 @@ impl BitmapStore {
         BitmapStore { len: (BITMAP_LENGTH as u64) * 64, bits: Box::new([u64::MAX; BITMAP_LENGTH]) }
     }
 
+    pub fn capacity(&self) -> usize {
+        BITMAP_LENGTH * u64::BITS as usize
+    }
+
     pub fn try_from(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> Result<BitmapStore, Error> {
         let actual_len = bits.iter().map(|v| v.count_ones() as u64).sum();
         if len != actual_len {
