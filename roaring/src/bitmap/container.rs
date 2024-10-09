@@ -295,10 +295,14 @@ impl IntoIterator for Container {
     }
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl Iterator for Iter<'_> {
     type Item = u32;
     fn next(&mut self) -> Option<u32> {
         self.inner.next().map(|i| util::join(self.key, i))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
     }
 }
 
@@ -311,5 +315,22 @@ impl DoubleEndedIterator for Iter<'_> {
 impl fmt::Debug for Container {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         format!("Container<{:?} @ {:?}>", self.len(), self.key).fmt(formatter)
+    }
+}
+
+impl Iter<'_> {
+    pub fn empty() -> Self {
+        Self { key: 0, inner: store::Iter::empty() }
+    }
+
+    #[inline]
+    pub fn peek(&mut self) -> Option<u32> {
+        self.inner.peek().map(|i| util::join(self.key, i))
+    }
+}
+
+impl AsRef<Container> for Container {
+    fn as_ref(&self) -> &Container {
+        self
     }
 }

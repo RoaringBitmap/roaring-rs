@@ -19,6 +19,7 @@ extern crate byteorder;
 
 #[macro_use]
 extern crate alloc;
+extern crate core;
 
 use core::fmt;
 

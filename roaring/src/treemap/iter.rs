@@ -11,7 +11,7 @@ struct To64Iter<'a> {
     inner: Iter32<'a>,
 }
 
-impl<'a> Iterator for To64Iter<'a> {
+impl Iterator for To64Iter<'_> {
     type Item = u64;
     fn next(&mut self) -> Option<u64> {
         self.inner.next().map(|n| util::join(self.hi, n))
@@ -109,7 +109,7 @@ pub struct IntoIter {
     size_hint: u64,
 }
 
-impl<'a> Iter<'a> {
+impl Iter<'_> {
     fn new(map: &BTreeMap<u32, RoaringBitmap>) -> Iter {
         let size_hint: u64 = map.iter().map(|(_, r)| r.len()).sum();
         let i = map.iter().flat_map(to64iter as _);
@@ -125,7 +125,7 @@ impl IntoIter {
     }
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl Iterator for Iter<'_> {
     type Item = u64;
 
     fn next(&mut self) -> Option<u64> {
