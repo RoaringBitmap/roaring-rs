@@ -524,7 +524,7 @@ impl Iter<'_> {
         Self { inner: IterInner::Array([].iter()), size_hint: 0 }
     }
 }
-impl<'a> Iterator for Iter<'a> {
+impl Iterator for Iter<'_> {
     type Item = u16;
 
     fn next(&mut self) -> Option<u16> {

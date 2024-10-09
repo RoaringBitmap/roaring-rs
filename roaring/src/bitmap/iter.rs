@@ -49,7 +49,7 @@ impl<'a> Iter<'a> {
         self.advance_to_inner(n);
     }
 }
-impl<'a> Iterator for Iter<'a> {
+impl Iterator for Iter<'_> {
     type Item = u32;
     fn next(&mut self) -> Option<u32> {
         self.next_inner()
@@ -70,7 +70,7 @@ impl<'a> Iterator for Iter<'a> {
         self.fold_inner(init, f)
     }
 }
-impl<'a> DoubleEndedIterator for Iter<'a> {
+impl DoubleEndedIterator for Iter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.next_back_inner()
     }
@@ -84,7 +84,7 @@ impl<'a> DoubleEndedIterator for Iter<'a> {
     }
 }
 #[cfg(target_pointer_width = "64")]
-impl<'a> ExactSizeIterator for Iter<'a> {
+impl ExactSizeIterator for Iter<'_> {
     fn len(&self) -> usize {
         self.size_hint as usize
     }

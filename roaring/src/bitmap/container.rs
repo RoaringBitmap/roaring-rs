@@ -295,7 +295,7 @@ impl IntoIterator for Container {
     }
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl Iterator for Iter<'_> {
     type Item = u32;
     fn next(&mut self) -> Option<u32> {
         self.inner.next().map(|i| util::join(self.key, i))
@@ -318,7 +318,7 @@ impl fmt::Debug for Container {
     }
 }
 
-impl<'a> Iter<'a> {
+impl Iter<'_> {
     pub fn empty() -> Self {
         Self { key: 0, inner: store::Iter::empty() }
     }
