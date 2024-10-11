@@ -295,7 +295,7 @@ impl IntoIterator for Container {
     }
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl Iterator for Iter<'_> {
     type Item = u32;
     fn next(&mut self) -> Option<u32> {
         self.inner.next().map(|i| util::join(self.key, i))

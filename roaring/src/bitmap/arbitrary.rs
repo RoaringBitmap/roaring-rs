@@ -189,7 +189,7 @@ mod test {
 
     impl RoaringBitmap {
         prop_compose! {
-            pub fn arbitrary()(bitmap in (0usize..=16).prop_flat_map(containers)) -> RoaringBitmap {
+            pub(crate) fn arbitrary()(bitmap in (0usize..=16).prop_flat_map(containers)) -> RoaringBitmap {
                 bitmap
             }
         }
