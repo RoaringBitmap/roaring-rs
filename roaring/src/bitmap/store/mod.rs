@@ -497,7 +497,7 @@ impl PartialEq for Store {
     }
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl Iterator for Iter<'_> {
     type Item = u16;
 
     fn next(&mut self) -> Option<u16> {
