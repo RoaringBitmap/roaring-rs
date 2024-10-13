@@ -91,8 +91,8 @@ where
                 (key, bitmap)
             }
             None => {
-                let poped = PeekMut::pop(peek);
-                (poped.key, poped.bitmap)
+                let popped = PeekMut::pop(peek);
+                (popped.key, popped.bitmap)
             }
         };
 
@@ -209,8 +209,8 @@ where
                 (key, bitmap)
             }
             None => {
-                let poped = PeekMut::pop(peek);
-                (poped.key, poped.bitmap)
+                let popped = PeekMut::pop(peek);
+                (popped.key, popped.bitmap)
             }
         };
 
