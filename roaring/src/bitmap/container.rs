@@ -300,6 +300,21 @@ impl Iterator for Iter<'_> {
     fn next(&mut self) -> Option<u32> {
         self.inner.next().map(|i| util::join(self.key, i))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    fn count(self) -> usize
+    where
+        Self: Sized,
+    {
+        self.inner.count()
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.inner.nth(n).map(|i| util::join(self.key, i))
+    }
 }
 
 impl DoubleEndedIterator for Iter<'_> {
@@ -307,6 +322,8 @@ impl DoubleEndedIterator for Iter<'_> {
         self.inner.next_back().map(|i| util::join(self.key, i))
     }
 }
+
+impl ExactSizeIterator for Iter<'_> {}
 
 impl fmt::Debug for Container {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
