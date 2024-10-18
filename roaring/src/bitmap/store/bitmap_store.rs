@@ -1,5 +1,4 @@
 use core::borrow::Borrow;
-use core::cmp::Ordering;
 use core::fmt::{Display, Formatter};
 use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
@@ -404,9 +403,9 @@ impl Display for Error {
 impl std::error::Error for Error {}
 
 pub struct BitmapIter<B: Borrow<[u64; BITMAP_LENGTH]>> {
-    key: usize,
+    key: u16,
     value: u64,
-    key_back: usize,
+    key_back: u16,
     value_back: u64,
     bits: B,
 }
@@ -416,7 +415,7 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
         BitmapIter {
             key: 0,
             value: bits.borrow()[0],
-            key_back: BITMAP_LENGTH - 1,
+            key_back: BITMAP_LENGTH as u16 - 1,
             value_back: bits.borrow()[BITMAP_LENGTH - 1],
             bits,
         }
@@ -427,24 +426,28 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
     type Item = u16;
 
     fn next(&mut self) -> Option<u16> {
-        loop {
-            if self.value == 0 {
-                self.key += 1;
-                let cmp = self.key.cmp(&self.key_back);
-                // Match arms can be reordered, this ordering is perf sensitive
-                self.value = if cmp == Ordering::Less {
-                    unsafe { *self.bits.borrow().get_unchecked(self.key) }
-                } else if cmp == Ordering::Equal {
-                    self.value_back
-                } else {
+        if self.value == 0 {
+            'get_val: {
+                if self.key >= self.key_back {
                     return None;
-                };
-                continue;
+                }
+                for key in self.key + 1..self.key_back {
+                    self.value = unsafe { *self.bits.borrow().get_unchecked(key as usize) };
+                    if self.value != 0 {
+                        self.key = key;
+                        break 'get_val;
+                    }
+                }
+                self.key = self.key_back;
+                self.value = self.value_back;
+                if self.value == 0 {
+                    return None;
+                }
             }
-            let index = self.value.trailing_zeros() as usize;
-            self.value &= self.value - 1;
-            return Some((64 * self.key + index) as u16);
         }
+        let index = self.value.trailing_zeros() as u16;
+        self.value &= self.value - 1;
+        Some(64 * self.key + index)
     }
 }
 
@@ -458,13 +461,14 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> DoubleEndedIterator for BitmapIter<B> {
                     return None;
                 }
                 self.key_back -= 1;
-                self.value_back = unsafe { *self.bits.borrow().get_unchecked(self.key_back) };
+                self.value_back =
+                    unsafe { *self.bits.borrow().get_unchecked(self.key_back as usize) };
                 continue;
             }
-            let index_from_left = value.leading_zeros() as usize;
+            let index_from_left = value.leading_zeros() as u16;
             let index = 63 - index_from_left;
             *value &= !(1 << index);
-            return Some((64 * self.key_back + index) as u16);
+            return Some(64 * self.key_back + index);
         }
     }
 }
