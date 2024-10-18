@@ -508,6 +508,36 @@ impl Iterator for Iter<'_> {
             Iter::BitmapOwned(inner) => inner.next(),
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            Iter::Array(inner) => inner.size_hint(),
+            Iter::Vec(inner) => inner.size_hint(),
+            Iter::BitmapBorrowed(inner) => inner.size_hint(),
+            Iter::BitmapOwned(inner) => inner.size_hint(),
+        }
+    }
+
+    fn count(self) -> usize
+    where
+        Self: Sized,
+    {
+        match self {
+            Iter::Array(inner) => inner.count(),
+            Iter::Vec(inner) => inner.count(),
+            Iter::BitmapBorrowed(inner) => inner.count(),
+            Iter::BitmapOwned(inner) => inner.count(),
+        }
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        match self {
+            Iter::Array(inner) => inner.nth(n).copied(),
+            Iter::Vec(inner) => inner.nth(n),
+            Iter::BitmapBorrowed(inner) => inner.nth(n),
+            Iter::BitmapOwned(inner) => inner.nth(n),
+        }
+    }
 }
 
 impl DoubleEndedIterator for Iter<'_> {
@@ -520,3 +550,5 @@ impl DoubleEndedIterator for Iter<'_> {
         }
     }
 }
+
+impl ExactSizeIterator for Iter<'_> {}

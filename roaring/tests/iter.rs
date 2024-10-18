@@ -81,6 +81,53 @@ proptest! {
     }
 }
 
+proptest! {
+    #[test]
+    fn nth(values in btree_set(any::<u32>(), ..=10_000), nth in 0..10_005usize) {
+        let bitmap = RoaringBitmap::from_sorted_iter(values.iter().cloned()).unwrap();
+        let mut orig_iter = bitmap.iter().fuse();
+        let mut iter = bitmap.iter();
+
+        for _ in 0..nth {
+            if orig_iter.next().is_none() {
+                break;
+            }
+        }
+        let expected = orig_iter.next();
+        assert_eq!(expected, iter.nth(nth));
+        let expected_next = orig_iter.next();
+        assert_eq!(expected_next, iter.next());
+
+        let mut val_iter = values.into_iter();
+        assert_eq!(expected, val_iter.nth(nth));
+        assert_eq!(expected_next, val_iter.next());
+    }
+}
+
+#[test]
+fn huge_nth() {
+    let bitmap = RoaringBitmap::new();
+    let mut iter = bitmap.iter();
+    assert_eq!(None, iter.nth(usize::MAX));
+}
+
+proptest! {
+    #[test]
+    fn count(values in btree_set(any::<u32>(), ..=10_000), skip in 0..10_005usize) {
+        let bitmap = RoaringBitmap::from_sorted_iter(values.iter().cloned()).unwrap();
+        let mut iter = bitmap.iter();
+
+        if let Some(n) = skip.checked_sub(1) {
+            iter.nth(n);
+        }
+        let expected_count = values.len().saturating_sub(skip);
+        let size_hint = iter.size_hint();
+        assert_eq!(expected_count, size_hint.0);
+        assert_eq!(Some(expected_count), size_hint.1);
+        assert_eq!(expected_count, iter.count());
+    }
+}
+
 #[test]
 fn rev_array() {
     let values = 0..100;

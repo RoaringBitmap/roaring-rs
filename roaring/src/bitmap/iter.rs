@@ -1,8 +1,8 @@
 use alloc::vec;
-use core::iter;
+use core::iter::FusedIterator;
 use core::slice;
 
-use super::container::Container;
+use super::container::{self, Container};
 use crate::{NonSortedIntegers, RoaringBitmap};
 
 #[cfg(not(feature = "std"))]
@@ -10,125 +10,333 @@ use alloc::vec::Vec;
 
 /// An iterator for `RoaringBitmap`.
 pub struct Iter<'a> {
-    inner: iter::Flatten<slice::Iter<'a, Container>>,
-    size_hint: u64,
+    front: Option<container::Iter<'a>>,
+    containers: slice::Iter<'a, Container>,
+    back: Option<container::Iter<'a>>,
 }
 
 /// An iterator for `RoaringBitmap`.
 pub struct IntoIter {
-    inner: iter::Flatten<vec::IntoIter<Container>>,
-    size_hint: u64,
+    front: Option<container::Iter<'static>>,
+    containers: vec::IntoIter<Container>,
+    back: Option<container::Iter<'static>>,
+}
+
+#[inline]
+fn and_then_or_clear<T, U>(opt: &mut Option<T>, f: impl FnOnce(&mut T) -> Option<U>) -> Option<U> {
+    let x = f(opt.as_mut()?);
+    if x.is_none() {
+        *opt = None;
+    }
+    x
 }
 
 impl Iter<'_> {
     fn new(containers: &[Container]) -> Iter {
-        let size_hint = containers.iter().map(|c| c.len()).sum();
-        Iter { inner: containers.iter().flatten(), size_hint }
+        Iter { front: None, containers: containers.iter(), back: None }
     }
 }
 
 impl IntoIter {
     fn new(containers: Vec<Container>) -> IntoIter {
-        let size_hint = containers.iter().map(|c| c.len()).sum();
-        IntoIter { inner: containers.into_iter().flatten(), size_hint }
+        IntoIter { front: None, containers: containers.into_iter(), back: None }
     }
+}
+
+fn size_hint_impl(
+    front: &Option<container::Iter<'_>>,
+    containers: &impl AsRef<[Container]>,
+    back: &Option<container::Iter<'_>>,
+) -> (usize, Option<usize>) {
+    let first_size = front.as_ref().map_or(0, |it| it.len());
+    let last_size = back.as_ref().map_or(0, |it| it.len());
+    let mut size = first_size + last_size;
+    for container in containers.as_ref() {
+        match size.checked_add(container.len() as usize) {
+            Some(new_size) => size = new_size,
+            None => return (usize::MAX, None),
+        }
+    }
+    (size, Some(size))
 }
 
 impl Iterator for Iter<'_> {
     type Item = u32;
 
     fn next(&mut self) -> Option<u32> {
-        self.size_hint = self.size_hint.saturating_sub(1);
-        self.inner.next()
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.size_hint < usize::MAX as u64 {
-            (self.size_hint as usize, Some(self.size_hint as usize))
-        } else {
-            (usize::MAX, None)
+        loop {
+            if let Some(x) = and_then_or_clear(&mut self.front, Iterator::next) {
+                return Some(x);
+            }
+            self.front = match self.containers.next() {
+                Some(inner) => Some(inner.into_iter()),
+                None => return and_then_or_clear(&mut self.back, Iterator::next),
+            }
         }
     }
 
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        size_hint_impl(&self.front, &self.containers, &self.back)
+    }
+
     #[inline]
-    fn fold<B, F>(self, init: B, f: F) -> B
+    fn fold<B, F>(mut self, mut init: B, mut f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        self.inner.fold(init, f)
+        if let Some(iter) = &mut self.front {
+            init = iter.fold(init, &mut f);
+        }
+        init = self.containers.fold(init, |acc, container| {
+            let iter = <&Container>::into_iter(container);
+            iter.fold(acc, &mut f)
+        });
+        if let Some(iter) = &mut self.back {
+            init = iter.fold(init, &mut f);
+        };
+        init
+    }
+
+    fn count(self) -> usize
+    where
+        Self: Sized,
+    {
+        let mut count = self.front.map_or(0, Iterator::count);
+        count += self.containers.map(|container| container.len() as usize).sum::<usize>();
+        count += self.back.map_or(0, Iterator::count);
+        count
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        let mut n = n;
+        let nth_advance = |it: &mut container::Iter| {
+            let len = it.len();
+            if n < len {
+                it.nth(n)
+            } else {
+                n -= len;
+                None
+            }
+        };
+        if let Some(x) = and_then_or_clear(&mut self.front, nth_advance) {
+            return Some(x);
+        }
+        for container in self.containers.by_ref() {
+            let len = container.len() as usize;
+            if n < len {
+                let mut front_iter = container.into_iter();
+                let result = front_iter.nth(n);
+                self.front = Some(front_iter);
+                return result;
+            }
+            n -= len;
+        }
+        and_then_or_clear(&mut self.back, |it| it.nth(n))
     }
 }
 
 impl DoubleEndedIterator for Iter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.size_hint = self.size_hint.saturating_sub(1);
-        self.inner.next_back()
+        loop {
+            if let Some(x) = and_then_or_clear(&mut self.back, DoubleEndedIterator::next_back) {
+                return Some(x);
+            }
+            self.back = match self.containers.next_back() {
+                Some(inner) => Some(inner.into_iter()),
+                None => return and_then_or_clear(&mut self.front, DoubleEndedIterator::next_back),
+            }
+        }
     }
 
     #[inline]
-    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    fn rfold<Acc, Fold>(mut self, mut init: Acc, mut fold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        self.inner.rfold(init, fold)
+        if let Some(iter) = &mut self.back {
+            init = iter.rfold(init, &mut fold);
+        }
+        init = self.containers.rfold(init, |acc, container| {
+            let iter = container.into_iter();
+            iter.rfold(acc, &mut fold)
+        });
+        if let Some(iter) = &mut self.front {
+            init = iter.rfold(init, &mut fold);
+        };
+        init
+    }
+
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let mut n = n;
+        let nth_advance = |it: &mut container::Iter| {
+            let len = it.len();
+            if n < len {
+                it.nth_back(n)
+            } else {
+                n -= len;
+                None
+            }
+        };
+        if let Some(x) = and_then_or_clear(&mut self.back, nth_advance) {
+            return Some(x);
+        }
+        for container in self.containers.by_ref().rev() {
+            let len = container.len() as usize;
+            if n < len {
+                let mut front_iter = container.into_iter();
+                let result = front_iter.nth_back(n);
+                self.back = Some(front_iter);
+                return result;
+            }
+            n -= len;
+        }
+        and_then_or_clear(&mut self.front, |it| it.nth_back(n))
     }
 }
 
 #[cfg(target_pointer_width = "64")]
-impl ExactSizeIterator for Iter<'_> {
-    fn len(&self) -> usize {
-        self.size_hint as usize
-    }
-}
+impl ExactSizeIterator for Iter<'_> {}
+impl FusedIterator for Iter<'_> {}
 
 impl Iterator for IntoIter {
     type Item = u32;
 
     fn next(&mut self) -> Option<u32> {
-        self.size_hint = self.size_hint.saturating_sub(1);
-        self.inner.next()
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.size_hint < usize::MAX as u64 {
-            (self.size_hint as usize, Some(self.size_hint as usize))
-        } else {
-            (usize::MAX, None)
+        loop {
+            if let Some(x) = and_then_or_clear(&mut self.front, Iterator::next) {
+                return Some(x);
+            }
+            match self.containers.next() {
+                Some(inner) => self.front = Some(inner.into_iter()),
+                None => return and_then_or_clear(&mut self.back, Iterator::next),
+            }
         }
     }
 
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        size_hint_impl(&self.front, &self.containers, &self.back)
+    }
+
     #[inline]
-    fn fold<B, F>(self, init: B, f: F) -> B
+    fn fold<B, F>(mut self, mut init: B, mut f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        self.inner.fold(init, f)
+        if let Some(iter) = &mut self.front {
+            init = iter.fold(init, &mut f);
+        }
+        init = self.containers.fold(init, |acc, container| {
+            let iter = <Container>::into_iter(container);
+            iter.fold(acc, &mut f)
+        });
+        if let Some(iter) = &mut self.back {
+            init = iter.fold(init, &mut f);
+        };
+        init
+    }
+
+    fn count(self) -> usize
+    where
+        Self: Sized,
+    {
+        let mut count = self.front.map_or(0, Iterator::count);
+        count += self.containers.map(|container| container.len() as usize).sum::<usize>();
+        count += self.back.map_or(0, Iterator::count);
+        count
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        let mut n = n;
+        let nth_advance = |it: &mut container::Iter| {
+            let len = it.len();
+            if n < len {
+                it.nth(n)
+            } else {
+                n -= len;
+                None
+            }
+        };
+        if let Some(x) = and_then_or_clear(&mut self.front, nth_advance) {
+            return Some(x);
+        }
+        for container in self.containers.by_ref() {
+            let len = container.len() as usize;
+            if n < len {
+                let mut front_iter = container.into_iter();
+                let result = front_iter.nth(n);
+                self.front = Some(front_iter);
+                return result;
+            }
+            n -= len;
+        }
+        and_then_or_clear(&mut self.back, |it| it.nth(n))
     }
 }
 
 impl DoubleEndedIterator for IntoIter {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.size_hint = self.size_hint.saturating_sub(1);
-        self.inner.next_back()
+        loop {
+            if let Some(x) = and_then_or_clear(&mut self.back, DoubleEndedIterator::next_back) {
+                return Some(x);
+            }
+            match self.containers.next_back() {
+                Some(inner) => self.back = Some(inner.into_iter()),
+                None => return and_then_or_clear(&mut self.front, DoubleEndedIterator::next_back),
+            }
+        }
     }
 
     #[inline]
-    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    fn rfold<Acc, Fold>(mut self, mut init: Acc, mut fold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        self.inner.rfold(init, fold)
+        if let Some(iter) = &mut self.back {
+            init = iter.rfold(init, &mut fold);
+        }
+        init = self.containers.rfold(init, |acc, container| {
+            let iter = container.into_iter();
+            iter.rfold(acc, &mut fold)
+        });
+        if let Some(iter) = &mut self.front {
+            init = iter.rfold(init, &mut fold);
+        };
+        init
+    }
+
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let mut n = n;
+        let nth_advance = |it: &mut container::Iter| {
+            let len = it.len();
+            if n < len {
+                it.nth_back(n)
+            } else {
+                n -= len;
+                None
+            }
+        };
+        if let Some(x) = and_then_or_clear(&mut self.back, nth_advance) {
+            return Some(x);
+        }
+        for container in self.containers.by_ref().rev() {
+            let len = container.len() as usize;
+            if n < len {
+                let mut front_iter = container.into_iter();
+                let result = front_iter.nth_back(n);
+                self.back = Some(front_iter);
+                return result;
+            }
+            n -= len;
+        }
+        and_then_or_clear(&mut self.front, |it| it.nth_back(n))
     }
 }
 
 #[cfg(target_pointer_width = "64")]
-impl ExactSizeIterator for IntoIter {
-    fn len(&self) -> usize {
-        self.size_hint as usize
-    }
-}
+impl ExactSizeIterator for IntoIter {}
+impl FusedIterator for IntoIter {}
 
 impl RoaringBitmap {
     /// Iterator over each value stored in the RoaringBitmap, guarantees values are ordered by value.
