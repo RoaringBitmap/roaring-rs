@@ -14,6 +14,7 @@ mod iter;
 mod ops;
 #[cfg(feature = "std")]
 mod ops_with_serialized;
+mod range;
 #[cfg(feature = "serde")]
 mod serde;
 #[cfg(feature = "std")]

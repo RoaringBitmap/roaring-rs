@@ -1,4 +1,5 @@
 use core::ops::{Bound, RangeBounds, RangeInclusive};
+use num::{Bounded, CheckedAdd, CheckedSub, Integer};
 
 /// Returns the container key and the index
 /// in this container for a given integer.
@@ -14,20 +15,21 @@ pub fn join(high: u16, low: u16) -> u32 {
     (u32::from(high) << 16) + u32::from(low)
 }
 
-/// Convert a `RangeBounds<u32>` object to `RangeInclusive<u32>`,
-pub fn convert_range_to_inclusive<R>(range: R) -> Option<RangeInclusive<u32>>
+/// Convert a `RangeBounds<T>` object to `RangeInclusive<T>`,
+pub fn convert_range_to_inclusive<R, T>(range: R) -> Option<RangeInclusive<T>>
 where
-    R: RangeBounds<u32>,
+    R: RangeBounds<T>,
+    T: Integer + CheckedAdd + CheckedSub + Bounded + std::cmp::PartialOrd + Copy,
 {
-    let start: u32 = match range.start_bound() {
+    let start: T = match range.start_bound() {
         Bound::Included(&i) => i,
-        Bound::Excluded(&i) => i.checked_add(1)?,
-        Bound::Unbounded => 0,
+        Bound::Excluded(&i) => i.checked_add(&T::one())?,
+        Bound::Unbounded => T::zero(),
     };
-    let end: u32 = match range.end_bound() {
+    let end: T = match range.end_bound() {
         Bound::Included(&i) => i,
-        Bound::Excluded(&i) => i.checked_sub(1)?,
-        Bound::Unbounded => u32::MAX,
+        Bound::Excluded(&i) => i.checked_sub(&T::one())?,
+        Bound::Unbounded => T::max_value(),
     };
     if end < start {
         return None;
