@@ -48,6 +48,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.insert(3), false);
     /// assert_eq!(rb.contains(3), true);
     /// ```
+    #[inline]
     pub fn insert(&mut self, value: u32) -> bool {
         let (key, index) = util::split(value);
         let container = match self.containers.binary_search_by_key(&key, |c| c.key) {
@@ -512,6 +513,7 @@ impl RoaringBitmap {
     /// rb.insert(4);
     /// assert_eq!(rb.max(), Some(4));
     /// ```
+    #[inline]
     pub fn max(&self) -> Option<u32> {
         self.containers.last().and_then(|tail| tail.max().map(|max| util::join(tail.key, max)))
     }
