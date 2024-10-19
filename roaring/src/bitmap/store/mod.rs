@@ -49,6 +49,35 @@ impl Store {
         Store::Bitmap(BitmapStore::full())
     }
 
+    pub fn from_lsb0_bytes(bytes: &[u8], byte_offset: usize) -> Option<Self> {
+        assert!(byte_offset + bytes.len() <= BITMAP_LENGTH * mem::size_of::<u64>());
+
+        // It seems to be pretty considerably faster to count the bits
+        // using u64s than for each byte
+        let bits_set = {
+            let mut bits_set = 0;
+            let chunks = bytes.chunks_exact(mem::size_of::<u64>());
+            let remainder = chunks.remainder();
+            for chunk in chunks {
+                let chunk = u64::from_ne_bytes(chunk.try_into().unwrap());
+                bits_set += u64::from(chunk.count_ones());
+            }
+            for byte in remainder {
+                bits_set += u64::from(byte.count_ones());
+            }
+            bits_set
+        };
+        if bits_set == 0 {
+            return None;
+        }
+
+        Some(if bits_set < ARRAY_LIMIT {
+            Array(ArrayStore::from_lsb0_bytes(bytes, byte_offset, bits_set))
+        } else {
+            Bitmap(BitmapStore::from_lsb0_bytes_unchecked(bytes, byte_offset, bits_set))
+        })
+    }
+
     pub fn insert(&mut self, index: u16) -> bool {
         match self {
             Array(vec) => vec.insert(index),
