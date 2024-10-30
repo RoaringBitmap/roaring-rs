@@ -449,6 +449,24 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
         self.value &= self.value - 1;
         Some(64 * self.key + index)
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let mut len: u32 = self.value.count_ones();
+        if self.key < self.key_back {
+            for v in &self.bits.borrow()[self.key as usize + 1..self.key_back as usize] {
+                len += v.count_ones();
+            }
+            len += self.value_back.count_ones();
+        }
+        (len as usize, Some(len as usize))
+    }
+
+    fn count(self) -> usize
+    where
+        Self: Sized,
+    {
+        self.len()
+    }
 }
 
 impl<B: Borrow<[u64; BITMAP_LENGTH]>> DoubleEndedIterator for BitmapIter<B> {
@@ -472,6 +490,8 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> DoubleEndedIterator for BitmapIter<B> {
         }
     }
 }
+
+impl<B: Borrow<[u64; BITMAP_LENGTH]>> ExactSizeIterator for BitmapIter<B> {}
 
 #[inline]
 pub fn key(index: u16) -> usize {
