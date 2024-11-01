@@ -382,8 +382,8 @@ mod test {
         const CONTAINER_OFFSET: u32 = u64::BITS * BITMAP_LENGTH as u32;
         const CONTAINER_OFFSET_IN_BYTES: u32 = CONTAINER_OFFSET / 8;
         let mut bytes = vec![0xff; CONTAINER_OFFSET_IN_BYTES as usize];
-        bytes.extend(&[0x00; CONTAINER_OFFSET_IN_BYTES as usize]);
-        bytes.extend(&[0b00000001, 0b00000010, 0b00000011, 0b00000100]);
+        bytes.extend([0x00; CONTAINER_OFFSET_IN_BYTES as usize]);
+        bytes.extend([0b00000001, 0b00000010, 0b00000011, 0b00000100]);
 
         let offset = 32;
         let rb = RoaringBitmap::from_lsb0_bytes(offset, &bytes);
@@ -405,7 +405,7 @@ mod test {
 
         // Ensure the empty container is not created
         let mut bytes = vec![0x00u8; CONTAINER_OFFSET_IN_BYTES as usize];
-        bytes.extend(&[0xff]);
+        bytes.extend([0xff]);
         let rb = RoaringBitmap::from_lsb0_bytes(0, &bytes);
         assert_eq!(rb.min(), Some(CONTAINER_OFFSET));
 
