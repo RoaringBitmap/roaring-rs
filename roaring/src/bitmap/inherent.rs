@@ -94,8 +94,8 @@ impl RoaringBitmap {
         R: RangeBounds<u32>,
     {
         let (start, end) = match util::convert_range_to_inclusive(range) {
-            Some(range) => (*range.start(), *range.end()),
-            None => return 0,
+            Ok(range) => (*range.start(), *range.end()),
+            Err(_) => return 0,
         };
 
         let (start_container_key, start_index) = util::split(start);
@@ -239,8 +239,8 @@ impl RoaringBitmap {
         R: RangeBounds<u32>,
     {
         let (start, end) = match util::convert_range_to_inclusive(range) {
-            Some(range) => (*range.start(), *range.end()),
-            None => return 0,
+            Ok(range) => (*range.start(), *range.end()),
+            Err(_) => return 0,
         };
 
         let (start_container_key, start_index) = util::split(start);
@@ -309,9 +309,9 @@ impl RoaringBitmap {
         R: RangeBounds<u32>,
     {
         let (start, end) = match util::convert_range_to_inclusive(range) {
-            Some(range) => (*range.start(), *range.end()),
-            // Empty ranges are always contained
-            None => return true,
+            Ok(range) => (*range.start(), *range.end()),
+            // Empty/Invalid ranges are always contained
+            Err(_) => return true,
         };
         let (start_high, start_low) = util::split(start);
         let (end_high, end_low) = util::split(end);
@@ -369,9 +369,9 @@ impl RoaringBitmap {
         R: RangeBounds<u32>,
     {
         let (start, end) = match util::convert_range_to_inclusive(range) {
-            Some(range) => (*range.start(), *range.end()),
-            // Empty ranges have 0 bits set in them
-            None => return 0,
+            Ok(range) => (*range.start(), *range.end()),
+            // Empty/invalid ranges have 0 bits set in them
+            Err(_) => return 0,
         };
 
         let (start_key, start_low) = util::split(start);
