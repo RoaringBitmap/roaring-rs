@@ -2,7 +2,8 @@ use alloc::vec;
 use core::iter::FusedIterator;
 use core::slice;
 
-use super::container::{self, Container};
+use super::container::Container;
+use super::{container, util};
 use crate::{NonSortedIntegers, RoaringBitmap};
 
 #[cfg(not(feature = "std"))]
@@ -31,15 +32,207 @@ fn and_then_or_clear<T, U>(opt: &mut Option<T>, f: impl FnOnce(&mut T) -> Option
     x
 }
 
+fn advance_to_impl<'a, It>(
+    n: u32,
+    front_iter: &mut Option<container::Iter<'a>>,
+    containers: &mut It,
+    back_iter: &mut Option<container::Iter<'a>>,
+) where
+    It: Iterator,
+    It: AsRef<[Container]>,
+    It::Item: IntoIterator<IntoIter = container::Iter<'a>>,
+{
+    let (key, index) = util::split(n);
+    if let Some(iter) = front_iter {
+        match key.cmp(&iter.key) {
+            core::cmp::Ordering::Less => return,
+            core::cmp::Ordering::Equal => {
+                iter.advance_to(index);
+                return;
+            }
+            core::cmp::Ordering::Greater => {
+                *front_iter = None;
+            }
+        }
+    }
+    let containers_slice = containers.as_ref();
+    let containers_len = containers_slice.len();
+    let to_skip = match containers_slice.binary_search_by_key(&key, |c| c.key) {
+        Ok(n) => {
+            let container = containers.nth(n).expect("binary search returned a valid index");
+            let mut container_iter = container.into_iter();
+            container_iter.advance_to(index);
+            *front_iter = Some(container_iter);
+            return;
+        }
+        Err(n) => n,
+    };
+
+    if let Some(n) = to_skip.checked_sub(1) {
+        containers.nth(n);
+    }
+    if to_skip != containers_len {
+        // There are still containers with keys greater than the key we are looking for,
+        // the key we're looking _can't_ be in the back iterator.
+        return;
+    }
+    if let Some(iter) = back_iter {
+        match key.cmp(&iter.key) {
+            core::cmp::Ordering::Less => {}
+            core::cmp::Ordering::Equal => {
+                iter.advance_to(index);
+            }
+            core::cmp::Ordering::Greater => {
+                *back_iter = None;
+            }
+        }
+    }
+}
+
+fn advance_back_to_impl<'a, It>(
+    n: u32,
+    front_iter: &mut Option<container::Iter<'a>>,
+    containers: &mut It,
+    back_iter: &mut Option<container::Iter<'a>>,
+) where
+    It: DoubleEndedIterator,
+    It: AsRef<[Container]>,
+    It::Item: IntoIterator<IntoIter = container::Iter<'a>>,
+{
+    let (key, index) = util::split(n);
+    if let Some(iter) = back_iter {
+        match key.cmp(&iter.key) {
+            core::cmp::Ordering::Greater => return,
+            core::cmp::Ordering::Equal => {
+                iter.advance_back_to(index);
+                return;
+            }
+            core::cmp::Ordering::Less => {
+                *back_iter = None;
+            }
+        }
+    }
+    let containers_slice = containers.as_ref();
+    let containers_len = containers_slice.len();
+    let to_skip = match containers_slice.binary_search_by_key(&key, |c| c.key) {
+        Ok(n) => {
+            // n must be less than containers_len, so this can never underflow
+            let n = containers_len - n - 1;
+            let container = containers.nth_back(n).expect("binary search returned a valid index");
+            let mut container_iter = container.into_iter();
+            container_iter.advance_back_to(index);
+            *back_iter = Some(container_iter);
+            return;
+        }
+        Err(n) => containers_len - n,
+    };
+
+    if let Some(n) = to_skip.checked_sub(1) {
+        containers.nth_back(n);
+    }
+    if to_skip != containers_len {
+        // There are still containers with keys less than the key we are looking for,
+        // the key we're looking _can't_ be in the front iterator.
+        return;
+    }
+    if let Some(iter) = front_iter {
+        match key.cmp(&iter.key) {
+            core::cmp::Ordering::Greater => {}
+            core::cmp::Ordering::Equal => {
+                iter.advance_back_to(index);
+            }
+            core::cmp::Ordering::Less => {
+                *front_iter = None;
+            }
+        }
+    }
+}
+
 impl Iter<'_> {
     fn new(containers: &[Container]) -> Iter {
         Iter { front: None, containers: containers.iter(), back: None }
+    }
+
+    /// Advance the iterator to the first position where the item has a value >= `n`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    /// use core::iter::FromIterator;
+    ///
+    /// let bitmap = (1..3).collect::<RoaringBitmap>();
+    /// let mut iter = bitmap.iter();
+    /// iter.advance_to(2);
+    ///
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    pub fn advance_to(&mut self, n: u32) {
+        advance_to_impl(n, &mut self.front, &mut self.containers, &mut self.back);
+    }
+
+    /// Advance the back of the iterator to the first position where the item has a value <= `n`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    /// use core::iter::FromIterator;
+    ///
+    /// let bitmap = (1..3).collect::<RoaringBitmap>();
+    /// let mut iter = bitmap.iter();
+    /// iter.advance_back_to(1);
+    ///
+    /// assert_eq!(iter.next_back(), Some(1));
+    /// assert_eq!(iter.next_back(), None);
+    /// ```
+    pub fn advance_back_to(&mut self, n: u32) {
+        advance_back_to_impl(n, &mut self.front, &mut self.containers, &mut self.back);
     }
 }
 
 impl IntoIter {
     fn new(containers: Vec<Container>) -> IntoIter {
         IntoIter { front: None, containers: containers.into_iter(), back: None }
+    }
+
+    /// Advance the iterator to the first position where the item has a value >= `n`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    /// use core::iter::FromIterator;
+    ///
+    /// let bitmap = (1..3).collect::<RoaringBitmap>();
+    /// let mut iter = bitmap.iter();
+    /// iter.advance_to(2);
+    ///
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    pub fn advance_to(&mut self, n: u32) {
+        advance_to_impl(n, &mut self.front, &mut self.containers, &mut self.back);
+    }
+
+    /// Advance the back of the iterator to the first position where the item has a value <= `n`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    /// use core::iter::FromIterator;
+    ///
+    /// let bitmap = (1..3).collect::<RoaringBitmap>();
+    /// let mut iter = bitmap.into_iter();
+    /// iter.advance_back_to(1);
+    ///
+    /// assert_eq!(iter.next_back(), Some(1));
+    /// assert_eq!(iter.next_back(), None);
+    /// ```
+    pub fn advance_back_to(&mut self, n: u32) {
+        advance_back_to_impl(n, &mut self.front, &mut self.containers, &mut self.back);
     }
 }
 

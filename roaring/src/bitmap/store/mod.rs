@@ -497,6 +497,51 @@ impl PartialEq for Store {
     }
 }
 
+impl Iter<'_> {
+    /// Advance the iterator to the first value greater than or equal to `n`.
+    pub(crate) fn advance_to(&mut self, n: u16) {
+        match self {
+            Iter::Array(inner) => {
+                let skip = inner.as_slice().partition_point(|&i| i < n);
+                if let Some(nth) = skip.checked_sub(1) {
+                    inner.nth(nth);
+                }
+            }
+            Iter::Vec(inner) => {
+                let skip = inner.as_slice().partition_point(|&i| i < n);
+                if let Some(nth) = skip.checked_sub(1) {
+                    inner.nth(nth);
+                }
+            }
+            Iter::BitmapBorrowed(inner) => inner.advance_to(n),
+            Iter::BitmapOwned(inner) => inner.advance_to(n),
+        }
+    }
+
+    pub(crate) fn advance_back_to(&mut self, n: u16) {
+        match self {
+            Iter::Array(inner) => {
+                let slice = inner.as_slice();
+                let from_front = slice.partition_point(|&i| i <= n);
+                let skip = slice.len() - from_front;
+                if let Some(nth) = skip.checked_sub(1) {
+                    inner.nth_back(nth);
+                }
+            }
+            Iter::Vec(inner) => {
+                let slice = inner.as_slice();
+                let from_front = slice.partition_point(|&i| i <= n);
+                let skip = slice.len() - from_front;
+                if let Some(nth) = skip.checked_sub(1) {
+                    inner.nth_back(nth);
+                }
+            }
+            Iter::BitmapBorrowed(inner) => inner.advance_back_to(n),
+            Iter::BitmapOwned(inner) => inner.advance_back_to(n),
+        }
+    }
+}
+
 impl Iterator for Iter<'_> {
     type Item = u16;
 
