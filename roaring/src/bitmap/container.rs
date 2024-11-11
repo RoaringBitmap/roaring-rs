@@ -325,6 +325,16 @@ impl DoubleEndedIterator for Iter<'_> {
 
 impl ExactSizeIterator for Iter<'_> {}
 
+impl Iter<'_> {
+    pub(crate) fn advance_to(&mut self, index: u16) {
+        self.inner.advance_to(index);
+    }
+
+    pub(crate) fn advance_back_to(&mut self, index: u16) {
+        self.inner.advance_back_to(index);
+    }
+}
+
 impl fmt::Debug for Container {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         format!("Container<{:?} @ {:?}>", self.len(), self.key).fmt(formatter)

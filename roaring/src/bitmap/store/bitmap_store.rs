@@ -1,4 +1,5 @@
 use core::borrow::Borrow;
+use core::cmp::Ordering;
 use core::fmt::{Display, Formatter};
 use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
@@ -406,6 +407,7 @@ pub struct BitmapIter<B: Borrow<[u64; BITMAP_LENGTH]>> {
     key: u16,
     value: u64,
     key_back: u16,
+    // If key_back <= key, current back value is actually in `value`
     value_back: u64,
     bits: B,
 }
@@ -419,6 +421,66 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
             value_back: bits.borrow()[BITMAP_LENGTH - 1],
             bits,
         }
+    }
+
+    /// Advance the iterator to the first value greater than or equal to `n`.
+    pub(crate) fn advance_to(&mut self, index: u16) {
+        let new_key = key(index) as u16;
+        let value = match new_key.cmp(&self.key) {
+            Ordering::Less => return,
+            Ordering::Equal => self.value,
+            Ordering::Greater => {
+                let bits = self.bits.borrow();
+                let cmp = new_key.cmp(&self.key_back);
+                // Match arms can be reordered, this ordering is perf sensitive
+                if cmp == Ordering::Less {
+                    // new_key is > self.key, < self.key_back, so it must be in bounds
+                    unsafe { *bits.get_unchecked(new_key as usize) }
+                } else if cmp == Ordering::Equal {
+                    self.value_back
+                } else {
+                    self.value_back = 0;
+                    return;
+                }
+            }
+        };
+        let bit = bit(index);
+        let low_bits = (1 << bit) - 1;
+
+        self.key = new_key;
+        self.value = value & !low_bits;
+    }
+
+    /// Advance the back of iterator to the first value less than or equal to `n`.
+    pub(crate) fn advance_back_to(&mut self, index: u16) {
+        let new_key = key(index) as u16;
+        let (value, dst) = match new_key.cmp(&self.key_back) {
+            Ordering::Greater => return,
+            Ordering::Equal => {
+                let dst =
+                    if self.key_back <= self.key { &mut self.value } else { &mut self.value_back };
+                (*dst, dst)
+            }
+            Ordering::Less => {
+                let bits = self.bits.borrow();
+                let cmp = new_key.cmp(&self.key);
+                // Match arms can be reordered, this ordering is perf sensitive
+                if cmp == Ordering::Greater {
+                    // new_key is > self.key, < self.key_back, so it must be in bounds
+                    let value = unsafe { *bits.get_unchecked(new_key as usize) };
+                    (value, &mut self.value_back)
+                } else if cmp == Ordering::Equal {
+                    (self.value, &mut self.value)
+                } else {
+                    (0, &mut self.value)
+                }
+            }
+        };
+        let bit = bit(index);
+        let low_bits = u64::MAX >> (64 - bit - 1);
+
+        self.key_back = new_key;
+        *dst = value & low_bits;
     }
 }
 
