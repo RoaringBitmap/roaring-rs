@@ -1,6 +1,7 @@
 use alloc::vec;
 use core::iter::FusedIterator;
 use core::slice;
+use core::ops::RangeBounds;
 
 use super::container::Container;
 use super::{container, util};
@@ -189,6 +190,10 @@ impl Iter<'_> {
     /// ```
     pub fn advance_back_to(&mut self, n: u32) {
         advance_back_to_impl(n, &mut self.front, &mut self.containers, &mut self.back);
+    }
+
+    pub fn empty() -> Iter<'static> {
+        Iter { front: None, containers: [].iter(), back: None }
     }
 }
 
@@ -550,6 +555,40 @@ impl RoaringBitmap {
     pub fn iter(&self) -> Iter {
         Iter::new(&self.containers)
     }
+
+    /// Efficiently obtains an iterator over the specified range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// rb.insert(0);
+    /// rb.insert(1);
+    /// rb.insert(10);
+    /// rb.insert(999_999);
+    /// rb.insert(1_000_000);
+    /// let expected = vec![1,10,999_999];
+    /// let actual: Vec<u32> = rb.iter_range(1..=999_999).collect();
+    /// assert_eq!(expected, actual);
+    ///
+    /// let rb = RoaringBitmap::from_sorted_iter(10..5000).unwrap();
+    /// let expected = vec![10,11,12];
+    /// let actual: Vec<u32> = rb.iter_range(0..13).collect();
+    /// assert_eq!(expected, actual);
+    /// ```
+    pub fn iter_range<R>(&self, range: R) -> Iter
+    where R: RangeBounds <u32> {
+        let (start, end) = match util::convert_range_to_inclusive(range) {
+            Some(range) => (*range.start(), *range.end()),
+            None => return Iter::empty(),
+        };
+        let mut iter = self.iter();
+        iter.advance_to(start);
+        iter.advance_back_to(end);
+        iter
+    }
 }
 
 impl<'a> IntoIterator for &'a RoaringBitmap {
@@ -697,5 +736,32 @@ impl RoaringBitmap {
         }
 
         Ok(count)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_iter_range_array() {
+        let mut rb = RoaringBitmap::new();
+        rb.insert(0);
+        rb.insert(1);
+        rb.insert(10);
+        rb.insert(999_999);
+        rb.insert(1_000_000);
+        let expected = vec![1,10,999_999];
+        let actual: Vec<u32> = rb.iter_range(1..=999_999).collect();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_iter_range_bitmap() {
+        let rb = RoaringBitmap::from_sorted_iter(10..5000).unwrap();
+
+        let expected = vec![10, 11, 12];
+        let actual: Vec<u32> = rb.iter_range(0..13).collect();
+        assert_eq!(expected, actual);
     }
 }
