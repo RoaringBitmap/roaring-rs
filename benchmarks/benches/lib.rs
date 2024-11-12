@@ -26,7 +26,7 @@ fn pairwise_binary_op_matrix(
     mut op_assign_ref: impl FnMut(&mut RoaringBitmap, &RoaringBitmap),
     op_len: impl Fn(&RoaringBitmap, &RoaringBitmap) -> u64,
 ) {
-    let mut group = c.benchmark_group(format!("pairwise_{}", op_name));
+    let mut group = c.benchmark_group(format!("pairwise_{op_name}"));
 
     for dataset in Datasets {
         let pairs = dataset.bitmaps.iter().cloned().tuple_windows::<(_, _)>().collect::<Vec<_>>();
@@ -652,7 +652,7 @@ fn insert_range_bitmap(c: &mut Criterion) {
     for &size in &[10, 100, 1_000, 5_000, 10_000, 20_000] {
         let mut group = c.benchmark_group("insert_range");
         group.throughput(criterion::Throughput::Elements(size as u64));
-        group.bench_function(format!("from_empty_{}", size), |b| {
+        group.bench_function(format!("from_empty_{size}"), |b| {
             let bm = RoaringBitmap::new();
             b.iter_batched(
                 || bm.clone(),
@@ -660,7 +660,7 @@ fn insert_range_bitmap(c: &mut Criterion) {
                 criterion::BatchSize::SmallInput,
             )
         });
-        group.bench_function(format!("pre_populated_{}", size), |b| {
+        group.bench_function(format!("pre_populated_{size}"), |b| {
             let mut bm = RoaringBitmap::new();
             bm.insert_range(0..size);
             b.iter_batched(
@@ -676,7 +676,7 @@ fn insert_range_treemap(c: &mut Criterion) {
     for &size in &[1_000_u64, 10_000u64, 2 * (u32::MAX as u64)] {
         let mut group = c.benchmark_group("insert_range_treemap");
         group.throughput(criterion::Throughput::Elements(size));
-        group.bench_function(format!("from_empty_{}", size), |b| {
+        group.bench_function(format!("from_empty_{size}"), |b| {
             let bm = RoaringTreemap::new();
             b.iter_batched(
                 || bm.clone(),
@@ -684,7 +684,7 @@ fn insert_range_treemap(c: &mut Criterion) {
                 criterion::BatchSize::SmallInput,
             )
         });
-        group.bench_function(format!("pre_populated_{}", size), |b| {
+        group.bench_function(format!("pre_populated_{size}"), |b| {
             let mut bm = RoaringTreemap::new();
             bm.insert_range(0..size);
             b.iter_batched(

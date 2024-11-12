@@ -158,8 +158,8 @@ mod test {
     impl Debug for Store {
         fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
             match self {
-                Store::Array(a) => write!(f, "Store({:?})", a),
-                Store::Bitmap(b) => write!(f, "Store({:?})", b),
+                Store::Array(a) => write!(f, "Store({a:?})"),
+                Store::Bitmap(b) => write!(f, "Store({b:?})"),
             }
         }
     }
