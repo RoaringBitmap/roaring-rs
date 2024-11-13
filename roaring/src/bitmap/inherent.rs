@@ -693,7 +693,7 @@ mod tests {
 
             // Assert all values in the range are present
             for i in r.clone() {
-                assert!(b.contains(i), "does not contain {}", i);
+                assert!(b.contains(i), "does not contain {i}");
             }
 
             // Run the check values looking for any false positives
@@ -702,8 +702,7 @@ mod tests {
                 let range_has = r.contains(&i);
                 assert_eq!(
                     bitmap_has, range_has,
-                    "value {} in bitmap={} and range={}",
-                    i, bitmap_has, range_has
+                    "value {i} in bitmap={bitmap_has} and range={range_has}"
                 );
             }
         }
