@@ -30,6 +30,7 @@ impl ArrayStore {
         ArrayStore { vec: Vec::with_capacity(capacity) }
     }
 
+    /// The number of total values that can be inserted without needing to reallocate.
     pub fn capacity(&self) -> usize {
         self.vec.capacity()
     }
