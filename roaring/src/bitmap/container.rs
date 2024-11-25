@@ -17,6 +17,7 @@ pub struct Container {
     pub store: Store,
 }
 
+#[derive(Clone)]
 pub struct Iter<'a> {
     pub key: u16,
     inner: store::Iter<'a>,
@@ -41,6 +42,7 @@ impl Container {
         self.store.is_empty()
     }
 
+    #[inline]
     pub fn insert(&mut self, index: u16) -> bool {
         if self.store.insert(index) {
             self.ensure_correct_store();
@@ -159,6 +161,7 @@ impl Container {
         self.store.min()
     }
 
+    #[inline]
     pub fn max(&self) -> Option<u16> {
         self.store.max()
     }

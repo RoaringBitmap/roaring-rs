@@ -25,6 +25,7 @@ pub enum Store {
     Bitmap(BitmapStore),
 }
 
+#[derive(Clone)]
 pub enum Iter<'a> {
     Array(slice::Iter<'a, u16>),
     Vec(vec::IntoIter<u16>),
@@ -49,6 +50,7 @@ impl Store {
         Store::Bitmap(BitmapStore::full())
     }
 
+    #[inline]
     pub fn insert(&mut self, index: u16) -> bool {
         match self {
             Array(vec) => vec.insert(index),
@@ -191,6 +193,7 @@ impl Store {
         }
     }
 
+    #[inline]
     pub fn max(&self) -> Option<u16> {
         match self {
             Array(vec) => vec.max(),

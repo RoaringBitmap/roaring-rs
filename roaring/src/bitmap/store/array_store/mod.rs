@@ -30,6 +30,11 @@ impl ArrayStore {
         ArrayStore { vec: Vec::with_capacity(capacity) }
     }
 
+    /// The number of total values that can be inserted without needing to reallocate.
+    pub fn capacity(&self) -> usize {
+        self.vec.capacity()
+    }
+
     ///
     /// Create a new SortedU16Vec from a given vec
     /// It is up to the caller to ensure the vec is sorted and deduplicated
@@ -47,6 +52,7 @@ impl ArrayStore {
         }
     }
 
+    #[inline]
     pub fn insert(&mut self, index: u16) -> bool {
         self.vec.binary_search(&index).map_err(|loc| self.vec.insert(loc, index)).is_err()
     }
@@ -208,6 +214,7 @@ impl ArrayStore {
         self.vec.first().copied()
     }
 
+    #[inline]
     pub fn max(&self) -> Option<u16> {
         self.vec.last().copied()
     }

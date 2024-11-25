@@ -27,6 +27,10 @@ impl BitmapStore {
         BitmapStore { len: (BITMAP_LENGTH as u64) * 64, bits: Box::new([u64::MAX; BITMAP_LENGTH]) }
     }
 
+    pub fn capacity(&self) -> usize {
+        BITMAP_LENGTH * u64::BITS as usize
+    }
+
     pub fn try_from(len: u64, bits: Box<[u64; BITMAP_LENGTH]>) -> Result<BitmapStore, Error> {
         let actual_len = bits.iter().map(|v| v.count_ones() as u64).sum();
         if len != actual_len {
@@ -52,6 +56,7 @@ impl BitmapStore {
         }
     }
 
+    #[inline]
     pub fn insert(&mut self, index: u16) -> bool {
         let (key, bit) = (key(index), bit(index));
         let old_w = self.bits[key];
@@ -253,6 +258,7 @@ impl BitmapStore {
             .map(|(index, bit)| (index * 64 + (bit.trailing_zeros() as usize)) as u16)
     }
 
+    #[inline]
     pub fn max(&self) -> Option<u16> {
         self.bits
             .iter()
@@ -403,6 +409,7 @@ impl Display for Error {
 #[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
+#[derive(Clone)]
 pub struct BitmapIter<B: Borrow<[u64; BITMAP_LENGTH]>> {
     key: u16,
     value: u64,
