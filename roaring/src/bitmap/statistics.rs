@@ -7,6 +7,7 @@ use super::store::Store;
 
 /// Detailed statistics on the composition of a bitmap.
 #[derive(Clone, Copy, PartialEq, Debug)]
+#[non_exhaustive]
 pub struct Statistics {
     /// Number of containers in the bitmap
     pub n_containers: u32,
