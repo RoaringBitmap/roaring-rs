@@ -18,7 +18,7 @@ jobs:
           - stable
           - beta
           - nightly
-          - 1.67.0
+          - 1.71.1
     env:
       RUSTFLAGS: "-C target-cpu=native -C opt-level=3"
       ROARINGRS_BENCH_OFFLINE: "true"
