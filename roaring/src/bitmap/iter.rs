@@ -1,5 +1,6 @@
 use alloc::vec;
 use core::iter::FusedIterator;
+use core::ops::RangeBounds;
 use core::slice;
 
 use super::container::Container;
@@ -155,6 +156,10 @@ impl Iter<'_> {
         Iter { front: None, containers: containers.iter(), back: None }
     }
 
+    fn empty() -> Self {
+        Self::new(&[])
+    }
+
     /// Advance the iterator to the first position where the item has a value >= `n`
     ///
     /// # Examples
@@ -197,6 +202,10 @@ impl Iter<'_> {
 impl IntoIter {
     fn new(containers: Vec<Container>) -> IntoIter {
         IntoIter { front: None, containers: containers.into_iter(), back: None }
+    }
+
+    fn empty() -> Self {
+        Self::new(Vec::new())
     }
 
     /// Advance the iterator to the first position where the item has a value >= `n`
@@ -551,6 +560,117 @@ impl RoaringBitmap {
     /// ```
     pub fn iter(&self) -> Iter {
         Iter::new(&self.containers)
+    }
+
+    /// Iterator over values within a range stored in the RoaringBitmap.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use core::ops::Bound;
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let bitmap = RoaringBitmap::from([0, 1, 2, 3, 4, 5, 10, 11, 12, 20, 21, u32::MAX]);
+    /// let mut iter = bitmap.range(10..20);
+    ///
+    /// assert_eq!(iter.next(), Some(10));
+    /// assert_eq!(iter.next(), Some(11));
+    /// assert_eq!(iter.next(), Some(12));
+    /// assert_eq!(iter.next(), None);
+    ///
+    /// let mut iter = bitmap.range(100..);
+    /// assert_eq!(iter.next(), Some(u32::MAX));
+    /// assert_eq!(iter.next(), None);
+    ///
+    /// let mut iter = bitmap.range((Bound::Excluded(0), Bound::Included(10)));
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(3));
+    /// assert_eq!(iter.next(), Some(4));
+    /// assert_eq!(iter.next(), Some(5));
+    /// assert_eq!(iter.next(), Some(10));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    pub fn range<R>(&self, range: R) -> Iter<'_>
+    where
+        R: RangeBounds<u32>,
+    {
+        let range = match util::convert_range_to_inclusive(range) {
+            Ok(range) => range,
+            Err(util::ConvertRangeError::Empty) => return Iter::empty(),
+            Err(util::ConvertRangeError::StartGreaterThanEnd) => {
+                panic!("range start is greater than range end")
+            }
+            Err(util::ConvertRangeError::StartAndEndEqualExcluded) => {
+                panic!("range start and end are equal and excluded")
+            }
+        };
+        let (start, end) = (*range.start(), *range.end());
+        let mut iter = self.iter();
+        if start != 0 {
+            iter.advance_to(start);
+        }
+        if end != u32::MAX {
+            iter.advance_back_to(end);
+        }
+        iter
+    }
+
+    /// Iterator over values within a range stored in the RoaringBitmap.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use core::ops::Bound;
+    /// use roaring::RoaringBitmap;
+    ///
+    /// fn bitmap() -> RoaringBitmap {
+    ///     RoaringBitmap::from([0, 1, 2, 3, 4, 5, 10, 11, 12, 20, 21, u32::MAX])
+    /// }
+    ///
+    /// let mut iter = bitmap().into_range(10..20);
+    ///
+    /// assert_eq!(iter.next(), Some(10));
+    /// assert_eq!(iter.next(), Some(11));
+    /// assert_eq!(iter.next(), Some(12));
+    /// assert_eq!(iter.next(), None);
+    ///
+    /// let mut iter = bitmap().into_range(100..);
+    /// assert_eq!(iter.next(), Some(u32::MAX));
+    /// assert_eq!(iter.next(), None);
+    ///
+    /// let mut iter = bitmap().into_range((Bound::Excluded(0), Bound::Included(10)));
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(3));
+    /// assert_eq!(iter.next(), Some(4));
+    /// assert_eq!(iter.next(), Some(5));
+    /// assert_eq!(iter.next(), Some(10));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    pub fn into_range<R>(self, range: R) -> IntoIter
+    where
+        R: RangeBounds<u32>,
+    {
+        let range = match util::convert_range_to_inclusive(range) {
+            Ok(range) => range,
+            Err(util::ConvertRangeError::Empty) => return IntoIter::empty(),
+            Err(util::ConvertRangeError::StartGreaterThanEnd) => {
+                panic!("range start is greater than range end")
+            }
+            Err(util::ConvertRangeError::StartAndEndEqualExcluded) => {
+                panic!("range start and end are equal and excluded")
+            }
+        };
+        let (start, end) = (*range.start(), *range.end());
+        let mut iter = self.into_iter();
+        if start != 0 {
+            iter.advance_to(start);
+        }
+        if end != u32::MAX {
+            iter.advance_back_to(end);
+        }
+        iter
     }
 }
 

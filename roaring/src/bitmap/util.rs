@@ -14,30 +14,56 @@ pub fn join(high: u16, low: u16) -> u32 {
     (u32::from(high) << 16) + u32::from(low)
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ConvertRangeError {
+    Empty,
+    StartGreaterThanEnd,
+    StartAndEndEqualExcluded,
+}
+
 /// Convert a `RangeBounds<u32>` object to `RangeInclusive<u32>`,
-pub fn convert_range_to_inclusive<R>(range: R) -> Option<RangeInclusive<u32>>
+pub fn convert_range_to_inclusive<R>(range: R) -> Result<RangeInclusive<u32>, ConvertRangeError>
 where
     R: RangeBounds<u32>,
 {
-    let start: u32 = match range.start_bound() {
-        Bound::Included(&i) => i,
-        Bound::Excluded(&i) => i.checked_add(1)?,
-        Bound::Unbounded => 0,
-    };
-    let end: u32 = match range.end_bound() {
-        Bound::Included(&i) => i,
-        Bound::Excluded(&i) => i.checked_sub(1)?,
-        Bound::Unbounded => u32::MAX,
-    };
-    if end < start {
-        return None;
+    let start_bound = range.start_bound().cloned();
+    let end_bound = range.end_bound().cloned();
+    match (start_bound, end_bound) {
+        (Bound::Excluded(s), Bound::Excluded(e)) if s == e => {
+            Err(ConvertRangeError::StartAndEndEqualExcluded)
+        }
+        (Bound::Included(s) | Bound::Excluded(s), Bound::Included(e) | Bound::Excluded(e))
+            if s > e =>
+        {
+            Err(ConvertRangeError::StartGreaterThanEnd)
+        }
+        _ => {
+            let start = match start_bound {
+                Bound::Included(s) => s,
+                Bound::Excluded(s) => s.checked_add(1).ok_or(ConvertRangeError::Empty)?,
+                Bound::Unbounded => 0,
+            };
+
+            let end = match end_bound {
+                Bound::Included(e) => e,
+                Bound::Excluded(e) => e.checked_sub(1).ok_or(ConvertRangeError::Empty)?,
+                Bound::Unbounded => u32::MAX,
+            };
+
+            if start > end {
+                // This handles e.g. `x..x`: we've ruled out `start > end` overall, so a value must
+                // have been changed via exclusion.
+                Err(ConvertRangeError::Empty)
+            } else {
+                Ok(start..=end)
+            }
+        }
     }
-    Some(start..=end)
 }
 
 #[cfg(test)]
 mod test {
-    use super::{convert_range_to_inclusive, join, split};
+    use super::{convert_range_to_inclusive, join, split, ConvertRangeError};
     use core::ops::Bound;
 
     #[test]
@@ -67,27 +93,30 @@ mod test {
     #[test]
     #[allow(clippy::reversed_empty_ranges)]
     fn test_convert_range_to_inclusive() {
-        assert_eq!(Some(1..=5), convert_range_to_inclusive(1..6));
-        assert_eq!(Some(1..=u32::MAX), convert_range_to_inclusive(1..));
-        assert_eq!(Some(0..=u32::MAX), convert_range_to_inclusive(..));
-        assert_eq!(Some(16..=16), convert_range_to_inclusive(16..=16));
+        assert_eq!(Ok(1..=5), convert_range_to_inclusive(1..6));
+        assert_eq!(Ok(1..=u32::MAX), convert_range_to_inclusive(1..));
+        assert_eq!(Ok(0..=u32::MAX), convert_range_to_inclusive(..));
+        assert_eq!(Ok(16..=16), convert_range_to_inclusive(16..=16));
         assert_eq!(
-            Some(11..=19),
+            Ok(11..=19),
             convert_range_to_inclusive((Bound::Excluded(10), Bound::Excluded(20)))
         );
 
-        assert_eq!(None, convert_range_to_inclusive(0..0));
-        assert_eq!(None, convert_range_to_inclusive(5..5));
-        assert_eq!(None, convert_range_to_inclusive(1..0));
-        assert_eq!(None, convert_range_to_inclusive(10..5));
+        assert_eq!(Err(ConvertRangeError::Empty), convert_range_to_inclusive(0..0));
+        assert_eq!(Err(ConvertRangeError::Empty), convert_range_to_inclusive(5..5));
+        assert_eq!(Err(ConvertRangeError::StartGreaterThanEnd), convert_range_to_inclusive(1..0));
+        assert_eq!(Err(ConvertRangeError::StartGreaterThanEnd), convert_range_to_inclusive(10..5));
         assert_eq!(
-            None,
+            Err(ConvertRangeError::Empty),
             convert_range_to_inclusive((Bound::Excluded(u32::MAX), Bound::Included(u32::MAX)))
         );
         assert_eq!(
-            None,
-            convert_range_to_inclusive((Bound::Excluded(u32::MAX), Bound::Included(u32::MAX)))
+            Err(ConvertRangeError::StartAndEndEqualExcluded),
+            convert_range_to_inclusive((Bound::Excluded(u32::MAX), Bound::Excluded(u32::MAX)))
         );
-        assert_eq!(None, convert_range_to_inclusive((Bound::Excluded(0), Bound::Included(0))));
+        assert_eq!(
+            Err(ConvertRangeError::Empty),
+            convert_range_to_inclusive((Bound::Excluded(0), Bound::Included(0)))
+        );
     }
 }
