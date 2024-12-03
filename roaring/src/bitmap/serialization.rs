@@ -53,7 +53,6 @@ impl RoaringBitmap {
     ///
     /// - `offset: u32` - The starting position in the bitmap where the byte slice will be applied, specified in bits.
     ///                   This means that if `offset` is `n`, the first byte in the slice will correspond to the `n`th bit(0-indexed) in the bitmap.
-    ///                   Must be a multiple of 8.
     /// - `bytes: &[u8]` - The byte slice containing the bitmap data. The bytes are interpreted in "Least-Significant-First" bit order.
     ///
     /// # Interpretation of `bytes`
@@ -64,7 +63,7 @@ impl RoaringBitmap {
     ///
     /// # Panics
     ///
-    /// This function will panic if `offset` is not a multiple of 8, or if `bytes.len() + offset` is greater than 2^32.
+    /// This function will panic if `bytes.len() + offset` is greater than 2^32.
     ///
     ///
     /// # Examples
@@ -88,9 +87,36 @@ impl RoaringBitmap {
     /// assert!(rb.contains(10));
     /// assert!(rb.contains(17));
     /// assert!(rb.contains(39));
+    ///
+    /// let rb = RoaringBitmap::from_lsb0_bytes(3, &bytes);
+    /// assert!(rb.contains(3));
+    /// assert!(!rb.contains(4));
+    /// assert!(rb.contains(5));
+    /// assert!(rb.contains(12));
+    /// assert!(rb.contains(34));
     /// ```
     pub fn from_lsb0_bytes(offset: u32, mut bytes: &[u8]) -> RoaringBitmap {
-        assert_eq!(offset % 8, 0, "offset must be a multiple of 8");
+        fn shift_bytes(bytes: &[u8], amount: usize) -> Vec<u8> {
+            let mut result = Vec::with_capacity(bytes.len() + 1);
+            let mut carry = 0u8;
+
+            for &byte in bytes {
+                let shifted = (byte << amount) | carry;
+                carry = byte >> (8 - amount);
+                result.push(shifted);
+            }
+
+            if carry != 0 {
+                result.push(carry);
+            }
+
+            result
+        }
+        if offset % 8 != 0 {
+            let shift = offset as usize % 8;
+            let shifted_bytes = shift_bytes(bytes, shift);
+            return RoaringBitmap::from_lsb0_bytes(offset - shift as u32, &shifted_bytes);
+        }
 
         if bytes.is_empty() {
             return RoaringBitmap::new();
@@ -426,10 +452,23 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "multiple of 8")]
-    fn test_from_lsb0_bytes_invalid_offset() {
-        let bytes = [0x01];
-        RoaringBitmap::from_lsb0_bytes(1, &bytes);
+    fn test_from_lsb0_bytes_not_multiple_of_8() {
+        const CONTAINER_OFFSET: u32 = u64::BITS * BITMAP_LENGTH as u32;
+        const CONTAINER_OFFSET_IN_BYTES: u32 = CONTAINER_OFFSET / 8;
+
+        let mut bytes = vec![0b0101_1001];
+        bytes.extend([0x00; CONTAINER_OFFSET_IN_BYTES as usize]);
+        bytes.extend([0b00000001, 0b00000010, 0b00000011, 0b00000100]);
+
+        let mut indices = vec![0, 3, 4, 6];
+        indices.extend([0, 9, 16, 17, 26].map(|i| 8 + CONTAINER_OFFSET + i));
+
+        for offset in 0..8 {
+            let rb = RoaringBitmap::from_lsb0_bytes(offset, &bytes);
+            for i in indices.iter().map(|&i| i + offset) {
+                assert!(rb.contains(i), "{i} should be in the bitmap");
+            }
+        }
     }
 
     #[test]
