@@ -1,6 +1,7 @@
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::{Display, Formatter};
+use core::mem::size_of;
 use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
 use super::ArrayStore;
@@ -38,6 +39,47 @@ impl BitmapStore {
         } else {
             Ok(BitmapStore { len, bits })
         }
+    }
+
+    pub fn from_lsb0_bytes_unchecked(bytes: &[u8], byte_offset: usize, bits_set: u64) -> Self {
+        const BITMAP_BYTES: usize = BITMAP_LENGTH * size_of::<u64>();
+        assert!(byte_offset.checked_add(bytes.len()).map_or(false, |sum| sum <= BITMAP_BYTES));
+
+        // If we know we're writing the full bitmap, we can avoid the initial memset to 0
+        let mut bits = if bytes.len() == BITMAP_BYTES {
+            debug_assert_eq!(byte_offset, 0); // Must be true from the above assert
+
+            // Safety: We've checked that the length is correct, and we use an unaligned load in case
+            //         the bytes are not 8 byte aligned.
+            // The optimizer can see through this, and avoid the double copy to copy directly into
+            // the allocated box from bytes with memcpy
+            let bytes_as_words =
+                unsafe { bytes.as_ptr().cast::<[u64; BITMAP_LENGTH]>().read_unaligned() };
+            Box::new(bytes_as_words)
+        } else {
+            let mut bits = Box::new([0u64; BITMAP_LENGTH]);
+            // Safety: It's safe to reinterpret u64s as u8s because u8 has less alignment requirements,
+            // and has no padding/uninitialized data.
+            let dst = unsafe {
+                std::slice::from_raw_parts_mut(bits.as_mut_ptr().cast::<u8>(), BITMAP_BYTES)
+            };
+            let dst = &mut dst[byte_offset..][..bytes.len()];
+            dst.copy_from_slice(bytes);
+            bits
+        };
+
+        if !cfg!(target_endian = "little") {
+            // Convert all words we touched (even partially) to little-endian
+            let start_word = byte_offset / size_of::<u64>();
+            let end_word = (byte_offset + bytes.len() + (size_of::<u64>() - 1)) / size_of::<u64>();
+
+            // The 0th byte is the least significant byte, so we've written the bytes in little-endian
+            for word in &mut bits[start_word..end_word] {
+                *word = u64::from_le(*word);
+            }
+        }
+
+        Self::from_unchecked(bits_set, bits)
     }
 
     ///

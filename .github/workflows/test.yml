@@ -41,6 +41,22 @@ jobs:
           override: true
           components: rustfmt, clippy
 
+      - name: Install miri
+        uses: actions-rs/toolchain@v1
+        if: matrix.rust == 'nightly'
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+          components: miri
+
+      - name: miri setup
+        uses: actions-rs/cargo@v1
+        if: matrix.rust == 'nightly'
+        with:
+          command: miri
+          args: setup
+
       - name: Fetch
         uses: actions-rs/cargo@v1
         with:
@@ -69,6 +85,13 @@ jobs:
         with:
           command: test
           args: --features serde
+
+      - name: Test bit endian
+        uses: actions-rs/cargo@v1
+        if: matrix.rust == 'nightly'
+        with:
+          command: miri
+          args: test --target s390x-unknown-linux-gnu --package roaring --lib -- bitmap::serialization::test::test_from_lsb0_bytes
 
       - name: Test no default features
         uses: actions-rs/cargo@v1
