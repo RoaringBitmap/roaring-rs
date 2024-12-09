@@ -34,88 +34,59 @@ jobs:
           path: "benchmarks/real-roaring-datasets"
 
       - name: Initialize rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
+        if: matrix.rust != 'nightly'
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust }}
-          override: true
           components: rustfmt, clippy
 
-      - name: Install miri
+      - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         if: matrix.rust == 'nightly'
         with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-          components: miri
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy, miri
 
-      - name: miri setup
-        uses: actions-rs/cargo@v1
+      - name: Setup miri
         if: matrix.rust == 'nightly'
-        with:
-          command: miri
-          args: setup
+        run: cargo miri setup
 
       - name: Fetch
-        uses: actions-rs/cargo@v1
-        with:
-          command: fetch
+        run: cargo fetch
 
       - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --all-targets
+        run: cargo build --all-targets
 
       - name: Check
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-targets -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings
 
       - name: Check formatting
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -- --check
+        run: cargo fmt --all -- --check
 
       - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --features serde
+        working-directory: roaring
+        run: cargo test --features serde
 
       - name: Test bit endian
-        uses: actions-rs/cargo@v1
         if: matrix.rust == 'nightly'
-        with:
-          command: miri
-          args: test --target s390x-unknown-linux-gnu --package roaring --lib -- bitmap::serialization::test::test_from_lsb0_bytes
+        run:
+          cargo miri test --target s390x-unknown-linux-gnu --package roaring \
+          --lib -- bitmap::serialization::test::test_from_lsb0_bytes
 
       - name: Test no default features
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-default-features
+        working-directory: roaring
+        run: cargo test --no-default-features
 
       - name: Test benchmarks
-        uses: actions-rs/cargo@v1
-        with:
-          command: bench
+        working-directory: roaring
+        run: cargo bench
 
       - name: SIMD test
         if: matrix.rust == 'nightly'
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: nightly
-          command: test
-          args: --features "simd"
+        working-directory: roaring
+        run: cargo +nightly test --features simd
 
       - name: SIMD test benchmarks
         if: matrix.rust == 'nightly'
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: nightly
-          command: bench
-          args: --features "simd"
+        working-directory: roaring
+        run: cargo +nightly bench --features simd
