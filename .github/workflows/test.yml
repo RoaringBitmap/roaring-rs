@@ -10,7 +10,7 @@ on:
 name: Continuous integration
 
 jobs:
-  ci:
+  build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -21,101 +21,127 @@ jobs:
           - 1.71.1
     env:
       RUSTFLAGS: "-C target-cpu=native -C opt-level=3"
+
+    steps:
+      - name: Checkout roaring-rs
+        uses: actions/checkout@v4
+
+      - name: Initialize rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy
+
+      - name: Check
+        # clippy will also do a build check
+        # so we don't need to run `cargo check` or `cargo build`
+        # use different features to check if everything is fine
+        # the incremental compilation will make this faster
+        run: |
+          cargo clippy -p roaring --all-targets --no-default-features -- -D warnings
+          cargo clippy -p roaring --all-targets --features serde -- -D warnings
+
+      - name: Check SIMD
+        if: matrix.rust == 'nightly'
+        run: cargo clippy -p roaring --all-targets --all-features -- -D warnings
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      matrix:
+        rust:
+          - stable
+          - beta
+          - nightly
+          - 1.71.1
+        features:
+          - default
+          - no-std
+        include:
+          - rust: nightly
+            features: simd
+    env:
+      RUSTFLAGS: "-C target-cpu=native -C opt-level=3"
+
+    steps:
+      - name: Checkout roaring-rs
+        uses: actions/checkout@v4
+
+      - name: Initialize rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - name: Test
+        if: matrix.features == 'default'
+        run: cargo test -p roaring --features serde
+
+      - name: Test no default features
+        if: matrix.features == 'no-std'
+        run: cargo test -p roaring --no-default-features
+
+      - name: SIMD test
+        if: matrix.rust == 'nightly' && matrix.features == 'simd'
+        run: cargo +nightly test -p roaring --features simd
+
+  miri:
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      # warning: Miri does not support optimizations: the opt-level is ignored.
+      RUSTFLAGS: "-C target-cpu=native"
+
+    steps:
+      - name: Checkout roaring-rs
+        uses: actions/checkout@v4
+
+      - name: Initialize rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: miri
+
+      - name: Setup miri
+        run: cargo miri setup
+
+      - name: Test bit endian
+        run: cargo miri test --target s390x-unknown-linux-gnu -p roaring --lib -- bitmap::serialization::test::test_from_lsb0_bytes
+
+  bench:
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      matrix:
+        rust:
+          - stable
+          - nightly
+        features:
+          - default
+        include:
+          - rust: nightly
+            features: simd
+    env:
+      RUSTFLAGS: "-C target-cpu=native -C opt-level=3"
       ROARINGRS_BENCH_OFFLINE: "true"
 
     steps:
       - name: Checkout roaring-rs
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Checkout benchmark datasets
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: "RoaringBitmap/real-roaring-datasets"
           path: "benchmarks/real-roaring-datasets"
 
       - name: Initialize rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.rust }}
-          override: true
-          components: rustfmt, clippy
 
-      - name: Install miri
-        uses: actions-rs/toolchain@v1
-        if: matrix.rust == 'nightly'
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-          components: miri
-
-      - name: miri setup
-        uses: actions-rs/cargo@v1
-        if: matrix.rust == 'nightly'
-        with:
-          command: miri
-          args: setup
-
-      - name: Fetch
-        uses: actions-rs/cargo@v1
-        with:
-          command: fetch
-
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --all-targets
-
-      - name: Check
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-targets -- -D warnings
-
-      - name: Check formatting
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -- --check
-
-      - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --features serde
-
-      - name: Test bit endian
-        uses: actions-rs/cargo@v1
-        if: matrix.rust == 'nightly'
-        with:
-          command: miri
-          args: test --target s390x-unknown-linux-gnu --package roaring --lib -- bitmap::serialization::test::test_from_lsb0_bytes
-
-      - name: Test no default features
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-default-features
-
-      - name: Test benchmarks
-        uses: actions-rs/cargo@v1
-        with:
-          command: bench
-
-      - name: SIMD test
-        if: matrix.rust == 'nightly'
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: nightly
-          command: test
-          args: --features "simd"
-
-      - name: SIMD test benchmarks
-        if: matrix.rust == 'nightly'
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: nightly
-          command: bench
-          args: --features "simd"
+      - name: Bench
+        run: cargo bench --features "${{ matrix.features }}"

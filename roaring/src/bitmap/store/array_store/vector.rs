@@ -112,7 +112,7 @@ pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
     if rem == 0 {
         visitor.visit_slice(tail_b)
     } else {
-        buffer[..rem as usize].sort_unstable();
+        buffer[..rem].sort_unstable();
         rem = dedup(&mut buffer[..rem]);
         scalar::or(&buffer[..rem], tail_b, visitor);
     }
@@ -267,7 +267,7 @@ pub fn xor(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
     if rem == 0 {
         visitor.visit_slice(tail_b)
     } else {
-        buffer[..rem as usize].sort_unstable();
+        buffer[..rem].sort_unstable();
         rem = xor_slice(&mut buffer[..rem]);
         scalar::xor(&buffer[..rem], tail_b, visitor);
     }
