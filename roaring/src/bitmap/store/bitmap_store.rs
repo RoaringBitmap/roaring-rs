@@ -61,7 +61,7 @@ impl BitmapStore {
             // Safety: It's safe to reinterpret u64s as u8s because u8 has less alignment requirements,
             // and has no padding/uninitialized data.
             let dst = unsafe {
-                std::slice::from_raw_parts_mut(bits.as_mut_ptr().cast::<u8>(), BITMAP_BYTES)
+                core::slice::from_raw_parts_mut(bits.as_mut_ptr().cast::<u8>(), BITMAP_BYTES)
             };
             let dst = &mut dst[byte_offset..][..bytes.len()];
             dst.copy_from_slice(bytes);
