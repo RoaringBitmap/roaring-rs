@@ -61,8 +61,8 @@ impl RoaringBitmap {
         container.insert(index)
     }
 
-    /// Search for the specific container by the given key.
-    /// Create a new container if not exist.
+    /// Searches for the specific container by the given key.
+    /// Creates a new container if it doesn't exist.
     ///
     /// Return the index of the target container.
     fn find_container_by_key(&mut self, key: u16) -> usize {
@@ -73,6 +73,40 @@ impl RoaringBitmap {
                 loc
             }
         }
+    }
+
+    /// Inserts multiple values and returns the count of new additions.
+    /// This is expected to be faster than calling [`RoaringBitmap::insert`] on each value.
+    ///
+    /// The provided integers values don't have to be in sorted order, but it may be preferable
+    /// to sort them from a performance point of view.
+    #[inline]
+    pub fn insert_many(&mut self, values: &[u32]) -> u64 {
+        let (&value, values) = match values.split_first() {
+            Some(split) => split,
+            None => return 0,
+        };
+
+        let mut inserted = 0;
+        let (mut currenthb, lowbit) = util::split(value);
+        let mut current_container_index = self.find_container_by_key(currenthb);
+        let mut current_cont = &mut self.containers[current_container_index];
+        inserted += current_cont.insert(lowbit) as u64;
+
+        for val in values.iter().copied() {
+            let (newhb, lowbit) = util::split(val);
+            if currenthb == newhb {
+                // easy case, this could be quite frequent
+                inserted += current_cont.insert(lowbit) as u64;
+            } else {
+                currenthb = newhb;
+                current_container_index = self.find_container_by_key(currenthb);
+                current_cont = &mut self.containers[current_container_index];
+                inserted += current_cont.insert(lowbit) as u64;
+            }
+        }
+
+        inserted
     }
 
     /// Inserts a range of values.
