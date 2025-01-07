@@ -409,7 +409,7 @@ impl RoaringTreemap {
         for (&key, bitmap) in &self.map {
             let len = bitmap.len();
             if len > n {
-                return Some((key as u64) << 32 | bitmap.select(n as u32).unwrap() as u64);
+                return Some(((key as u64) << 32) | bitmap.select(n as u32).unwrap() as u64);
             }
             n -= len;
         }
