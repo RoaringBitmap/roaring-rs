@@ -715,18 +715,70 @@ impl<'a> FromIterator<&'a u32> for RoaringBitmap {
 }
 
 impl Extend<u32> for RoaringBitmap {
-    fn extend<I: IntoIterator<Item = u32>>(&mut self, iterator: I) {
-        for value in iterator {
-            self.insert(value);
+    /// Inserts multiple values and returns the count of new additions.
+    /// This is expected to be faster than calling [`RoaringBitmap::insert`] on each value.
+    ///
+    /// The provided integers values don't have to be in sorted order, but it may be preferable
+    /// to sort them from a performance point of view.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// rb.extend([1, 2, 3, 4, 1500, 1508, 1507, 1509]);
+    /// assert!(rb.contains(2));
+    /// assert!(rb.contains(1508));
+    /// assert!(!rb.contains(5));
+    /// ```
+    fn extend<I: IntoIterator<Item = u32>>(&mut self, values: I) {
+        let mut values = values.into_iter();
+        let value = match values.next() {
+            Some(value) => value,
+            None => return,
+        };
+
+        let (mut currenthb, lowbit) = util::split(value);
+        let mut current_container_index = self.find_container_by_key(currenthb);
+        let mut current_cont = &mut self.containers[current_container_index];
+        current_cont.insert(lowbit) as u64;
+
+        for val in values {
+            let (newhb, lowbit) = util::split(val);
+            if currenthb == newhb {
+                // easy case, this could be quite frequent
+                current_cont.insert(lowbit) as u64;
+            } else {
+                currenthb = newhb;
+                current_container_index = self.find_container_by_key(currenthb);
+                current_cont = &mut self.containers[current_container_index];
+                current_cont.insert(lowbit) as u64;
+            }
         }
     }
 }
 
 impl<'a> Extend<&'a u32> for RoaringBitmap {
-    fn extend<I: IntoIterator<Item = &'a u32>>(&mut self, iterator: I) {
-        for value in iterator {
-            self.insert(*value);
-        }
+    /// Inserts multiple values and returns the count of new additions.
+    /// This is expected to be faster than calling [`RoaringBitmap::insert`] on each value.
+    ///
+    /// The provided integers values don't have to be in sorted order, but it may be preferable
+    /// to sort them from a performance point of view.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// rb.extend([1, 2, 3, 4, 1500, 1508, 1507, 1509]);
+    /// assert!(rb.contains(2));
+    /// assert!(rb.contains(1508));
+    /// assert!(!rb.contains(5));
+    /// ```
+    fn extend<I: IntoIterator<Item = &'a u32>>(&mut self, values: I) {
+        self.extend(values.into_iter().copied());
     }
 }
 
