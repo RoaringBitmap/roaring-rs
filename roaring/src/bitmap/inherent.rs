@@ -61,11 +61,12 @@ impl RoaringBitmap {
         container.insert(index)
     }
 
-    /// Search for the specific container by the given key.
-    /// Create a new container if not exist.
+    /// Searches for the specific container by the given key.
+    /// Creates a new container if it doesn't exist.
     ///
     /// Return the index of the target container.
-    fn find_container_by_key(&mut self, key: u16) -> usize {
+    #[inline]
+    pub(crate) fn find_container_by_key(&mut self, key: u16) -> usize {
         match self.containers.binary_search_by_key(&key, |c| c.key) {
             Ok(loc) => loc,
             Err(loc) => {
@@ -89,6 +90,7 @@ impl RoaringBitmap {
     /// assert!(rb.contains(3));
     /// assert!(!rb.contains(4));
     /// ```
+    #[inline]
     pub fn insert_range<R>(&mut self, range: R) -> u64
     where
         R: RangeBounds<u32>,
@@ -153,6 +155,7 @@ impl RoaringBitmap {
     ///
     /// assert_eq!(rb.iter().collect::<Vec<u32>>(), vec![1, 3, 5]);
     /// ```
+    #[inline]
     pub fn push(&mut self, value: u32) -> bool {
         let (key, index) = util::split(value);
 
@@ -175,6 +178,7 @@ impl RoaringBitmap {
     /// # Panics
     ///
     /// If debug_assertions enabled and index is > self.max()
+    #[inline]
     pub(crate) fn push_unchecked(&mut self, value: u32) {
         let (key, index) = util::split(value);
 
@@ -204,6 +208,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.remove(3), false);
     /// assert_eq!(rb.contains(3), false);
     /// ```
+    #[inline]
     pub fn remove(&mut self, value: u32) -> bool {
         let (key, index) = util::split(value);
         match self.containers.binary_search_by_key(&key, |c| c.key) {
@@ -234,6 +239,7 @@ impl RoaringBitmap {
     /// rb.insert(3);
     /// assert_eq!(rb.remove_range(2..4), 2);
     /// ```
+    #[inline]
     pub fn remove_range<R>(&mut self, range: R) -> u64
     where
         R: RangeBounds<u32>,
@@ -277,6 +283,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.contains(1), true);
     /// assert_eq!(rb.contains(100), false);
     /// ```
+    #[inline]
     pub fn contains(&self, value: u32) -> bool {
         let (key, index) = util::split(value);
         match self.containers.binary_search_by_key(&key, |c| c.key) {
@@ -304,6 +311,7 @@ impl RoaringBitmap {
     /// // 0xFFF is not contained
     /// assert!(!rb.contains_range(1..=0xFFF));
     /// ```
+    #[inline]
     pub fn contains_range<R>(&self, range: R) -> bool
     where
         R: RangeBounds<u32>,
@@ -364,6 +372,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.range_cardinality(0x10000..0x10000), 0);
     /// assert_eq!(rb.range_cardinality(0x50000..=u32::MAX), 3);
     /// ```
+    #[inline]
     pub fn range_cardinality<R>(&self, range: R) -> u64
     where
         R: RangeBounds<u32>,
@@ -423,6 +432,7 @@ impl RoaringBitmap {
     /// rb.clear();
     /// assert_eq!(rb.contains(1), false);
     /// ```
+    #[inline]
     pub fn clear(&mut self) {
         self.containers.clear();
     }
@@ -440,6 +450,7 @@ impl RoaringBitmap {
     /// rb.insert(3);
     /// assert_eq!(rb.is_empty(), false);
     /// ```
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.containers.is_empty()
     }
@@ -455,6 +466,7 @@ impl RoaringBitmap {
     /// assert!(!rb.is_empty());
     /// assert!(rb.is_full());
     /// ```
+    #[inline]
     pub fn is_full(&self) -> bool {
         self.containers.len() == (u16::MAX as usize + 1)
             && self.containers.iter().all(Container::is_full)
@@ -477,6 +489,7 @@ impl RoaringBitmap {
     /// rb.insert(4);
     /// assert_eq!(rb.len(), 2);
     /// ```
+    #[inline]
     pub fn len(&self) -> u64 {
         self.containers.iter().map(|container| container.len()).sum()
     }
@@ -495,6 +508,7 @@ impl RoaringBitmap {
     /// rb.insert(4);
     /// assert_eq!(rb.min(), Some(3));
     /// ```
+    #[inline]
     pub fn min(&self) -> Option<u32> {
         self.containers.first().and_then(|tail| tail.min().map(|min| util::join(tail.key, min)))
     }
@@ -533,6 +547,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.rank(3), 1);
     /// assert_eq!(rb.rank(10), 2)
     /// ```
+    #[inline]
     pub fn rank(&self, value: u32) -> u64 {
         // if len becomes cached for RoaringBitmap: return len if len > value
 
@@ -567,6 +582,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.select(2), Some(100));
     /// assert_eq!(rb.select(3), None);
     /// ```
+    #[inline]
     pub fn select(&self, n: u32) -> Option<u32> {
         let mut n = n as u64;
 
@@ -598,6 +614,7 @@ impl RoaringBitmap {
     /// let mut rb = RoaringBitmap::from_iter([1, 3, 7, 9]);
     /// rb.remove_smallest(2);
     /// assert_eq!(rb, RoaringBitmap::from_iter([7, 9]));
+    #[inline]
     pub fn remove_smallest(&mut self, mut n: u64) {
         // remove containers up to the front of the target
         let position = self.containers.iter().position(|container| {
@@ -632,6 +649,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb, RoaringBitmap::from_iter([1, 5]));
     /// rb.remove_biggest(1);
     /// assert_eq!(rb, RoaringBitmap::from_iter([1]));
+    #[inline]
     pub fn remove_biggest(&mut self, mut n: u64) {
         // remove containers up to the back of the target
         let position = self.containers.iter().rposition(|container| {

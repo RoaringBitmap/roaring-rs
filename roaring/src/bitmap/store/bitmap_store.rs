@@ -102,7 +102,7 @@ impl BitmapStore {
     pub fn insert(&mut self, index: u16) -> bool {
         let (key, bit) = (key(index), bit(index));
         let old_w = self.bits[key];
-        let new_w = old_w | 1 << bit;
+        let new_w = old_w | (1 << bit);
         let inserted = (old_w ^ new_w) >> bit; // 1 or 0
         self.bits[key] = new_w;
         self.len += inserted;
@@ -634,7 +634,7 @@ impl BitOrAssign<&ArrayStore> for BitmapStore {
         for &index in rhs.iter() {
             let (key, bit) = (key(index), bit(index));
             let old_w = self.bits[key];
-            let new_w = old_w | 1 << bit;
+            let new_w = old_w | (1 << bit);
             self.len += (old_w ^ new_w) >> bit;
             self.bits[key] = new_w;
         }
@@ -679,7 +679,7 @@ impl BitXorAssign<&ArrayStore> for BitmapStore {
         for &index in rhs.iter() {
             let (key, bit) = (key(index), bit(index));
             let old_w = self.bits[key];
-            let new_w = old_w ^ 1 << bit;
+            let new_w = old_w ^ (1 << bit);
             len += 1 - 2 * (((1 << bit) & old_w) >> bit) as i64; // +1 or -1
             self.bits[key] = new_w;
         }
