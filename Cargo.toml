@@ -8,10 +8,10 @@ roaring = { path = "roaring" }
 bincode = "1.3.3"
 bytemuck = "1.21.0"
 byteorder = "1.5.0"
-criterion = "0.3"
-git2 = { version = "0.19", default-features = false }
+criterion = "0.5"
+git2 = { version = "0.20", default-features = false }
 indicatif = "0.17"
-itertools = "0.13"
+itertools = "0.14"
 once_cell = "1.20"
 proptest = "1.6.0"
 serde = "1.0.217"
