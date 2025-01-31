@@ -13,6 +13,7 @@
 #![warn(unsafe_op_in_unsafe_fn)]
 #![warn(variant_size_differences)]
 #![allow(unknown_lints)] // For clippy
+#![allow(clippy::doc_overindented_list_items)]
 
 #[cfg(feature = "std")]
 extern crate byteorder;

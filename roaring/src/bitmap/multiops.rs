@@ -332,7 +332,7 @@ fn try_multi_or_ref<'a, E: 'a>(
     // Phase 3: Clean up
     let containers: Vec<_> = containers
         .into_iter()
-        .filter(|container| container.len() > 0)
+        .filter(|container| !container.is_empty())
         .map(|c| {
             // Any borrowed bitmaps or arrays left over get cloned here
             let mut container = c.into_owned();
@@ -373,7 +373,7 @@ fn try_multi_xor_ref<'a, E: 'a>(
     // Phase 3: Clean up
     let containers: Vec<_> = containers
         .into_iter()
-        .filter(|container| container.len() > 0)
+        .filter(|container| !container.is_empty())
         .map(|c| {
             // Any borrowed bitmaps or arrays left over get cloned here
             let mut container = c.into_owned();

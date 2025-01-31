@@ -72,11 +72,11 @@ mod test {
         }
 
         #[test]
-        fn test_bincode(
+        fn test_postcard(
             bitmap in RoaringBitmap::arbitrary(),
         ) {
-            let buffer = bincode::serialize(&bitmap).unwrap();
-            prop_assert_eq!(bitmap, bincode::deserialize(&buffer).unwrap());
+            let buffer = postcard::to_allocvec(&bitmap).unwrap();
+            prop_assert_eq!(bitmap, postcard::from_bytes(&buffer).unwrap());
         }
     }
 }
