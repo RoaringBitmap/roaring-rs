@@ -72,11 +72,11 @@ mod test {
         }
 
         #[test]
-        fn test_bincode(
+        fn test_postcard(
             treemap in RoaringTreemap::arbitrary(),
         ) {
-            let buffer = bincode::serialize(&treemap).unwrap();
-            prop_assert_eq!(treemap, bincode::deserialize(&buffer).unwrap());
+            let buffer = postcard::to_allocvec(&treemap).unwrap();
+            prop_assert_eq!(treemap, postcard::from_bytes(&buffer).unwrap());
         }
     }
 }
