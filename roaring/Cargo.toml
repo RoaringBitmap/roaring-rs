@@ -29,4 +29,4 @@ std = ["dep:bytemuck", "dep:byteorder"]
 [dev-dependencies]
 proptest = { workspace = true }
 serde_json = { workspace = true }
-bincode = { workspace = true }
+postcard = { workspace = true }
