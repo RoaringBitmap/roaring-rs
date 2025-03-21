@@ -1,5 +1,6 @@
 use alloc::collections::{btree_map, BTreeMap};
 use core::iter;
+use std::iter::Peekable;
 
 use super::util;
 use crate::bitmap::IntoIter as IntoIter32;
@@ -11,10 +12,24 @@ struct To64Iter<'a> {
     inner: Iter32<'a>,
 }
 
+impl To64Iter<'_> {
+    fn advance_to(&mut self, n: u32) {
+        self.inner.advance_to(n)
+    }
+
+    fn advance_back_to(&mut self, n: u32) {
+        self.inner.advance_back_to(n)
+    }
+}
+
 impl Iterator for To64Iter<'_> {
     type Item = u64;
     fn next(&mut self) -> Option<u64> {
         self.inner.next().map(|n| util::join(self.hi, n))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
     }
 
     #[inline]
@@ -42,8 +57,8 @@ impl DoubleEndedIterator for To64Iter<'_> {
     }
 }
 
-fn to64iter<'a>(t: (&'a u32, &'a RoaringBitmap)) -> To64Iter<'a> {
-    To64Iter { hi: *t.0, inner: t.1.iter() }
+fn to64iter(t: (u32, &RoaringBitmap)) -> To64Iter<'_> {
+    To64Iter { hi: t.0, inner: t.1.iter() }
 }
 
 struct To64IntoIter {
@@ -86,11 +101,6 @@ fn to64intoiter(t: (u32, RoaringBitmap)) -> To64IntoIter {
     To64IntoIter { hi: t.0, inner: t.1.into_iter() }
 }
 
-type InnerIter<'a> = iter::FlatMap<
-    btree_map::Iter<'a, u32, RoaringBitmap>,
-    To64Iter<'a>,
-    fn((&'a u32, &'a RoaringBitmap)) -> To64Iter<'a>,
->;
 type InnerIntoIter = iter::FlatMap<
     btree_map::IntoIter<u32, RoaringBitmap>,
     To64IntoIter,
@@ -99,7 +109,9 @@ type InnerIntoIter = iter::FlatMap<
 
 /// An iterator for `RoaringTreemap`.
 pub struct Iter<'a> {
-    inner: InnerIter<'a>,
+    outer: Peekable<BitmapIter<'a>>,
+    front: Option<To64Iter<'a>>,
+    back: Option<To64Iter<'a>>,
     size_hint: u64,
 }
 
@@ -112,8 +124,141 @@ pub struct IntoIter {
 impl Iter<'_> {
     fn new(map: &BTreeMap<u32, RoaringBitmap>) -> Iter {
         let size_hint: u64 = map.iter().map(|(_, r)| r.len()).sum();
-        let i = map.iter().flat_map(to64iter as _);
-        Iter { inner: i, size_hint }
+        let outer = BitmapIter(map.iter()).peekable();
+        Iter { size_hint, outer, front: None, back: None }
+    }
+
+    /// Advance the iterator to the first position where the item has a value >= `n`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    /// use core::iter::FromIterator;
+    ///
+    /// let bitmap = (1..3).collect::<RoaringTreemap>();
+    /// let mut iter = bitmap.iter();
+    /// iter.advance_to(2);
+    ///
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    pub fn advance_to(&mut self, n: u64) {
+        let (key, index) = util::split(n);
+
+        loop {
+            match self.outer.peek() {
+                None => {
+                    break;
+                }
+                Some((next_hi, _)) => {
+                    if *next_hi > key {
+                        if let Some(ref front) = self.front {
+                            self.size_hint =
+                                self.size_hint.saturating_sub(front.size_hint().0 as u64);
+                        }
+
+                        let next = self.outer.next().unwrap();
+                        self.front = Some(to64iter(next));
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if self.front.is_none() {
+            let Some(next) = self.outer.next() else {
+                // if the current front iterator is empty or not yet initialized,
+                // but the outer bitmap iterator is empty, then consume the back
+                // iterator from the front if it is not also exhausted
+                if let Some(ref mut back) = self.back {
+                    let size_hint_pre = back.size_hint().0;
+                    back.advance_to(index);
+                    let size_hint_post = back.size_hint().0;
+
+                    self.size_hint =
+                        self.size_hint.saturating_sub((size_hint_pre - size_hint_post) as u64);
+                }
+                return;
+            };
+            self.front = Some(to64iter(next));
+        }
+
+        if let Some(ref mut front) = self.front {
+            let size_hint_pre = front.size_hint().0;
+            front.advance_to(index);
+            let size_hint_post = front.size_hint().0;
+
+            self.size_hint = self.size_hint.saturating_sub((size_hint_pre - size_hint_post) as u64);
+        }
+    }
+
+    /// Advance the back of the iterator to the first position where the item has a value <= `n`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    /// use core::iter::FromIterator;
+    ///
+    /// let bitmap = (1..3).collect::<RoaringTreemap>();
+    /// let mut iter = bitmap.iter();
+    /// iter.advance_back_to(1);
+    ///
+    /// assert_eq!(iter.next_back(), Some(1));
+    /// assert_eq!(iter.next_back(), None);
+    /// ```
+    pub fn advance_back_to(&mut self, n: u64) {
+        let (key, index) = util::split(n);
+
+        // advance beyond the current bitmap if n < min val in current bitmap
+        loop {
+            match self.outer.peek() {
+                None => {
+                    break;
+                }
+                Some((prev_hi, _)) => {
+                    if *prev_hi < key {
+                        if let Some(ref back) = self.back {
+                            self.size_hint =
+                                self.size_hint.saturating_sub(back.size_hint().0 as u64);
+                        }
+
+                        let next_back = self.outer.next_back().unwrap();
+                        self.back = Some(to64iter(next_back));
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if self.back.is_none() {
+            let Some(next_back) = self.outer.next_back() else {
+                // if the current back iterator is empty or not yet initialized,
+                // but the outer bitmap iterator is empty, then consume the front
+                // iterator from the back if it is not also exhausted
+                if let Some(ref mut front) = self.front {
+                    let size_hint_pre = front.size_hint().0;
+                    front.advance_back_to(index);
+                    let size_hint_post = front.size_hint().0;
+
+                    self.size_hint =
+                        self.size_hint.saturating_sub((size_hint_pre - size_hint_post) as u64);
+                }
+                return;
+            };
+            self.back = Some(to64iter(next_back));
+        }
+
+        if let Some(ref mut back) = self.back {
+            let size_hint_pre = back.size_hint().0;
+            back.advance_back_to(index);
+            let size_hint_post = back.size_hint().0;
+
+            self.size_hint = self.size_hint.saturating_sub((size_hint_pre - size_hint_post) as u64);
+        }
     }
 }
 
@@ -129,8 +274,28 @@ impl Iterator for Iter<'_> {
     type Item = u64;
 
     fn next(&mut self) -> Option<u64> {
-        self.size_hint = self.size_hint.saturating_sub(1);
-        self.inner.next()
+        if let Some(ref mut front) = &mut self.front {
+            if let Some(inner) = front.next() {
+                self.size_hint = self.size_hint.saturating_sub(1);
+                return Some(inner);
+            }
+        }
+
+        let Some(outer_next) = self.outer.next() else {
+            // if the current front iterator is empty or not yet initialized,
+            // but the outer bitmap iterator is empty, then consume the back
+            // iterator from the front if it is not also exhausted
+            if let Some(ref mut back) = &mut self.back {
+                if let Some(next) = back.next() {
+                    self.size_hint = self.size_hint.saturating_sub(1);
+                    return Some(next);
+                }
+            }
+            return None;
+        };
+
+        self.front = Some(to64iter(outer_next));
+        self.next()
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -142,27 +307,49 @@ impl Iterator for Iter<'_> {
     }
 
     #[inline]
-    fn fold<B, F>(self, init: B, f: F) -> B
+    fn fold<B, F>(self, _init: B, _f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        self.inner.fold(init, f)
+        todo!();
+        // self.inner.fold(init, f)
     }
 }
 
 impl DoubleEndedIterator for Iter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.size_hint = self.size_hint.saturating_sub(1);
-        self.inner.next_back()
+        if let Some(ref mut back) = &mut self.back {
+            if let Some(inner) = back.next_back() {
+                self.size_hint = self.size_hint.saturating_sub(1);
+                return Some(inner);
+            }
+        }
+
+        let Some(outer_next_back) = self.outer.next_back() else {
+            // if the current back iterator is empty or not yet initialized,
+            // but the outer bitmap iterator is empty, then consume the front
+            // iterator from the back if it is not also exhausted
+            if let Some(ref mut front) = &mut self.front {
+                if let Some(next_back) = front.next_back() {
+                    self.size_hint = self.size_hint.saturating_sub(1);
+                    return Some(next_back);
+                }
+            }
+            return None;
+        };
+
+        self.back = Some(to64iter(outer_next_back));
+        self.next_back()
     }
 
     #[inline]
-    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    fn rfold<Acc, Fold>(self, _init: Acc, _fold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        self.inner.rfold(init, fold)
+        todo!();
+        // self.inner.rfold(init, fold)
     }
 }
 
@@ -433,5 +620,11 @@ impl<'a> Iterator for BitmapIter<'a> {
 impl FromIterator<(u32, RoaringBitmap)> for RoaringTreemap {
     fn from_iter<I: IntoIterator<Item = (u32, RoaringBitmap)>>(iterator: I) -> RoaringTreemap {
         Self::from_bitmaps(iterator)
+    }
+}
+
+impl DoubleEndedIterator for BitmapIter<'_> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.next_back().map(|(&p, b)| (p, b))
     }
 }
