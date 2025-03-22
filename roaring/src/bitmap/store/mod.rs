@@ -1,3 +1,5 @@
+// TODO: remove the line below and document the pub structs in this module or make them not pub
+#![allow(unnameable_types)]
 mod array_store;
 mod bitmap_store;
 
