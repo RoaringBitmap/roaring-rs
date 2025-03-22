@@ -17,7 +17,7 @@ mod serde;
 #[cfg(feature = "std")]
 mod serialization;
 
-pub use self::iter::{IntoIter, Iter};
+pub use self::iter::{BitmapIter, IntoIter, Iter};
 
 /// A compressed bitmap with u64 values.
 /// Implemented as a `BTreeMap` of `RoaringBitmap`s.

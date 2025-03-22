@@ -415,6 +415,7 @@ impl RoaringTreemap {
     }
 }
 
+/// An iterator of `RoaringBitmap`s for `RoaringTreemap`.
 pub struct BitmapIter<'a>(btree_map::Iter<'a, u32, RoaringBitmap>);
 
 impl<'a> Iterator for BitmapIter<'a> {

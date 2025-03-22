@@ -1,3 +1,5 @@
+// TODO: remove the line below and document `Container` and `Iter` or make them not pub
+#![allow(unnameable_types)]
 use core::fmt;
 use core::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
