@@ -4,18 +4,17 @@ use crate::RoaringBitmap;
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use core::convert::Infallible;
-use core::mem::size_of;
 use core::ops::RangeInclusive;
 use std::error::Error;
 use std::io;
 
-pub const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
-pub const SERIAL_COOKIE: u16 = 12347;
-pub const NO_OFFSET_THRESHOLD: usize = 4;
+pub(crate) const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
+pub(crate) const SERIAL_COOKIE: u16 = 12347;
+pub(crate) const NO_OFFSET_THRESHOLD: usize = 4;
 
 // Sizes of header structures
-pub const DESCRIPTION_BYTES: usize = 4;
-pub const OFFSET_BYTES: usize = 4;
+pub(crate) const DESCRIPTION_BYTES: usize = 4;
+pub(crate) const OFFSET_BYTES: usize = 4;
 
 impl RoaringBitmap {
     /// Return the size in bytes of the serialized output.
