@@ -4,18 +4,17 @@ use crate::RoaringBitmap;
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use core::convert::Infallible;
-use core::mem::size_of;
 use core::ops::RangeInclusive;
 use std::error::Error;
 use std::io;
 
-pub const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
-pub const SERIAL_COOKIE: u16 = 12347;
-pub const NO_OFFSET_THRESHOLD: usize = 4;
+pub(crate) const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
+pub(crate) const SERIAL_COOKIE: u16 = 12347;
+pub(crate) const NO_OFFSET_THRESHOLD: usize = 4;
 
 // Sizes of header structures
-pub const DESCRIPTION_BYTES: usize = 4;
-pub const OFFSET_BYTES: usize = 4;
+pub(crate) const DESCRIPTION_BYTES: usize = 4;
+pub(crate) const OFFSET_BYTES: usize = 4;
 
 impl RoaringBitmap {
     /// Return the size in bytes of the serialized output.
@@ -45,139 +44,6 @@ impl RoaringBitmap {
 
         // header + container sizes
         8 + container_sizes
-    }
-
-    /// Creates a `RoaringBitmap` from a byte slice, interpreting the bytes as a bitmap with a specified offset.
-    ///
-    /// # Arguments
-    ///
-    /// - `offset: u32` - The starting position in the bitmap where the byte slice will be applied, specified in bits.
-    ///                   This means that if `offset` is `n`, the first byte in the slice will correspond to the `n`th bit(0-indexed) in the bitmap.
-    /// - `bytes: &[u8]` - The byte slice containing the bitmap data. The bytes are interpreted in "Least-Significant-First" bit order.
-    ///
-    /// # Interpretation of `bytes`
-    ///
-    /// The `bytes` slice is interpreted in "Least-Significant-First" bit order. Each byte is read from least significant bit (LSB) to most significant bit (MSB).
-    /// For example, the byte `0b00000101` represents the bits `1, 0, 1, 0, 0, 0, 0, 0` in that order (see Examples section).
-    ///
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if `bytes.len() + offset` is greater than 2^32.
-    ///
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use roaring::RoaringBitmap;
-    ///
-    /// let bytes = [0b00000101, 0b00000010, 0b00000000, 0b10000000];
-    /// //             ^^^^^^^^    ^^^^^^^^    ^^^^^^^^    ^^^^^^^^
-    /// //             76543210          98
-    /// let rb = RoaringBitmap::from_lsb0_bytes(0, &bytes);
-    /// assert!(rb.contains(0));
-    /// assert!(!rb.contains(1));
-    /// assert!(rb.contains(2));
-    /// assert!(rb.contains(9));
-    /// assert!(rb.contains(31));
-    ///
-    /// let rb = RoaringBitmap::from_lsb0_bytes(8, &bytes);
-    /// assert!(rb.contains(8));
-    /// assert!(!rb.contains(9));
-    /// assert!(rb.contains(10));
-    /// assert!(rb.contains(17));
-    /// assert!(rb.contains(39));
-    ///
-    /// let rb = RoaringBitmap::from_lsb0_bytes(3, &bytes);
-    /// assert!(rb.contains(3));
-    /// assert!(!rb.contains(4));
-    /// assert!(rb.contains(5));
-    /// assert!(rb.contains(12));
-    /// assert!(rb.contains(34));
-    /// ```
-    pub fn from_lsb0_bytes(offset: u32, mut bytes: &[u8]) -> RoaringBitmap {
-        fn shift_bytes(bytes: &[u8], amount: usize) -> Vec<u8> {
-            let mut result = Vec::with_capacity(bytes.len() + 1);
-            let mut carry = 0u8;
-
-            for &byte in bytes {
-                let shifted = (byte << amount) | carry;
-                carry = byte >> (8 - amount);
-                result.push(shifted);
-            }
-
-            if carry != 0 {
-                result.push(carry);
-            }
-
-            result
-        }
-        if offset % 8 != 0 {
-            let shift = offset as usize % 8;
-            let shifted_bytes = shift_bytes(bytes, shift);
-            return RoaringBitmap::from_lsb0_bytes(offset - shift as u32, &shifted_bytes);
-        }
-
-        if bytes.is_empty() {
-            return RoaringBitmap::new();
-        }
-
-        // Using inclusive range avoids overflow: the max exclusive value is 2^32 (u32::MAX + 1).
-        let end_bit_inc = u32::try_from(bytes.len())
-            .ok()
-            .and_then(|len_bytes| len_bytes.checked_mul(8))
-            // `bytes` is non-empty, so len_bits is > 0
-            .and_then(|len_bits| offset.checked_add(len_bits - 1))
-            .expect("offset + bytes.len() must be <= 2^32");
-
-        // offsets are in bytes
-        let (mut start_container, start_offset) =
-            (offset as usize >> 16, (offset as usize % 0x1_0000) / 8);
-        let (end_container_inc, end_offset) =
-            (end_bit_inc as usize >> 16, (end_bit_inc as usize % 0x1_0000 + 1) / 8);
-
-        let n_containers_needed = end_container_inc + 1 - start_container;
-        let mut containers = Vec::with_capacity(n_containers_needed);
-
-        // Handle a partial first container
-        if start_offset != 0 {
-            let end_byte = if end_container_inc == start_container {
-                end_offset
-            } else {
-                BITMAP_LENGTH * size_of::<u64>()
-            };
-
-            let (src, rest) = bytes.split_at(end_byte - start_offset);
-            bytes = rest;
-
-            if let Some(container) =
-                Container::from_lsb0_bytes(start_container as u16, src, start_offset)
-            {
-                containers.push(container);
-            }
-
-            start_container += 1;
-        }
-
-        // Handle all full containers
-        for full_container_key in start_container..end_container_inc {
-            let (src, rest) = bytes.split_at(BITMAP_LENGTH * size_of::<u64>());
-            bytes = rest;
-
-            if let Some(container) = Container::from_lsb0_bytes(full_container_key as u16, src, 0) {
-                containers.push(container);
-            }
-        }
-
-        // Handle a last container
-        if !bytes.is_empty() {
-            if let Some(container) = Container::from_lsb0_bytes(end_container_inc as u16, bytes, 0)
-            {
-                containers.push(container);
-            }
-        }
-
-        RoaringBitmap { containers }
     }
 
     /// Serialize this bitmap into [the standard Roaring on-disk format][format].

@@ -12,13 +12,13 @@ pub const ARRAY_LIMIT: u64 = 4096;
 use alloc::vec::Vec;
 
 #[derive(PartialEq, Clone)]
-pub struct Container {
+pub(crate) struct Container {
     pub key: u16,
     pub store: Store,
 }
 
 #[derive(Clone)]
-pub struct Iter<'a> {
+pub(crate) struct Iter<'a> {
     pub key: u16,
     inner: store::Iter<'a>,
 }

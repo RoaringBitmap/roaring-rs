@@ -273,7 +273,7 @@ impl BitmapStore {
         self.bits.iter().zip(other.bits.iter()).all(|(&i1, &i2)| (i1 & i2) == i1)
     }
 
-    pub fn to_array_store(&self) -> ArrayStore {
+    pub(crate) fn to_array_store(&self) -> ArrayStore {
         let mut vec = Vec::with_capacity(self.len as usize);
         for (index, mut bit) in self.bits.iter().cloned().enumerate() {
             while bit != 0 {
@@ -336,7 +336,7 @@ impl BitmapStore {
         self.bits.iter().zip(other.bits.iter()).map(|(&a, &b)| (a & b).count_ones() as u64).sum()
     }
 
-    pub fn intersection_len_array(&self, other: &ArrayStore) -> u64 {
+    pub(crate) fn intersection_len_array(&self, other: &ArrayStore) -> u64 {
         other
             .iter()
             .map(|&index| {
@@ -356,6 +356,7 @@ impl BitmapStore {
         BitmapIter::new(self.bits)
     }
 
+    #[cfg(feature = "std")]
     pub fn as_array(&self) -> &[u64; BITMAP_LENGTH] {
         &self.bits
     }

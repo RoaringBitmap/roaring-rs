@@ -4,12 +4,10 @@ mod test {
     use crate::bitmap::store::{ArrayStore, BitmapStore, Store};
     use crate::RoaringBitmap;
     use core::fmt::{Debug, Formatter};
-    use proptest::bits::{BitSetLike, BitSetStrategy, SampledBitSetStrategy};
+    use proptest::bits::{BitSetLike, SampledBitSetStrategy};
     use proptest::collection::{vec, SizeRange};
     use proptest::prelude::*;
 
-    #[cfg(not(feature = "std"))]
-    use alloc::boxed::Box;
     #[cfg(not(feature = "std"))]
     use alloc::vec::Vec;
 
@@ -62,27 +60,11 @@ mod test {
     impl BitmapStore {
         const MAX: usize = u16::MAX as usize;
 
-        pub fn universe() -> Self {
-            BitmapStore::try_from(1 + u16::MAX as u64, Box::new([u64::MAX; 1024])).unwrap()
-        }
-
-        pub fn between(min: u16, max: u16) -> BitSetStrategy<Self> {
-            BitSetStrategy::new(min as usize, max as usize)
-        }
-
-        pub fn masked(mask: Self) -> BitSetStrategy<Self> {
-            BitSetStrategy::masked(mask)
-        }
-
         pub fn sampled(
             size: impl Into<SizeRange>,
             bits: impl Into<SizeRange>,
         ) -> SampledBitSetStrategy<Self> {
             SampledBitSetStrategy::new(size.into(), bits.into())
-        }
-
-        pub fn arbitrary() -> SampledBitSetStrategy<Self> {
-            Self::sampled(..=u16::MAX as usize, ..=u16::MAX as usize)
         }
     }
 
@@ -135,23 +117,11 @@ mod test {
     impl ArrayStore {
         const MAX: usize = u16::MAX as usize;
 
-        pub fn between(min: u16, max: u16) -> BitSetStrategy<ArrayStore> {
-            BitSetStrategy::new(min as usize, max as usize)
-        }
-
-        pub fn masked(mask: ArrayStore) -> BitSetStrategy<ArrayStore> {
-            BitSetStrategy::masked(mask)
-        }
-
         pub fn sampled(
             size: impl Into<SizeRange>,
             bits: impl Into<SizeRange>,
         ) -> SampledBitSetStrategy<ArrayStore> {
             SampledBitSetStrategy::new(size.into(), bits.into())
-        }
-
-        pub fn arbitrary() -> SampledBitSetStrategy<ArrayStore> {
-            Self::sampled(..=4096_usize, ..=u16::MAX as usize)
         }
     }
 
