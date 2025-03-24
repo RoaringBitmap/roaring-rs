@@ -101,7 +101,7 @@ impl RoaringBitmap {
 /// Returns the smallest container according to its key
 /// or both if the key is the same. It is useful when you need
 /// to iterate over two containers to do operations on them.
-pub struct Pairs<I, J, L, R>
+pub(crate) struct Pairs<I, J, L, R>
 where
     I: Iterator<Item = L>,
     J: Iterator<Item = R>,
