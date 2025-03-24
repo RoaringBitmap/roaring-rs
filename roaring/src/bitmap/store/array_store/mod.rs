@@ -27,6 +27,7 @@ impl ArrayStore {
         ArrayStore { vec: vec![] }
     }
 
+    #[cfg(feature = "std")]
     pub fn with_capacity(capacity: usize) -> ArrayStore {
         ArrayStore { vec: Vec::with_capacity(capacity) }
     }

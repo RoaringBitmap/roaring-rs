@@ -18,7 +18,7 @@ mod ops_with_serialized;
 #[cfg(feature = "serde")]
 mod serde;
 #[cfg(feature = "std")]
-pub(crate) mod serialization;
+pub mod serialization;
 
 use self::cmp::Pairs;
 pub use self::iter::IntoIter;

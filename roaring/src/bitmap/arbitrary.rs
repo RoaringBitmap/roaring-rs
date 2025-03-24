@@ -9,8 +9,6 @@ mod test {
     use proptest::prelude::*;
 
     #[cfg(not(feature = "std"))]
-    use alloc::boxed::Box;
-    #[cfg(not(feature = "std"))]
     use alloc::vec::Vec;
 
     impl Debug for BitmapStore {
