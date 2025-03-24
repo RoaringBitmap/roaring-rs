@@ -18,7 +18,7 @@ use alloc::boxed::Box;
 use super::bitmap_store::{bit, key, BitmapStore, BITMAP_LENGTH};
 
 #[derive(Clone, Eq, PartialEq)]
-pub struct ArrayStore {
+pub(crate) struct ArrayStore {
     vec: Vec<u16>,
 }
 

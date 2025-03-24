@@ -1,5 +1,3 @@
-// TODO: remove the line below and document the pub structs in this module or make them not pub
-#![allow(unnameable_types)]
 mod array_store;
 mod bitmap_store;
 
@@ -13,7 +11,7 @@ use core::slice;
 pub use self::bitmap_store::BITMAP_LENGTH;
 use self::Store::{Array, Bitmap};
 
-pub use self::array_store::ArrayStore;
+pub(crate) use self::array_store::ArrayStore;
 pub use self::bitmap_store::{BitmapIter, BitmapStore};
 
 use crate::bitmap::container::ARRAY_LIMIT;
@@ -22,13 +20,13 @@ use crate::bitmap::container::ARRAY_LIMIT;
 use alloc::boxed::Box;
 
 #[derive(Clone)]
-pub enum Store {
+pub(crate) enum Store {
     Array(ArrayStore),
     Bitmap(BitmapStore),
 }
 
 #[derive(Clone)]
-pub enum Iter<'a> {
+pub(crate) enum Iter<'a> {
     Array(slice::Iter<'a, u16>),
     Vec(vec::IntoIter<u16>),
     BitmapBorrowed(BitmapIter<&'a [u64; BITMAP_LENGTH]>),
