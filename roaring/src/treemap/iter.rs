@@ -238,9 +238,8 @@ impl Iterator for Iter<'_> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let front_size_hint = if let Some(front) = &self.front { front.size_hint().0 } else { 0 };
-
-        let back_size_hint = if let Some(back) = &self.back { back.size_hint().0 } else { 0 };
+        let front_size_hint = self.front.as_ref().map_or(0, |f| f.size_hint().0);
+        let back_size_hint = self.back.as_ref().map_or(0, |b| b.size_hint().0);
 
         let size_hint = front_size_hint
             .saturating_add(back_size_hint)
