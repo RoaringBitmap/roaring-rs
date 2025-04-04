@@ -248,16 +248,6 @@ impl Iterator for Iter<'_> {
 
         (size_hint, Some(size_hint))
     }
-
-    #[inline]
-    fn fold<B, F>(self, _init: B, _f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        todo!();
-        // self.inner.fold(init, f)
-    }
 }
 
 impl DoubleEndedIterator for Iter<'_> {
@@ -282,15 +272,6 @@ impl DoubleEndedIterator for Iter<'_> {
 
         self.back = Some(to64iter(outer_next_back));
         self.next_back()
-    }
-
-    #[inline]
-    fn rfold<Acc, Fold>(self, _init: Acc, _fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        todo!();
-        // self.inner.rfold(init, fold)
     }
 }
 
