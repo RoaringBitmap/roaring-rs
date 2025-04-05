@@ -38,9 +38,10 @@ jobs:
         # so we don't need to run `cargo check` or `cargo build`
         # use different features to check if everything is fine
         # the incremental compilation will make this faster
+        # We disallow todo!s in the code too.
         run: |
           cargo clippy -p roaring --all-targets --no-default-features -- -D warnings
-          cargo clippy -p roaring --all-targets --features serde -- -D warnings
+          cargo clippy -p roaring --all-targets --features serde -- -Dclippy::todo -D warnings
 
       - name: Check SIMD
         if: matrix.rust == 'nightly'
