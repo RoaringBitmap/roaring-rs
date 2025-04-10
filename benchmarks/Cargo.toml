@@ -1,0 +1,26 @@
+[package]
+name = "benchmarks"
+description = "An external library for benchmarking the roaring crate with real datasets"
+version = "0.1.0"
+authors = ["Kerollmops <renault.cle@gmail.com>"]
+edition = "2021"
+rust-version = "1.65.0"
+publish = false
+
+[dependencies]
+roaring = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true, features = ["html_reports"] }
+git2 = { workspace = true, default-features = false, features = ["https", "vendored-openssl"] }
+indicatif = { workspace = true }
+itertools = { workspace = true }
+once_cell = { workspace = true }
+zip = { workspace = true, default-features = false, features = ["deflate"] }
+
+[features]
+simd = ["roaring/simd"]
+
+[[bench]]
+name = "lib"
+harness = false
