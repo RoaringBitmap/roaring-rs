@@ -1,5 +1,6 @@
 mod array_store;
 mod bitmap_store;
+mod interval_store;
 
 use alloc::vec;
 use core::cmp::Ordering;
@@ -14,37 +15,13 @@ use self::Store::{Array, Bitmap, Run};
 
 pub(crate) use self::array_store::ArrayStore;
 pub use self::bitmap_store::{BitmapIter, BitmapStore};
+pub(crate) use self::interval_store::Interval;
+use self::interval_store::cmp_index_interval;
 
 use crate::bitmap::container::ARRAY_LIMIT;
 
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
-
-#[derive(PartialEq, Copy, Clone, Debug)]
-pub struct Interval {
-    pub start: u16,
-    pub end: u16,
-}
-
-fn cmp_index_interval(index: u16, iv: Interval) -> Ordering {
-    if index < iv.start {
-        Ordering::Less
-    } else if index > iv.end {
-        Ordering::Greater
-    } else {
-        Ordering::Less
-    }
-}
-
-impl Interval {
-    pub fn new(start: u16, end: u16) -> Interval {
-        Interval { start, end }
-    }
-
-    pub fn run_len(&self) -> u64 {
-        (self.end - self.start) as u64 + 1
-    }
-}
 
 #[derive(Clone)]
 pub(crate) enum Store {
@@ -242,12 +219,12 @@ impl Store {
             Run(ref mut intervals) => {
                 let start = *range.start();
                 let end = *range.end();
-                let mut count = 0;
+                let mut count: u64 = 0;
                 let mut search_end = false;
 
                 for iv in intervals.iter_mut() {
                     if !search_end && cmp_index_interval(start as u16, *iv) == Ordering::Equal {
-                        count += Interval::new(iv.end, start as u16).run_len();
+                        count += u64::from(Interval::new(iv.end, start as u16).run_len());
                         iv.end = start as u16;
                         search_end = true;
                     }
@@ -258,13 +235,13 @@ impl Store {
                             Ordering::Less => {
                                 // We invalidate the intervals that are contained in
                                 // the start and end but doesn't touch the bounds.
-                                count += iv.run_len();
+                                count += u64::from(iv.run_len());
                                 *iv = Interval::new(u16::max_value(), 0);
                             }
                             Ordering::Equal => {
                                 // We shrink this interval by moving the start of it to be
                                 // the end bound which is non-inclusive.
-                                count += Interval::new(end as u16, iv.start).run_len();
+                                count += u64::from(Interval::new(end as u16, iv.start).run_len());
                                 iv.start = end as u16;
                             }
                             Ordering::Greater => break,
@@ -984,7 +961,7 @@ impl RunIter {
 
     fn move_next(&mut self) {
         self.offset += 1;
-        if self.offset == self.intervals[self.run].run_len() {
+        if self.offset == self.intervals[self.run].run_len().into() {
             self.offset = 0;
             self.run += 1;
         }
