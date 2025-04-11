@@ -30,21 +30,10 @@ fn test_deserialize_without_runs_from_provided_data() {
 
 #[test]
 fn test_deserialize_with_runs_from_provided_data() {
-    assert_eq!(
-        RoaringBitmap::deserialize_from(&mut &BITMAP_WITH_RUNS[..]).unwrap(),
-        test_data_bitmap()
-    );
-}
-
-#[test]
-fn test_deserialize_with_run_containers_from_provided_data() {
     let mut expected = test_data_bitmap();
     // Call optimize to create run containers
     expected.optimize();
-    assert_eq!(
-        RoaringBitmap::deserialize_from(&mut &BITMAP_WITH_RUNS[..]).unwrap(),
-        expected
-    );
+    assert_eq!(RoaringBitmap::deserialize_from(&mut &BITMAP_WITH_RUNS[..]).unwrap(), expected);
 }
 
 #[test]
@@ -83,7 +72,7 @@ fn test_one() {
 fn test_array() {
     let original = (1000..3000).collect::<RoaringBitmap>();
     let new = serialize_and_deserialize(&original);
-    assert_eq!(original, new);
+    assert_eq!(dbg!(original), dbg!(new));
 }
 
 #[test]
@@ -126,7 +115,7 @@ fn test_bitmap() {
 #[test]
 fn test_arrays() {
     let original = (1000..3000).chain(70000..74000).collect::<RoaringBitmap>();
-let new = serialize_and_deserialize(&original);
+    let new = serialize_and_deserialize(&original);
     assert_eq!(original, new);
 }
 

@@ -456,6 +456,7 @@ mod tests {
     use super::*;
     use crate::bitmap::store::Store;
 
+    #[allow(clippy::todo)]
     fn into_vec(s: Store) -> Vec<u16> {
         match s {
             Store::Array(vec) => vec.vec,
@@ -464,6 +465,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::todo)]
     fn into_bitmap_store(s: Store) -> Store {
         match s {
             Store::Array(vec) => Store::Bitmap(vec.to_bitmap_store()),

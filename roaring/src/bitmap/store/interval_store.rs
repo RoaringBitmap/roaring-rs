@@ -1,3 +1,5 @@
+#![allow(unused)]
+use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::ops::RangeInclusive;
 
@@ -17,7 +19,7 @@ impl IntervalStore {
                 // loc may be equal to self.0.len()
                 let loc_or_last = if loc < self.0.len() {
                     Some(loc)
-                } else if self.0.len() != 0 {
+                } else if !self.0.is_empty() {
                     Some(self.0.len() - 1)
                 } else {
                     None
@@ -71,13 +73,13 @@ impl IntervalStore {
     ) -> (u64, Option<usize>) {
         let mut drain_loc = None;
         let mut amount = 0;
-        let mut intervals = dbg!(&self.0[start_index..]).iter().enumerate().peekable();
+        let mut intervals = self.0[start_index..].iter().enumerate().peekable();
         while let Some((i, cur_interval)) = intervals.next() {
             if !interval.contains_interval(cur_interval) {
                 drain_loc = Some(start_index + i);
                 break;
             }
-            amount += u64::from(cur_interval.run_len());
+            amount += cur_interval.run_len();
             if intervals.peek().is_none() {
                 drain_loc = Some(start_index + i + 1);
             }
@@ -98,14 +100,12 @@ impl IntervalStore {
                 if begin == end {
                     return 0;
                 }
-                let drained_amount: u64 =
-                    self.0[begin + 1..end].iter().map(|f| u64::from(f.run_len())).sum();
-                let amount = u64::from(
-                    Interval::new(self.0[begin].end + 1, self.0[end].start - 1).run_len(),
-                ) - drained_amount;
+                let drained_amount: u64 = self.0[begin + 1..end].iter().map(|f| f.run_len()).sum();
+                let amount = Interval::new(self.0[begin].end + 1, self.0[end].start - 1).run_len()
+                    - drained_amount;
                 self.0[begin].end = self.0[end].end;
                 self.0.drain(begin + 1..=end);
-                return amount;
+                amount
             }
             // start index is contained in an interval,
             // end index is not
@@ -120,13 +120,12 @@ impl IntervalStore {
                         (interval.end, to_insert)
                     };
                 let drained_amount: u64 =
-                    self.0[begin + 1..to_insert].iter().map(|f| u64::from(f.run_len())).sum();
+                    self.0[begin + 1..to_insert].iter().map(|f| f.run_len()).sum();
                 let amount =
-                    u64::from(Interval::new(self.0[begin].end + 1, interval.end).run_len())
-                        - drained_amount;
+                    Interval::new(self.0[begin].end + 1, interval.end).run_len() - drained_amount;
                 self.0[begin].end = new_end;
                 self.0.drain(begin + 1..drain_id);
-                return amount;
+                amount
             }
             // there is no interval that contains the start index,
             // there is an interval that contains the end index,
@@ -142,23 +141,21 @@ impl IntervalStore {
                     } else {
                         (end, end)
                     };
-                let drained_amount: u64 =
-                    self.0[to_begin..end].iter().map(|f| u64::from(f.run_len())).sum();
+                let drained_amount: u64 = self.0[to_begin..end].iter().map(|f| f.run_len()).sum();
                 let amount =
-                    u64::from(Interval::new(interval.start, self.0[end].start - 1).run_len())
-                        - drained_amount;
+                    Interval::new(interval.start, self.0[end].start - 1).run_len() - drained_amount;
                 if consecutive_begin {
                     self.0[interval_id].end = self.0[end].end;
                 } else {
                     self.0[interval_id].start = interval.start;
                 }
                 self.0.drain(to_begin..drain_id);
-                return amount;
+                amount
             }
             (Err(to_begin), Err(to_end)) => {
-                if self.0.len() == 0 {
+                if self.0.is_empty() {
                     self.0.insert(to_begin, interval);
-                    return interval.run_len().into();
+                    return interval.run_len();
                 }
                 let consec_begin = to_begin > 0 && self.0[to_begin - 1].end + 1 == interval.start;
                 let conces_end = to_end < self.0.len()
@@ -170,7 +167,7 @@ impl IntervalStore {
                 if !consec_begin && !conces_end && to_begin == to_end {
                     // an arbitrary range with no consecutive intervals, unable to reuse existing interval
                     self.0.insert(to_begin, interval);
-                    return interval.run_len().into();
+                    return interval.run_len();
                 }
                 let (drain_id_begin, drain_id_end, interval_id) = {
                     if conces_end && consec_begin {
@@ -216,26 +213,21 @@ impl IntervalStore {
                     }
                 };
                 let drained_amount: u64 =
-                    self.0[to_begin..to_end].iter().map(|f| u64::from(f.run_len())).sum();
+                    self.0[to_begin..to_end].iter().map(|f| f.run_len()).sum();
                 let end_amount_interval =
                     if conces_end { self.0[to_end].start - 1 } else { interval.end };
                 let amount =
-                    u64::from(Interval::new(interval.start, end_amount_interval).run_len())
-                        - drained_amount;
+                    Interval::new(interval.start, end_amount_interval).run_len() - drained_amount;
                 let end_interval = if conces_end { self.0[to_end].end } else { interval.end };
 
-                dbg!(end_interval);
-                dbg!(&self.0[interval_id]);
                 self.0[interval_id].end = end_interval;
                 if !consec_begin {
                     self.0[interval_id].start = interval.start;
                 }
-                dbg!(&self.0[interval_id]);
-                dbg!(interval_id);
-                self.0.drain(dbg!(drain_id_begin..drain_id_end));
-                return amount;
+                self.0.drain(drain_id_begin..drain_id_end);
+                amount
             }
-        };
+        }
     }
 }
 
@@ -287,15 +279,14 @@ impl Interval {
         self.start <= interval.start && interval.end <= self.end
     }
 
-    pub fn run_len(&self) -> u32 {
-        (self.end - self.start) as u32 + 1
+    pub fn run_len(&self) -> u64 {
+        u64::from(self.end - self.start) + 1
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::u16;
 
     #[test]
     fn insert_empty() {
@@ -306,18 +297,14 @@ mod tests {
 
     #[test]
     fn insert_consecutive_begin() {
-        let mut interval_store = IntervalStore(alloc::vec![
-            Interval { start: 0, end: 0 },
-        ]);
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 0, end: 0 },]);
         assert!(interval_store.insert(1));
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 0, end: 1 }]))
     }
 
     #[test]
     fn insert_consecutive_end() {
-        let mut interval_store = IntervalStore(alloc::vec![
-            Interval { start: 1, end: 1 },
-        ]);
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 1, end: 1 },]);
         assert!(interval_store.insert(0));
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 0, end: 1 }]))
     }
@@ -375,46 +362,23 @@ mod tests {
 
     #[test]
     fn insert_range_empty() {
-        let mut interval_store = IntervalStore(alloc::vec![
-        ]);
-        assert_eq!(
-            interval_store.insert_range(1..=2),
-            (Interval::new(1, 2).run_len())
-            .into()
-        );
-        assert_eq!(interval_store, IntervalStore(alloc::vec![
-                Interval { start: 1, end: 2 },
-        ]));
+        let mut interval_store = IntervalStore(alloc::vec![]);
+        assert_eq!(interval_store.insert_range(1..=2), Interval::new(1, 2).run_len());
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 1, end: 2 },]));
     }
 
     #[test]
     fn insert_range_overlap_begin() {
-        let mut interval_store = IntervalStore(alloc::vec![
-            Interval { start: 1, end: 20 }
-        ]);
-        assert_eq!(
-            interval_store.insert_range(5..=50),
-            (Interval::new(21, 50).run_len())
-            .into()
-        );
-        assert_eq!(interval_store, IntervalStore(alloc::vec![
-                Interval { start: 1, end: 50 },
-        ]));
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 1, end: 20 }]);
+        assert_eq!(interval_store.insert_range(5..=50), Interval::new(21, 50).run_len());
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 1, end: 50 },]));
     }
 
     #[test]
     fn insert_range_overlap_end() {
-        let mut interval_store = IntervalStore(alloc::vec![
-            Interval { start: 10, end: 20 }
-        ]);
-        assert_eq!(
-            interval_store.insert_range(5..=15),
-            (Interval::new(5, 9).run_len())
-            .into()
-        );
-        assert_eq!(interval_store, IntervalStore(alloc::vec![
-                Interval { start: 5, end: 20 },
-        ]));
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 10, end: 20 }]);
+        assert_eq!(interval_store.insert_range(5..=15), Interval::new(5, 9).run_len());
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 5, end: 20 },]));
     }
 
     #[test]
@@ -423,44 +387,22 @@ mod tests {
             Interval { start: 10, end: 20 },
             Interval { start: 40, end: 60 },
         ]);
-        assert_eq!(
-            interval_store.insert_range(15..=50),
-            (Interval::new(21, 39).run_len())
-            .into()
-        );
-        assert_eq!(interval_store, IntervalStore(alloc::vec![
-                Interval { start: 10, end: 60 },
-        ]));
+        assert_eq!(interval_store.insert_range(15..=50), Interval::new(21, 39).run_len());
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 10, end: 60 },]));
     }
 
     #[test]
     fn insert_range_concescutive_begin() {
-        let mut interval_store = IntervalStore(alloc::vec![
-            Interval { start: 10, end: 20 },
-        ]);
-        assert_eq!(
-            interval_store.insert_range(21..=50),
-            (Interval::new(21, 50).run_len())
-            .into()
-        );
-        assert_eq!(interval_store, IntervalStore(alloc::vec![
-                Interval { start: 10, end: 50 },
-        ]));
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 10, end: 20 },]);
+        assert_eq!(interval_store.insert_range(21..=50), Interval::new(21, 50).run_len());
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 10, end: 50 },]));
     }
 
     #[test]
     fn insert_range_concescutive_end() {
-        let mut interval_store = IntervalStore(alloc::vec![
-            Interval { start: 50, end: 70 },
-        ]);
-        assert_eq!(
-            interval_store.insert_range(21..=49),
-            (Interval::new(21, 49).run_len())
-            .into()
-        );
-        assert_eq!(interval_store, IntervalStore(alloc::vec![
-                Interval { start: 21, end: 70 },
-        ]));
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 50, end: 70 },]);
+        assert_eq!(interval_store.insert_range(21..=49), Interval::new(21, 49).run_len());
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 21, end: 70 },]));
     }
 
     #[test]
@@ -469,14 +411,8 @@ mod tests {
             Interval { start: 10, end: 20 },
             Interval { start: 50, end: 70 },
         ]);
-        assert_eq!(
-            interval_store.insert_range(21..=49),
-            (Interval::new(21, 49).run_len())
-            .into()
-        );
-        assert_eq!(interval_store, IntervalStore(alloc::vec![
-                Interval { start: 10, end: 70 },
-        ]));
+        assert_eq!(interval_store.insert_range(21..=49), Interval::new(21, 49).run_len());
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 10, end: 70 },]));
     }
 
     #[test]
@@ -485,16 +421,15 @@ mod tests {
             Interval { start: 10, end: 20 },
             Interval { start: 50, end: 70 },
         ]);
+        assert_eq!(interval_store.insert_range(25..=30), Interval::new(25, 30).run_len());
         assert_eq!(
-            interval_store.insert_range(25..=30),
-            (Interval::new(25, 30).run_len())
-            .into()
-        );
-        assert_eq!(interval_store, IntervalStore(alloc::vec![
+            interval_store,
+            IntervalStore(alloc::vec![
                 Interval { start: 10, end: 20 },
                 Interval { start: 25, end: 30 },
                 Interval { start: 50, end: 70 },
-        ]));
+            ])
+        );
     }
 
     #[test]
@@ -505,14 +440,16 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.insert_range(90..=u16::MAX),
-            (Interval::new(90, u16::MAX).run_len())
-            .into()
+            Interval::new(90, u16::MAX).run_len()
         );
-        assert_eq!(interval_store, IntervalStore(alloc::vec![
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![
                 Interval { start: 10, end: 20 },
                 Interval { start: 50, end: 70 },
                 Interval { start: 90, end: u16::MAX },
-        ]));
+            ])
+        );
     }
 
     #[test]
@@ -523,13 +460,15 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.insert_range(70..=u16::MAX),
-            (Interval::new(71, u16::MAX).run_len())
-            .into()
+            Interval::new(71, u16::MAX).run_len()
         );
-        assert_eq!(interval_store, IntervalStore(alloc::vec![
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![
                 Interval { start: 10, end: 20 },
                 Interval { start: 50, end: u16::MAX },
-        ]));
+            ])
+        );
     }
 
     #[test]
@@ -540,12 +479,13 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.insert_range(0..=u16::MAX),
-            (Interval::new(0, u16::MAX).run_len()
-             - Interval::new(10, 20).run_len() - Interval::new(50, 70).run_len())
-            .into()
+            Interval::new(0, u16::MAX).run_len()
+                - Interval::new(10, 20).run_len()
+                - Interval::new(50, 70).run_len()
         );
-        assert_eq!(interval_store, IntervalStore(alloc::vec![
-                Interval { start: 0, end: u16::MAX },
-        ]));
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![Interval { start: 0, end: u16::MAX },])
+        );
     }
 }

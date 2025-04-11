@@ -108,6 +108,7 @@ impl Container {
         result
     }
 
+    #[allow(clippy::todo)]
     pub fn remove_smallest(&mut self, n: u64) {
         match &self.store {
             Store::Bitmap(bits) => {
@@ -124,6 +125,7 @@ impl Container {
         };
     }
 
+    #[allow(clippy::todo)]
     pub fn remove_biggest(&mut self, n: u64) {
         match &self.store {
             Store::Bitmap(bits) => {

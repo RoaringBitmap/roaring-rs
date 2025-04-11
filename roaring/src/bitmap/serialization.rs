@@ -1,5 +1,5 @@
 use crate::bitmap::container::{Container, ARRAY_LIMIT};
-use crate::bitmap::store::{Interval, ArrayStore, BitmapStore, Store, BITMAP_LENGTH};
+use crate::bitmap::store::{ArrayStore, BitmapStore, Interval, Store, BITMAP_LENGTH};
 use crate::RoaringBitmap;
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -46,8 +46,8 @@ impl RoaringBitmap {
             .containers
             .iter()
             .map(|container| match container.store {
-                Store::Array(ref values) => 8 + values.len() as usize * ARRAY_ELEMENT_BYTES,
-                Store::Bitmap(..) => 8 + BITMAP_BYTES,
+                Store::Array(ref values) => values.len() as usize * ARRAY_ELEMENT_BYTES,
+                Store::Bitmap(..) => BITMAP_BYTES,
                 Store::Run(ref intervals) => {
                     has_run_containers = true;
                     RUN_NUM_BYTES + (RUN_ELEMENT_BYTES * intervals.len())
@@ -77,13 +77,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb1, rb2);
     /// ```
     pub fn serialize_into<W: io::Write>(&self, mut writer: W) -> io::Result<()> {
-        let has_run_containers = self.containers.iter().any(|c| {
-            if let Store::Run(_) = c.store {
-                true
-            } else {
-                false
-            }
-        });
+        let has_run_containers = self.containers.iter().any(|c| matches!(c.store, Store::Run(_)));
         let size = self.containers.len();
 
         // Depending on if run containers are present or not write the appropriate header
@@ -113,17 +107,20 @@ impl RoaringBitmap {
         }
 
         let mut offset = header_size(size, has_run_containers) as u32;
-        for container in &self.containers {
-            writer.write_u32::<LittleEndian>(offset)?;
-            match container.store {
-                Store::Array(ref values) => {
-                    offset += values.len() as u32 * 2;
-                }
-                Store::Bitmap(..) => {
-                    offset += 8 * 1024;
-                }
-                Store::Run(ref intervals) => {
-                    offset += (RUN_NUM_BYTES + (intervals.len() * RUN_ELEMENT_BYTES)) as u32;
+        let has_offsets = if has_run_containers { size > OFFSET_BYTES } else { true };
+        if has_offsets {
+            for container in &self.containers {
+                writer.write_u32::<LittleEndian>(offset)?;
+                match container.store {
+                    Store::Array(ref values) => {
+                        offset += values.len() as u32 * 2;
+                    }
+                    Store::Bitmap(..) => {
+                        offset += 8 * 1024;
+                    }
+                    Store::Run(ref intervals) => {
+                        offset += (RUN_NUM_BYTES + (intervals.len() * RUN_ELEMENT_BYTES)) as u32;
+                    }
                 }
             }
         }
@@ -273,10 +270,13 @@ impl RoaringBitmap {
                     *len = u16::from_le(*len);
                 });
 
-                let intervals = intervals.into_iter().map(|[start, len]| -> Result<Interval, io::ErrorKind> {
-                    let end = start.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
-                    Ok(Interval { start, end })
-                }).collect::<Result<_, _>>()?;
+                let intervals = intervals
+                    .into_iter()
+                    .map(|[start, len]| -> Result<Interval, io::ErrorKind> {
+                        let end = start.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
+                        Ok(Interval { start, end })
+                    })
+                    .collect::<Result<_, _>>()?;
 
                 Store::Run(intervals)
             } else if cardinality <= ARRAY_LIMIT {

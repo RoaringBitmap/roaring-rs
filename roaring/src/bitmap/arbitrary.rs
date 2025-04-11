@@ -126,6 +126,7 @@ mod test {
     }
 
     impl Debug for Store {
+        #[allow(clippy::todo)]
         fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
             match self {
                 Store::Array(a) => write!(f, "Store({a:?})"),

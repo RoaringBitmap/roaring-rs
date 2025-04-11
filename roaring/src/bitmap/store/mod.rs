@@ -3,6 +3,7 @@ mod bitmap_store;
 mod interval_store;
 
 use alloc::vec;
+use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::mem;
 use core::ops::{
@@ -15,8 +16,8 @@ use self::Store::{Array, Bitmap, Run};
 
 pub(crate) use self::array_store::ArrayStore;
 pub use self::bitmap_store::{BitmapIter, BitmapStore};
-pub(crate) use self::interval_store::Interval;
 use self::interval_store::cmp_index_interval;
+pub(crate) use self::interval_store::Interval;
 
 use crate::bitmap::container::ARRAY_LIMIT;
 
@@ -138,6 +139,7 @@ impl Store {
         }
     }
 
+    #[allow(clippy::todo)]
     pub fn insert_range(&mut self, range: RangeInclusive<u16>) -> u64 {
         // A Range is defined as being of size 0 if start >= end.
         if range.is_empty() {
@@ -154,6 +156,7 @@ impl Store {
     /// Push `index` at the end of the store only if `index` is the new max.
     ///
     /// Returns whether `index` was effectively pushed.
+    #[allow(clippy::todo)]
     pub fn push(&mut self, index: u16) -> bool {
         match self {
             Array(vec) => vec.push(index),
@@ -169,6 +172,7 @@ impl Store {
     /// # Panics
     ///
     /// If debug_assertions enabled and index is > self.max()
+    #[allow(clippy::todo)]
     pub(crate) fn push_unchecked(&mut self, index: u16) {
         match self {
             Array(vec) => vec.push_unchecked(index),
@@ -223,9 +227,9 @@ impl Store {
                 let mut search_end = false;
 
                 for iv in intervals.iter_mut() {
-                    if !search_end && cmp_index_interval(start as u16, *iv) == Ordering::Equal {
-                        count += u64::from(Interval::new(iv.end, start as u16).run_len());
-                        iv.end = start as u16;
+                    if !search_end && cmp_index_interval(start, *iv) == Ordering::Equal {
+                        count += Interval::new(iv.end, start).run_len();
+                        iv.end = start;
                         search_end = true;
                     }
 
@@ -235,14 +239,14 @@ impl Store {
                             Ordering::Less => {
                                 // We invalidate the intervals that are contained in
                                 // the start and end but doesn't touch the bounds.
-                                count += u64::from(iv.run_len());
-                                *iv = Interval::new(u16::max_value(), 0);
+                                count += iv.run_len();
+                                *iv = Interval::new(u16::MAX, 0);
                             }
                             Ordering::Equal => {
                                 // We shrink this interval by moving the start of it to be
                                 // the end bound which is non-inclusive.
-                                count += u64::from(Interval::new(end as u16, iv.start).run_len());
-                                iv.start = end as u16;
+                                count += Interval::new(end, iv.start).run_len();
+                                iv.start = end;
                             }
                             Ordering::Greater => break,
                         }
@@ -258,6 +262,7 @@ impl Store {
         }
     }
 
+    #[allow(clippy::todo)]
     pub fn remove_smallest(&mut self, index: u64) {
         match self {
             Array(vec) => vec.remove_smallest(index),
@@ -266,6 +271,7 @@ impl Store {
         }
     }
 
+    #[allow(clippy::todo)]
     pub fn remove_biggest(&mut self, index: u64) {
         match self {
             Array(vec) => vec.remove_biggest(index),
@@ -278,12 +284,13 @@ impl Store {
         match self {
             Array(vec) => vec.contains(index),
             Bitmap(bits) => bits.contains(index),
-            Run(ref intervals) => intervals
-                .binary_search_by(|iv| cmp_index_interval(index, *iv))
-                .is_ok(),
+            Run(ref intervals) => {
+                intervals.binary_search_by(|iv| cmp_index_interval(index, *iv)).is_ok()
+            }
         }
     }
 
+    #[allow(clippy::todo)]
     pub fn contains_range(&self, range: RangeInclusive<u16>) -> bool {
         match self {
             Array(vec) => vec.contains_range(range),
@@ -304,7 +311,7 @@ impl Store {
                 vec.iter().all(|&i| !bits.contains(i))
             }
             // TODO(jpg) is_disjoint
-            (&Run(ref intervals1), &Run(ref intervals2)) => {
+            (Run(intervals1), Run(intervals2)) => {
                 let (mut i1, mut i2) = (intervals1.iter(), intervals2.iter());
                 let (mut iv1, mut iv2) = (i1.next(), i2.next());
                 loop {
@@ -341,17 +348,18 @@ impl Store {
             (Bitmap(bits1), Bitmap(bits2)) => bits1.is_subset(bits2),
             (Array(vec), Bitmap(bits)) => vec.iter().all(|&i| bits.contains(i)),
             (Bitmap(..), &Array(..)) => false,
-            (&Array(ref vec), run @ &Run(..)) => vec.iter().all(|&i| run.contains(i)),
+            (Array(vec), run @ &Run(..)) => vec.iter().all(|&i| run.contains(i)),
             // TODO(jpg) is subset bitmap, run
-            (&Bitmap(..), &Run(ref _vec)) => unimplemented!(),
+            (Bitmap(..), Run(_vec)) => unimplemented!(),
 
             // TODO(jpg) is_subset run, *
-            (&Run(ref _intervals1), &Run(ref _intervals2)) => unimplemented!(),
-            (&Run(ref _intervals), &Array(ref _vec)) => unimplemented!(),
-            (&Run(ref _intervals), _store @ &Bitmap(..)) => unimplemented!(),
+            (Run(_intervals1), Run(_intervals2)) => unimplemented!(),
+            (Run(_intervals), Array(_vec)) => unimplemented!(),
+            (Run(_intervals), _store @ &Bitmap(..)) => unimplemented!(),
         }
     }
 
+    #[allow(clippy::todo)]
     pub fn intersection_len(&self, other: &Self) -> u64 {
         match (self, other) {
             (Array(vec1), Array(vec2)) => vec1.intersection_len(vec2),
@@ -367,10 +375,11 @@ impl Store {
         match self {
             Array(vec) => vec.len(),
             Bitmap(bits) => bits.len(),
-            Run(ref intervals) => intervals.iter().map(|iv| iv.run_len() as u64).sum(),
+            Run(intervals) => intervals.iter().map(|iv| iv.run_len()).sum(),
         }
     }
 
+    #[allow(clippy::todo)]
     pub fn is_empty(&self) -> bool {
         match self {
             Array(vec) => vec.is_empty(),
@@ -396,6 +405,7 @@ impl Store {
         }
     }
 
+    #[allow(clippy::todo)]
     pub fn rank(&self, index: u16) -> u64 {
         match self {
             Array(vec) => vec.rank(index),
@@ -404,6 +414,7 @@ impl Store {
         }
     }
 
+    #[allow(clippy::todo)]
     pub fn select(&self, n: u16) -> Option<u16> {
         match self {
             Array(vec) => vec.select(n),
@@ -499,14 +510,14 @@ impl Store {
                     current |= current - 1;
 
                     // Find next 0
-                    while current == std::u64::MAX && i < BITMAP_LENGTH as u16 - 1 {
+                    while current == u64::MAX && i < BITMAP_LENGTH as u16 - 1 {
                         i += 1;
                         current = bits.as_array()[i as usize];
                     }
 
                     // Run continues until end of this container
-                    if current == std::u64::MAX {
-                        intervals.push(Interval::new(start, std::u16::MAX));
+                    if current == u64::MAX {
+                        intervals.push(Interval::new(start, u16::MAX));
                         break;
                     }
 
@@ -533,6 +544,7 @@ impl Default for Store {
 impl BitOr<&Store> for &Store {
     type Output = Store;
 
+    #[allow(clippy::todo)]
     fn bitor(self, rhs: &Store) -> Store {
         match (self, rhs) {
             (Array(vec1), Array(vec2)) => Array(BitOr::bitor(vec1, vec2)),
@@ -646,6 +658,7 @@ impl BitOrAssign<Store> for Store {
 }
 
 impl BitOrAssign<&Store> for Store {
+    #[allow(clippy::todo)]
     fn bitor_assign(&mut self, rhs: &Store) {
         match (self, rhs) {
             (&mut Array(ref mut vec1), Array(vec2)) => {
@@ -757,6 +770,7 @@ impl BitAndAssign<Store> for Store {
 
 impl BitAndAssign<&Store> for Store {
     #[allow(clippy::suspicious_op_assign_impl)]
+    #[allow(clippy::todo)]
     fn bitand_assign(&mut self, rhs: &Store) {
         match (self, rhs) {
             (&mut Array(ref mut vec1), Array(vec2)) => {
@@ -819,17 +833,17 @@ impl SubAssign<&Store> for Store {
             (&mut Array(ref mut vec1), Bitmap(bits2)) => {
                 SubAssign::sub_assign(vec1, bits2);
             }
-            (ref mut this @ &mut Bitmap(..), &Run(ref intervals)) => {
+            (ref mut this @ &mut Bitmap(..), Run(intervals)) => {
                 for iv in intervals {
                     this.remove_range(iv.start..=iv.end);
                 }
             }
-            (ref mut this @ &mut Run(..), &Run(ref intervals2)) => {
+            (ref mut this @ &mut Run(..), Run(intervals2)) => {
                 for iv in intervals2 {
                     this.remove_range(iv.start..=iv.end);
                 }
             }
-            (ref mut this @ &mut Run(..), &Array(ref vec)) => {
+            (ref mut this @ &mut Run(..), Array(vec)) => {
                 for i in vec.iter() {
                     this.remove(*i);
                 }
@@ -861,6 +875,7 @@ impl BitXor<&Store> for &Store {
 }
 
 impl BitXorAssign<Store> for Store {
+    #[allow(clippy::todo)]
     fn bitxor_assign(&mut self, mut rhs: Store) {
         match (self, &mut rhs) {
             (&mut Array(ref mut vec1), &mut Array(ref vec2)) => {
@@ -890,7 +905,7 @@ impl BitXorAssign<&Store> for Store {
                 *vec1 = BitXor::bitxor(&this, vec2);
             }
             // TODO(jpg) symmetric_difference_with array, run
-            (&mut Array(ref mut _vec), &Run(ref _intervals)) => unimplemented!(),
+            (&mut Array(ref mut _vec), Run(_intervals)) => unimplemented!(),
             (&mut Bitmap(ref mut bits1), Array(vec2)) => {
                 BitXorAssign::bitxor_assign(bits1, vec2);
             }
@@ -898,10 +913,10 @@ impl BitXorAssign<&Store> for Store {
                 BitXorAssign::bitxor_assign(bits1, bits2);
             }
             // TODO(jpg) symmetric_difference_with bitmap, run
-            (ref mut _this @ &mut Bitmap(..), &Run(ref _vec)) => unimplemented!(),
+            (ref mut _this @ &mut Bitmap(..), Run(_vec)) => unimplemented!(),
             // TODO(jpg) symmetric_difference_with run, *
-            (&mut Run(ref mut _intervals1), &Run(ref _intervals2)) => unimplemented!(),
-            (&mut Run(ref mut _intervals), &Array(ref _vec)) => unimplemented!(),
+            (&mut Run(ref mut _intervals1), Run(_intervals2)) => unimplemented!(),
+            (&mut Run(ref mut _intervals), Array(_vec)) => unimplemented!(),
             (_this @ &mut Run(..), &Bitmap(..)) => unimplemented!(),
             (this @ &mut Array(..), Bitmap(bits2)) => {
                 let mut lhs: Store = Bitmap(bits2.clone());
@@ -944,7 +959,7 @@ impl PartialEq for Store {
                 bits1.len() == bits2.len()
                     && bits1.iter().zip(bits2.iter()).all(|(i1, i2)| i1 == i2)
             }
-            (&Run(ref intervals1), &Run(ref intervals2)) => intervals1 == intervals2,
+            (Run(intervals1), Run(ref intervals2)) => intervals1 == intervals2,
             _ => false,
         }
     }
@@ -952,16 +967,12 @@ impl PartialEq for Store {
 
 impl RunIter {
     fn new(intervals: Vec<Interval>) -> RunIter {
-        RunIter {
-            run: 0,
-            offset: 0,
-            intervals,
-        }
+        RunIter { run: 0, offset: 0, intervals }
     }
 
     fn move_next(&mut self) {
         self.offset += 1;
-        if self.offset == self.intervals[self.run].run_len().into() {
+        if self.offset == self.intervals[self.run].run_len() {
             self.offset = 0;
             self.run += 1;
         }
@@ -981,11 +992,15 @@ impl Iterator for RunIter {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        panic!("Should never be called (roaring::Iter caches the size_hint itself)")
+        let remaining_size =
+            self.intervals[self.run..].iter().map(|f| f.run_len()).sum::<u64>() - self.offset;
+        let as_usize: Result<usize, _> = remaining_size.try_into();
+        (as_usize.unwrap_or(usize::MAX), as_usize.ok())
     }
 }
 
 impl DoubleEndedIterator for RunIter {
+    #[allow(clippy::todo)]
     fn next_back(&mut self) -> Option<Self::Item> {
         todo!()
     }
@@ -993,6 +1008,7 @@ impl DoubleEndedIterator for RunIter {
 
 impl Iter<'_> {
     /// Advance the iterator to the first value greater than or equal to `n`.
+    #[allow(clippy::todo)]
     pub(crate) fn advance_to(&mut self, n: u16) {
         match self {
             Iter::Array(inner) => {
@@ -1013,6 +1029,7 @@ impl Iter<'_> {
         }
     }
 
+    #[allow(clippy::todo)]
     pub(crate) fn advance_back_to(&mut self, n: u16) {
         match self {
             Iter::Array(inner) => {

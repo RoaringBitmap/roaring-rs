@@ -356,7 +356,6 @@ impl BitmapStore {
         BitmapIter::new(self.bits)
     }
 
-    #[cfg(feature = "std")]
     pub fn as_array(&self) -> &[u64; BITMAP_LENGTH] {
         &self.bits
     }

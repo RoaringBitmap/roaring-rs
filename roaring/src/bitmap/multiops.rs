@@ -385,6 +385,7 @@ fn try_multi_xor_ref<'a, E: 'a>(
     Ok(RoaringBitmap { containers })
 }
 
+#[allow(clippy::todo)]
 fn merge_container_ref<'a>(
     containers: &mut Vec<Cow<'a, Container>>,
     rhs: &'a [Container],
