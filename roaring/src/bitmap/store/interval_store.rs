@@ -275,6 +275,117 @@ impl IntervalStore {
             })
             .is_ok()
     }
+
+    pub fn remove_range(&mut self, range: RangeInclusive<u16>) -> u64 {
+        let interval = Interval { start: *range.start(), end: *range.end() };
+        let first_interval =
+            self.0.binary_search_by(|iv| cmp_index_interval(interval.start, *iv).reverse());
+        let end_interval =
+            self.0.binary_search_by(|iv| cmp_index_interval(interval.end, *iv).reverse());
+        struct IdValue {
+            index: usize,
+            value: u16,
+        }
+        struct IntervalRange {
+            drain_range: core::ops::Range<usize>,
+            begin_value: Option<IdValue>,
+            end_value: Option<IdValue>,
+            residual_count: u64,
+        }
+        let todo = match (first_interval, end_interval) {
+            // both start and end index are contained in intervals
+            (Ok(begin), Ok(end)) => {
+                if self.0[begin].start == interval.start && self.0[end].end == interval.end {
+                    IntervalRange {
+                        drain_range: begin..end + 1,
+                        begin_value: None,
+                        end_value: None,
+                        residual_count: 0,
+                    }
+                } else if self.0[begin].start == interval.start {
+                    IntervalRange {
+                        drain_range: begin..end,
+                        begin_value: None,
+                        end_value: Some(IdValue { index: end, value: interval.end + 1 }),
+                        residual_count: Interval::new(self.0[end].start, interval.end).run_len(),
+                    }
+                } else if self.0[end].end == interval.end {
+                    IntervalRange {
+                        drain_range: begin + 1..end + 1,
+                        begin_value: Some(IdValue { index: begin, value: interval.start - 1 }),
+                        end_value: None,
+                        residual_count: Interval::new(interval.start, self.0[begin].end).run_len(),
+                    }
+                } else {
+                    IntervalRange {
+                        drain_range: begin + 1..end,
+                        begin_value: Some(IdValue { index: begin, value: interval.start - 1 }),
+                        end_value: Some(IdValue { index: end, value: interval.end + 1 }),
+                        residual_count: Interval::new(self.0[end].start, interval.end).run_len()
+                            + Interval::new(interval.start, self.0[begin].end).run_len(),
+                    }
+                }
+            }
+            // start index is contained in an interval,
+            // end index is not
+            (Ok(begin), Err(to_insert)) => {
+                let end = if to_insert == self.0.len() { self.0.len() - 1 } else { to_insert };
+                if self.0[begin].start == interval.start {
+                    IntervalRange {
+                        drain_range: begin..end,
+                        begin_value: None,
+                        end_value: None,
+                        residual_count: 0,
+                    }
+                } else {
+                    IntervalRange {
+                        drain_range: begin + 1..end + 1,
+                        begin_value: Some(IdValue { index: begin, value: interval.start - 1 }),
+                        end_value: None,
+                        residual_count: Interval::new(interval.start, self.0[begin].end).run_len(),
+                    }
+                }
+            }
+            // there is no interval that contains the start index,
+            // there is an interval that contains the end index,
+            (Err(begin), Ok(end)) => {
+                if self.0[begin].end == interval.end {
+                    IntervalRange {
+                        drain_range: begin..end + 1,
+                        begin_value: None,
+                        end_value: None,
+                        residual_count: 0,
+                    }
+                } else {
+                    IntervalRange {
+                        drain_range: begin..end,
+                        begin_value: None,
+                        end_value: Some(IdValue { index: end, value: interval.end + 1 }),
+                        residual_count: Interval::new(self.0[end].start, interval.end).run_len(),
+                    }
+                }
+            }
+            (Err(begin), Err(to_end)) => {
+                let end = if to_end == self.0.len() { self.0.len() - 1 } else { to_end };
+                IntervalRange {
+                    drain_range: begin..end + 1,
+                    begin_value: None,
+                    end_value: None,
+                    residual_count: 0,
+                }
+            }
+        };
+        let count = self.0[todo.drain_range.clone()].iter().map(|f| f.run_len()).sum::<u64>()
+            + todo.residual_count;
+        if let Some(IdValue { index, value }) = todo.begin_value {
+            self.0[index].end = value;
+        }
+        if let Some(IdValue { index, value }) = todo.end_value {
+            self.0[index].start = value;
+        }
+        self.0.drain(todo.drain_range);
+        count
+    }
 }
 
 /// This interval is inclusive to end.
@@ -629,5 +740,142 @@ mod tests {
             interval_store,
             IntervalStore(alloc::vec![Interval { start: 50, end: u16::MAX - 1 },])
         );
+    }
+
+    #[test]
+    fn remove_range_exact_one() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 40, end: 60 },]);
+        assert_eq!(interval_store.remove_range(40..=60), 21);
+        assert_eq!(interval_store, IntervalStore(alloc::vec![]));
+    }
+
+    #[test]
+    fn remove_range_exact_many() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 40, end: 60 },
+            Interval { start: 80, end: 90 },
+            Interval { start: 100, end: 200 },
+        ]);
+        assert_eq!(
+            interval_store.remove_range(40..=200),
+            Interval::new(40, 60).run_len()
+                + Interval::new(80, 90).run_len()
+                + Interval::new(100, 200).run_len()
+        );
+        assert_eq!(interval_store, IntervalStore(alloc::vec![]));
+    }
+
+    #[test]
+    fn remove_range_begin_exact_overlap_end_one() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 40, end: 60 },
+            Interval { start: 70, end: 90 },
+        ]);
+        assert_eq!(
+            interval_store.remove_range(40..=80),
+            Interval::new(40, 60).run_len() + Interval::new(70, 80).run_len()
+        );
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 81, end: 90 },]));
+    }
+
+    #[test]
+    fn remove_range_begin_overlap_end_exact_one() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 40, end: 60 },
+            Interval { start: 70, end: 90 },
+        ]);
+        assert_eq!(
+            interval_store.remove_range(50..=90),
+            Interval::new(70, 90).run_len() + Interval::new(50, 60).run_len()
+        );
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 40, end: 49 },]));
+    }
+
+    #[test]
+    fn remove_range_both_overlap() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 40, end: 60 },
+            Interval { start: 70, end: 90 },
+        ]);
+        assert_eq!(
+            interval_store.remove_range(50..=80),
+            Interval::new(70, 80).run_len() + Interval::new(50, 60).run_len()
+        );
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![
+                Interval { start: 40, end: 49 },
+                Interval { start: 81, end: 90 },
+            ])
+        );
+    }
+
+    #[test]
+    fn remove_range_begin_overlap() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 40, end: 60 },]);
+        assert_eq!(interval_store.remove_range(50..=100), Interval::new(50, 60).run_len());
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 40, end: 49 },]));
+    }
+
+    #[test]
+    fn remove_range_begin_overlap_many() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 40, end: 60 },
+            Interval { start: 80, end: 100 },
+            Interval { start: 200, end: 500 },
+        ]);
+        assert_eq!(
+            interval_store.remove_range(50..=1000),
+            Interval::new(50, 60).run_len()
+                + Interval::new(80, 100).run_len()
+                + Interval::new(200, 500).run_len()
+        );
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 40, end: 49 },]));
+    }
+
+    #[test]
+    fn remove_range_end_overlap() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 40, end: 60 },]);
+        assert_eq!(interval_store.remove_range(20..=50), Interval::new(40, 50).run_len());
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 51, end: 60 },]));
+    }
+
+    #[test]
+    fn remove_range_end_overlap_many() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 40, end: 60 },
+            Interval { start: 100, end: 500 },
+            Interval { start: 800, end: 900 },
+        ]);
+        assert_eq!(
+            interval_store.remove_range(20..=850),
+            Interval::new(40, 60).run_len()
+                + Interval::new(100, 500).run_len()
+                + Interval::new(800, 850).run_len()
+        );
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 851, end: 900 },]));
+    }
+
+    #[test]
+    fn remove_range_no_overlap() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 40, end: 60 },]);
+        assert_eq!(interval_store.remove_range(20..=80), Interval::new(40, 60).run_len());
+        assert_eq!(interval_store, IntervalStore(alloc::vec![]));
+    }
+
+    #[test]
+    fn remove_range_no_overlap_many() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 40, end: 60 },
+            Interval { start: 400, end: 600 },
+            Interval { start: 4000, end: 6000 },
+        ]);
+        assert_eq!(
+            interval_store.remove_range(20..=60000),
+            Interval::new(40, 60).run_len()
+                + Interval::new(400, 600).run_len()
+                + Interval::new(4000, 6000).run_len()
+        );
+        assert_eq!(interval_store, IntervalStore(alloc::vec![]));
     }
 }
