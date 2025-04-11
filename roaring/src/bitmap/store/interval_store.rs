@@ -229,6 +229,23 @@ impl IntervalStore {
             }
         }
     }
+
+    pub fn push(&mut self, index: u16) -> bool {
+        if let Some(last_interval) = self.0.last_mut() {
+            if last_interval.end.checked_add(1).map(|f| f == index).unwrap_or(false) {
+                last_interval.end = index;
+                true
+            } else if last_interval.end < index {
+                self.0.push(Interval::new(index, index));
+                true
+            } else {
+                false
+            }
+        } else {
+            self.0.push(Interval::new(index, index));
+            true
+        }
+    }
 }
 
 /// This interval is inclusive to end.
@@ -486,6 +503,58 @@ mod tests {
         assert_eq!(
             interval_store,
             IntervalStore(alloc::vec![Interval { start: 0, end: u16::MAX },])
+        );
+    }
+
+    #[test]
+    fn push_new_max() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 50, end: 70 },]);
+        assert!(interval_store.push(80));
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![
+                Interval { start: 50, end: 70 },
+                Interval { start: 80, end: 80 },
+            ])
+        );
+    }
+
+    #[test]
+    fn push_new_max_consecutive() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 50, end: 70 },]);
+        assert!(interval_store.push(71));
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 50, end: 71 },]));
+    }
+
+    #[test]
+    fn push_existing() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 50, end: 70 },]);
+        assert!(!interval_store.push(60));
+        assert_eq!(interval_store, interval_store);
+    }
+
+    #[test]
+    fn push_non_existing_non_max() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 50, end: 70 },]);
+        assert!(!interval_store.push(10));
+        assert_eq!(interval_store, interval_store);
+    }
+
+    #[test]
+    fn push_existing_u16_max() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 50, end: u16::MAX },]);
+        assert!(!interval_store.push(u16::MAX));
+        assert_eq!(interval_store, interval_store);
+    }
+
+    #[test]
+    fn push_new_u16_max() {
+        let mut interval_store =
+            IntervalStore(alloc::vec![Interval { start: 50, end: u16::MAX - 1 },]);
+        assert!(interval_store.push(u16::MAX));
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![Interval { start: 50, end: u16::MAX },])
         );
     }
 }
