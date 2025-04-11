@@ -246,6 +246,35 @@ impl IntervalStore {
             true
         }
     }
+
+    pub fn remove(&mut self, index: u16) -> bool {
+        self.0
+            .binary_search_by(|iv| cmp_index_interval(index, *iv).reverse())
+            .map(|loc| {
+                // loc always points to an interval
+                let equal_to_start = self.0[loc].start == index;
+                let equal_to_end = self.0[loc].end == index;
+                if index == self.0[loc].start && index == self.0[loc].end {
+                    // Remove entire run if it only contains this value
+                    self.0.remove(loc);
+                } else if index == self.0[loc].end {
+                    // Value is last in this interval
+                    self.0[loc].end = index - 1;
+                } else if index == self.0[loc].start {
+                    // Value is first in this interval
+                    self.0[loc].start = index + 1;
+                } else {
+                    // Value lies inside the interval, we need to split it
+                    // First construct a new interval with the right part
+                    let new_interval = Interval::new(index + 1, self.0[loc].end);
+                    // Then shrink the current interval
+                    self.0[loc].end = index - 1;
+                    // Then insert the new interval leaving gap where value was removed
+                    self.0.insert(loc + 1, new_interval);
+                }
+            })
+            .is_ok()
+    }
 }
 
 /// This interval is inclusive to end.
@@ -555,6 +584,50 @@ mod tests {
         assert_eq!(
             interval_store,
             IntervalStore(alloc::vec![Interval { start: 50, end: u16::MAX },])
+        );
+    }
+
+    #[test]
+    fn remove_end_of_interval() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 50, end: 60 },]);
+        assert!(interval_store.remove(60));
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 50, end: 59 },]));
+    }
+
+    #[test]
+    fn remove_begin_of_interval() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 50, end: 60 },]);
+        assert!(interval_store.remove(50));
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 51, end: 60 },]));
+    }
+
+    #[test]
+    fn remove_middle() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 1, end: 3 },]);
+        assert!(interval_store.remove(2));
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![
+                Interval { start: 1, end: 1 },
+                Interval { start: 3, end: 3 },
+            ])
+        );
+    }
+
+    #[test]
+    fn remove_nothing() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 50, end: 60 },]);
+        assert!(!interval_store.remove(90));
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 50, end: 60 },]));
+    }
+
+    #[test]
+    fn remove_u16_max() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 50, end: u16::MAX },]);
+        assert!(interval_store.remove(u16::MAX));
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![Interval { start: 50, end: u16::MAX - 1 },])
         );
     }
 }
