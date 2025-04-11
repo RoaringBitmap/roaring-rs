@@ -386,6 +386,30 @@ impl IntervalStore {
         self.0.drain(todo.drain_range);
         count
     }
+
+    pub fn remove_smallest(&mut self, mut amount: u64) {
+        let mut remove_to = 0;
+        let mut last_interval = None;
+        for (i, interval) in self.0.iter_mut().enumerate() {
+            let too_much = interval.run_len() < amount;
+            if too_much {
+                amount -= interval.run_len();
+            }
+            remove_to = i;
+            last_interval = Some(interval);
+            if !too_much {
+                break;
+            }
+        }
+        if let Some(last_interval) = last_interval {
+            if last_interval.run_len() < amount {
+                remove_to += 1;
+            } else {
+                last_interval.start += amount as u16;
+            }
+        }
+        self.0.drain(..remove_to);
+    }
 }
 
 /// This interval is inclusive to end.
@@ -877,5 +901,37 @@ mod tests {
                 + Interval::new(4000, 6000).run_len()
         );
         assert_eq!(interval_store, IntervalStore(alloc::vec![]));
+    }
+
+    #[test]
+    fn remove_smallest_one() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 40, end: 60 },]);
+        interval_store.remove_smallest(500);
+        assert_eq!(interval_store, IntervalStore(alloc::vec![]));
+    }
+
+    #[test]
+    fn remove_smallest_many_1() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 0, end: 99 },
+            Interval { start: 400, end: 600 },
+            Interval { start: 4000, end: 6000 },
+        ]);
+        interval_store.remove_smallest(200);
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![Interval::new(500, 600), Interval::new(4000, 6000),])
+        );
+    }
+
+    #[test]
+    fn remove_smallest_many_2() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 0, end: 99 },
+            Interval { start: 400, end: 599 },
+            Interval { start: 4000, end: 6000 },
+        ]);
+        interval_store.remove_smallest(500);
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new(4200, 6000),]));
     }
 }
