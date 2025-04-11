@@ -410,6 +410,29 @@ impl IntervalStore {
         }
         self.0.drain(..remove_to);
     }
+
+    pub fn remove_biggest(&mut self, mut amount: u64) {
+        let mut remove_to = 0;
+        let mut last_interval = None;
+        for (i, interval) in self.0.iter_mut().enumerate().rev() {
+            let too_much = interval.run_len() < amount;
+            if too_much {
+                amount -= interval.run_len();
+            }
+            remove_to = i;
+            last_interval = Some(interval);
+            if !too_much {
+                break;
+            }
+        }
+        if let Some(last_interval) = last_interval {
+            if last_interval.run_len() >= amount {
+                remove_to += 1;
+                last_interval.end -= amount as u16;
+            }
+        }
+        self.0.drain(remove_to..);
+    }
 }
 
 /// This interval is inclusive to end.
@@ -933,5 +956,37 @@ mod tests {
         ]);
         interval_store.remove_smallest(500);
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new(4200, 6000),]));
+    }
+
+    #[test]
+    fn remove_biggest_one() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 40, end: 60 },]);
+        interval_store.remove_biggest(500);
+        assert_eq!(interval_store, IntervalStore(alloc::vec![]));
+    }
+
+    #[test]
+    fn remove_biggest_many_1() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 0, end: 99 },
+            Interval { start: 400, end: 600 },
+            Interval { start: 5901, end: 6000 },
+        ]);
+        interval_store.remove_biggest(200);
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![Interval::new(0, 99), Interval::new(400, 500),])
+        );
+    }
+
+    #[test]
+    fn remove_biggest_many_2() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 1, end: 6000 },
+            Interval { start: 8401, end: 8600 },
+            Interval { start: 9901, end: 10000 },
+        ]);
+        interval_store.remove_biggest(500);
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new(1, 5800),]));
     }
 }
