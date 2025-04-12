@@ -563,6 +563,20 @@ impl IntervalStore {
     pub fn max(&self) -> Option<u16> {
         self.0.last().map(|f| f.end)
     }
+
+    pub fn rank(&self, value: u16) -> u64 {
+        let mut rank = 0;
+        for iv in self.0.iter() {
+            if iv.end <= value {
+                rank += iv.run_len();
+            } else if iv.start <= value {
+                rank += Interval::new(iv.start, value).run_len();
+            } else {
+                break;
+            }
+        }
+        rank
+    }
 }
 
 /// This interval is inclusive to end.
@@ -632,8 +646,6 @@ impl Interval {
 
 #[cfg(test)]
 mod tests {
-    use proptest::bits::BitSetLike;
-
     use super::*;
 
     #[test]
@@ -1245,7 +1257,7 @@ mod tests {
     fn is_disjoint_bitmap_store_1() {
         let mut bitmap_store = BitmapStore::new();
         for to_set in [500, 5001, 20, 40] {
-            bitmap_store.set(to_set);
+            bitmap_store.insert(to_set);
         }
         let interval_store = IntervalStore(alloc::vec![
             Interval { start: 1000, end: 4000 },
@@ -1258,7 +1270,7 @@ mod tests {
     fn is_disjoint_bitmap_store_2() {
         let mut bitmap_store = BitmapStore::new();
         for to_set in [500, 5001, 20, 40] {
-            bitmap_store.set(to_set);
+            bitmap_store.insert(to_set);
         }
         let interval_store = IntervalStore(alloc::vec![Interval { start: 1, end: 400 },]);
         assert!(!interval_store.is_disjoint_bitmap(&bitmap_store));
@@ -1367,7 +1379,7 @@ mod tests {
     fn intersection_len_bitmap_1() {
         let mut bitmap_store = BitmapStore::new();
         for to_set in [500, 5001, 20, 40, 60] {
-            bitmap_store.set(to_set);
+            bitmap_store.insert(to_set);
         }
         let interval_store_1 = IntervalStore(alloc::vec![Interval { start: 20, end: 600 },]);
         let intersect_len = 4;
@@ -1378,7 +1390,7 @@ mod tests {
     fn intersection_len_bitmap_2() {
         let mut bitmap_store = BitmapStore::new();
         for to_set in 0..200 {
-            bitmap_store.set(to_set);
+            bitmap_store.insert(to_set);
         }
         let interval_store_1 = IntervalStore(alloc::vec![Interval { start: 20, end: 600 },]);
         let intersect_len = 200 - 20;
@@ -1446,5 +1458,19 @@ mod tests {
     fn max_1() {
         let interval_store = IntervalStore(alloc::vec![]);
         assert_eq!(interval_store.max(), None);
+    }
+
+    #[test]
+    fn rank() {
+        let interval_store = IntervalStore(alloc::vec![
+            Interval::new(0, 200),
+            Interval::new(5000, 7000),
+            Interval::new(8000, 10000),
+        ]);
+        assert_eq!(
+            interval_store.rank(5020),
+            Interval::new(0, 200).run_len() + Interval::new(5000, 5020).run_len()
+        );
+        assert_eq!(interval_store.rank(u16::MAX), interval_store.len());
     }
 }
