@@ -437,6 +437,19 @@ impl IntervalStore {
     pub fn contains(&self, index: u16) -> bool {
         self.0.binary_search_by(|iv| cmp_index_interval(index, *iv).reverse()).is_ok()
     }
+
+    pub fn contains_range(&self, range: RangeInclusive<u16>) -> bool {
+        let interval = Interval::new(*range.start(), *range.end());
+        let start = self.0.binary_search_by(|iv| cmp_index_interval(interval.start, *iv).reverse());
+        let end = self.0.binary_search_by(|iv| cmp_index_interval(interval.end, *iv).reverse());
+        match (start, end) {
+            // both start and end are inside an interval,
+            // check if this interval is that same interval.
+            // If this is not the case then this range is not contained in this store
+            (Ok(start_id), Ok(end_id)) => start_id == end_id,
+            _ => false,
+        }
+    }
 }
 
 /// This interval is inclusive to end.
@@ -997,7 +1010,7 @@ mod tests {
     #[test]
     fn contains_index_1() {
         let mut interval_store = IntervalStore(alloc::vec![
-            Interval { start: 1, end: 6000 },
+            Interval { start: 1, end: 600 },
             Interval { start: 1401, end: 1600 },
             Interval { start: 15901, end: 16000 },
         ]);
@@ -1008,10 +1021,40 @@ mod tests {
     #[test]
     fn contains_index_2() {
         let mut interval_store = IntervalStore(alloc::vec![
-            Interval { start: 1, end: 6000 },
+            Interval { start: 1, end: 600 },
             Interval { start: 1401, end: 1600 },
             Interval { start: 15901, end: 16000 },
         ]);
         assert!(!interval_store.contains(0));
+    }
+
+    #[test]
+    fn contains_range_1() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 1, end: 600 },
+            Interval { start: 1401, end: 1600 },
+            Interval { start: 15901, end: 16000 },
+        ]);
+        assert!(interval_store.contains_range(1..=500));
+    }
+
+    #[test]
+    fn contains_range_2() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 1, end: 600 },
+            Interval { start: 1401, end: 1600 },
+            Interval { start: 15901, end: 16000 },
+        ]);
+        assert!(!interval_store.contains_range(1..=1500));
+    }
+
+    #[test]
+    fn contains_range_3() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 1, end: 600 },
+            Interval { start: 1401, end: 1600 },
+            Interval { start: 15901, end: 16000 },
+        ]);
+        assert!(interval_store.contains_range(1..=1));
     }
 }
