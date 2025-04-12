@@ -551,6 +551,10 @@ impl IntervalStore {
     pub fn len(&self) -> u64 {
         self.0.iter().map(|iv| iv.run_len()).sum()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 /// This interval is inclusive to end.
@@ -1124,7 +1128,7 @@ mod tests {
 
     #[test]
     fn contains_index_1() {
-        let mut interval_store = IntervalStore(alloc::vec![
+        let interval_store = IntervalStore(alloc::vec![
             Interval { start: 1, end: 600 },
             Interval { start: 1401, end: 1600 },
             Interval { start: 15901, end: 16000 },
@@ -1135,7 +1139,7 @@ mod tests {
 
     #[test]
     fn contains_index_2() {
-        let mut interval_store = IntervalStore(alloc::vec![
+        let interval_store = IntervalStore(alloc::vec![
             Interval { start: 1, end: 600 },
             Interval { start: 1401, end: 1600 },
             Interval { start: 15901, end: 16000 },
@@ -1145,7 +1149,7 @@ mod tests {
 
     #[test]
     fn contains_range_1() {
-        let mut interval_store = IntervalStore(alloc::vec![
+        let interval_store = IntervalStore(alloc::vec![
             Interval { start: 1, end: 600 },
             Interval { start: 1401, end: 1600 },
             Interval { start: 15901, end: 16000 },
@@ -1155,7 +1159,7 @@ mod tests {
 
     #[test]
     fn contains_range_2() {
-        let mut interval_store = IntervalStore(alloc::vec![
+        let interval_store = IntervalStore(alloc::vec![
             Interval { start: 1, end: 600 },
             Interval { start: 1401, end: 1600 },
             Interval { start: 15901, end: 16000 },
@@ -1165,7 +1169,7 @@ mod tests {
 
     #[test]
     fn contains_range_3() {
-        let mut interval_store = IntervalStore(alloc::vec![
+        let interval_store = IntervalStore(alloc::vec![
             Interval { start: 1, end: 600 },
             Interval { start: 1401, end: 1600 },
             Interval { start: 15901, end: 16000 },
@@ -1175,12 +1179,12 @@ mod tests {
 
     #[test]
     fn is_disjoint_1() {
-        let mut interval_store_1 = IntervalStore(alloc::vec![
+        let interval_store_1 = IntervalStore(alloc::vec![
             Interval { start: 1, end: 600 },
             Interval { start: 1401, end: 1600 },
             Interval { start: 15901, end: 16000 },
         ]);
-        let mut interval_store_2 = IntervalStore(alloc::vec![Interval { start: 601, end: 1200 },]);
+        let interval_store_2 = IntervalStore(alloc::vec![Interval { start: 601, end: 1200 },]);
         assert!(!interval_store_1.is_disjoint(&interval_store_1));
         assert!(!interval_store_2.is_disjoint(&interval_store_2));
         assert!(interval_store_1.is_disjoint(&interval_store_2));
@@ -1189,12 +1193,12 @@ mod tests {
 
     #[test]
     fn is_disjoint_2() {
-        let mut interval_store_1 = IntervalStore(alloc::vec![
+        let interval_store_1 = IntervalStore(alloc::vec![
             Interval { start: 1, end: 600 },
             Interval { start: 1401, end: 1600 },
             Interval { start: 15901, end: 16000 },
         ]);
-        let mut interval_store_2 = IntervalStore(alloc::vec![Interval { start: 600, end: 1200 },]);
+        let interval_store_2 = IntervalStore(alloc::vec![Interval { start: 600, end: 1200 },]);
         assert!(!interval_store_1.is_disjoint(&interval_store_1));
         assert!(!interval_store_2.is_disjoint(&interval_store_2));
         assert!(!interval_store_1.is_disjoint(&interval_store_2));
@@ -1203,12 +1207,12 @@ mod tests {
 
     #[test]
     fn is_disjoint_3() {
-        let mut interval_store_1 = IntervalStore(alloc::vec![
+        let interval_store_1 = IntervalStore(alloc::vec![
             Interval { start: 1, end: 600 },
             Interval { start: 1401, end: 1600 },
             Interval { start: 15901, end: 16000 },
         ]);
-        let mut interval_store_2 =
+        let interval_store_2 =
             IntervalStore(alloc::vec![Interval { start: 15800, end: 15905 },]);
         assert!(!interval_store_1.is_disjoint(&interval_store_1));
         assert!(!interval_store_2.is_disjoint(&interval_store_2));
@@ -1218,15 +1222,15 @@ mod tests {
 
     #[test]
     fn is_disjoint_array_store_1() {
-        let mut array_store = ArrayStore::from_vec_unchecked(alloc::vec![0, 60, 200, 500,]);
-        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 70, end: 199 },]);
+        let array_store = ArrayStore::from_vec_unchecked(alloc::vec![0, 60, 200, 500,]);
+        let interval_store = IntervalStore(alloc::vec![Interval { start: 70, end: 199 },]);
         assert!(interval_store.is_disjoint_array(&array_store));
     }
 
     #[test]
     fn is_disjoint_array_store_2() {
-        let mut array_store = ArrayStore::from_vec_unchecked(alloc::vec![0, 60, 200, 500,]);
-        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 1, end: 400 },]);
+        let array_store = ArrayStore::from_vec_unchecked(alloc::vec![0, 60, 200, 500,]);
+        let interval_store = IntervalStore(alloc::vec![Interval { start: 1, end: 400 },]);
         assert!(!interval_store.is_disjoint_array(&array_store));
     }
 
@@ -1236,7 +1240,7 @@ mod tests {
         for to_set in [500, 5001, 20, 40] {
             bitmap_store.set(to_set);
         }
-        let mut interval_store = IntervalStore(alloc::vec![
+        let interval_store = IntervalStore(alloc::vec![
             Interval { start: 1000, end: 4000 },
             Interval { start: 8000, end: 10000 },
         ]);
@@ -1249,14 +1253,14 @@ mod tests {
         for to_set in [500, 5001, 20, 40] {
             bitmap_store.set(to_set);
         }
-        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 1, end: 400 },]);
+        let interval_store = IntervalStore(alloc::vec![Interval { start: 1, end: 400 },]);
         assert!(!interval_store.is_disjoint_bitmap(&bitmap_store));
     }
 
     #[test]
     fn is_subset_1() {
-        let mut interval_store_1 = IntervalStore(alloc::vec![Interval { start: 1500, end: 1600 },]);
-        let mut interval_store_2 = IntervalStore(alloc::vec![
+        let interval_store_1 = IntervalStore(alloc::vec![Interval { start: 1500, end: 1600 },]);
+        let interval_store_2 = IntervalStore(alloc::vec![
             Interval { start: 1, end: 600 },
             Interval { start: 1401, end: 1600 },
             Interval { start: 15901, end: 16000 },
@@ -1269,8 +1273,8 @@ mod tests {
 
     #[test]
     fn is_subset_2() {
-        let mut interval_store_1 = IntervalStore(alloc::vec![Interval { start: 50, end: 700 },]);
-        let mut interval_store_2 = IntervalStore(alloc::vec![
+        let interval_store_1 = IntervalStore(alloc::vec![Interval { start: 50, end: 700 },]);
+        let interval_store_2 = IntervalStore(alloc::vec![
             Interval { start: 1, end: 600 },
             Interval { start: 1401, end: 1600 },
             Interval { start: 15901, end: 16000 },
@@ -1307,12 +1311,12 @@ mod tests {
 
     #[test]
     fn intersection_len_1() {
-        let mut interval_store_1 = IntervalStore(alloc::vec![
+        let interval_store_1 = IntervalStore(alloc::vec![
             Interval { start: 11, end: 20 },
             Interval { start: 51, end: 80 },
             Interval { start: 111, end: 120 },
         ]);
-        let mut interval_store_2 = IntervalStore(alloc::vec![
+        let interval_store_2 = IntervalStore(alloc::vec![
             Interval { start: 1, end: 20 },
             Interval { start: 41, end: 80 },
             Interval { start: 101, end: 120 },
@@ -1327,12 +1331,12 @@ mod tests {
 
     #[test]
     fn intersection_len_2() {
-        let mut interval_store_1 = IntervalStore(alloc::vec![
+        let interval_store_1 = IntervalStore(alloc::vec![
             Interval { start: 11, end: 20 },
             Interval { start: 51, end: 80 },
             Interval { start: 111, end: 120 },
         ]);
-        let mut interval_store_2 = IntervalStore(alloc::vec![
+        let interval_store_2 = IntervalStore(alloc::vec![
             Interval { start: 1, end: 80 },
             Interval { start: 101, end: 120 },
         ]);
@@ -1345,8 +1349,8 @@ mod tests {
 
     #[test]
     fn intersection_len_3() {
-        let mut interval_store_1 = IntervalStore(alloc::vec![Interval { start: 1, end: 2000 },]);
-        let mut interval_store_2 = IntervalStore(alloc::vec![Interval { start: 1001, end: 3000 },]);
+        let interval_store_1 = IntervalStore(alloc::vec![Interval { start: 1, end: 2000 },]);
+        let interval_store_2 = IntervalStore(alloc::vec![Interval { start: 1001, end: 3000 },]);
         let intersect_len = Interval::new(1001, 2000).run_len();
         assert_eq!(interval_store_1.intersection_len(&interval_store_2), intersect_len);
         assert_eq!(interval_store_2.intersection_len(&interval_store_1), intersect_len);
@@ -1358,7 +1362,7 @@ mod tests {
         for to_set in [500, 5001, 20, 40, 60] {
             bitmap_store.set(to_set);
         }
-        let mut interval_store_1 = IntervalStore(alloc::vec![Interval { start: 20, end: 600 },]);
+        let interval_store_1 = IntervalStore(alloc::vec![Interval { start: 20, end: 600 },]);
         let intersect_len = 4;
         assert_eq!(interval_store_1.intersection_len_bitmap(&bitmap_store), intersect_len);
     }
@@ -1369,30 +1373,30 @@ mod tests {
         for to_set in 0..200 {
             bitmap_store.set(to_set);
         }
-        let mut interval_store_1 = IntervalStore(alloc::vec![Interval { start: 20, end: 600 },]);
+        let interval_store_1 = IntervalStore(alloc::vec![Interval { start: 20, end: 600 },]);
         let intersect_len = 200 - 20;
         assert_eq!(interval_store_1.intersection_len_bitmap(&bitmap_store), intersect_len);
     }
 
     #[test]
     fn intersection_len_array_1() {
-        let mut array_store = ArrayStore::from_vec_unchecked(alloc::vec![20, 40, 60, 500, 5001]);
-        let mut interval_store_1 = IntervalStore(alloc::vec![Interval { start: 20, end: 600 },]);
+        let array_store = ArrayStore::from_vec_unchecked(alloc::vec![20, 40, 60, 500, 5001]);
+        let interval_store_1 = IntervalStore(alloc::vec![Interval { start: 20, end: 600 },]);
         let intersect_len = 4;
         assert_eq!(interval_store_1.intersection_len_array(&array_store), intersect_len);
     }
 
     #[test]
     fn intersection_len_array_2() {
-        let mut array_store = ArrayStore::from_vec_unchecked(Vec::from_iter(0..200));
-        let mut interval_store_1 = IntervalStore(alloc::vec![Interval { start: 20, end: 600 },]);
+        let array_store = ArrayStore::from_vec_unchecked(Vec::from_iter(0..200));
+        let interval_store_1 = IntervalStore(alloc::vec![Interval { start: 20, end: 600 },]);
         let intersect_len = 200 - 20;
         assert_eq!(interval_store_1.intersection_len_array(&array_store), intersect_len);
     }
 
     #[test]
     fn len_1() {
-        let mut interval_store_1 = IntervalStore(alloc::vec![
+        let interval_store_1 = IntervalStore(alloc::vec![
             Interval { start: 20, end: 600 },
             Interval { start: 5000, end: 8000 },
         ]);
@@ -1400,5 +1404,16 @@ mod tests {
             interval_store_1.len(),
             Interval::new(20, 600).run_len() + Interval::new(5000, 8000).run_len()
         );
+    }
+
+    #[test]
+    fn is_empty() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 20, end: 600 },
+            Interval { start: 5000, end: 8000 },
+        ]);
+        assert!(!interval_store.is_empty());
+        interval_store.remove_range(0..=u16::MAX);
+        assert!(interval_store.is_empty());
     }
 }
