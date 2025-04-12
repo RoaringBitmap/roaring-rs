@@ -3,6 +3,8 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::ops::RangeInclusive;
 
+use super::{ArrayStore, BitmapStore, Store};
+
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct IntervalStore(Vec<Interval>);
 
@@ -450,6 +452,41 @@ impl IntervalStore {
             _ => false,
         }
     }
+
+    pub fn is_disjoint(&self, other: &Self) -> bool {
+        let (mut i1, mut i2) = (self.0.iter(), other.0.iter());
+        let (mut iv1, mut iv2) = (i1.next(), i2.next());
+        loop {
+            match (iv1, iv2) {
+                (Some(v1), Some(v2)) => {
+                    if v1.overlaps(v2) {
+                        return false;
+                    }
+
+                    // We increase the iterator based on which one is furthest behind.
+                    // Or both if they are equal to each other.
+                    match v1.end.cmp(&v2.end) {
+                        Ordering::Less => iv1 = i1.next(),
+                        Ordering::Greater => iv2 = i2.next(),
+                        Ordering::Equal => {
+                            iv1 = i1.next();
+                            iv2 = i2.next();
+                        }
+                    }
+                }
+                (_, _) => return true,
+            }
+        }
+    }
+
+    pub fn is_disjoint_array(&self, array: &ArrayStore) -> bool {
+        array.iter().all(|&i| !self.contains(i))
+    }
+
+    pub fn is_disjoint_bitmap(&self, array: &BitmapStore) -> bool {
+        // TODO: make this better
+        array.iter().all(|i| !self.contains(i))
+    }
 }
 
 /// This interval is inclusive to end.
@@ -500,6 +537,10 @@ impl Interval {
         self.start <= interval.start && interval.end <= self.end
     }
 
+    pub fn overlaps(&self, interval: &Interval) -> bool {
+         interval.start <= self.end && self.start <= interval.end
+    }
+
     pub fn run_len(&self) -> u64 {
         u64::from(self.end - self.start) + 1
     }
@@ -507,6 +548,8 @@ impl Interval {
 
 #[cfg(test)]
 mod tests {
+    use proptest::bits::BitSetLike;
+
     use super::*;
 
     #[test]
@@ -1056,5 +1099,109 @@ mod tests {
             Interval { start: 15901, end: 16000 },
         ]);
         assert!(interval_store.contains_range(1..=1));
+    }
+
+    #[test]
+    fn is_disjoint_1() {
+        let mut interval_store_1 = IntervalStore(alloc::vec![
+            Interval { start: 1, end: 600 },
+            Interval { start: 1401, end: 1600 },
+            Interval { start: 15901, end: 16000 },
+        ]);
+        let mut interval_store_2 = IntervalStore(alloc::vec![
+            Interval { start: 601, end: 1200 },
+        ]);
+        assert!(!interval_store_1.is_disjoint(&interval_store_1));
+        assert!(!interval_store_2.is_disjoint(&interval_store_2));
+        assert!(interval_store_1.is_disjoint(&interval_store_2));
+        assert!(interval_store_2.is_disjoint(&interval_store_1));
+    }
+
+    #[test]
+    fn is_disjoint_2() {
+        let mut interval_store_1 = IntervalStore(alloc::vec![
+            Interval { start: 1, end: 600 },
+            Interval { start: 1401, end: 1600 },
+            Interval { start: 15901, end: 16000 },
+        ]);
+        let mut interval_store_2 = IntervalStore(alloc::vec![
+            Interval { start: 600, end: 1200 },
+        ]);
+        assert!(!interval_store_1.is_disjoint(&interval_store_1));
+        assert!(!interval_store_2.is_disjoint(&interval_store_2));
+        assert!(!interval_store_1.is_disjoint(&interval_store_2));
+        assert!(!interval_store_2.is_disjoint(&interval_store_1));
+    }
+
+    #[test]
+    fn is_disjoint_3() {
+        let mut interval_store_1 = IntervalStore(alloc::vec![
+            Interval { start: 1, end: 600 },
+            Interval { start: 1401, end: 1600 },
+            Interval { start: 15901, end: 16000 },
+        ]);
+        let mut interval_store_2 = IntervalStore(alloc::vec![
+            Interval { start: 15800, end: 15905 },
+        ]);
+        assert!(!interval_store_1.is_disjoint(&interval_store_1));
+        assert!(!interval_store_2.is_disjoint(&interval_store_2));
+        assert!(!interval_store_1.is_disjoint(&interval_store_2));
+        assert!(!interval_store_2.is_disjoint(&interval_store_1));
+    }
+
+    #[test]
+    fn is_disjoint_array_store_1() {
+        let mut array_store = ArrayStore::from_vec_unchecked(
+            alloc::vec![
+                0, 60, 200, 500,
+            ]
+        );
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 70, end: 199 },
+        ]);
+        assert!(interval_store.is_disjoint_array(&array_store));
+    }
+
+    #[test]
+    fn is_disjoint_array_store_2() {
+        let mut array_store = ArrayStore::from_vec_unchecked(
+            alloc::vec![
+                0, 60, 200, 500,
+            ]
+        );
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 1, end: 400 },
+        ]);
+        assert!(!interval_store.is_disjoint_array(&array_store));
+    }
+
+    #[test]
+    fn is_disjoint_bitmap_store_1() {
+        let mut bitmap_store = BitmapStore::new();
+        for to_set in [
+            500, 5001, 20, 40
+        ] {
+            bitmap_store.set(to_set);
+        }
+        dbg!(&bitmap_store);
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 1000, end: 4000 },
+            Interval { start: 8000, end: 10000 },
+        ]);
+        assert!(interval_store.is_disjoint_bitmap(&bitmap_store));
+    }
+
+    #[test]
+    fn is_disjoint_bitmap_store_2() {
+        let mut bitmap_store = BitmapStore::new();
+        for to_set in [
+            500, 5001, 20, 40
+        ] {
+            bitmap_store.set(to_set);
+        }
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 1, end: 400 },
+        ]);
+        assert!(!interval_store.is_disjoint_bitmap(&bitmap_store));
     }
 }
