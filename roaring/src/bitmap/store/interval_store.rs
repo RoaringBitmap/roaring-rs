@@ -117,7 +117,7 @@ impl IntervalStore {
                     if to_insert < self.0.len() && self.0[to_insert].start - 1 == interval.end {
                         // The intervals are consecutive! Adjust new end of interval, and how far
                         // we drain
-                        (self.0[to_insert].start, to_insert + 1)
+                        (self.0[to_insert].end, to_insert + 1)
                     } else {
                         (interval.end, to_insert)
                     };
@@ -859,6 +859,14 @@ mod tests {
             interval_store,
             IntervalStore(alloc::vec![Interval { start: 0, end: u16::MAX },])
         );
+    }
+
+    #[test]
+    fn insert_range_begin_overlap_concescutive_end() {
+        let mut interval_store =
+            IntervalStore(alloc::vec![Interval::new(2, 10), Interval::new(12, 700),]);
+        assert_eq!(interval_store.insert_range(2..=11), 1);
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new(2, 700)]));
     }
 
     #[test]
