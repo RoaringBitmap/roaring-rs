@@ -4,7 +4,7 @@ use core::fmt::{Display, Formatter};
 use core::mem::size_of;
 use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
-use super::ArrayStore;
+use super::{ArrayStore, Interval};
 
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
@@ -334,6 +334,21 @@ impl BitmapStore {
 
     pub fn intersection_len_bitmap(&self, other: &BitmapStore) -> u64 {
         self.bits.iter().zip(other.bits.iter()).map(|(&a, &b)| (a & b).count_ones() as u64).sum()
+    }
+
+    pub fn intersection_len_interval(&self, interval: &Interval) -> u64 {
+        let (start_id, start_bit) = (key(interval.start), bit(interval.start));
+        let (end_id, end_bit) = (key(interval.end), bit(interval.end));
+        let mut amount: u64 = 0;
+        for (i, mut cur_bit) in self.bits[start_id..=end_id].iter().copied().enumerate() {
+            if i == start_id {
+                cur_bit &= u64::MAX << start_bit;
+            } else if i == end_id {
+                cur_bit &= !(u64::MAX << (u64::BITS - end_bit as u32));
+            }
+            amount += u64::from(cur_bit.count_ones());
+        }
+        amount
     }
 
     pub(crate) fn intersection_len_array(&self, other: &ArrayStore) -> u64 {
