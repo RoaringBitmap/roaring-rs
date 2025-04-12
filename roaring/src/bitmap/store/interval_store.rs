@@ -547,6 +547,10 @@ impl IntervalStore {
     pub fn intersection_len_array(&self, other: &ArrayStore) -> u64 {
         other.iter().map(|&f| self.contains(f) as u64).sum()
     }
+
+    pub fn len(&self) -> u64 {
+        self.0.iter().map(|iv| iv.run_len()).sum()
+    }
 }
 
 /// This interval is inclusive to end.
@@ -1384,5 +1388,17 @@ mod tests {
         let mut interval_store_1 = IntervalStore(alloc::vec![Interval { start: 20, end: 600 },]);
         let intersect_len = 200 - 20;
         assert_eq!(interval_store_1.intersection_len_array(&array_store), intersect_len);
+    }
+
+    #[test]
+    fn len_1() {
+        let mut interval_store_1 = IntervalStore(alloc::vec![
+            Interval { start: 20, end: 600 },
+            Interval { start: 5000, end: 8000 },
+        ]);
+        assert_eq!(
+            interval_store_1.len(),
+            Interval::new(20, 600).run_len() + Interval::new(5000, 8000).run_len()
+        );
     }
 }
