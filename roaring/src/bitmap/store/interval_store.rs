@@ -433,6 +433,10 @@ impl IntervalStore {
         }
         self.0.drain(remove_to..);
     }
+
+    pub fn contains(&self, index: u16) -> bool {
+        self.0.binary_search_by(|iv| cmp_index_interval(index, *iv).reverse()).is_ok()
+    }
 }
 
 /// This interval is inclusive to end.
@@ -988,5 +992,26 @@ mod tests {
         ]);
         interval_store.remove_biggest(500);
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new(1, 5800),]));
+    }
+
+    #[test]
+    fn contains_index_1() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 1, end: 6000 },
+            Interval { start: 1401, end: 1600 },
+            Interval { start: 15901, end: 16000 },
+        ]);
+        assert!(interval_store.contains(5));
+        assert!(interval_store.contains(16000));
+    }
+
+    #[test]
+    fn contains_index_2() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 1, end: 6000 },
+            Interval { start: 1401, end: 1600 },
+            Interval { start: 15901, end: 16000 },
+        ]);
+        assert!(!interval_store.contains(0));
     }
 }
