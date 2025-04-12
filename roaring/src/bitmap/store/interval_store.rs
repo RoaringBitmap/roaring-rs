@@ -555,6 +555,14 @@ impl IntervalStore {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    pub fn min(&self) -> Option<u16> {
+        self.0.first().map(|f| f.start)
+    }
+
+    pub fn max(&self) -> Option<u16> {
+        self.0.last().map(|f| f.end)
+    }
 }
 
 /// This interval is inclusive to end.
@@ -1212,8 +1220,7 @@ mod tests {
             Interval { start: 1401, end: 1600 },
             Interval { start: 15901, end: 16000 },
         ]);
-        let interval_store_2 =
-            IntervalStore(alloc::vec![Interval { start: 15800, end: 15905 },]);
+        let interval_store_2 = IntervalStore(alloc::vec![Interval { start: 15800, end: 15905 },]);
         assert!(!interval_store_1.is_disjoint(&interval_store_1));
         assert!(!interval_store_2.is_disjoint(&interval_store_2));
         assert!(!interval_store_1.is_disjoint(&interval_store_2));
@@ -1415,5 +1422,29 @@ mod tests {
         assert!(!interval_store.is_empty());
         interval_store.remove_range(0..=u16::MAX);
         assert!(interval_store.is_empty());
+    }
+
+    #[test]
+    fn min_0() {
+        let interval_store = IntervalStore(alloc::vec![Interval::new(20, u16::MAX)]);
+        assert_eq!(interval_store.min(), Some(20));
+    }
+
+    #[test]
+    fn min_1() {
+        let interval_store = IntervalStore(alloc::vec![]);
+        assert_eq!(interval_store.min(), None);
+    }
+
+    #[test]
+    fn max_0() {
+        let interval_store = IntervalStore(alloc::vec![Interval::new(20, u16::MAX)]);
+        assert_eq!(interval_store.max(), Some(u16::MAX));
+    }
+
+    #[test]
+    fn max_1() {
+        let interval_store = IntervalStore(alloc::vec![]);
+        assert_eq!(interval_store.max(), None);
     }
 }
