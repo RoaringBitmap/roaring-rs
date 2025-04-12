@@ -577,6 +577,18 @@ impl IntervalStore {
         }
         rank
     }
+
+    pub fn select(&self, mut n: u16) -> Option<u16> {
+        for iv in self.0.iter() {
+            let run_len = (iv.run_len() as u16);
+            if run_len <= n {
+                n -= iv.run_len() as u16;
+            } else {
+                return Some(iv.start + n);
+            }
+        }
+        None
+    }
 }
 
 /// This interval is inclusive to end.
@@ -1472,5 +1484,21 @@ mod tests {
             Interval::new(0, 200).run_len() + Interval::new(5000, 5020).run_len()
         );
         assert_eq!(interval_store.rank(u16::MAX), interval_store.len());
+    }
+
+    #[test]
+    fn select() {
+        let interval_store = IntervalStore(alloc::vec![
+            Interval::new(0, 0),
+            Interval::new(2, 11),
+            Interval::new(5000, 7000),
+            Interval::new(8000, 10000),
+        ]);
+        assert_eq!(interval_store.select(0), Some(0));
+        assert_eq!(interval_store.select(1), Some(2));
+        assert_eq!(interval_store.select(10), Some(11));
+        assert_eq!(interval_store.select(11), Some(5000));
+        assert_eq!(interval_store.select(11 + 3), Some(5003));
+        assert_eq!(interval_store.select(11 + 2001), Some(8000));
     }
 }
