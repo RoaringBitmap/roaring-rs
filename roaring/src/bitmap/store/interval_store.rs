@@ -487,6 +487,18 @@ impl IntervalStore {
         // TODO: make this better
         array.iter().all(|i| !self.contains(i))
     }
+
+    pub fn is_subset(&self, other: &Self) -> bool {
+        self.0.iter().all(|interval| other.contains_range(interval.start..=interval.end))
+    }
+
+    pub fn is_subset_array(&self, other: &ArrayStore) -> bool {
+        self.0.iter().all(|interval| other.contains_range(interval.start..=interval.end))
+    }
+
+    pub fn is_subset_bitmap(&self, other: &BitmapStore) -> bool {
+        self.0.iter().all(|interval| other.contains_range(interval.start..=interval.end))
+    }
 }
 
 /// This interval is inclusive to end.
@@ -1203,5 +1215,37 @@ mod tests {
             Interval { start: 1, end: 400 },
         ]);
         assert!(!interval_store.is_disjoint_bitmap(&bitmap_store));
+    }
+
+    #[test]
+    fn is_subset_1() {
+        let mut interval_store_1 = IntervalStore(alloc::vec![
+            Interval { start: 1500, end: 1600 },
+        ]);
+        let mut interval_store_2 = IntervalStore(alloc::vec![
+            Interval { start: 1, end: 600 },
+            Interval { start: 1401, end: 1600 },
+            Interval { start: 15901, end: 16000 },
+        ]);
+        assert!(interval_store_1.is_subset(&interval_store_1));
+        assert!(interval_store_2.is_subset(&interval_store_2));
+        assert!(interval_store_1.is_subset(&interval_store_2));
+        assert!(!interval_store_2.is_subset(&interval_store_1));
+    }
+
+    #[test]
+    fn is_subset_2() {
+        let mut interval_store_1 = IntervalStore(alloc::vec![
+            Interval { start: 50, end: 700 },
+        ]);
+        let mut interval_store_2 = IntervalStore(alloc::vec![
+            Interval { start: 1, end: 600 },
+            Interval { start: 1401, end: 1600 },
+            Interval { start: 15901, end: 16000 },
+        ]);
+        assert!(interval_store_1.is_subset(&interval_store_1));
+        assert!(interval_store_2.is_subset(&interval_store_2));
+        assert!(!interval_store_1.is_subset(&interval_store_2));
+        assert!(!interval_store_2.is_subset(&interval_store_1));
     }
 }
