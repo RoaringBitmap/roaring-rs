@@ -336,7 +336,7 @@ impl BitmapStore {
         self.bits.iter().zip(other.bits.iter()).map(|(&a, &b)| (a & b).count_ones() as u64).sum()
     }
 
-    pub fn intersection_len_interval(&self, interval: &Interval) -> u64 {
+    pub(crate) fn intersection_len_interval(&self, interval: &Interval) -> u64 {
         let (start_id, start_bit) = (key(interval.start), bit(interval.start));
         let (end_id, end_bit) = (key(interval.end), bit(interval.end));
         let mut amount: u64 = 0;

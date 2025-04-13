@@ -505,11 +505,11 @@ impl IntervalStore {
         )
     }
 
-    pub fn is_disjoint_array(&self, array: &ArrayStore) -> bool {
+    pub(crate) fn is_disjoint_array(&self, array: &ArrayStore) -> bool {
         array.iter().all(|&i| !self.contains(i))
     }
 
-    pub fn is_disjoint_bitmap(&self, array: &BitmapStore) -> bool {
+    pub(crate) fn is_disjoint_bitmap(&self, array: &BitmapStore) -> bool {
         // TODO: make this better
         array.iter().all(|i| !self.contains(i))
     }
@@ -518,11 +518,11 @@ impl IntervalStore {
         self.0.iter().all(|interval| other.contains_range(interval.start..=interval.end))
     }
 
-    pub fn is_subset_array(&self, other: &ArrayStore) -> bool {
+    pub(crate) fn is_subset_array(&self, other: &ArrayStore) -> bool {
         self.0.iter().all(|interval| other.contains_range(interval.start..=interval.end))
     }
 
-    pub fn is_subset_bitmap(&self, other: &BitmapStore) -> bool {
+    pub(crate) fn is_subset_bitmap(&self, other: &BitmapStore) -> bool {
         self.0.iter().all(|interval| other.contains_range(interval.start..=interval.end))
     }
 
@@ -540,11 +540,11 @@ impl IntervalStore {
         )
     }
 
-    pub fn intersection_len_bitmap(&self, other: &BitmapStore) -> u64 {
+    pub(crate) fn intersection_len_bitmap(&self, other: &BitmapStore) -> u64 {
         self.0.iter().map(|f| other.intersection_len_interval(f)).sum()
     }
 
-    pub fn intersection_len_array(&self, other: &ArrayStore) -> u64 {
+    pub(crate) fn intersection_len_array(&self, other: &ArrayStore) -> u64 {
         other.iter().map(|&f| self.contains(f) as u64).sum()
     }
 
