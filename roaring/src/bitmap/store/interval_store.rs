@@ -1,12 +1,12 @@
 #![allow(unused)]
 use alloc::vec::Vec;
-use core::ops::{BitOr, BitOrAssign, RangeInclusive};
+use core::ops::{BitAnd, BitOr, BitOrAssign, RangeInclusive};
 use core::{cmp::Ordering, ops::ControlFlow};
 
 use super::{ArrayStore, BitmapStore, Store};
 
 #[derive(PartialEq, Eq, Clone, Debug)]
-pub struct IntervalStore(Vec<Interval>);
+pub(crate) struct IntervalStore(Vec<Interval>);
 
 impl IntervalStore {
     pub fn new() -> Self {
@@ -601,6 +601,32 @@ impl BitOrAssign<&ArrayStore> for IntervalStore {
         for &i in rhs.iter() {
             self.insert(i);
         }
+    }
+}
+
+impl BitOrAssign<&Self> for IntervalStore {
+    fn bitor_assign(&mut self, mut rhs: &Self) {
+        for iv in rhs.iter() {
+            self.insert_range(iv.start..=iv.end);
+        }
+    }
+}
+
+impl BitAnd for &IntervalStore {
+    type Output = IntervalStore;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        self.step_walk(
+            rhs,
+            |iv1, iv2, mut buf: IntervalStore| {
+                if let Some(new_iv) = iv1.overlapping_interval(&iv2) {
+                    buf.insert_range(new_iv.start..=new_iv.end);
+                }
+                ControlFlow::Continue(buf)
+            },
+            |_, _, buf| buf,
+            IntervalStore::new(),
+        )
     }
 }
 
@@ -1663,6 +1689,30 @@ mod tests {
                 Interval::new(5000, 7000),
                 Interval::new(8000, 10000),
                 Interval::new(u16::MAX, u16::MAX),
+            ])
+        )
+    }
+
+    #[test]
+    fn intersection() {
+        let mut interval_store_1 = IntervalStore(alloc::vec![
+            Interval::new(0, 0),
+            Interval::new(2, 11),
+            Interval::new(5000, 7000),
+            Interval::new(8000, 10000),
+        ]);
+        let mut interval_store_2 = IntervalStore(alloc::vec![
+            Interval::new(0, 0),
+            Interval::new(5, 50),
+            Interval::new(4000, 10000),
+        ]);
+        assert_eq!(
+            &interval_store_1 & &interval_store_2,
+            IntervalStore(alloc::vec![
+                Interval::new(0, 0),
+                Interval::new(5, 11),
+                Interval::new(5000, 7000),
+                Interval::new(8000, 10000),
             ])
         )
     }
