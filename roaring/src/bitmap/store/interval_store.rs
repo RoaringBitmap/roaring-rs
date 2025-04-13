@@ -1,6 +1,6 @@
 #![allow(unused)]
 use alloc::vec::Vec;
-use core::ops::RangeInclusive;
+use core::ops::{BitOr, BitOrAssign, RangeInclusive};
 use core::{cmp::Ordering, ops::ControlFlow};
 
 use super::{ArrayStore, BitmapStore, Store};
@@ -560,6 +560,47 @@ impl IntervalStore {
             }
         }
         None
+    }
+
+    pub fn run_amount(&self) -> u64 {
+        self.0.len() as u64
+    }
+
+    pub fn to_bitmap(&self) -> BitmapStore {
+        let mut bits = BitmapStore::new();
+        for iv in self.0.iter() {
+            bits.insert_range(iv.start..=iv.end);
+        }
+        bits
+    }
+
+    pub(crate) fn iter(&self) -> core::slice::Iter<Interval> {
+        self.0.iter()
+    }
+
+    pub(crate) fn iter_mut(&mut self) -> core::slice::IterMut<Interval> {
+        self.0.iter_mut()
+    }
+}
+
+impl BitOrAssign for IntervalStore {
+    fn bitor_assign(&mut self, mut rhs: Self) {
+        let (add_intervals, take_intervals, self_is_add) =
+            if self.len() > rhs.len() { (self, &mut rhs, true) } else { (&mut rhs, self, false) };
+        for iv in take_intervals.iter() {
+            add_intervals.insert_range(iv.start..=iv.end);
+        }
+        if !self_is_add {
+            core::mem::swap(add_intervals, take_intervals);
+        }
+    }
+}
+
+impl BitOrAssign<&ArrayStore> for IntervalStore {
+    fn bitor_assign(&mut self, mut rhs: &ArrayStore) {
+        for &i in rhs.iter() {
+            self.insert(i);
+        }
     }
 }
 
@@ -1574,5 +1615,55 @@ mod tests {
         assert_eq!(interval_store.select(11), Some(5000));
         assert_eq!(interval_store.select(11 + 3), Some(5003));
         assert_eq!(interval_store.select(11 + 2001), Some(8000));
+    }
+
+    #[test]
+    fn union_1() {
+        let mut interval_store_1 = IntervalStore(alloc::vec![
+            Interval::new(0, 0),
+            Interval::new(2, 11),
+            Interval::new(5000, 7000),
+            Interval::new(8000, 10000),
+        ]);
+        let interval_store_2 = IntervalStore(alloc::vec![
+            Interval::new(0, 0),
+            Interval::new(2, 10),
+            Interval::new(12, 7000),
+            Interval::new(65000, 65050),
+        ]);
+        interval_store_1 |= interval_store_2;
+        assert_eq!(
+            interval_store_1,
+            IntervalStore(alloc::vec![
+                Interval::new(0, 0),
+                Interval::new(2, 7000),
+                Interval::new(8000, 10000),
+                Interval::new(65000, 65050),
+            ])
+        )
+    }
+
+    #[test]
+    fn union_array() {
+        let mut values = alloc::vec![0, 1, 2, 3, 4, 2000, 5000, u16::MAX];
+        values.sort();
+        let array = ArrayStore::from_vec_unchecked(values);
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval::new(0, 0),
+            Interval::new(2, 11),
+            Interval::new(5000, 7000),
+            Interval::new(8000, 10000),
+        ]);
+        interval_store |= &array;
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![
+                Interval::new(0, 11),
+                Interval::new(2000, 2000),
+                Interval::new(5000, 7000),
+                Interval::new(8000, 10000),
+                Interval::new(u16::MAX, u16::MAX),
+            ])
+        )
     }
 }
