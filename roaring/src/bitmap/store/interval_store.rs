@@ -1,12 +1,18 @@
 #![allow(unused)]
 use alloc::vec::Vec;
-use core::ops::{BitAnd, BitOr, BitOrAssign, RangeInclusive};
+use core::ops::{BitAnd, BitOr, BitOrAssign, RangeInclusive, SubAssign};
 use core::{cmp::Ordering, ops::ControlFlow};
 
 use super::{ArrayStore, BitmapStore, Store};
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub(crate) struct IntervalStore(Vec<Interval>);
+
+impl Default for IntervalStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl IntervalStore {
     pub fn new() -> Self {
@@ -627,6 +633,14 @@ impl BitAnd for &IntervalStore {
             |_, _, buf| buf,
             IntervalStore::new(),
         )
+    }
+}
+
+impl SubAssign<&Self> for IntervalStore {
+    fn sub_assign(&mut self, rhs: &Self) {
+        for iv in rhs.iter() {
+            self.remove_range(iv.start..=iv.end);
+        }
     }
 }
 
@@ -1714,6 +1728,26 @@ mod tests {
                 Interval::new(5000, 7000),
                 Interval::new(8000, 10000),
             ])
+        )
+    }
+
+    #[test]
+    fn difference() {
+        let mut interval_store_1 = IntervalStore(alloc::vec![
+            Interval::new(0, 0),
+            Interval::new(2, 11),
+            Interval::new(5000, 7000),
+            Interval::new(8000, 11000),
+        ]);
+        let mut interval_store_2 = IntervalStore(alloc::vec![
+            Interval::new(0, 0),
+            Interval::new(5, 50),
+            Interval::new(4000, 10000),
+        ]);
+        interval_store_1 -= &interval_store_2;
+        assert_eq!(
+            interval_store_1,
+            IntervalStore(alloc::vec![Interval::new(2, 4), Interval::new(10001, 11000),])
         )
     }
 }
