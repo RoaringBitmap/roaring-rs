@@ -1,6 +1,7 @@
 #![allow(unused)]
 use alloc::vec::Vec;
-use core::ops::{BitAnd, BitOr, BitOrAssign, RangeInclusive, SubAssign};
+use core::ops::{BitAnd, BitOr, BitOrAssign, BitXor, Deref, RangeInclusive, SubAssign};
+use core::slice::Iter;
 use core::{cmp::Ordering, ops::ControlFlow};
 
 use super::{ArrayStore, BitmapStore, Store};
@@ -68,6 +69,9 @@ impl IntervalStore {
 
     #[inline]
     pub fn insert_range(&mut self, range: RangeInclusive<u16>) -> u64 {
+        if range.is_empty() {
+            return 0;
+        }
         let interval = Interval { start: *range.start(), end: *range.end() };
         let first_interval =
             self.0.binary_search_by(|iv| cmp_index_interval(interval.start, *iv).reverse());
@@ -257,6 +261,9 @@ impl IntervalStore {
     }
 
     pub fn remove_range(&mut self, range: RangeInclusive<u16>) -> u64 {
+        if range.is_empty() {
+            return 0;
+        }
         let interval = Interval { start: *range.start(), end: *range.end() };
         let first_interval =
             self.0.binary_search_by(|iv| cmp_index_interval(interval.start, *iv).reverse());
@@ -295,6 +302,15 @@ impl IntervalStore {
                         begin_value: Some(IdValue { index: begin, value: interval.start - 1 }),
                         end_value: None,
                         residual_count: Interval::new(interval.start, self.0[begin].end).run_len(),
+                    }
+                } else if begin == end {
+                    let new_interval = Interval::new(interval.end + 1, self.0[begin].end);
+                    self.0.insert(begin + 1, new_interval);
+                    IntervalRange {
+                        drain_range: begin..end,
+                        begin_value: Some(IdValue { index: begin, value: interval.start - 1 }),
+                        end_value: None,
+                        residual_count: interval.run_len(),
                     }
                 } else {
                     IntervalRange {
@@ -355,15 +371,20 @@ impl IntervalStore {
                 }
             }
         };
-        let count = self.0[todo.drain_range.clone()].iter().map(|f| f.run_len()).sum::<u64>()
-            + todo.residual_count;
+        let count = if todo.drain_range.is_empty() {
+            0
+        } else {
+            self.0[todo.drain_range.clone()].iter().map(|f| f.run_len()).sum::<u64>()
+        } + todo.residual_count;
         if let Some(IdValue { index, value }) = todo.begin_value {
             self.0[index].end = value;
         }
         if let Some(IdValue { index, value }) = todo.end_value {
             self.0[index].start = value;
         }
-        self.0.drain(todo.drain_range);
+        if !todo.drain_range.is_empty() {
+            self.0.drain(todo.drain_range);
+        }
         count
     }
 
@@ -432,12 +453,17 @@ impl IntervalStore {
     }
 
     fn step_walk<
+        'a,
         R,
         C: FnMut(Interval, Interval, R) -> ControlFlow<R, R>,
-        E: FnMut(Option<Interval>, Option<Interval>, R) -> R,
+        E: FnMut(
+            (Option<Interval>, Option<Interval>),
+            (Iter<'a, Interval>, Iter<'a, Interval>),
+            R,
+        ) -> R,
     >(
-        &self,
-        other: &Self,
+        &'a self,
+        other: &'a Self,
         mut calc: C,
         mut else_op: E,
         mut buffer: R,
@@ -463,7 +489,9 @@ impl IntervalStore {
                         }
                     }
                 }
-                (value1, value2) => return else_op(value1.copied(), value2.copied(), buffer),
+                (value1, value2) => {
+                    return else_op((value1.copied(), value2.copied()), (i1, i2), buffer)
+                }
             }
         }
     }
@@ -644,11 +672,29 @@ impl SubAssign<&Self> for IntervalStore {
     }
 }
 
+impl BitXor for &IntervalStore {
+    type Output = IntervalStore;
+
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        let mut union = self.clone();
+        union |= rhs;
+        let intersection = self & rhs;
+        union -= &intersection;
+        union
+    }
+}
+
 /// This interval is inclusive to end.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug)]
 pub(crate) struct Interval {
     pub start: u16,
     pub end: u16,
+}
+
+impl From<RangeInclusive<u16>> for Interval {
+    fn from(value: RangeInclusive<u16>) -> Self {
+        Interval::new(*value.start(), *value.end())
+    }
 }
 
 impl IntoIterator for Interval {
@@ -1250,6 +1296,16 @@ mod tests {
     }
 
     #[test]
+    fn remove_range_complete_overlap() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval { start: 51, end: 6000 },]);
+        assert_eq!(interval_store.remove_range(500..=600), Interval::new(500, 600).run_len());
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![Interval::new(51, 499), Interval::new(601, 6000),])
+        );
+    }
+
+    #[test]
     fn remove_smallest_one() {
         let mut interval_store = IntervalStore(alloc::vec![Interval { start: 40, end: 60 },]);
         interval_store.remove_smallest(500);
@@ -1749,5 +1805,60 @@ mod tests {
             interval_store_1,
             IntervalStore(alloc::vec![Interval::new(2, 4), Interval::new(10001, 11000),])
         )
+    }
+
+    #[test]
+    fn symmetric_difference_0() {
+        let mut interval_store_1 = IntervalStore(alloc::vec![
+            Interval::new(0, 0),
+            Interval::new(2, 11),
+            Interval::new(5000, 7000),
+            Interval::new(8000, 11000),
+            Interval::new(40000, 50000),
+        ]);
+        let mut interval_store_2 = IntervalStore(alloc::vec![
+            Interval::new(0, 0),
+            Interval::new(5, 50),
+            Interval::new(4000, 10000),
+        ]);
+        assert_eq!(
+            &interval_store_1 ^ &interval_store_2,
+            IntervalStore(alloc::vec![
+                Interval::new(2, 4),
+                Interval::new(12, 50),
+                Interval::new(4000, 4999),
+                Interval::new(7001, 7999),
+                Interval::new(10001, 11000),
+                Interval::new(40000, 50000),
+            ])
+        );
+    }
+
+    #[test]
+    fn symmetric_difference_1() {
+        let mut interval_store_1 = IntervalStore(alloc::vec![Interval::new(0, 50),]);
+        let mut interval_store_2 = IntervalStore(alloc::vec![Interval::new(100, 200),]);
+        assert_eq!(
+            &interval_store_1 ^ &interval_store_2,
+            IntervalStore(alloc::vec![Interval::new(0, 50), Interval::new(100, 200),])
+        );
+    }
+
+    #[test]
+    fn symmetric_difference_2() {
+        let mut interval_store_1 = IntervalStore(alloc::vec![
+            Interval::new(0, 50),
+            Interval::new(500, 600),
+            Interval::new(800, 1000),
+        ]);
+        let mut interval_store_2 = IntervalStore(alloc::vec![Interval::new(0, 6000),]);
+        assert_eq!(
+            &interval_store_1 ^ &interval_store_2,
+            IntervalStore(alloc::vec![
+                Interval::new(51, 499),
+                Interval::new(601, 799),
+                Interval::new(1001, 6000),
+            ])
+        );
     }
 }
