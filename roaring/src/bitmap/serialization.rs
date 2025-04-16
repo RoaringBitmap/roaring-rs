@@ -231,8 +231,15 @@ impl RoaringBitmap {
 
                 let cardinality = intervals.iter().map(|[_, len]| *len as usize).sum();
                 let mut store = Store::with_capacity(cardinality);
+                let mut last_end = None::<u16>;
                 intervals.into_iter().try_for_each(|[s, len]| -> Result<(), io::ErrorKind> {
                     let end = s.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
+                    if let Some(last_end) = last_end.replace(end) {
+                        if s <= last_end.saturating_add(1) {
+                            // Range overlaps or would be contiguous with the previous range
+                            return Err(io::ErrorKind::InvalidData);
+                        }
+                    }
                     store.insert_range(RangeInclusive::new(s, end));
                     Ok(())
                 })?;
