@@ -205,9 +205,18 @@ impl RoaringBitmap {
 
         let mut containers = Vec::with_capacity(size);
 
+        let mut last_key = None::<u16>;
         // Read each container
         for i in 0..size {
             let key = description_bytes.read_u16::<LittleEndian>()?;
+            if let Some(last_key) = last_key.replace(key) {
+                if key <= last_key {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "container keys are not sorted",
+                    ));
+                }
+            }
             let cardinality = u64::from(description_bytes.read_u16::<LittleEndian>()?) + 1;
 
             // If the run container bitmap is present, check if this container is a run container
