@@ -216,6 +216,12 @@ impl RoaringBitmap {
 
             let store = if is_run_container {
                 let runs = reader.read_u16::<LittleEndian>()?;
+                if runs == 0 {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "run container with zero runs",
+                    ));
+                }
                 let mut intervals = vec![[0, 0]; runs as usize];
                 reader.read_exact(cast_slice_mut(&mut intervals))?;
                 intervals.iter_mut().for_each(|[s, len]| {
