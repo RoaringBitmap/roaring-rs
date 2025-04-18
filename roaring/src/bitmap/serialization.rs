@@ -7,6 +7,8 @@ use core::convert::Infallible;
 use std::error::Error;
 use std::io;
 
+use super::store::IntervalStore;
+
 pub(crate) const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
 pub(crate) const SERIAL_COOKIE: u16 = 12347;
 pub(crate) const NO_OFFSET_THRESHOLD: usize = 4;
@@ -50,7 +52,7 @@ impl RoaringBitmap {
                 Store::Bitmap(..) => BITMAP_BYTES,
                 Store::Run(ref intervals) => {
                     has_run_containers = true;
-                    RUN_NUM_BYTES + (RUN_ELEMENT_BYTES * intervals.len())
+                    RUN_NUM_BYTES + (RUN_ELEMENT_BYTES * intervals.run_amount() as usize)
                 }
             })
             .sum();
@@ -119,7 +121,9 @@ impl RoaringBitmap {
                         offset += 8 * 1024;
                     }
                     Store::Run(ref intervals) => {
-                        offset += (RUN_NUM_BYTES + (intervals.len() * RUN_ELEMENT_BYTES)) as u32;
+                        offset += (RUN_NUM_BYTES
+                            + (intervals.run_amount() as usize * RUN_ELEMENT_BYTES))
+                            as u32;
                     }
                 }
             }
@@ -138,8 +142,8 @@ impl RoaringBitmap {
                     }
                 }
                 Store::Run(ref intervals) => {
-                    writer.write_u16::<LittleEndian>(intervals.len() as u16)?;
-                    for iv in intervals {
+                    writer.write_u16::<LittleEndian>(intervals.run_amount() as u16)?;
+                    for iv in intervals.iter_intervals() {
                         writer.write_u16::<LittleEndian>(iv.start)?;
                         writer.write_u16::<LittleEndian>(iv.end - iv.start)?;
                     }
@@ -270,13 +274,16 @@ impl RoaringBitmap {
                     *len = u16::from_le(*len);
                 });
 
-                let intervals = intervals
-                    .into_iter()
-                    .map(|[start, len]| -> Result<Interval, io::ErrorKind> {
-                        let end = start.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
-                        Ok(Interval { start, end })
-                    })
-                    .collect::<Result<_, _>>()?;
+                let intervals = IntervalStore::from_vec_unchecked(
+                    intervals
+                        .into_iter()
+                        .map(|[start, len]| -> Result<Interval, io::ErrorKind> {
+                            let end = start.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
+                            // TODO: easy safe way of constructing an `IntervalStore`
+                            Ok(Interval { start, end })
+                        })
+                        .collect::<Result<_, _>>()?,
+                );
 
                 Store::Run(intervals)
             } else if cardinality <= ARRAY_LIMIT {

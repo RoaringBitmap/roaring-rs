@@ -3,8 +3,6 @@ mod bitmap_store;
 mod interval_store;
 
 use alloc::vec;
-use alloc::vec::Vec;
-use core::cmp::Ordering;
 use core::mem;
 use core::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
@@ -16,8 +14,8 @@ use self::Store::{Array, Bitmap, Run};
 
 pub(crate) use self::array_store::ArrayStore;
 pub use self::bitmap_store::{BitmapIter, BitmapStore};
-use self::interval_store::cmp_index_interval;
 pub(crate) use self::interval_store::Interval;
+pub(crate) use interval_store::{IntervalStore, RunIterBorrowed, RunIterOwned};
 
 use crate::bitmap::container::ARRAY_LIMIT;
 
@@ -28,7 +26,7 @@ use alloc::boxed::Box;
 pub(crate) enum Store {
     Array(ArrayStore),
     Bitmap(BitmapStore),
-    Run(Vec<Interval>),
+    Run(IntervalStore),
 }
 
 #[derive(Clone)]
@@ -37,14 +35,8 @@ pub(crate) enum Iter<'a> {
     Vec(vec::IntoIter<u16>),
     BitmapBorrowed(BitmapIter<&'a [u64; BITMAP_LENGTH]>),
     BitmapOwned(BitmapIter<Box<[u64; BITMAP_LENGTH]>>),
-    Run(RunIter),
-}
-
-#[derive(Clone)]
-pub struct RunIter {
-    run: usize,
-    offset: u64,
-    intervals: Vec<Interval>,
+    RunBorrowed(RunIterBorrowed<'a>),
+    RunOwned(RunIterOwned),
 }
 
 impl Store {
@@ -99,47 +91,10 @@ impl Store {
         match self {
             Array(vec) => vec.insert(index),
             Bitmap(bits) => bits.insert(index),
-            Run(ref mut vec) => {
-                vec.binary_search_by(|iv| cmp_index_interval(index, *iv))
-                    .map_err(|loc| {
-                        // Value is beyond end of interval
-                        if vec[loc].end < index {
-                            // If immediately follows this interval
-                            if index == vec[loc].end - 1 {
-                                if loc < vec.len() && index == vec[loc + 1].start {
-                                    // Merge with following interval
-                                    vec[loc].end = vec[loc + 1].end;
-                                    vec.remove(loc + 1);
-                                    return;
-                                }
-                                // Extend end of this interval by 1
-                                vec[loc].end += 1
-                            } else {
-                                // Otherwise create new standalone interval
-                                vec.insert(loc, Interval::new(index, index));
-                            }
-                        } else if vec[loc].start == index + 1 {
-                            // Value immediately precedes interval
-                            if loc > 0 && vec[loc - 1].end == &index - 1 {
-                                // Merge with preceding interval
-                                vec[loc - 1].end = vec[loc].end;
-                                vec.remove(loc);
-                                return;
-                            }
-                            vec[loc].start -= 1;
-                        } else if loc > 0 && index - 1 == vec[loc - 1].end {
-                            // Immediately follows the previous interval
-                            vec[loc - 1].end += 1
-                        } else {
-                            vec.insert(loc, Interval::new(index, index));
-                        }
-                    })
-                    .is_err()
-            }
+            Run(runs) => runs.insert(index),
         }
     }
 
-    #[allow(clippy::todo)]
     pub fn insert_range(&mut self, range: RangeInclusive<u16>) -> u64 {
         // A Range is defined as being of size 0 if start >= end.
         if range.is_empty() {
@@ -149,7 +104,7 @@ impl Store {
         match self {
             Array(vec) => vec.insert_range(range),
             Bitmap(bits) => bits.insert_range(range),
-            Run(..) => todo!(),
+            Run(runs) => runs.insert_range(range),
         }
     }
 
@@ -161,7 +116,7 @@ impl Store {
         match self {
             Array(vec) => vec.push(index),
             Bitmap(bits) => bits.push(index),
-            Run(..) => todo!(),
+            Run(runs) => runs.push(index),
         }
     }
 
@@ -172,12 +127,15 @@ impl Store {
     /// # Panics
     ///
     /// If debug_assertions enabled and index is > self.max()
-    #[allow(clippy::todo)]
     pub(crate) fn push_unchecked(&mut self, index: u16) {
         match self {
             Array(vec) => vec.push_unchecked(index),
             Bitmap(bits) => bits.push_unchecked(index),
-            Run(..) => todo!(),
+            Run(runs) => {
+                // push unchecked for intervals doesn't make since we have to check anyways to
+                // merge ends with the index if these are consecutive
+                runs.push(index);
+            }
         }
     }
 
@@ -185,29 +143,7 @@ impl Store {
         match self {
             Array(vec) => vec.remove(index),
             Bitmap(bits) => bits.remove(index),
-            Run(ref mut vec) => vec
-                .binary_search_by(|iv| cmp_index_interval(index, *iv))
-                .map(|loc| {
-                    if index == vec[loc].start && index == vec[loc].end {
-                        // Remove entire run if it only contains this value
-                        vec.remove(loc);
-                    } else if index == vec[loc].end {
-                        // Value is last in this interval
-                        vec[loc].end = index - 1;
-                    } else if index == vec[loc].start {
-                        // Value is first in this interval
-                        vec[loc].start = index + 1;
-                    } else {
-                        // Value lies inside the interval, we need to split it
-                        // First construct a new interval with the right part
-                        let new_interval = Interval::new(index + 1, vec[loc].end);
-                        // Then shrink the current interval
-                        vec[loc].end = index - 1;
-                        // Then insert the new interval leaving gap where value was removed
-                        vec.insert(loc + 1, new_interval);
-                    }
-                })
-                .is_ok(),
+            Run(runs) => runs.remove(index),
         }
     }
 
@@ -219,64 +155,23 @@ impl Store {
         match self {
             Array(vec) => vec.remove_range(range),
             Bitmap(bits) => bits.remove_range(range),
-            // TODO we must test that algorithm
-            Run(ref mut intervals) => {
-                let start = *range.start();
-                let end = *range.end();
-                let mut count: u64 = 0;
-                let mut search_end = false;
-
-                for iv in intervals.iter_mut() {
-                    if !search_end && cmp_index_interval(start, *iv) == Ordering::Equal {
-                        count += Interval::new(iv.end, start).run_len();
-                        iv.end = start;
-                        search_end = true;
-                    }
-
-                    if search_end {
-                        // The end bound is non-inclusive therefore we must search for end - 1.
-                        match cmp_index_interval(end, *iv) {
-                            Ordering::Less => {
-                                // We invalidate the intervals that are contained in
-                                // the start and end but doesn't touch the bounds.
-                                count += iv.run_len();
-                                *iv = Interval::new(u16::MAX, 0);
-                            }
-                            Ordering::Equal => {
-                                // We shrink this interval by moving the start of it to be
-                                // the end bound which is non-inclusive.
-                                count += Interval::new(end, iv.start).run_len();
-                                iv.start = end;
-                            }
-                            Ordering::Greater => break,
-                        }
-                    }
-                }
-
-                // We invalidated the intervals to remove,
-                // the start is greater than the end.
-                intervals.retain(|iv| iv.start <= iv.end);
-
-                count
-            }
+            Run(runs) => runs.remove_range(range),
         }
     }
 
-    #[allow(clippy::todo)]
     pub fn remove_smallest(&mut self, index: u64) {
         match self {
             Array(vec) => vec.remove_smallest(index),
             Bitmap(bits) => bits.remove_smallest(index),
-            Run(..) => todo!(),
+            Run(runs) => runs.remove_smallest(index),
         }
     }
 
-    #[allow(clippy::todo)]
     pub fn remove_biggest(&mut self, index: u64) {
         match self {
             Array(vec) => vec.remove_biggest(index),
             Bitmap(bits) => bits.remove_biggest(index),
-            Run(..) => todo!(),
+            Run(runs) => runs.remove_biggest(index),
         }
     }
 
@@ -284,18 +179,15 @@ impl Store {
         match self {
             Array(vec) => vec.contains(index),
             Bitmap(bits) => bits.contains(index),
-            Run(ref intervals) => {
-                intervals.binary_search_by(|iv| cmp_index_interval(index, *iv)).is_ok()
-            }
+            Run(intervals) => intervals.contains(index),
         }
     }
 
-    #[allow(clippy::todo)]
     pub fn contains_range(&self, range: RangeInclusive<u16>) -> bool {
         match self {
             Array(vec) => vec.contains_range(range),
             Bitmap(bits) => bits.contains_range(range),
-            Run(..) => todo!(),
+            Run(runs) => runs.contains_range(range),
         }
     }
 
@@ -310,35 +202,11 @@ impl Store {
             (Array(vec), Bitmap(bits)) | (Bitmap(bits), Array(vec)) => {
                 vec.iter().all(|&i| !bits.contains(i))
             }
-            // TODO(jpg) is_disjoint
-            (Run(intervals1), Run(intervals2)) => {
-                let (mut i1, mut i2) = (intervals1.iter(), intervals2.iter());
-                let (mut iv1, mut iv2) = (i1.next(), i2.next());
-                loop {
-                    match (iv1, iv2) {
-                        (Some(v1), Some(v2)) => {
-                            if v2.start <= v1.end && v1.start <= v2.end {
-                                return false;
-                            }
-
-                            match v1.end.cmp(&v2.end) {
-                                Ordering::Less => iv1 = i1.next(),
-                                Ordering::Greater => iv2 = i2.next(),
-                                Ordering::Equal => {
-                                    iv1 = i1.next();
-                                    iv2 = i2.next();
-                                }
-                            }
-                        }
-                        (_, _) => return true,
-                    }
-                }
+            (Run(intervals1), Run(intervals2)) => intervals1.is_disjoint(intervals2),
+            (Run(runs), Array(vec)) | (Array(vec), Run(runs)) => runs.is_disjoint_array(vec),
+            (Run(intervals), Bitmap(bitmap)) | (Bitmap(bitmap), Run(intervals)) => {
+                intervals.is_disjoint_bitmap(bitmap)
             }
-            (run @ &Run(..), &Array(ref vec)) | (&Array(ref vec), run @ &Run(..)) => {
-                vec.iter().all(|&i| !run.contains(i))
-            }
-            (&Run(ref _intervals), _store @ &Bitmap(..))
-            | (_store @ &Bitmap(..), &Run(ref _intervals)) => unimplemented!(),
         }
     }
 
@@ -348,26 +216,25 @@ impl Store {
             (Bitmap(bits1), Bitmap(bits2)) => bits1.is_subset(bits2),
             (Array(vec), Bitmap(bits)) => vec.iter().all(|&i| bits.contains(i)),
             (Bitmap(..), &Array(..)) => false,
-            (Array(vec), run @ &Run(..)) => vec.iter().all(|&i| run.contains(i)),
-            // TODO(jpg) is subset bitmap, run
-            (Bitmap(..), Run(_vec)) => unimplemented!(),
-
-            // TODO(jpg) is_subset run, *
-            (Run(_intervals1), Run(_intervals2)) => unimplemented!(),
-            (Run(_intervals), Array(_vec)) => unimplemented!(),
-            (Run(_intervals), _store @ &Bitmap(..)) => unimplemented!(),
+            (Array(vec), Run(runs)) => vec.iter().all(|&i| runs.contains(i)),
+            (Bitmap(bitmap), Run(runs)) => bitmap.iter().all(|i| runs.contains(i)),
+            (Run(intervals1), Run(intervals2)) => intervals1.is_subset(intervals2),
+            (Run(intervals), Array(vec)) => intervals.is_subset_array(vec),
+            (Run(intervals), Bitmap(bitmap)) => intervals.is_subset_bitmap(bitmap),
         }
     }
 
-    #[allow(clippy::todo)]
     pub fn intersection_len(&self, other: &Self) -> u64 {
         match (self, other) {
             (Array(vec1), Array(vec2)) => vec1.intersection_len(vec2),
             (Bitmap(bits1), Bitmap(bits2)) => bits1.intersection_len_bitmap(bits2),
             (Array(vec), Bitmap(bits)) => bits.intersection_len_array(vec),
             (Bitmap(bits), Array(vec)) => bits.intersection_len_array(vec),
-            (Run(..), _) => todo!(),
-            (_, Run(..)) => todo!(),
+            (Run(runs), Array(vec)) | (Array(vec), Run(runs)) => runs.intersection_len_array(vec),
+            (Run(runs), Bitmap(bitmap)) | (Bitmap(bitmap), Run(runs)) => {
+                runs.intersection_len_bitmap(bitmap)
+            }
+            (Run(runs1), Run(runs2)) => runs1.intersection_len(runs2),
         }
     }
 
@@ -375,16 +242,15 @@ impl Store {
         match self {
             Array(vec) => vec.len(),
             Bitmap(bits) => bits.len(),
-            Run(intervals) => intervals.iter().map(|iv| iv.run_len()).sum(),
+            Run(intervals) => intervals.len(),
         }
     }
 
-    #[allow(clippy::todo)]
     pub fn is_empty(&self) -> bool {
         match self {
             Array(vec) => vec.is_empty(),
             Bitmap(bits) => bits.is_empty(),
-            Run(..) => todo!(),
+            Run(runs) => runs.is_empty(),
         }
     }
 
@@ -392,7 +258,7 @@ impl Store {
         match self {
             Array(vec) => vec.min(),
             Bitmap(bits) => bits.min(),
-            Run(ref intervals) => intervals.first().map(|f| f.start),
+            Run(runs) => runs.min(),
         }
     }
 
@@ -401,31 +267,29 @@ impl Store {
         match self {
             Array(vec) => vec.max(),
             Bitmap(bits) => bits.max(),
-            Run(ref intervals) => intervals.last().map(|f| f.end),
+            Run(runs) => runs.max(),
         }
     }
 
-    #[allow(clippy::todo)]
     pub fn rank(&self, index: u16) -> u64 {
         match self {
             Array(vec) => vec.rank(index),
             Bitmap(bits) => bits.rank(index),
-            Run(..) => todo!(),
+            Run(runs) => runs.rank(index),
         }
     }
 
-    #[allow(clippy::todo)]
     pub fn select(&self, n: u16) -> Option<u16> {
         match self {
             Array(vec) => vec.select(n),
             Bitmap(bits) => bits.select(n),
-            Run(..) => todo!(),
+            Run(runs) => runs.select(n),
         }
     }
 
     pub fn count_runs(&self) -> u64 {
-        match *self {
-            Array(ref vec) => {
+        match self {
+            Array(vec) => {
                 vec.iter()
                     .fold((-2, 0u64), |(prev, runs), &v| {
                         let new = v as i32;
@@ -437,7 +301,7 @@ impl Store {
                     })
                     .1
             }
-            Bitmap(ref bits) => {
+            Bitmap(bits) => {
                 let mut num_runs = 0u64;
 
                 for i in 0..BITMAP_LENGTH - 1 {
@@ -451,7 +315,7 @@ impl Store {
                 num_runs += ((last << 1) & !last).count_ones() as u64 + (last >> 63);
                 num_runs
             }
-            Run(ref intervals) => intervals.len() as u64,
+            Run(intervals) => intervals.run_amount(),
         }
     }
 
@@ -459,39 +323,37 @@ impl Store {
         match self {
             Array(arr) => Bitmap(arr.to_bitmap_store()),
             Bitmap(_) => self.clone(),
-            Run(ref intervals) => {
-                let mut bits = BitmapStore::new();
-                for iv in intervals {
-                    for index in iv.start..=iv.end {
-                        bits.mut_array()[bitmap_store::key(index)] |= 1 << bitmap_store::bit(index);
-                    }
-                }
-                Bitmap(bits)
-            }
+            Run(intervals) => Bitmap(intervals.to_bitmap()),
         }
     }
 
     pub(crate) fn to_run(&self) -> Self {
-        match *self {
-            Array(ref vec) => {
-                let mut intervals = Vec::new();
-                let mut start = *vec.as_slice().first().unwrap();
-                for (idx, &v) in vec.as_slice()[1..].iter().enumerate() {
-                    if v - vec.as_slice()[idx] > 1 {
-                        intervals.push(Interval::new(start, vec.as_slice()[idx]));
-                        start = v
+        match self {
+            Array(vec) => {
+                let mut intervals = IntervalStore::new();
+                if let Some(mut start) = vec.as_slice().first().copied() {
+                    for (idx, &v) in vec.as_slice()[1..].iter().enumerate() {
+                        // TODO: why are we subtracting the same number here?
+                        if v - vec.as_slice()[idx] > 1 {
+                            intervals
+                                .push_interval_unchecked(Interval::new(start, vec.as_slice()[idx]));
+                            start = v
+                        }
                     }
+                    intervals.push_interval_unchecked(Interval::new(
+                        start,
+                        *vec.as_slice().last().unwrap(),
+                    ));
                 }
-                intervals.push(Interval::new(start, *vec.as_slice().last().unwrap()));
                 Run(intervals)
             }
-            Bitmap(ref bits) => {
+            Bitmap(bits) => {
                 let mut current = bits.as_array()[0];
                 let mut i = 0u16;
                 let mut start;
                 let mut last;
 
-                let mut intervals = Vec::new();
+                let mut intervals = IntervalStore::new();
 
                 loop {
                     // Skip over empty words
@@ -517,20 +379,20 @@ impl Store {
 
                     // Run continues until end of this container
                     if current == u64::MAX {
-                        intervals.push(Interval::new(start, u16::MAX));
+                        intervals.push_interval_unchecked(Interval::new(start, u16::MAX));
                         break;
                     }
 
                     let current_last = (!current).trailing_zeros() as u16;
                     last = 64 * i + current_last;
-                    intervals.push(Interval::new(start, last - 1));
+                    intervals.push_interval_unchecked(Interval::new(start, last - 1));
 
                     // pad LSBs with 0s
                     current &= current + 1;
                 }
                 Run(intervals)
             }
-            Run(ref _intervals) => panic!("Cannot convert run to run"),
+            Run(intervals) => Run(intervals.clone()),
         }
     }
 }
@@ -544,7 +406,6 @@ impl Default for Store {
 impl BitOr<&Store> for &Store {
     type Output = Store;
 
-    #[allow(clippy::todo)]
     fn bitor(self, rhs: &Store) -> Store {
         match (self, rhs) {
             (Array(vec1), Array(vec2)) => Array(BitOr::bitor(vec1, vec2)),
@@ -563,93 +424,58 @@ impl BitOr<&Store> for &Store {
                 BitOrAssign::bitor_assign(&mut rhs, self);
                 rhs
             }
-            (Run(..), _) => todo!(),
-            (_, Run(..)) => todo!(),
+            (Run(left), Run(right)) => {
+                let (smallest, biggest) = if left.run_amount() > right.run_amount() {
+                    (right, left)
+                } else {
+                    (left, right)
+                };
+                let mut res = biggest.clone();
+                BitOrAssign::bitor_assign(&mut res, smallest);
+                Run(res)
+            }
+            (Run(runs), Array(array)) | (Array(array), Run(runs)) => {
+                let mut ret = runs.clone();
+                BitOrAssign::bitor_assign(&mut ret, array);
+                Run(ret)
+            }
+            (Run(runs), Bitmap(bitmap)) | (Bitmap(bitmap), Run(runs)) => {
+                let mut ret = runs.to_bitmap();
+                BitOrAssign::bitor_assign(&mut ret, bitmap);
+                Bitmap(ret)
+            }
         }
     }
 }
 
 impl BitOrAssign<Store> for Store {
-    fn bitor_assign(&mut self, mut rhs: Store) {
-        match (self, &mut rhs) {
-            (&mut Array(ref mut vec1), &mut Array(ref vec2)) => {
+    fn bitor_assign(&mut self, rhs: Store) {
+        match (self, rhs) {
+            (&mut Array(ref mut vec1), Array(ref vec2)) => {
                 *vec1 = BitOr::bitor(&*vec1, vec2);
             }
-            (&mut Bitmap(ref mut bits1), &mut Array(ref vec2)) => {
+            (&mut Bitmap(ref mut bits1), Array(ref vec2)) => {
                 BitOrAssign::bitor_assign(bits1, vec2);
             }
-            (&mut Bitmap(ref mut bits1), &mut Bitmap(ref bits2)) => {
+            (&mut Bitmap(ref mut bits1), Bitmap(ref bits2)) => {
                 BitOrAssign::bitor_assign(bits1, bits2);
             }
-            (this @ &mut Array(..), Run(..)) => {
-                let new = rhs.clone();
-                BitOrAssign::bitor_assign(this, new);
-            }
-            (this @ &mut Bitmap(..), Run(..)) => {
+            (this @ &mut Bitmap(..), rhs @ Run(..)) => {
                 let other = rhs.to_bitmap();
                 BitOrAssign::bitor_assign(this, other);
             }
-            (&mut Run(ref mut intervals1), Run(ref intervals2)) => {
-                let mut merged = Vec::new();
-
-                let (mut i1, mut i2) = (intervals1.iter(), intervals2.iter());
-                let (mut iv1, mut iv2) = (i1.next(), i2.next());
-                loop {
-                    // Iterate over two iterators and return the lowest value at each step.
-                    let iv = match (iv1, iv2) {
-                        (None, None) => break,
-                        (Some(v1), None) => {
-                            iv1 = i1.next();
-                            v1
-                        }
-                        (None, Some(v2)) => {
-                            iv2 = i2.next();
-                            v2
-                        }
-                        (Some(v1), Some(v2)) => match v1.start.cmp(&v2.start) {
-                            Ordering::Equal => {
-                                iv1 = i1.next();
-                                iv2 = i2.next();
-                                v1
-                            }
-                            Ordering::Less => {
-                                iv1 = i1.next();
-                                v1
-                            }
-                            Ordering::Greater => {
-                                iv2 = i2.next();
-                                v2
-                            }
-                        },
-                    };
-
-                    match merged.last_mut() {
-                        // If the list of merged intervals is empty, append the interval.
-                        None => merged.push(*iv),
-                        Some(last) => {
-                            if last.end < iv.start {
-                                // If the interval does not overlap with the previous, append it.
-                                merged.push(*iv);
-                            } else {
-                                // If there is overlap, so we merge the current and previous intervals.
-                                last.end = core::cmp::max(last.end, iv.end);
-                            }
-                        }
-                    }
-                }
-
-                *intervals1 = merged;
+            (Run(intervals1), Run(intervals2)) => BitOrAssign::bitor_assign(intervals1, intervals2),
+            (Run(intervals1), Array(ref vec)) => BitOrAssign::bitor_assign(intervals1, vec),
+            (this @ Array(..), Run(mut intervals)) => {
+                let Array(vec) = &this else { unreachable!() };
+                BitOrAssign::bitor_assign(&mut intervals, vec);
+                *this = Run(intervals);
             }
-            (ref mut this @ &mut Run(..), Array(ref vec)) => {
-                for i in vec.iter() {
-                    this.insert(*i);
-                }
-            }
-            (this @ &mut Run(..), Bitmap(..)) => {
+            (this @ Run(..), rhs @ Bitmap(..)) => {
                 *this = this.to_bitmap();
                 BitOrAssign::bitor_assign(this, rhs);
             }
-            (this @ &mut Array(..), &mut Bitmap(..)) => {
+            (this @ &mut Array(..), mut rhs @ Bitmap(..)) => {
                 mem::swap(this, &mut rhs);
                 BitOrAssign::bitor_assign(this, rhs);
             }
@@ -658,7 +484,6 @@ impl BitOrAssign<Store> for Store {
 }
 
 impl BitOrAssign<&Store> for Store {
-    #[allow(clippy::todo)]
     fn bitor_assign(&mut self, rhs: &Store) {
         match (self, rhs) {
             (&mut Array(ref mut vec1), Array(vec2)) => {
@@ -676,8 +501,27 @@ impl BitOrAssign<&Store> for Store {
                 BitOrAssign::bitor_assign(&mut lhs, &*this);
                 *this = lhs;
             }
-            (Run(..), _) => todo!(),
-            (_, Run(..)) => todo!(),
+            (Run(runs1), Run(runs2)) => {
+                BitOrAssign::bitor_assign(runs1, runs2);
+            }
+            (Run(runs), Array(array)) => {
+                BitOrAssign::bitor_assign(runs, array);
+            }
+            (this @ Array(..), Run(runs)) => {
+                let mut runs = runs.clone();
+                let Array(array) = &this else { unreachable!() };
+                BitOrAssign::bitor_assign(&mut runs, array);
+                *this = Run(runs);
+            }
+            (this @ Run(..), Bitmap(bitmap)) => {
+                let Run(runs) = &this else { unreachable!() };
+                let mut new = runs.to_bitmap();
+                BitOrAssign::bitor_assign(&mut new, bitmap);
+                *this = Bitmap(new);
+            }
+            (Bitmap(bitmap), Run(runs)) => {
+                BitOrAssign::bitor_assign(bitmap, &runs.to_bitmap());
+            }
         }
     }
 }
@@ -712,53 +556,31 @@ impl BitAndAssign<Store> for Store {
                 }
                 BitAndAssign::bitand_assign(vec1, &*vec2);
             }
-            (&mut Array(ref mut vec), run @ Run(..)) => {
-                vec.retain(|i| run.contains(i));
-            }
             (&mut Bitmap(ref mut bits1), &mut Bitmap(ref bits2)) => {
                 BitAndAssign::bitand_assign(bits1, bits2);
             }
             (&mut Array(ref mut vec1), &mut Bitmap(ref bits2)) => {
                 BitAndAssign::bitand_assign(vec1, bits2);
             }
-            (this @ &mut Bitmap(..), Run(..)) => {
-                let other = rhs.to_bitmap();
-                BitAndAssign::bitand_assign(this, other);
+            (Run(intervals1), Run(intervals2)) => {
+                *intervals1 = BitAnd::bitand(&*intervals1, &*intervals2);
             }
-            (&mut Run(ref mut intervals1), Run(ref intervals2)) => {
-                let mut merged = Vec::new();
-
-                let (mut i1, mut i2) = (intervals1.iter(), intervals2.iter());
-                let (mut iv1, mut iv2) = (i1.next(), i2.next());
-
-                // Iterate over both iterators.
-                while let (Some(v1), Some(v2)) = (iv1, iv2) {
-                    if v2.start <= v1.end && v1.start <= v2.end {
-                        let start = core::cmp::max(v1.start, v2.start);
-                        let end = core::cmp::min(v1.end, v2.end);
-                        let iv = Interval::new(start, end);
-                        merged.push(iv);
-                    }
-
-                    match v1.end.cmp(&v2.end) {
-                        Ordering::Less => iv1 = i1.next(),
-                        Ordering::Greater => iv2 = i2.next(),
-                        Ordering::Equal => {
-                            iv1 = i1.next();
-                            iv2 = i2.next();
-                        }
-                    }
-                }
-
-                *intervals1 = merged;
+            (this @ &mut Run(..), Array(array)) => {
+                let Run(runs) = &this else { unreachable!() };
+                BitAndAssign::bitand_assign(array, runs);
+                *this = rhs;
             }
-            (this @ &mut Run(..), other @ Array(..)) => {
-                let new = other.clone();
-                BitAndAssign::bitand_assign(this, new);
+            (Array(array), Run(runs)) => {
+                BitAndAssign::bitand_assign(array, &*runs);
             }
-            (this @ &mut Run(..), other @ Bitmap(..)) => {
-                let new = other.clone();
-                BitAndAssign::bitand_assign(this, new);
+            (this @ &mut Run(..), Bitmap(bitmap)) => {
+                let Run(runs) = &this else { unreachable!() };
+                let mut new_bitmap = runs.to_bitmap();
+                BitAndAssign::bitand_assign(&mut new_bitmap, &*bitmap);
+                *this = Bitmap(new_bitmap);
+            }
+            (Bitmap(bitmap), Run(runs)) => {
+                BitAndAssign::bitand_assign(bitmap, &runs.to_bitmap());
             }
             (this @ &mut Bitmap(..), &mut Array(..)) => {
                 mem::swap(this, &mut rhs);
@@ -770,7 +592,6 @@ impl BitAndAssign<Store> for Store {
 
 impl BitAndAssign<&Store> for Store {
     #[allow(clippy::suspicious_op_assign_impl)]
-    #[allow(clippy::todo)]
     fn bitand_assign(&mut self, rhs: &Store) {
         match (self, rhs) {
             (&mut Array(ref mut vec1), Array(vec2)) => {
@@ -794,8 +615,25 @@ impl BitAndAssign<&Store> for Store {
                 BitAndAssign::bitand_assign(&mut new, &*this);
                 *this = new;
             }
-            (Run(..), _) => todo!(),
-            (_, Run(..)) => todo!(),
+            (Run(runs1), Run(runs2)) => {
+                *runs1 = BitAnd::bitand(&*runs1, runs2);
+            }
+            (this @ Run(..), Bitmap(bitmap)) => {
+                let Run(runs) = &this else { unreachable!() };
+                let mut new_bitmap = runs.to_bitmap();
+                BitAndAssign::bitand_assign(&mut new_bitmap, bitmap);
+                *this = Bitmap(new_bitmap);
+            }
+            (Bitmap(bitmap), Run(runs)) => {
+                BitAndAssign::bitand_assign(bitmap, &runs.to_bitmap());
+            }
+            (this @ Run(..), Array(array)) => {
+                let Run(runs) = &this else { unreachable!() };
+                let mut new_array = array.clone();
+                new_array.retain(|f| runs.contains(f));
+                *this = Array(new_array);
+            }
+            (Array(array), Run(runs)) => array.retain(|f| runs.contains(f)),
         }
     }
 }
@@ -821,9 +659,6 @@ impl SubAssign<&Store> for Store {
             (&mut Array(ref mut vec1), Array(vec2)) => {
                 SubAssign::sub_assign(vec1, vec2);
             }
-            (&mut Array(ref mut vec), run @ &Run(..)) => {
-                vec.retain(|i| !run.contains(i));
-            }
             (&mut Bitmap(ref mut bits1), Array(vec2)) => {
                 SubAssign::sub_assign(bits1, vec2);
             }
@@ -833,23 +668,27 @@ impl SubAssign<&Store> for Store {
             (&mut Array(ref mut vec1), Bitmap(bits2)) => {
                 SubAssign::sub_assign(vec1, bits2);
             }
-            (ref mut this @ &mut Bitmap(..), Run(intervals)) => {
-                for iv in intervals {
-                    this.remove_range(iv.start..=iv.end);
-                }
+            (Run(runs1), Run(runs2)) => {
+                SubAssign::sub_assign(runs1, runs2);
             }
-            (ref mut this @ &mut Run(..), Run(intervals2)) => {
-                for iv in intervals2 {
-                    this.remove_range(iv.start..=iv.end);
-                }
+            (Run(runs), Array(array)) => {
+                array.iter().for_each(|&f| {
+                    runs.remove(f);
+                });
             }
-            (ref mut this @ &mut Run(..), Array(vec)) => {
-                for i in vec.iter() {
-                    this.remove(*i);
-                }
+            (Array(array), Run(runs)) => {
+                array.retain(|f| !runs.contains(f));
             }
-            // TODO(jpg) difference_with run bitmap
-            (&mut Run(ref mut _vec), _store @ &Bitmap(..)) => unimplemented!(),
+            (this @ Run(..), Bitmap(bitmap)) => {
+                let Run(runs) = &this else { unreachable!() };
+                let mut new_bitmap = runs.to_bitmap();
+                SubAssign::sub_assign(&mut new_bitmap, bitmap);
+                *this = Bitmap(new_bitmap);
+            }
+            (Bitmap(bitmap), Run(runs)) => {
+                let new_bitmap = runs.to_bitmap();
+                SubAssign::sub_assign(bitmap, &new_bitmap);
+            }
         }
     }
 }
@@ -875,7 +714,6 @@ impl BitXor<&Store> for &Store {
 }
 
 impl BitXorAssign<Store> for Store {
-    #[allow(clippy::todo)]
     fn bitxor_assign(&mut self, mut rhs: Store) {
         match (self, &mut rhs) {
             (&mut Array(ref mut vec1), &mut Array(ref vec2)) => {
@@ -891,8 +729,31 @@ impl BitXorAssign<Store> for Store {
                 mem::swap(this, &mut rhs);
                 BitXorAssign::bitxor_assign(this, rhs);
             }
-            (Run(..), _) => todo!(),
-            (_, Run(..)) => todo!(),
+            (Run(runs1), Run(runs2)) => {
+                *runs1 = BitXor::bitxor(&*runs1, &*runs2);
+            }
+            (Run(runs1), Array(array)) => array.iter().for_each(|&f| {
+                if runs1.contains(f) {
+                    runs1.remove(f);
+                }
+            }),
+            (this @ Array(..), Run(runs1)) => {
+                let Array(array) = &this else { unreachable!() };
+                array.iter().for_each(|&f| {
+                    if runs1.contains(f) {
+                        runs1.remove(f);
+                    }
+                });
+                *this = rhs;
+            }
+            (Bitmap(bitmap), Run(runs)) => {
+                BitXorAssign::bitxor_assign(bitmap, &runs.to_bitmap());
+            }
+            (this @ Run(..), Bitmap(bitmap)) => {
+                let Run(runs) = &this else { unreachable!() };
+                BitXorAssign::bitxor_assign(bitmap, &runs.to_bitmap());
+                *this = rhs;
+            }
         }
     }
 }
@@ -904,24 +765,43 @@ impl BitXorAssign<&Store> for Store {
                 let this = mem::take(vec1);
                 *vec1 = BitXor::bitxor(&this, vec2);
             }
-            // TODO(jpg) symmetric_difference_with array, run
-            (&mut Array(ref mut _vec), Run(_intervals)) => unimplemented!(),
-            (&mut Bitmap(ref mut bits1), Array(vec2)) => {
-                BitXorAssign::bitxor_assign(bits1, vec2);
-            }
             (&mut Bitmap(ref mut bits1), Bitmap(bits2)) => {
                 BitXorAssign::bitxor_assign(bits1, bits2);
             }
-            // TODO(jpg) symmetric_difference_with bitmap, run
-            (ref mut _this @ &mut Bitmap(..), Run(_vec)) => unimplemented!(),
-            // TODO(jpg) symmetric_difference_with run, *
-            (&mut Run(ref mut _intervals1), Run(_intervals2)) => unimplemented!(),
-            (&mut Run(ref mut _intervals), Array(_vec)) => unimplemented!(),
-            (_this @ &mut Run(..), &Bitmap(..)) => unimplemented!(),
             (this @ &mut Array(..), Bitmap(bits2)) => {
                 let mut lhs: Store = Bitmap(bits2.clone());
                 BitXorAssign::bitxor_assign(&mut lhs, &*this);
                 *this = lhs;
+            }
+            (&mut Bitmap(ref mut bits1), Array(vec2)) => {
+                BitXorAssign::bitxor_assign(bits1, vec2);
+            }
+            (Run(runs1), Run(runs2)) => {
+                *runs1 = BitXor::bitxor(&*runs1, runs2);
+            }
+            (Run(runs1), Array(array)) => array.iter().for_each(|&f| {
+                if runs1.contains(f) {
+                    runs1.remove(f);
+                }
+            }),
+            (this @ Array(..), Run(runs1)) => {
+                let Array(array) = &this else { unreachable!() };
+                let mut runs1 = runs1.clone();
+                array.iter().for_each(|&f| {
+                    if runs1.contains(f) {
+                        runs1.remove(f);
+                    }
+                });
+                *this = Run(runs1);
+            }
+            (Bitmap(bitmap), Run(runs)) => {
+                BitXorAssign::bitxor_assign(bitmap, &runs.to_bitmap());
+            }
+            (this @ Run(..), Bitmap(bitmap)) => {
+                let Run(runs) = &this else { unreachable!() };
+                let mut new_bitmap = runs.to_bitmap();
+                BitXorAssign::bitxor_assign(&mut new_bitmap, bitmap);
+                *this = Bitmap(new_bitmap);
             }
         }
     }
@@ -934,7 +814,7 @@ impl<'a> IntoIterator for &'a Store {
         match self {
             Array(vec) => Iter::Array(vec.iter()),
             Bitmap(bits) => Iter::BitmapBorrowed(bits.iter()),
-            Run(ref intervals) => Iter::Run(RunIter::new(intervals.to_vec())),
+            Run(intervals) => Iter::RunBorrowed(intervals.iter()),
         }
     }
 }
@@ -946,7 +826,7 @@ impl IntoIterator for Store {
         match self {
             Array(vec) => Iter::Vec(vec.into_iter()),
             Bitmap(bits) => Iter::BitmapOwned(bits.into_iter()),
-            Run(intervals) => Iter::Run(RunIter::new(intervals)),
+            Run(intervals) => Iter::RunOwned(intervals.into_iter()),
         }
     }
 }
@@ -959,56 +839,15 @@ impl PartialEq for Store {
                 bits1.len() == bits2.len()
                     && bits1.iter().zip(bits2.iter()).all(|(i1, i2)| i1 == i2)
             }
+            // TODO: Run containers should be checked against other types of containers right?
             (Run(intervals1), Run(ref intervals2)) => intervals1 == intervals2,
             _ => false,
         }
     }
 }
 
-impl RunIter {
-    fn new(intervals: Vec<Interval>) -> RunIter {
-        RunIter { run: 0, offset: 0, intervals }
-    }
-
-    fn move_next(&mut self) {
-        self.offset += 1;
-        if self.offset == self.intervals[self.run].run_len() {
-            self.offset = 0;
-            self.run += 1;
-        }
-    }
-}
-
-impl Iterator for RunIter {
-    type Item = u16;
-
-    fn next(&mut self) -> Option<u16> {
-        if self.run == self.intervals.len() {
-            return None;
-        }
-        let result = self.intervals[self.run].start + self.offset as u16;
-        self.move_next();
-        Some(result)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining_size =
-            self.intervals[self.run..].iter().map(|f| f.run_len()).sum::<u64>() - self.offset;
-        let as_usize: Result<usize, _> = remaining_size.try_into();
-        (as_usize.unwrap_or(usize::MAX), as_usize.ok())
-    }
-}
-
-impl DoubleEndedIterator for RunIter {
-    #[allow(clippy::todo)]
-    fn next_back(&mut self) -> Option<Self::Item> {
-        todo!()
-    }
-}
-
 impl Iter<'_> {
     /// Advance the iterator to the first value greater than or equal to `n`.
-    #[allow(clippy::todo)]
     pub(crate) fn advance_to(&mut self, n: u16) {
         match self {
             Iter::Array(inner) => {
@@ -1025,7 +864,8 @@ impl Iter<'_> {
             }
             Iter::BitmapBorrowed(inner) => inner.advance_to(n),
             Iter::BitmapOwned(inner) => inner.advance_to(n),
-            Iter::Run(..) => todo!(),
+            Iter::RunOwned(inner) => inner.advance_to(n),
+            Iter::RunBorrowed(inner) => inner.advance_to(n),
         }
     }
 
@@ -1050,7 +890,8 @@ impl Iter<'_> {
             }
             Iter::BitmapBorrowed(inner) => inner.advance_back_to(n),
             Iter::BitmapOwned(inner) => inner.advance_back_to(n),
-            Iter::Run(..) => todo!(),
+            Iter::RunOwned(inner) => inner.advance_back_to(n),
+            Iter::RunBorrowed(inner) => inner.advance_back_to(n),
         }
     }
 }
@@ -1064,7 +905,8 @@ impl Iterator for Iter<'_> {
             Iter::Vec(inner) => inner.next(),
             Iter::BitmapBorrowed(inner) => inner.next(),
             Iter::BitmapOwned(inner) => inner.next(),
-            Iter::Run(ref mut inner) => inner.next(),
+            Iter::RunOwned(inner) => inner.next(),
+            Iter::RunBorrowed(inner) => inner.next(),
         }
     }
 
@@ -1074,7 +916,8 @@ impl Iterator for Iter<'_> {
             Iter::Vec(inner) => inner.size_hint(),
             Iter::BitmapBorrowed(inner) => inner.size_hint(),
             Iter::BitmapOwned(inner) => inner.size_hint(),
-            Iter::Run(inner) => inner.size_hint(),
+            Iter::RunOwned(inner) => inner.size_hint(),
+            Iter::RunBorrowed(inner) => inner.size_hint(),
         }
     }
 
@@ -1087,7 +930,8 @@ impl Iterator for Iter<'_> {
             Iter::Vec(inner) => inner.count(),
             Iter::BitmapBorrowed(inner) => inner.count(),
             Iter::BitmapOwned(inner) => inner.count(),
-            Iter::Run(inner) => inner.count(),
+            Iter::RunOwned(inner) => inner.count(),
+            Iter::RunBorrowed(inner) => inner.count(),
         }
     }
 
@@ -1097,7 +941,8 @@ impl Iterator for Iter<'_> {
             Iter::Vec(inner) => inner.nth(n),
             Iter::BitmapBorrowed(inner) => inner.nth(n),
             Iter::BitmapOwned(inner) => inner.nth(n),
-            Iter::Run(inner) => inner.nth(n),
+            Iter::RunOwned(inner) => inner.nth(n),
+            Iter::RunBorrowed(inner) => inner.nth(n),
         }
     }
 }
@@ -1109,7 +954,8 @@ impl DoubleEndedIterator for Iter<'_> {
             Iter::Vec(inner) => inner.next_back(),
             Iter::BitmapBorrowed(inner) => inner.next_back(),
             Iter::BitmapOwned(inner) => inner.next_back(),
-            Iter::Run(inner) => inner.next_back(),
+            Iter::RunOwned(inner) => inner.next_back(),
+            Iter::RunBorrowed(inner) => inner.next_back(),
         }
     }
 }

@@ -375,11 +375,6 @@ impl BitmapStore {
         &self.bits
     }
 
-    // NOTE: escape hatch for runs
-    pub fn mut_array(&mut self) -> &mut [u64; BITMAP_LENGTH] {
-        &mut self.bits
-    }
-
     pub fn clear(&mut self) {
         self.bits.fill(0);
         self.len = 0;

@@ -2,7 +2,9 @@
 use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::iter::Peekable;
-use core::ops::{BitAnd, BitOr, BitOrAssign, BitXor, Deref, RangeInclusive, SubAssign};
+use core::ops::{
+    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Deref, RangeInclusive, SubAssign,
+};
 use core::slice::Iter;
 use core::{cmp::Ordering, ops::ControlFlow};
 
@@ -20,6 +22,23 @@ impl Default for IntervalStore {
 impl IntervalStore {
     pub fn new() -> Self {
         Self(Default::default())
+    }
+
+    pub fn from_vec_unchecked(vec: Vec<Interval>) -> Self {
+        #[cfg(debug_assertions)]
+        {
+            for (i, cur_interval) in vec.iter().enumerate() {
+                if let Some(next) = vec.get(i + 1) {
+                    assert!(cur_interval.end < next.start);
+                }
+            }
+        }
+        Self(vec)
+    }
+
+    pub(crate) fn push_interval_unchecked(&mut self, interval: Interval) {
+        debug_assert!(self.0.last().map(|f| f.end < interval.start).unwrap_or(true));
+        self.0.push(interval)
     }
 
     #[inline]
@@ -667,6 +686,12 @@ impl BitAnd for &IntervalStore {
             |_, _, buf| buf,
             IntervalStore::new(),
         )
+    }
+}
+
+impl BitAndAssign<&IntervalStore> for ArrayStore {
+    fn bitand_assign(&mut self, rhs: &IntervalStore) {
+        self.retain(|f| rhs.contains(f));
     }
 }
 
