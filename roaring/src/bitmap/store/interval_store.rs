@@ -1,5 +1,7 @@
 #![allow(unused)]
 use alloc::vec::Vec;
+use core::borrow::Borrow;
+use core::iter::Peekable;
 use core::ops::{BitAnd, BitOr, BitOrAssign, BitXor, Deref, RangeInclusive, SubAssign};
 use core::slice::Iter;
 use core::{cmp::Ordering, ops::ControlFlow};
@@ -608,11 +610,15 @@ impl IntervalStore {
         bits
     }
 
-    pub(crate) fn iter(&self) -> core::slice::Iter<Interval> {
+    pub(crate) fn iter(&self) -> RunIterBorrowed {
+        self.into_iter()
+    }
+
+    pub(crate) fn iter_intervals(&self) -> core::slice::Iter<Interval> {
         self.0.iter()
     }
 
-    pub(crate) fn iter_mut(&mut self) -> core::slice::IterMut<Interval> {
+    pub(crate) fn iter_intervals_mut(&mut self) -> core::slice::IterMut<Interval> {
         self.0.iter_mut()
     }
 }
@@ -621,7 +627,7 @@ impl BitOrAssign for IntervalStore {
     fn bitor_assign(&mut self, mut rhs: Self) {
         let (add_intervals, take_intervals, self_is_add) =
             if self.len() > rhs.len() { (self, &mut rhs, true) } else { (&mut rhs, self, false) };
-        for iv in take_intervals.iter() {
+        for iv in take_intervals.iter_intervals() {
             add_intervals.insert_range(iv.start..=iv.end);
         }
         if !self_is_add {
@@ -640,7 +646,7 @@ impl BitOrAssign<&ArrayStore> for IntervalStore {
 
 impl BitOrAssign<&Self> for IntervalStore {
     fn bitor_assign(&mut self, mut rhs: &Self) {
-        for iv in rhs.iter() {
+        for iv in rhs.iter_intervals() {
             self.insert_range(iv.start..=iv.end);
         }
     }
@@ -666,7 +672,7 @@ impl BitAnd for &IntervalStore {
 
 impl SubAssign<&Self> for IntervalStore {
     fn sub_assign(&mut self, rhs: &Self) {
-        for iv in rhs.iter() {
+        for iv in rhs.iter_intervals() {
             self.remove_range(iv.start..=iv.end);
         }
     }
@@ -683,6 +689,207 @@ impl BitXor for &IntervalStore {
         union
     }
 }
+
+pub(crate) type RunIterOwned = RunIter<alloc::vec::IntoIter<Interval>>;
+pub(crate) type RunIterBorrowed<'a> = RunIter<core::slice::Iter<'a, Interval>>;
+
+impl IntoIterator for IntervalStore {
+    type Item = u16;
+    type IntoIter = RunIter<alloc::vec::IntoIter<Interval>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        RunIter::new(self.0.into_iter())
+    }
+}
+
+impl<'a> IntoIterator for &'a IntervalStore {
+    type Item = u16;
+    type IntoIter = RunIter<core::slice::Iter<'a, Interval>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        RunIter::new(self.0.iter())
+    }
+}
+
+pub(crate) trait SliceIterator<I>: Iterator + DoubleEndedIterator {
+    fn as_slice(&self) -> &[I];
+}
+
+impl<I> SliceIterator<I> for alloc::vec::IntoIter<I> {
+    fn as_slice(&self) -> &[I] {
+        alloc::vec::IntoIter::as_slice(self)
+    }
+}
+
+impl<'a, I> SliceIterator<I> for core::slice::Iter<'a, I> {
+    fn as_slice(&self) -> &'a [I] {
+        core::slice::Iter::as_slice(self)
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct RunIter<I: SliceIterator<Interval>> {
+    forward_offset: u16,
+    backward_offset: u16,
+    intervals: I,
+}
+
+impl<I: SliceIterator<Interval>> RunIter<I> {
+    fn new(intervals: I) -> Self {
+        Self { forward_offset: 0, backward_offset: 0, intervals }
+    }
+
+    fn move_next(&mut self) {
+        if let Some(value) = self.forward_offset.checked_add(1) {
+            self.forward_offset = value;
+        } else {
+            return;
+        }
+        if Some(self.forward_offset as u64)
+            >= self.intervals.as_slice().first().map(|f| f.run_len())
+        {
+            self.intervals.next();
+            self.forward_offset = 0;
+        }
+    }
+
+    fn move_next_back(&mut self) {
+        if let Some(value) = self.backward_offset.checked_add(1) {
+            self.backward_offset = value;
+        } else {
+            return;
+        }
+        if Some(self.backward_offset as u64)
+            >= self.intervals.as_slice().last().map(|f| f.run_len())
+        {
+            self.intervals.next_back();
+            self.backward_offset = 0;
+        }
+    }
+
+    fn remaining_size(&self) -> usize {
+        (self.intervals.as_slice().iter().map(|f| f.run_len()).sum::<u64>()
+            - self.forward_offset as u64
+            - self.backward_offset as u64) as usize
+    }
+
+    /// Advance the iterator to the first value greater than or equal to `n`.
+    pub(crate) fn advance_to(&mut self, n: u16) {
+        if n == 0 {
+            return;
+        }
+        if self
+            .intervals
+            .as_slice()
+            .first()
+            .map(|f| f.start + self.forward_offset > n)
+            .unwrap_or(true)
+        {
+            return;
+        }
+        match self.intervals.as_slice().binary_search_by(|iv| cmp_index_interval(n, *iv).reverse())
+        {
+            Ok(index) => {
+                if let Some(value) = index.checked_sub(1) {
+                    self.intervals.nth(value);
+                }
+                self.forward_offset = n - self.intervals.as_slice().first().unwrap().start;
+            }
+            Err(index) => {
+                if index == self.intervals.as_slice().len() {
+                    return;
+                }
+                if let Some(value) = index.checked_sub(1) {
+                    self.intervals.nth(value);
+                    self.forward_offset = 0;
+                }
+            }
+        }
+    }
+
+    /// Advance the back of iterator to the first value less than or equal to `n`.
+    pub(crate) fn advance_back_to(&mut self, n: u16) {
+        if n == u16::MAX {
+            return;
+        }
+        if self
+            .intervals
+            .as_slice()
+            .last()
+            .map(|f| f.end - self.backward_offset < n)
+            .unwrap_or(true)
+        {
+            return;
+        }
+        match self.intervals.as_slice().binary_search_by(|iv| cmp_index_interval(n, *iv).reverse())
+        {
+            Ok(index) => {
+                let backward_index = self.intervals.as_slice().len() - index - 1;
+                if let Some(value) = backward_index.checked_sub(1) {
+                    self.intervals.nth_back(value);
+                }
+                self.backward_offset = self.intervals.as_slice().last().unwrap().end - n;
+            }
+            Err(index) => {
+                if index == 0 {
+                    return;
+                }
+                let backward_index = self.intervals.as_slice().len() - index;
+                if let Some(value) = backward_index.checked_sub(1) {
+                    self.intervals.nth_back(value);
+                    self.backward_offset = 0;
+                }
+            }
+        }
+    }
+}
+
+impl<I: SliceIterator<Interval>> Iterator for RunIter<I> {
+    type Item = u16;
+
+    fn next(&mut self) -> Option<u16> {
+        let result = self.intervals.as_slice().first()?.start + self.forward_offset;
+        self.move_next();
+        Some(result)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining_size = self.remaining_size();
+        (remaining_size, Some(remaining_size))
+    }
+
+    fn count(self) -> usize {
+        self.remaining_size()
+    }
+
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        if let Some(skip) = n.checked_sub(1) {
+            let mut to_skip = skip as u64;
+            loop {
+                let to_remove = (self.intervals.as_slice().first()?.run_len()
+                    - self.forward_offset as u64)
+                    .min(to_skip);
+                to_skip -= to_remove;
+                self.forward_offset += to_remove as u16;
+                self.move_next();
+                if to_skip == 0 {
+                    break;
+                }
+            }
+        }
+        self.next()
+    }
+}
+
+impl<I: SliceIterator<Interval>> DoubleEndedIterator for RunIter<I> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let result = self.intervals.as_slice().last()?.end - self.backward_offset;
+        self.move_next_back();
+        Some(result)
+    }
+}
+
+impl<I: SliceIterator<Interval>> ExactSizeIterator for RunIter<I> {}
 
 /// This interval is inclusive to end.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug)]
@@ -1860,5 +2067,327 @@ mod tests {
                 Interval::new(1001, 6000),
             ])
         );
+    }
+
+    #[test]
+    fn iter_next() {
+        let interval_store = IntervalStore(alloc::vec![
+            Interval::new(0, 50),
+            Interval::new(500, 600),
+            Interval::new(800, 1000),
+        ]);
+        let mut iter = interval_store.into_iter();
+
+        let size = (Interval::new(0, 50).run_len()
+            + Interval::new(500, 600).run_len()
+            + Interval::new(800, 1000).run_len()) as usize;
+        assert_eq!(iter.size_hint(), (size, Some(size)));
+
+        let mut i = 0;
+        while let Some(value) = iter.next() {
+            assert_eq!(i, value as usize);
+            i += 1;
+            if i >= 51 {
+                break;
+            }
+            let size = (Interval::new(i as u16, 50).run_len()
+                + Interval::new(500, 600).run_len()
+                + Interval::new(800, 1000).run_len()) as usize;
+            assert_eq!(iter.size_hint(), (size, Some(size)));
+        }
+
+        let size =
+            (Interval::new(500, 600).run_len() + Interval::new(800, 1000).run_len()) as usize;
+        assert_eq!(iter.size_hint(), (size, Some(size)));
+
+        let mut i = 0;
+        while let Some(value) = iter.next() {
+            assert_eq!(i + 500, value as usize);
+            i += 1;
+            if i >= 101 {
+                break;
+            }
+            let size = (Interval::new((i + 500) as u16, 600).run_len()
+                + Interval::new(800, 1000).run_len()) as usize;
+            assert_eq!(iter.size_hint(), (size, Some(size)));
+        }
+
+        let size = Interval::new(800, 1000).run_len() as usize;
+        assert_eq!(iter.size_hint(), (size, Some(size)));
+
+        let mut i = 0;
+        while let Some(value) = iter.next() {
+            if i >= 201 {
+                break;
+            }
+            assert_eq!(i + 800, value as usize);
+            i += 1;
+            if i >= 201 {
+                break;
+            }
+            let size = (Interval::new((i + 800) as u16, 1000).run_len()) as usize;
+            assert_eq!(iter.size_hint(), (size, Some(size)));
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+
+        assert!(iter.next().is_none());
+        assert!(iter.next_back().is_none());
+    }
+
+    #[test]
+    fn iter_next_back() {
+        let interval_store = IntervalStore(alloc::vec![
+            Interval::new(0, 50),
+            Interval::new(500, 600),
+            Interval::new(800, 1000),
+        ]);
+        let mut iter = interval_store.into_iter();
+
+        let size = (Interval::new(0, 50).run_len()
+            + Interval::new(500, 600).run_len()
+            + Interval::new(800, 1000).run_len()) as usize;
+        assert_eq!(iter.size_hint(), (size, Some(size)));
+
+        let mut i = 0;
+        while let Some(value) = iter.next_back() {
+            assert_eq!(1000 - i, value as usize);
+            i += 1;
+            if i >= 201 {
+                break;
+            }
+            let size = (Interval::new(0, 50).run_len()
+                + Interval::new(500, 600).run_len()
+                + Interval::new(800, (1000 - i) as u16).run_len()) as usize;
+            assert_eq!(iter.size_hint(), (size, Some(size)));
+        }
+
+        let mut i = 0;
+        while let Some(value) = iter.next_back() {
+            assert_eq!(600 - i, value as usize);
+            i += 1;
+            if i >= 101 {
+                break;
+            }
+            let size = (Interval::new(0, 50).run_len()
+                + Interval::new(500, (600 - i) as u16).run_len()) as usize;
+            assert_eq!(iter.size_hint(), (size, Some(size)));
+        }
+
+        let mut i = 0;
+        while let Some(value) = iter.next_back() {
+            assert_eq!(50 - i, value as usize);
+            i += 1;
+            if i >= 51 {
+                break;
+            }
+            let size = (Interval::new(0, (50 - i) as u16).run_len()) as usize;
+            assert_eq!(iter.size_hint(), (size, Some(size)));
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert!(iter.next().is_none());
+        assert!(iter.next_back().is_none());
+    }
+
+    #[test]
+    fn iter_next_and_next_back() {
+        let interval_store = IntervalStore(alloc::vec![
+            Interval::new(0, 50),
+            Interval::new(500, 600),
+            Interval::new(800, 1000),
+        ]);
+        let mut iter = interval_store.into_iter();
+
+        let size = (Interval::new(0, 50).run_len()
+            + Interval::new(500, 600).run_len()
+            + Interval::new(800, 1000).run_len()) as usize;
+        assert_eq!(iter.size_hint(), (size, Some(size)));
+
+        let mut i = 0;
+        while let Some(value) = iter.next_back() {
+            assert_eq!(1000 - i, value as usize);
+            i += 1;
+            if i >= 201 {
+                break;
+            }
+            let size = (Interval::new(0, 50).run_len()
+                + Interval::new(500, 600).run_len()
+                + Interval::new(800, (1000 - i) as u16).run_len()) as usize;
+            assert_eq!(iter.size_hint(), (size, Some(size)));
+        }
+
+        let size = (Interval::new(0, 50).run_len() + Interval::new(500, 600).run_len()) as usize;
+        assert_eq!(iter.size_hint(), (size, Some(size)));
+
+        let mut i = 0;
+        while let Some(value) = iter.next_back() {
+            assert_eq!(600 - i, value as usize);
+            i += 1;
+            if i >= 101 {
+                break;
+            }
+            let size = (Interval::new(0, 50).run_len()
+                + Interval::new(500, (600 - i) as u16).run_len()) as usize;
+            assert_eq!(iter.size_hint(), (size, Some(size)));
+        }
+
+        let size = (Interval::new(0, 50).run_len()) as usize;
+        assert_eq!(iter.size_hint(), (size, Some(size)));
+
+        let mut i = 0;
+        while let Some(value) = iter.next() {
+            assert_eq!(i, value as usize);
+            i += 1;
+            if i >= 51 {
+                break;
+            }
+            let size = (Interval::new(i as u16, 50).run_len()) as usize;
+            assert_eq!(iter.size_hint(), (size, Some(size)));
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert!(iter.next().is_none());
+        assert!(iter.next_back().is_none());
+    }
+
+    #[test]
+    fn iter_u16_max() {
+        let interval_store = IntervalStore(alloc::vec![Interval::new(0, u16::MAX),]);
+        let mut iter = interval_store.iter();
+
+        let mut i = 0;
+        while let Some(value) = iter.next() {
+            assert_eq!(i, value as usize);
+            i += 1;
+            if i >= u16::MAX as usize {
+                break;
+            }
+            let size = (Interval::new(i as u16, u16::MAX).run_len()) as usize;
+            assert_eq!(iter.size_hint(), (size, Some(size)));
+        }
+
+        let mut iter = interval_store.iter();
+
+        let mut i = 0;
+        while let Some(value) = iter.next_back() {
+            assert_eq!(u16::MAX as usize - i, value as usize);
+            i += 1;
+            if i >= u16::MAX as usize {
+                break;
+            }
+            let size = (Interval::new(0, u16::MAX - i as u16).run_len()) as usize;
+            assert_eq!(iter.size_hint(), (size, Some(size)));
+        }
+        let mut iter = interval_store.iter();
+        assert_eq!(iter.nth(u16::MAX as usize), Some(u16::MAX));
+    }
+
+    #[test]
+    fn iter_nth() {
+        let interval_store = IntervalStore(alloc::vec![
+            Interval::new(0, 50),
+            Interval::new(500, 600),
+            Interval::new(800, 1000),
+        ]);
+        let mut iter = interval_store.iter();
+        assert_eq!(iter.nth(50), Some(50));
+
+        let mut iter = interval_store.iter();
+        assert_eq!(iter.nth(51), Some(500));
+
+        let mut iter = interval_store.iter();
+        assert_eq!(iter.nth(100), Some(549));
+
+        let mut iter = interval_store.iter();
+        assert_eq!(iter.nth(152), Some(800));
+
+        let mut iter = interval_store.iter();
+        assert_eq!(
+            iter.nth(
+                (Interval::new(0, 50).run_len()
+                    + Interval::new(500, 600).run_len()
+                    + Interval::new(800, 1000).run_len()
+                    - 1) as usize
+            ),
+            Some(1000)
+        );
+
+        let mut iter = interval_store.iter();
+        iter.next();
+        iter.next();
+        iter.next();
+        assert_eq!(iter.nth(152), Some(803));
+
+        let mut iter = interval_store.iter();
+        assert_eq!(iter.nth(u16::MAX as usize), None);
+    }
+
+    #[test]
+    fn iter_advance_to() {
+        let interval_store = IntervalStore(alloc::vec![
+            Interval::new(0, 50),
+            Interval::new(500, 600),
+            Interval::new(800, 1000),
+        ]);
+        let mut iter = interval_store.iter();
+        iter.advance_to(20);
+        assert_eq!(iter.next(), Some(20));
+        iter.advance_to(800);
+        assert_eq!(iter.next(), Some(800));
+        iter.advance_to(u16::MAX);
+        assert_eq!(iter.next(), Some(801));
+
+        let mut iter = interval_store.iter();
+        iter.advance_to(100);
+        assert_eq!(iter.next(), Some(500));
+        iter.advance_to(800);
+        assert_eq!(iter.next(), Some(800));
+        iter.advance_to(900);
+        assert_eq!(iter.next(), Some(900));
+        iter.advance_to(800);
+        assert_eq!(iter.next(), Some(901));
+        let mut iter = interval_store.iter();
+        iter.next();
+        iter.next();
+        iter.next();
+        iter.advance_to(499);
+        assert_eq!(iter.next(), Some(500));
+
+        let mut iter = interval_store.iter();
+        iter.advance_to(100);
+        assert_eq!(iter.next(), Some(500));
+    }
+
+    #[test]
+    fn iter_advance_back_to() {
+        let interval_store = IntervalStore(alloc::vec![
+            Interval::new(0, 50),
+            Interval::new(500, 600),
+            Interval::new(800, 1000),
+        ]);
+        let mut iter = interval_store.iter();
+        iter.advance_back_to(u16::MAX);
+        assert_eq!(iter.next_back(), Some(1000));
+        iter.advance_back_to(800);
+        assert_eq!(iter.next_back(), Some(800));
+        iter.advance_back_to(20);
+        assert_eq!(iter.next_back(), Some(20));
+
+        let mut iter = interval_store.iter();
+        iter.advance_back_to(800);
+        assert_eq!(iter.next_back(), Some(800));
+        iter.advance_back_to(900);
+        assert_eq!(iter.next_back(), Some(600));
+        iter.advance_back_to(550);
+        assert_eq!(iter.next_back(), Some(550));
+        iter.advance_back_to(20);
+        assert_eq!(iter.next_back(), Some(20));
+        let mut iter = interval_store.iter();
+        iter.next_back();
+        iter.next_back();
+        iter.next_back();
+        iter.advance_back_to(700);
+        assert_eq!(iter.next_back(), Some(600));
+        let mut iter = interval_store.iter();
+        iter.advance_back_to(400);
+        assert_eq!(iter.next_back(), Some(50));
     }
 }
