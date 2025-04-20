@@ -456,21 +456,19 @@ mod tests {
     use super::*;
     use crate::bitmap::store::Store;
 
-    #[allow(clippy::todo)]
     fn into_vec(s: Store) -> Vec<u16> {
         match s {
             Store::Array(vec) => vec.vec,
             Store::Bitmap(bits) => bits.to_array_store().vec,
-            Store::Run(_) => todo!(),
+            Store::Run(runs) => runs.iter().collect(),
         }
     }
 
-    #[allow(clippy::todo)]
     fn into_bitmap_store(s: Store) -> Store {
         match s {
             Store::Array(vec) => Store::Bitmap(vec.to_bitmap_store()),
             Store::Bitmap(..) => s,
-            Store::Run(_) => todo!(),
+            Store::Run(runs) => Store::Bitmap(runs.to_bitmap()),
         }
     }
 

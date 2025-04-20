@@ -1,17 +1,17 @@
-#![allow(unused)]
 use alloc::vec::Vec;
-use core::borrow::Borrow;
-use core::iter::Peekable;
 use core::ops::{
-    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, Deref, RangeInclusive, SubAssign,
+    BitAnd, BitAndAssign, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, SubAssign,
 };
 use core::slice::Iter;
 use core::{cmp::Ordering, ops::ControlFlow};
 
-use super::{ArrayStore, BitmapStore, Store};
+use super::{ArrayStore, BitmapStore};
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub(crate) struct IntervalStore(Vec<Interval>);
+
+pub(crate) const RUN_NUM_BYTES: usize = 2;
+pub(crate) const RUN_ELEMENT_BYTES: usize = 4;
 
 impl Default for IntervalStore {
     fn default() -> Self {
@@ -22,6 +22,14 @@ impl Default for IntervalStore {
 impl IntervalStore {
     pub fn new() -> Self {
         Self(Default::default())
+    }
+
+    pub fn full() -> Self {
+        Self(alloc::vec![Interval::new(0, u16::MAX)])
+    }
+
+    pub fn byte_size(&self) -> usize {
+        RUN_NUM_BYTES + (RUN_ELEMENT_BYTES * self.run_amount() as usize)
     }
 
     pub fn from_vec_unchecked(vec: Vec<Interval>) -> Self {
@@ -56,7 +64,7 @@ impl IntervalStore {
                 };
                 // There exists an interval at or before the location we should insert
                 if let Some(loc_or_last) = loc_or_last {
-                    if index == self.0[loc_or_last].end + 1 {
+                    if Some(index) == self.0[loc_or_last].end.checked_add(1) {
                         // index immediately follows an interval
                         // Checking for sandwiched intervals is not needed because of binary search loc
                         // i.e. when the index is sandwiched between two intervals we always
@@ -76,6 +84,14 @@ impl IntervalStore {
                             return;
                         }
                         self.0[loc].start -= 1;
+                    } else if loc_or_last
+                        .checked_sub(1)
+                        .map(|f| self.0[f].end == index - 1)
+                        .unwrap_or(false)
+                    {
+                        // We are sandwiched between 2 intervals, but the previous interval is
+                        // continuous with the index. If the loc
+                        self.0[loc_or_last - 1].end = index;
                     } else {
                         // The value stands alone
                         self.0.insert(loc, Interval::new(index, index));
@@ -257,8 +273,6 @@ impl IntervalStore {
             .binary_search_by(|iv| cmp_index_interval(index, *iv).reverse())
             .map(|loc| {
                 // loc always points to an interval
-                let equal_to_start = self.0[loc].start == index;
-                let equal_to_end = self.0[loc].end == index;
                 if index == self.0[loc].start && index == self.0[loc].end {
                     // Remove entire run if it only contains this value
                     self.0.remove(loc);
@@ -285,128 +299,95 @@ impl IntervalStore {
         if range.is_empty() {
             return 0;
         }
-        let interval = Interval { start: *range.start(), end: *range.end() };
+
+        let interval = Interval::new(*range.start(), *range.end());
         let first_interval =
             self.0.binary_search_by(|iv| cmp_index_interval(interval.start, *iv).reverse());
         let end_interval =
             self.0.binary_search_by(|iv| cmp_index_interval(interval.end, *iv).reverse());
-        struct IdValue {
-            index: usize,
-            value: u16,
-        }
-        struct IntervalRange {
-            drain_range: core::ops::Range<usize>,
-            begin_value: Option<IdValue>,
-            end_value: Option<IdValue>,
-            residual_count: u64,
-        }
-        let todo = match (first_interval, end_interval) {
+        match (first_interval, end_interval) {
             // both start and end index are contained in intervals
-            (Ok(begin), Ok(end)) => {
-                if self.0[begin].start == interval.start && self.0[end].end == interval.end {
-                    IntervalRange {
-                        drain_range: begin..end + 1,
-                        begin_value: None,
-                        end_value: None,
-                        residual_count: 0,
+            (Ok(first), Ok(end)) => {
+                if self.0[first].start == interval.start && self.0[end].end == interval.end {
+                    let removed = self.0[first..=end].iter().map(|iv| iv.run_len()).sum();
+                    self.0.drain(first..=end);
+                    removed
+                } else if self.0[first].start == interval.start {
+                    if first == end {
+                        self.0[end].start = interval.end + 1;
+                        return interval.run_len();
                     }
-                } else if self.0[begin].start == interval.start {
-                    IntervalRange {
-                        drain_range: begin..end,
-                        begin_value: None,
-                        end_value: Some(IdValue { index: end, value: interval.end + 1 }),
-                        residual_count: Interval::new(self.0[end].start, interval.end).run_len(),
-                    }
+                    let removed = self.0[first..end].iter().map(|iv| iv.run_len()).sum::<u64>()
+                        + Interval::new(self.0[end].start, interval.end).run_len();
+                    self.0[end].start = interval.end + 1;
+                    self.0.drain(first..end);
+                    removed
                 } else if self.0[end].end == interval.end {
-                    IntervalRange {
-                        drain_range: begin + 1..end + 1,
-                        begin_value: Some(IdValue { index: begin, value: interval.start - 1 }),
-                        end_value: None,
-                        residual_count: Interval::new(interval.start, self.0[begin].end).run_len(),
+                    if first == end {
+                        self.0[end].end = interval.start - 1;
+                        return interval.run_len();
                     }
-                } else if begin == end {
-                    let new_interval = Interval::new(interval.end + 1, self.0[begin].end);
-                    self.0.insert(begin + 1, new_interval);
-                    IntervalRange {
-                        drain_range: begin..end,
-                        begin_value: Some(IdValue { index: begin, value: interval.start - 1 }),
-                        end_value: None,
-                        residual_count: interval.run_len(),
-                    }
+                    let removed =
+                        self.0[first + 1..=end].iter().map(|iv| iv.run_len()).sum::<u64>()
+                            + Interval::new(interval.start, self.0[first].end).run_len();
+                    self.0[first].end = interval.start - 1;
+                    self.0.drain(first + 1..=end);
+                    removed
                 } else {
-                    IntervalRange {
-                        drain_range: begin + 1..end,
-                        begin_value: Some(IdValue { index: begin, value: interval.start - 1 }),
-                        end_value: Some(IdValue { index: end, value: interval.end + 1 }),
-                        residual_count: Interval::new(self.0[end].start, interval.end).run_len()
-                            + Interval::new(interval.start, self.0[begin].end).run_len(),
+                    if first == end {
+                        let old_end = self.0[first].end;
+                        self.0[first].end = interval.start - 1;
+                        self.0.insert(first + 1, Interval::new(interval.end + 1, old_end));
+                        return interval.run_len();
                     }
+
+                    let removed = self.0[first + 1..end].iter().map(|iv| iv.run_len()).sum::<u64>()
+                        + Interval::new(interval.start, self.0[first].end).run_len()
+                        + Interval::new(self.0[end].start, interval.end).run_len();
+                    self.0[first].end = interval.start - 1;
+                    self.0[end].start = interval.end + 1;
+                    removed
                 }
             }
-            // start index is contained in an interval,
-            // end index is not
-            (Ok(begin), Err(to_insert)) => {
-                let end = if to_insert == self.0.len() { self.0.len() - 1 } else { to_insert };
-                if self.0[begin].start == interval.start {
-                    IntervalRange {
-                        drain_range: begin..to_insert,
-                        begin_value: None,
-                        end_value: None,
-                        residual_count: 0,
-                    }
+            // start index is in the interval store, end index is not
+            (Ok(first), Err(end)) => {
+                debug_assert!(first < end);
+                if self.0[first].start == interval.start {
+                    let removed = self.0[first..end].iter().map(|iv| iv.run_len()).sum();
+                    self.0.drain(first..end);
+                    removed
                 } else {
-                    IntervalRange {
-                        drain_range: begin + 1..end + 1,
-                        begin_value: Some(IdValue { index: begin, value: interval.start - 1 }),
-                        end_value: None,
-                        residual_count: Interval::new(interval.start, self.0[begin].end).run_len(),
-                    }
+                    let removed = self.0[first + 1..end].iter().map(|iv| iv.run_len()).sum::<u64>()
+                        + Interval::new(interval.start, self.0[first].end).run_len();
+                    self.0[first].end = interval.start - 1;
+                    self.0.drain(first + 1..end);
+                    removed
                 }
             }
-            // there is no interval that contains the start index,
-            // there is an interval that contains the end index,
-            (Err(begin), Ok(end)) => {
+            // end index is in the interval store, start index is not
+            (Err(first), Ok(end)) => {
                 if self.0[end].end == interval.end {
-                    IntervalRange {
-                        drain_range: begin..end + 1,
-                        begin_value: None,
-                        end_value: None,
-                        residual_count: 0,
-                    }
+                    let removed = self.0[first..=end].iter().map(|iv| iv.run_len()).sum();
+                    self.0.drain(first..=end);
+                    removed
                 } else {
-                    IntervalRange {
-                        drain_range: begin..end,
-                        begin_value: None,
-                        end_value: Some(IdValue { index: end, value: interval.end + 1 }),
-                        residual_count: Interval::new(self.0[end].start, interval.end).run_len(),
-                    }
+                    let removed = self.0[first..end].iter().map(|iv| iv.run_len()).sum::<u64>()
+                        + Interval::new(self.0[end].start, interval.end).run_len();
+                    self.0[end].start = interval.end + 1;
+                    self.0.drain(first..end);
+                    removed
                 }
             }
-            (Err(begin), Err(to_end)) => {
-                let end = if to_end == self.0.len() { self.0.len() - 1 } else { to_end };
-                IntervalRange {
-                    drain_range: begin..end + 1,
-                    begin_value: None,
-                    end_value: None,
-                    residual_count: 0,
+            // both indices are not contained in the interval store
+            (Err(first), Err(end)) => {
+                if first == end {
+                    return 0;
                 }
+                let removed = self.0[first..end].iter().map(|iv| iv.run_len()).sum();
+                self.0.drain(first..end);
+                removed
             }
-        };
-        let count = if todo.drain_range.is_empty() {
-            0
-        } else {
-            self.0[todo.drain_range.clone()].iter().map(|f| f.run_len()).sum::<u64>()
-        } + todo.residual_count;
-        if let Some(IdValue { index, value }) = todo.begin_value {
-            self.0[index].end = value;
         }
-        if let Some(IdValue { index, value }) = todo.end_value {
-            self.0[index].start = value;
-        }
-        if !todo.drain_range.is_empty() {
-            self.0.drain(todo.drain_range);
-        }
-        count
     }
 
     pub fn remove_smallest(&mut self, mut amount: u64) {
@@ -607,7 +588,7 @@ impl IntervalStore {
 
     pub fn select(&self, mut n: u16) -> Option<u16> {
         for iv in self.0.iter() {
-            let run_len = (iv.run_len() as u16);
+            let run_len = iv.run_len() as u16;
             if run_len <= n {
                 n -= iv.run_len() as u16;
             } else {
@@ -636,10 +617,6 @@ impl IntervalStore {
     pub(crate) fn iter_intervals(&self) -> core::slice::Iter<Interval> {
         self.0.iter()
     }
-
-    pub(crate) fn iter_intervals_mut(&mut self) -> core::slice::IterMut<Interval> {
-        self.0.iter_mut()
-    }
 }
 
 impl BitOrAssign for IntervalStore {
@@ -656,7 +633,7 @@ impl BitOrAssign for IntervalStore {
 }
 
 impl BitOrAssign<&ArrayStore> for IntervalStore {
-    fn bitor_assign(&mut self, mut rhs: &ArrayStore) {
+    fn bitor_assign(&mut self, rhs: &ArrayStore) {
         for &i in rhs.iter() {
             self.insert(i);
         }
@@ -664,7 +641,7 @@ impl BitOrAssign<&ArrayStore> for IntervalStore {
 }
 
 impl BitOrAssign<&Self> for IntervalStore {
-    fn bitor_assign(&mut self, mut rhs: &Self) {
+    fn bitor_assign(&mut self, rhs: &Self) {
         for iv in rhs.iter_intervals() {
             self.insert_range(iv.start..=iv.end);
         }
@@ -712,6 +689,18 @@ impl BitXor for &IntervalStore {
         let intersection = self & rhs;
         union -= &intersection;
         union
+    }
+}
+
+impl BitXorAssign<&ArrayStore> for IntervalStore {
+    fn bitxor_assign(&mut self, rhs: &ArrayStore) {
+        rhs.iter().for_each(|&f| {
+            if self.contains(f) {
+                self.remove(f);
+            } else {
+                self.insert(f);
+            }
+        })
     }
 }
 
@@ -962,14 +951,6 @@ impl Interval {
         Interval { start, end }
     }
 
-    pub fn contains_index(&self, value: u16) -> bool {
-        self.start <= value && value <= self.end
-    }
-
-    pub fn contains_interval(&self, interval: &Interval) -> bool {
-        self.start <= interval.start && interval.end <= self.end
-    }
-
     pub fn overlaps(&self, interval: &Interval) -> bool {
         interval.start <= self.end && self.start <= interval.end
     }
@@ -1060,6 +1041,22 @@ mod tests {
         assert_eq!(
             interval_store,
             IntervalStore(alloc::vec![Interval { start: 0, end: u16::MAX },])
+        )
+    }
+
+    #[test]
+    fn insert_consecutive_end_with_extra() {
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 65079, end: 65079 },
+            Interval { start: 65179, end: 65179 },
+        ]);
+        assert!(interval_store.insert(65080));
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![
+                Interval { start: 65079, end: 65080 },
+                Interval { start: 65179, end: 65179 },
+            ])
         )
     }
 
@@ -1230,6 +1227,13 @@ mod tests {
             IntervalStore(alloc::vec![Interval::new(2, 10), Interval::new(12, 700),]);
         assert_eq!(interval_store.insert_range(2..=11), 1);
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new(2, 700)]));
+    }
+
+    #[test]
+    fn insert_range_pin_1() {
+        let mut interval_store = IntervalStore(alloc::vec![Interval::new(65079, 65079)]);
+        assert_eq!(interval_store.insert_range(65080..=65080), 1);
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new(65079, 65080)]));
     }
 
     #[test]
@@ -1534,6 +1538,24 @@ mod tests {
         assert_eq!(
             interval_store,
             IntervalStore(alloc::vec![Interval::new(51, 499), Interval::new(601, 6000),])
+        );
+    }
+
+    #[test]
+    fn remove_range_nothing() {
+        let mut interval_store = IntervalStore(alloc::vec![]);
+        assert_eq!(interval_store.remove_range(50000..=60000), 0);
+        assert_eq!(interval_store, IntervalStore(alloc::vec![]));
+    }
+
+    #[test]
+    fn remove_range_with_extra() {
+        let mut interval_store =
+            IntervalStore(alloc::vec![Interval::new(38161, 38162), Interval::new(40562, 40562),]);
+        assert_eq!(interval_store.remove_range(38162..=38163), 1);
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![Interval::new(38161, 38161), Interval::new(40562, 40562),])
         );
     }
 
@@ -1844,11 +1866,67 @@ mod tests {
     #[test]
     fn intersection_len_bitmap_2() {
         let mut bitmap_store = BitmapStore::new();
-        for to_set in 0..200 {
+        for to_set in 0..=200 {
             bitmap_store.insert(to_set);
         }
         let interval_store_1 = IntervalStore(alloc::vec![Interval { start: 20, end: 600 },]);
-        let intersect_len = 200 - 20;
+        let intersect_len = Interval::new(20, 200).run_len();
+        assert_eq!(interval_store_1.intersection_len_bitmap(&bitmap_store), intersect_len);
+    }
+
+    #[test]
+    fn intersection_len_bitmap_3() {
+        let mut bitmap_store = BitmapStore::new();
+        for to_set in 0..=20000 {
+            bitmap_store.insert(to_set);
+        }
+        let interval_store_1 = IntervalStore(alloc::vec![
+            Interval { start: 20, end: 6000 },
+            Interval { start: 5000, end: 33333 },
+        ]);
+        let intersect_len =
+            Interval::new(20, 6000).run_len() + Interval::new(5000, 20000).run_len();
+        assert_eq!(interval_store_1.intersection_len_bitmap(&bitmap_store), intersect_len);
+    }
+
+    #[test]
+    fn intersection_len_bitmap_4() {
+        let mut bitmap_store = BitmapStore::new();
+        for to_set in 0..=20000 {
+            bitmap_store.insert(to_set);
+        }
+        let interval_store_1 = IntervalStore(alloc::vec![
+            Interval { start: 64, end: 6400 },
+            Interval { start: 7680, end: 64000 },
+        ]);
+        let intersect_len =
+            Interval::new(64, 6400).run_len() + Interval::new(7680, 20000).run_len();
+        assert_eq!(interval_store_1.intersection_len_bitmap(&bitmap_store), intersect_len);
+    }
+
+    #[test]
+    fn intersection_len_bitmap_5() {
+        let mut bitmap_store = BitmapStore::new();
+        for to_set in 0..=20005 {
+            bitmap_store.insert(to_set);
+        }
+        let interval_store_1 = IntervalStore(alloc::vec![
+            Interval { start: 64, end: 6400 },
+            Interval { start: 7680, end: 64000 },
+        ]);
+        let intersect_len =
+            Interval::new(64, 6400).run_len() + Interval::new(7680, 20005).run_len();
+        assert_eq!(interval_store_1.intersection_len_bitmap(&bitmap_store), intersect_len);
+    }
+
+    #[test]
+    fn intersection_len_bitmap_6() {
+        let mut bitmap_store = BitmapStore::new();
+        for to_set in 0..=20005 {
+            bitmap_store.insert(to_set);
+        }
+        let interval_store_1 = IntervalStore(alloc::vec![Interval { start: 64, end: 64 },]);
+        let intersect_len = Interval::new(64, 64).run_len();
         assert_eq!(interval_store_1.intersection_len_bitmap(&bitmap_store), intersect_len);
     }
 
@@ -1997,13 +2075,13 @@ mod tests {
 
     #[test]
     fn intersection() {
-        let mut interval_store_1 = IntervalStore(alloc::vec![
+        let interval_store_1 = IntervalStore(alloc::vec![
             Interval::new(0, 0),
             Interval::new(2, 11),
             Interval::new(5000, 7000),
             Interval::new(8000, 10000),
         ]);
-        let mut interval_store_2 = IntervalStore(alloc::vec![
+        let interval_store_2 = IntervalStore(alloc::vec![
             Interval::new(0, 0),
             Interval::new(5, 50),
             Interval::new(4000, 10000),
@@ -2016,7 +2094,8 @@ mod tests {
                 Interval::new(5000, 7000),
                 Interval::new(8000, 10000),
             ])
-        )
+        );
+        assert_eq!(&interval_store_1 & &interval_store_1, interval_store_1);
     }
 
     #[test]
@@ -2027,7 +2106,7 @@ mod tests {
             Interval::new(5000, 7000),
             Interval::new(8000, 11000),
         ]);
-        let mut interval_store_2 = IntervalStore(alloc::vec![
+        let interval_store_2 = IntervalStore(alloc::vec![
             Interval::new(0, 0),
             Interval::new(5, 50),
             Interval::new(4000, 10000),
@@ -2041,14 +2120,14 @@ mod tests {
 
     #[test]
     fn symmetric_difference_0() {
-        let mut interval_store_1 = IntervalStore(alloc::vec![
+        let interval_store_1 = IntervalStore(alloc::vec![
             Interval::new(0, 0),
             Interval::new(2, 11),
             Interval::new(5000, 7000),
             Interval::new(8000, 11000),
             Interval::new(40000, 50000),
         ]);
-        let mut interval_store_2 = IntervalStore(alloc::vec![
+        let interval_store_2 = IntervalStore(alloc::vec![
             Interval::new(0, 0),
             Interval::new(5, 50),
             Interval::new(4000, 10000),
@@ -2068,8 +2147,8 @@ mod tests {
 
     #[test]
     fn symmetric_difference_1() {
-        let mut interval_store_1 = IntervalStore(alloc::vec![Interval::new(0, 50),]);
-        let mut interval_store_2 = IntervalStore(alloc::vec![Interval::new(100, 200),]);
+        let interval_store_1 = IntervalStore(alloc::vec![Interval::new(0, 50),]);
+        let interval_store_2 = IntervalStore(alloc::vec![Interval::new(100, 200),]);
         assert_eq!(
             &interval_store_1 ^ &interval_store_2,
             IntervalStore(alloc::vec![Interval::new(0, 50), Interval::new(100, 200),])
@@ -2078,12 +2157,12 @@ mod tests {
 
     #[test]
     fn symmetric_difference_2() {
-        let mut interval_store_1 = IntervalStore(alloc::vec![
+        let interval_store_1 = IntervalStore(alloc::vec![
             Interval::new(0, 50),
             Interval::new(500, 600),
             Interval::new(800, 1000),
         ]);
-        let mut interval_store_2 = IntervalStore(alloc::vec![Interval::new(0, 6000),]);
+        let interval_store_2 = IntervalStore(alloc::vec![Interval::new(0, 6000),]);
         assert_eq!(
             &interval_store_1 ^ &interval_store_2,
             IntervalStore(alloc::vec![

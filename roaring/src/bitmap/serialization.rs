@@ -1,5 +1,7 @@
 use crate::bitmap::container::{Container, ARRAY_LIMIT};
-use crate::bitmap::store::{ArrayStore, BitmapStore, Interval, Store, BITMAP_LENGTH};
+use crate::bitmap::store::{
+    ArrayStore, BitmapStore, Interval, Store, BITMAP_LENGTH, RUN_ELEMENT_BYTES, RUN_NUM_BYTES,
+};
 use crate::RoaringBitmap;
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -22,8 +24,6 @@ pub(crate) const OFFSET_BYTES: usize = 4;
 // Sizes of container structures
 pub(crate) const BITMAP_BYTES: usize = BITMAP_LENGTH * 8;
 pub(crate) const ARRAY_ELEMENT_BYTES: usize = 2;
-pub(crate) const RUN_NUM_BYTES: usize = 2;
-pub(crate) const RUN_ELEMENT_BYTES: usize = 4;
 
 impl RoaringBitmap {
     /// Return the size in bytes of the serialized output.
@@ -52,7 +52,7 @@ impl RoaringBitmap {
                 Store::Bitmap(..) => BITMAP_BYTES,
                 Store::Run(ref intervals) => {
                     has_run_containers = true;
-                    RUN_NUM_BYTES + (RUN_ELEMENT_BYTES * intervals.run_amount() as usize)
+                    intervals.byte_size()
                 }
             })
             .sum();
@@ -109,7 +109,7 @@ impl RoaringBitmap {
         }
 
         let mut offset = header_size(size, has_run_containers) as u32;
-        let has_offsets = if has_run_containers { size > OFFSET_BYTES } else { true };
+        let has_offsets = if has_run_containers { size >= OFFSET_BYTES } else { true };
         if has_offsets {
             for container in &self.containers {
                 writer.write_u32::<LittleEndian>(offset)?;

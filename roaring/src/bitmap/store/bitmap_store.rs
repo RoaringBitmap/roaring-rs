@@ -341,10 +341,11 @@ impl BitmapStore {
         let (end_id, end_bit) = (key(interval.end), bit(interval.end));
         let mut amount: u64 = 0;
         for (i, mut cur_bit) in self.bits[start_id..=end_id].iter().copied().enumerate() {
-            if i == start_id {
+            if i == 0 {
                 cur_bit &= u64::MAX << start_bit;
-            } else if i == end_id {
-                cur_bit &= !(u64::MAX << (u64::BITS - end_bit as u32));
+            }
+            if i == end_id - start_id {
+                cur_bit &= !(u64::MAX.checked_shl(end_bit as u32 + 1).unwrap_or(0));
             }
             amount += u64::from(cur_bit.count_ones());
         }

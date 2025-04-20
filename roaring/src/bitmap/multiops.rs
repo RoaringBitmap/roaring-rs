@@ -385,7 +385,6 @@ fn try_multi_xor_ref<'a, E: 'a>(
     Ok(RoaringBitmap { containers })
 }
 
-#[allow(clippy::todo)]
 fn merge_container_ref<'a>(
     containers: &mut Vec<Cow<'a, Container>>,
     rhs: &'a [Container],
@@ -419,8 +418,15 @@ fn merge_container_ref<'a>(
                         // If it was borrowed it will clone-on-write
                         op(&mut lhs.to_mut().store, &rhs.store);
                     }
-                    (Store::Run(..), _) => todo!(),
-                    (_, Store::Run(..)) => todo!(),
+                    (Store::Run(..), Store::Run(..)) => {
+                        op(&mut lhs.to_mut().store, &rhs.store);
+                    }
+                    (Store::Run(..), _) => {
+                        op(&mut lhs.to_mut().store, &rhs.store);
+                    }
+                    (Store::Array(..), Store::Run(..)) => {
+                        op(&mut lhs.to_mut().store, &rhs.store);
+                    }
                 };
             }
         }

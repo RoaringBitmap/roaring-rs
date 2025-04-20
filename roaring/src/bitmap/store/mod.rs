@@ -16,6 +16,8 @@ pub(crate) use self::array_store::ArrayStore;
 pub use self::bitmap_store::{BitmapIter, BitmapStore};
 pub(crate) use self::interval_store::Interval;
 pub(crate) use interval_store::{IntervalStore, RunIterBorrowed, RunIterOwned};
+#[cfg(feature = "std")]
+pub(crate) use interval_store::{RUN_ELEMENT_BYTES, RUN_NUM_BYTES};
 
 use crate::bitmap::container::ARRAY_LIMIT;
 
@@ -54,7 +56,7 @@ impl Store {
     }
 
     pub fn full() -> Store {
-        Store::Bitmap(BitmapStore::full())
+        Store::Run(IntervalStore::full())
     }
 
     pub fn from_lsb0_bytes(bytes: &[u8], byte_offset: usize) -> Option<Self> {
@@ -111,7 +113,6 @@ impl Store {
     /// Push `index` at the end of the store only if `index` is the new max.
     ///
     /// Returns whether `index` was effectively pushed.
-    #[allow(clippy::todo)]
     pub fn push(&mut self, index: u16) -> bool {
         match self {
             Array(vec) => vec.push(index),
@@ -132,8 +133,9 @@ impl Store {
             Array(vec) => vec.push_unchecked(index),
             Bitmap(bits) => bits.push_unchecked(index),
             Run(runs) => {
-                // push unchecked for intervals doesn't make since we have to check anyways to
-                // merge ends with the index if these are consecutive
+                // push unchecked for intervals doesn't make sense since we have to check anyways to
+                // intervals and such when the index is consecutive
+                debug_assert!(runs.max().map(|f| f < index).unwrap_or(true));
                 runs.push(index);
             }
         }
@@ -677,7 +679,9 @@ impl SubAssign<&Store> for Store {
                 });
             }
             (Array(array), Run(runs)) => {
-                array.retain(|f| !runs.contains(f));
+                runs.iter_intervals().for_each(|iv| {
+                    array.remove_range(iv.start..=iv.end);
+                });
             }
             (this @ Run(..), Bitmap(bitmap)) => {
                 let Run(runs) = &this else { unreachable!() };
@@ -732,18 +736,10 @@ impl BitXorAssign<Store> for Store {
             (Run(runs1), Run(runs2)) => {
                 *runs1 = BitXor::bitxor(&*runs1, &*runs2);
             }
-            (Run(runs1), Array(array)) => array.iter().for_each(|&f| {
-                if runs1.contains(f) {
-                    runs1.remove(f);
-                }
-            }),
+            (Run(runs1), Array(array)) => BitXorAssign::bitxor_assign(runs1, array),
             (this @ Array(..), Run(runs1)) => {
                 let Array(array) = &this else { unreachable!() };
-                array.iter().for_each(|&f| {
-                    if runs1.contains(f) {
-                        runs1.remove(f);
-                    }
-                });
+                BitXorAssign::bitxor_assign(runs1, array);
                 *this = rhs;
             }
             (Bitmap(bitmap), Run(runs)) => {
@@ -779,19 +775,11 @@ impl BitXorAssign<&Store> for Store {
             (Run(runs1), Run(runs2)) => {
                 *runs1 = BitXor::bitxor(&*runs1, runs2);
             }
-            (Run(runs1), Array(array)) => array.iter().for_each(|&f| {
-                if runs1.contains(f) {
-                    runs1.remove(f);
-                }
-            }),
+            (Run(runs1), Array(array)) => BitXorAssign::bitxor_assign(runs1, array),
             (this @ Array(..), Run(runs1)) => {
                 let Array(array) = &this else { unreachable!() };
                 let mut runs1 = runs1.clone();
-                array.iter().for_each(|&f| {
-                    if runs1.contains(f) {
-                        runs1.remove(f);
-                    }
-                });
+                BitXorAssign::bitxor_assign(&mut runs1, array);
                 *this = Run(runs1);
             }
             (Bitmap(bitmap), Run(runs)) => {
@@ -839,8 +827,14 @@ impl PartialEq for Store {
                 bits1.len() == bits2.len()
                     && bits1.iter().zip(bits2.iter()).all(|(i1, i2)| i1 == i2)
             }
-            // TODO: Run containers should be checked against other types of containers right?
-            (Run(intervals1), Run(ref intervals2)) => intervals1 == intervals2,
+            (Run(intervals1), Run(intervals2)) => intervals1 == intervals2,
+            (Run(run), Array(array)) | (Array(array), Run(run)) => {
+                run.len() == array.len() && array.iter().all(|&i| run.contains(i))
+            }
+            (Run(run), Bitmap(bitmap)) | (Bitmap(bitmap), Run(run)) => {
+                run.len() == bitmap.len()
+                    && run.iter_intervals().all(|&iv| bitmap.contains_range(iv.start..=iv.end))
+            }
             _ => false,
         }
     }
@@ -869,7 +863,6 @@ impl Iter<'_> {
         }
     }
 
-    #[allow(clippy::todo)]
     pub(crate) fn advance_back_to(&mut self, n: u16) {
         match self {
             Iter::Array(inner) => {
