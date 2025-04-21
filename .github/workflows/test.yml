@@ -33,6 +33,9 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, clippy
 
+      - name: Caching
+        uses: Swatinem/rust-cache@v2
+
       - name: Check
         # clippy will also do a build check
         # so we don't need to run `cargo check` or `cargo build`
@@ -80,6 +83,9 @@ jobs:
           repository: "RoaringBitmap/real-roaring-datasets"
           path: "benchmarks/real-roaring-datasets"
 
+      - name: Caching
+        uses: Swatinem/rust-cache@v2
+
       - name: Initialize rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -118,6 +124,9 @@ jobs:
           toolchain: nightly
           components: miri
 
+      - name: Caching
+        uses: Swatinem/rust-cache@v2
+
       - name: Setup miri
         run: cargo miri setup
 
@@ -138,6 +147,9 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly
+
+      - name: Caching
+        uses: Swatinem/rust-cache@v2
 
       - name: Install cargo fuzz
         run: cargo install cargo-fuzz
