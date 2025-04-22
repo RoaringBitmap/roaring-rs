@@ -205,9 +205,18 @@ impl RoaringBitmap {
 
         let mut containers = Vec::with_capacity(size);
 
+        let mut last_key = None::<u16>;
         // Read each container
         for i in 0..size {
             let key = description_bytes.read_u16::<LittleEndian>()?;
+            if let Some(last_key) = last_key.replace(key) {
+                if key <= last_key {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "container keys are not sorted",
+                    ));
+                }
+            }
             let cardinality = u64::from(description_bytes.read_u16::<LittleEndian>()?) + 1;
 
             // If the run container bitmap is present, check if this container is a run container
@@ -216,6 +225,12 @@ impl RoaringBitmap {
 
             let store = if is_run_container {
                 let runs = reader.read_u16::<LittleEndian>()?;
+                if runs == 0 {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "run container with zero runs",
+                    ));
+                }
                 let mut intervals = vec![[0, 0]; runs as usize];
                 reader.read_exact(cast_slice_mut(&mut intervals))?;
                 intervals.iter_mut().for_each(|[s, len]| {
@@ -225,8 +240,15 @@ impl RoaringBitmap {
 
                 let cardinality = intervals.iter().map(|[_, len]| *len as usize).sum();
                 let mut store = Store::with_capacity(cardinality);
+                let mut last_end = None::<u16>;
                 intervals.into_iter().try_for_each(|[s, len]| -> Result<(), io::ErrorKind> {
                     let end = s.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
+                    if let Some(last_end) = last_end.replace(end) {
+                        if s <= last_end.saturating_add(1) {
+                            // Range overlaps or would be contiguous with the previous range
+                            return Err(io::ErrorKind::InvalidData);
+                        }
+                    }
                     store.insert_range(RangeInclusive::new(s, end));
                     Ok(())
                 })?;
