@@ -99,146 +99,47 @@ impl IntervalStore {
         if range.is_empty() {
             return 0;
         }
-        let interval = Interval { start: *range.start(), end: *range.end() };
-        let first_interval =
-            self.0.binary_search_by(|iv| cmp_index_interval(interval.start, *iv).reverse());
-        let end_interval =
-            self.0.binary_search_by(|iv| cmp_index_interval(interval.end, *iv).reverse());
-        match (first_interval, end_interval) {
-            // both start and end index are contained in intervals
-            (Ok(begin), Ok(end)) => {
-                if begin == end {
-                    return 0;
-                }
-                let drained_amount: u64 = self.0[begin + 1..end].iter().map(|f| f.run_len()).sum();
-                let amount = Interval::new(self.0[begin].end + 1, self.0[end].start - 1).run_len()
-                    - drained_amount;
-                self.0[begin].end = self.0[end].end;
-                self.0.drain(begin + 1..=end);
-                amount
-            }
-            // start index is contained in an interval,
-            // end index is not
-            (Ok(begin), Err(to_insert)) => {
-                let (new_end, drain_id) =
-                    // if there is a next interval, check if these intervals are consecutive
-                    if to_insert < self.0.len() && self.0[to_insert].start - 1 == interval.end {
-                        // The intervals are consecutive! Adjust new end of interval, and how far
-                        // we drain
-                        (self.0[to_insert].end, to_insert + 1)
-                    } else {
-                        (interval.end, to_insert)
-                    };
-                let drained_amount: u64 =
-                    self.0[begin + 1..to_insert].iter().map(|f| f.run_len()).sum();
-                let amount =
-                    Interval::new(self.0[begin].end + 1, interval.end).run_len() - drained_amount;
-                self.0[begin].end = new_end;
-                self.0.drain(begin + 1..drain_id);
-                amount
-            }
-            // there is no interval that contains the start index,
-            // there is an interval that contains the end index,
-            (Err(to_begin), Ok(end)) => {
-                let consecutive_begin =
-                    to_begin > 0 && self.0[to_begin - 1].end + 1 == interval.start;
-                let (drain_id, interval_id) =
-                    // check if begin interval is consecutive with new interval
-                    if consecutive_begin {
-                        // The intervals are consecutive! Adjust how much we remove, and how
-                        // which interval we end up keeping
-                        (end + 1, to_begin - 1)
-                    } else {
-                        (end, end)
-                    };
-                let drained_amount: u64 = self.0[to_begin..end].iter().map(|f| f.run_len()).sum();
-                let amount =
-                    Interval::new(interval.start, self.0[end].start - 1).run_len() - drained_amount;
-                if consecutive_begin {
-                    self.0[interval_id].end = self.0[end].end;
-                } else {
-                    self.0[interval_id].start = interval.start;
-                }
-                self.0.drain(to_begin..drain_id);
-                amount
-            }
-            (Err(to_begin), Err(to_end)) => {
-                if self.0.is_empty() {
-                    self.0.insert(to_begin, interval);
-                    return interval.run_len();
-                }
-                let consec_begin = to_begin > 0 && self.0[to_begin - 1].end + 1 == interval.start;
-                let conces_end = to_end < self.0.len()
-                    && self.0[to_end]
-                        .start
-                        .checked_sub(1)
-                        .map(|f| f == interval.end)
-                        .unwrap_or(false);
-                if !consec_begin && !conces_end && to_begin == to_end {
-                    // an arbitrary range with no consecutive intervals, unable to reuse existing interval
-                    self.0.insert(to_begin, interval);
-                    return interval.run_len();
-                }
-                let (drain_id_begin, drain_id_end, interval_id) = {
-                    if conces_end && consec_begin {
-                        // Both intervals are consecutive! Adjust how much we remove, and
-                        // which interval we end up keeping
-                        //
-                        // keep begin interval and remove end
-                        // NOTE: to_begin - 1 since the interval we actually care about is one to
-                        // the left e.g.:
-                        // [3..=5, 9..=20] add 6..=8 ->
-                        // to_begin = 1
-                        // to_end = 1
-                        (to_begin, to_end + 1, to_begin - 1)
-                    } else if consec_begin {
-                        // Remove end interval, keep begin to overwrite
-                        //
-                        // NOTE: to_begin - 1 since the interval we actually care about is one to
-                        // the left e.g.:
-                        // [3..=5] add 6..=8 ->
-                        // to_begin = 1
-                        // to_end = 1
-                        (to_begin, to_end, to_begin - 1)
-                    } else if conces_end {
-                        // Remove begin interval, keep end to overwrite
-                        //
-                        // NOTE: no -1 since the interval we actually care about is one to
-                        // the left e.g.:
-                        // [8..=10] add 6..=7 ->
-                        // to_begin = 0
-                        // to_end = 1
-                        (to_begin, to_end, to_end)
-                    } else {
-                        // keep end interval to overwrite if it exists,
-                        // otherwise overwrite begin interval
-                        (
-                            if to_end != self.0.len() { to_begin + 1 } else { to_begin },
-                            to_end.min(self.0.len() - 1),
-                            if to_end != self.0.len() {
-                                to_begin
-                            } else {
-                                to_end.min(self.0.len() - 1)
-                            },
-                        )
-                    }
-                };
-                let drained_amount: u64 =
-                    self.0[to_begin..to_end].iter().map(|f| f.run_len()).sum();
-                let end_amount_interval =
-                    if conces_end { self.0[to_end].start - 1 } else { interval.end };
-                let amount =
-                    Interval::new(interval.start, end_amount_interval).run_len() - drained_amount;
-                let end_interval = if conces_end { self.0[to_end].end } else { interval.end };
+        let mut interval = Interval { start: *range.start(), end: *range.end() };
+        // All intervals in `start_idx..end_idx` are fully contained in our interval.
+        let mut start_idx = self.0.partition_point(|iv| iv.start < interval.start);
+        let mut end_idx =
+            self.0[start_idx..].partition_point(|iv| iv.end <= interval.end) + start_idx;
 
-                self.0[interval_id].end = end_interval;
-                if !consec_begin {
-                    self.0[interval_id].start = interval.start;
-                }
-                self.0.drain(drain_id_begin..drain_id_end);
-                amount
+        if let Some(prev) = self.0[..start_idx].last() {
+            // If the previous interval contains our start, or would be contiguous with us, expand
+            // to include it
+            // from partition point, we know prev.start < interval.start
+            if prev.end >= interval.start - 1 {
+                // We need to merge with the previous interval
+                interval.start = prev.start;
+                interval.end = interval.end.max(prev.end);
+                start_idx -= 1;
             }
         }
+        if let Some(next) = self.0.get(end_idx) {
+            // from partition point, we know next.end > interval.end
+            if next.start <= interval.end + 1 {
+                // We need to merge with the next interval
+                interval.end = next.end;
+                interval.start = interval.start.min(next.start);
+                end_idx += 1;
+            }
+        }
+
+        let mut added_count = interval.run_len();
+        // Replace the first interval to be replaced with an interval covering the new range
+        // and remove the rest
+        // Otherwise, just insert a new interval
+        if let [first, rest @ ..] = &mut self.0[start_idx..end_idx] {
+            added_count -= first.run_len();
+            added_count -= rest.iter().map(|iv| iv.run_len()).sum::<u64>();
+            *first = interval;
+            self.0.drain(start_idx + 1..end_idx);
+        } else {
+            // No intervals to merge with, we can just insert
+            self.0.insert(start_idx, interval);
+        }
+        added_count
     }
 
     pub fn push(&mut self, index: u16) -> bool {
