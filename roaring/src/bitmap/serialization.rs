@@ -256,9 +256,18 @@ impl RoaringBitmap {
 
         let mut containers = Vec::with_capacity(size);
 
+        let mut last_key = None::<u16>;
         // Read each container
         for i in 0..size {
             let key = description_bytes.read_u16::<LittleEndian>()?;
+            if let Some(last_key) = last_key.replace(key) {
+                if key <= last_key {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "container keys are not sorted",
+                    ));
+                }
+            }
             let cardinality = u64::from(description_bytes.read_u16::<LittleEndian>()?) + 1;
 
             // If the run container bitmap is present, check if this container is a run container
@@ -267,6 +276,12 @@ impl RoaringBitmap {
 
             let store = if is_run_container {
                 let runs = reader.read_u16::<LittleEndian>()?;
+                if runs == 0 {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "run container with zero runs",
+                    ));
+                }
                 let mut intervals = vec![[0, 0]; runs as usize];
                 reader.read_exact(cast_slice_mut(&mut intervals))?;
                 intervals.iter_mut().for_each(|[s, len]| {
@@ -274,18 +289,20 @@ impl RoaringBitmap {
                     *len = u16::from_le(*len);
                 });
 
-                let intervals = IntervalStore::from_vec_unchecked(
-                    intervals
-                        .into_iter()
-                        .map(|[start, len]| -> Result<Interval, io::ErrorKind> {
-                            let end = start.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
-                            // TODO: easy safe way of constructing an `IntervalStore`
-                            Ok(Interval { start, end })
-                        })
-                        .collect::<Result<_, _>>()?,
+                let mut last_end = None::<u16>;
+                let store = IntervalStore::from_vec_unchecked(
+                        intervals.into_iter().map(|[s, len]| -> Result<Interval, io::ErrorKind> {
+                        let end = s.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
+                        if let Some(last_end) = last_end.replace(end) {
+                            if s <= last_end.saturating_add(1) {
+                                // Range overlaps or would be contiguous with the previous range
+                                return Err(io::ErrorKind::InvalidData);
+                            }
+                        }
+                        Ok(Interval::new(s, end))
+                    }).collect::<Result<_, _>>()?
                 );
-
-                Store::Run(intervals)
+                Store::Run(store)
             } else if cardinality <= ARRAY_LIMIT {
                 let mut values = vec![0; cardinality as usize];
                 reader.read_exact(cast_slice_mut(&mut values))?;

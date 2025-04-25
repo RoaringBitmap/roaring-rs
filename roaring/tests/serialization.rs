@@ -561,3 +561,188 @@ fn test_runs() {
     assert_eq!(original.min(), new.min());
     assert_eq!(original.max(), new.max());
 }
+
+fn assert_invalid_serialization(serialized: &[u8], msg: &str) {
+    let result = RoaringBitmap::deserialize_from(serialized);
+    if let Ok(res) = result {
+        panic!("Expected error: {}. Got: {:?}", msg, res);
+    }
+}
+
+#[test]
+fn deserialize_negative_container_count() {
+    let data = [
+        0x3A, 0x30, 0, 0, // Serial cookie, no run containers
+        0x00, 0x00, 0x00, 0x80, // Container count (NEGATIVE)
+    ];
+    assert_invalid_serialization(&data, "Negative container count");
+}
+
+#[test]
+fn deserialize_huge_container_count() {
+    const MAX_CONTAINERS: usize = 0xFFFF;
+    let data = [
+        0x3A, 0x30, 0, 0, // Serial cookie, no run containers
+        0x01, 0x00, 0x01, 0x00, // Container count (MAX_CONTAINERS + 1)
+    ];
+    assert_invalid_serialization(&data, "Huge container count");
+
+    // For each container, 32 bits for container offset, 16 bits for a key, cardinality - 1, and a
+    // single array value
+    let full_size = data.len() + (MAX_CONTAINERS + 1) * (4 + 3 * 2);
+    let mut full_data = vec![0; full_size];
+    full_data[..data.len()].copy_from_slice(&data);
+    assert_invalid_serialization(&full_data, "Huge container count");
+}
+
+#[test]
+fn deserialize_empty_run_container() {
+    let data = [
+        0x3B, 0x30, // Serial Cookie
+        0x00, 0x00, // Container count - 1
+        0x01, // Run Flag Bitset (single container is a run)
+        0, 0, // Upper 16 bits of the first container
+        0, 0, // Cardinality - 1 of the first container
+        0, 0, // First Container - Number of runs
+    ];
+    assert_invalid_serialization(&data, "Empty run container");
+}
+
+#[test]
+fn deserialize_run_container_contiguous_ranges() {
+    let data = [
+        0x3B, 0x30, // Serial Cookie
+        0x00, 0x00, // Container count - 1
+        0x01, // Run Flag Bitset (single container is a run)
+        0, 0, // Upper 16 bits of the first container
+        1, 0, // Cardinality - 1 of the first container
+        2, 0, // First Container - Number of runs
+        0, 0, // First run start
+        0, 0, // First run length - 1
+        1, 0, // Second run start (STARTS AT THE END OF THE FIRST)
+        0, 0, // Second run length - 1
+    ];
+
+    assert_invalid_serialization(&data, "Contiguous ranges in run container");
+}
+
+#[test]
+fn deserialize_run_container_overlap() {
+    let data = [
+        0x3B, 0x30, // Serial Cookie
+        0x00, 0x00, // Container count - 1
+        0x01, // Run Flag Bitset (single container is a run)
+        0, 0, // Upper 16 bits of the first container
+        4, 0, // Cardinality - 1 of the first container
+        2, 0, // First Container - Number of runs
+        0, 0, // First run start
+        4, 0, // First run length - 1
+        1, 0, // Second run start (STARTS INSIDE THE FIRST)
+        0, 0, // Second run length - 1
+    ];
+
+    assert_invalid_serialization(&data, "Overlapping ranges in run container");
+}
+
+#[test]
+fn deserialize_run_container_overflow() {
+    let data = [
+        0x3B, 0x30, // Serial Cookie
+        0x00, 0x00, // Container count - 1
+        0x01, // Run Flag Bitset (single container is a run)
+        0, 0, // Upper 16 bits of the first container
+        4, 0, // Cardinality - 1 of the first container
+        1, 0, // First Container - Number of runs
+        0xFE, 0xFF, // First run start
+        4, 0, // First run length - 1 (OVERFLOW)
+    ];
+
+    assert_invalid_serialization(&data, "Overflow in run container");
+}
+
+#[test]
+fn deserialize_duplicate_keys() {
+    let data = [
+        0x3B, 0x30, // Serial Cookie
+        0x01, 0x00, // Container count - 1
+        0,    // Run Flag Bitset (no runs)
+        0, 0, // Upper 16 bits of the first container
+        0, 0, // Cardinality - 1 of the first container
+        0, 0, // Upper 16 bits of the second container - DUPLICATE
+        0, 0, // Cardinality - 1 of the second container
+        0, 0, // Only value of first container
+        0, 0, // Only value of second container
+    ];
+
+    assert_invalid_serialization(&data, "Duplicate keys in containers");
+}
+
+#[test]
+fn deserialize_unsorted_keys() {
+    let data = [
+        0x3B, 0x30, // Serial Cookie
+        1, 0, // Container count - 1
+        0, // Run Flag Bitset (no runs)
+        1, 0, // Upper 16 bits of the first container
+        0, 0, // Cardinality - 1 of the first container
+        0, 0, // Upper 16 bits of the second container (LESS THAN FIRST)
+        0, 0, // Cardinality - 1 of the second container
+        0, 0, // Only value of first container
+        0, 0, // Only value of second container
+    ];
+
+    assert_invalid_serialization(&data, "Unsorted keys in containers");
+}
+
+#[test]
+fn deserialize_array_duplicate_value() {
+    let data = [
+        0x3B, 0x30, // Serial Cookie
+        0, 0, // Container count - 1
+        0, // Run Flag Bitset (no runs)
+        0, 0, // Upper 16 bits of the first container
+        1, 0, // Cardinality - 1 of the first container
+        0, 0, // first value of first container
+        0, 0, // second value of first container (DUPLICATE)
+    ];
+
+    assert_invalid_serialization(&data, "Duplicate values in array container");
+}
+
+#[test]
+fn deserialize_array_unsorted_values() {
+    let data = [
+        0x3B, 0x30, // Serial Cookie
+        0, 0, // Container count - 1
+        0, // Run Flag Bitset (no runs)
+        0, 0, // Upper 16 bits of the first container
+        1, 0, // Cardinality - 1 of the first container
+        1, 0, // first value of first container
+        0, 0, // second value of first container (LESS THAN FIRST)
+    ];
+
+    assert_invalid_serialization(&data, "Unsorted values in array container");
+}
+
+#[test]
+fn deserialize_bitset_incorrect_cardinality() {
+    let data_start = [
+        0x3B, 0x30, // Serial Cookie
+        0, 0, // Container count - 1
+        0, // Run Flag Bitset (no runs)
+        0, 0, // Upper 16 bits of the first container
+        0xFF,
+        0xFF, // Cardinality - 1 of the first container.
+
+              // First container is a bitset, should be followed by 1 << 16 bits
+    ];
+    let mut data = vec![0xFF; data_start.len() + (1 << 16) / 8];
+    data[..data_start.len()].copy_from_slice(&data_start);
+    // Bitset filled with 0xFF will have the correct cardinality
+    let result = RoaringBitmap::deserialize_from(&data[..]).unwrap();
+    assert_eq!(result.len(), 0x1_0000);
+
+    // Bitset will no longer have the correct cardinality
+    data[data_start.len()] = 0x0;
+    assert_invalid_serialization(&data, "Bitset incorrect cardinality");
+}

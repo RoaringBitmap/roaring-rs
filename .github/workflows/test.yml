@@ -33,6 +33,9 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, clippy
 
+      - name: Caching
+        uses: Swatinem/rust-cache@v2
+
       - name: Check
         # clippy will also do a build check
         # so we don't need to run `cargo check` or `cargo build`
@@ -68,10 +71,20 @@ jobs:
             features: simd
     env:
       RUSTFLAGS: "-C target-cpu=native -C opt-level=3"
+      ROARINGRS_BENCH_OFFLINE: "true"
 
     steps:
       - name: Checkout roaring-rs
         uses: actions/checkout@v4
+
+      - name: Checkout benchmark datasets
+        uses: actions/checkout@v4
+        with:
+          repository: "RoaringBitmap/real-roaring-datasets"
+          path: "benchmarks/real-roaring-datasets"
+
+      - name: Caching
+        uses: Swatinem/rust-cache@v2
 
       - name: Initialize rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -81,6 +94,10 @@ jobs:
       - name: Test
         if: matrix.features == 'default'
         run: cargo test -p roaring --features serde
+
+      - name: Test Benches
+        if: matrix.rust != '1.71.1' && matrix.features == 'default'
+        run: cargo test -p benchmarks --benches
 
       - name: Test no default features
         if: matrix.features == 'no-std'
@@ -107,43 +124,43 @@ jobs:
           toolchain: nightly
           components: miri
 
+      - name: Caching
+        uses: Swatinem/rust-cache@v2
+
       - name: Setup miri
         run: cargo miri setup
 
       - name: Test bit endian
         run: cargo miri test --target s390x-unknown-linux-gnu -p roaring --lib -- bitmap::serialization::test::test_from_lsb0_bytes
 
-  bench:
+  fuzz:
     runs-on: ubuntu-latest
     needs: build
-    strategy:
-      matrix:
-        rust:
-          - stable
-          - nightly
-        features:
-          - default
-        include:
-          - rust: nightly
-            features: simd
     env:
       RUSTFLAGS: "-C target-cpu=native -C opt-level=3"
-      ROARINGRS_BENCH_OFFLINE: "true"
 
     steps:
       - name: Checkout roaring-rs
         uses: actions/checkout@v4
 
-      - name: Checkout benchmark datasets
-        uses: actions/checkout@v4
-        with:
-          repository: "RoaringBitmap/real-roaring-datasets"
-          path: "benchmarks/real-roaring-datasets"
-
       - name: Initialize rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ matrix.rust }}
+          toolchain: nightly
 
-      - name: Bench
-        run: cargo bench --features "${{ matrix.features }}"
+      - name: Caching
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo fuzz
+        run: cargo install cargo-fuzz
+
+      - name: Setup Cache for corpus and artifacts
+        uses: actions/cache@v4
+        with:
+          key: always
+          path: |
+            fuzz/artifacts
+            fuzz/corpus
+
+      - name: Run Fuzzer vs croaring for 30 minutes
+        run: cargo fuzz run against_croaring -s none -- -timeout=5 -max_total_time=1800
