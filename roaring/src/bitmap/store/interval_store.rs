@@ -191,94 +191,51 @@ impl IntervalStore {
             return 0;
         }
 
-        let interval = Interval::new(*range.start(), *range.end());
-        let first_interval =
-            self.0.binary_search_by(|iv| cmp_index_interval(interval.start, *iv).reverse());
-        let end_interval =
-            self.0.binary_search_by(|iv| cmp_index_interval(interval.end, *iv).reverse());
-        match (first_interval, end_interval) {
-            // both start and end index are contained in intervals
-            (Ok(first), Ok(end)) => {
-                if self.0[first].start == interval.start && self.0[end].end == interval.end {
-                    let removed = self.0[first..=end].iter().map(|iv| iv.run_len()).sum();
-                    self.0.drain(first..=end);
-                    removed
-                } else if self.0[first].start == interval.start {
-                    if first == end {
-                        self.0[end].start = interval.end + 1;
-                        return interval.run_len();
-                    }
-                    let removed = self.0[first..end].iter().map(|iv| iv.run_len()).sum::<u64>()
-                        + Interval::new(self.0[end].start, interval.end).run_len();
-                    self.0[end].start = interval.end + 1;
-                    self.0.drain(first..end);
-                    removed
-                } else if self.0[end].end == interval.end {
-                    if first == end {
-                        self.0[end].end = interval.start - 1;
-                        return interval.run_len();
-                    }
-                    let removed =
-                        self.0[first + 1..=end].iter().map(|iv| iv.run_len()).sum::<u64>()
-                            + Interval::new(interval.start, self.0[first].end).run_len();
-                    self.0[first].end = interval.start - 1;
-                    self.0.drain(first + 1..=end);
-                    removed
-                } else {
-                    if first == end {
-                        let old_end = self.0[first].end;
-                        self.0[first].end = interval.start - 1;
-                        self.0.insert(first + 1, Interval::new(interval.end + 1, old_end));
-                        return interval.run_len();
-                    }
-
-                    let removed = self.0[first + 1..end].iter().map(|iv| iv.run_len()).sum::<u64>()
-                        + Interval::new(interval.start, self.0[first].end).run_len()
-                        + Interval::new(self.0[end].start, interval.end).run_len();
-                    self.0[first].end = interval.start - 1;
-                    self.0[end].start = interval.end + 1;
-                    removed
+        let mut interval = Interval::new(*range.start(), *range.end());
+        // All intervals in `start_idx..end_idx` are fully contained in our interval.
+        let start_idx = self.0.partition_point(|iv| iv.start < interval.start);
+        let end_idx = self.0[start_idx..].partition_point(|iv| iv.end <= interval.end) + start_idx;
+        let mut removed_count = 0;
+        let mut add_needed = false;
+        if let Some(prev) = self.0[..start_idx].last_mut() {
+            // If the previous interval contains our start, remove it
+            // from partition point, we know prev.start < interval.start
+            if prev.end >= interval.start {
+                // We need to remove from the previous interval
+                removed_count +=
+                    Interval::new(interval.start, prev.end.min(interval.end)).run_len();
+                let new_end = interval.start - 1;
+                add_needed = prev.end > interval.end;
+                if add_needed {
+                    interval.start = interval.end + 1;
+                    interval.end = prev.end;
                 }
-            }
-            // start index is in the interval store, end index is not
-            (Ok(first), Err(end)) => {
-                debug_assert!(first < end);
-                if self.0[first].start == interval.start {
-                    let removed = self.0[first..end].iter().map(|iv| iv.run_len()).sum();
-                    self.0.drain(first..end);
-                    removed
-                } else {
-                    let removed = self.0[first + 1..end].iter().map(|iv| iv.run_len()).sum::<u64>()
-                        + Interval::new(interval.start, self.0[first].end).run_len();
-                    self.0[first].end = interval.start - 1;
-                    self.0.drain(first + 1..end);
-                    removed
-                }
-            }
-            // end index is in the interval store, start index is not
-            (Err(first), Ok(end)) => {
-                if self.0[end].end == interval.end {
-                    let removed = self.0[first..=end].iter().map(|iv| iv.run_len()).sum();
-                    self.0.drain(first..=end);
-                    removed
-                } else {
-                    let removed = self.0[first..end].iter().map(|iv| iv.run_len()).sum::<u64>()
-                        + Interval::new(self.0[end].start, interval.end).run_len();
-                    self.0[end].start = interval.end + 1;
-                    self.0.drain(first..end);
-                    removed
-                }
-            }
-            // both indices are not contained in the interval store
-            (Err(first), Err(end)) => {
-                if first == end {
-                    return 0;
-                }
-                let removed = self.0[first..end].iter().map(|iv| iv.run_len()).sum();
-                self.0.drain(first..end);
-                removed
+                prev.end = new_end;
             }
         }
+        if let Some(next) = self.0.get_mut(end_idx) {
+            // from partition point, we know next.end > interval.end
+            if next.start <= interval.end {
+                // We need to remove everything til interval.end
+                removed_count +=
+                    Interval::new(next.start.max(interval.start), interval.end).run_len();
+                next.start = interval.end + 1;
+            }
+        }
+
+        // Replace the first interval to be replaced with an interval covering the new range
+        // and remove the rest
+        // Otherwise, just insert a new interval
+        if let [first, rest @ ..] = &mut self.0[start_idx..end_idx] {
+            removed_count += first.run_len();
+            removed_count += rest.iter().map(|iv| iv.run_len()).sum::<u64>();
+            self.0.drain(start_idx..end_idx);
+        } else if add_needed {
+            // We are removing a range contained in a single interval
+            // As such we must add a new interval
+            self.0.insert(start_idx, interval);
+        }
+        removed_count
     }
 
     pub fn remove_smallest(&mut self, mut amount: u64) {
