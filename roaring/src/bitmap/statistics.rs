@@ -60,7 +60,6 @@ impl RoaringBitmap {
     /// assert_eq!(statistics.min_value, Some(1));
     /// assert_eq!(statistics.cardinality, 99);
     /// ```
-    #[allow(clippy::todo)]
     pub fn statistics(&self) -> Statistics {
         let mut n_containers = 0;
         let mut n_array_containers = 0;

@@ -207,7 +207,7 @@ impl Container {
                     self.ensure_correct_store()
                 }
             }
-            Store::Run(..) => self.ensure_correct_store(),
+            Store::Run(..) => false,
         }
     }
 }

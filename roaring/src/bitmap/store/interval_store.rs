@@ -32,13 +32,14 @@ impl IntervalStore {
         RUN_NUM_BYTES + (RUN_ELEMENT_BYTES * self.run_amount() as usize)
     }
 
+    #[cfg(feature = "std")]
     pub fn from_vec_unchecked(vec: Vec<Interval>) -> Self {
         #[cfg(debug_assertions)]
         {
-            for (i, cur_interval) in vec.iter().enumerate() {
-                if let Some(next) = vec.get(i + 1) {
-                    assert!(cur_interval.end < next.start);
-                }
+            for win in vec.windows(2) {
+                let [cur_interval, next] = [win[0], win[1]];
+                assert!(cur_interval.end + 1 < next.start);
+                assert!(cur_interval.start <= cur_interval.end);
             }
         }
         Self(vec)
@@ -46,6 +47,7 @@ impl IntervalStore {
 
     pub(crate) fn push_interval_unchecked(&mut self, interval: Interval) {
         debug_assert!(self.0.last().map(|f| f.end < interval.start).unwrap_or(true));
+        debug_assert!(interval.start <= interval.end);
         self.0.push(interval)
     }
 

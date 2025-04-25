@@ -341,7 +341,7 @@ impl BitmapStore {
                 cur_bit &= u64::MAX << start_bit;
             }
             if i == end_id - start_id {
-                cur_bit &= !(u64::MAX.checked_shl(end_bit as u32 + 1).unwrap_or(0));
+                cur_bit &= u64::MAX >> (64 - end_bit - 1);
             }
             amount += u64::from(cur_bit.count_ones());
         }
