@@ -291,16 +291,19 @@ impl RoaringBitmap {
 
                 let mut last_end = None::<u16>;
                 let store = IntervalStore::from_vec_unchecked(
-                        intervals.into_iter().map(|[s, len]| -> Result<Interval, io::ErrorKind> {
-                        let end = s.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
-                        if let Some(last_end) = last_end.replace(end) {
-                            if s <= last_end.saturating_add(1) {
-                                // Range overlaps or would be contiguous with the previous range
-                                return Err(io::ErrorKind::InvalidData);
+                    intervals
+                        .into_iter()
+                        .map(|[s, len]| -> Result<Interval, io::ErrorKind> {
+                            let end = s.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
+                            if let Some(last_end) = last_end.replace(end) {
+                                if s <= last_end.saturating_add(1) {
+                                    // Range overlaps or would be contiguous with the previous range
+                                    return Err(io::ErrorKind::InvalidData);
+                                }
                             }
-                        }
-                        Ok(Interval::new(s, end))
-                    }).collect::<Result<_, _>>()?
+                            Ok(Interval::new(s, end))
+                        })
+                        .collect::<Result<_, _>>()?,
                 );
                 Store::Run(store)
             } else if cardinality <= ARRAY_LIMIT {

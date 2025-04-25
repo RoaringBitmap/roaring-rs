@@ -53,57 +53,45 @@ impl IntervalStore {
 
     #[inline]
     pub fn insert(&mut self, index: u16) -> bool {
-        self.0
-            .binary_search_by(|iv| cmp_index_interval(index, *iv).reverse())
-            .map_err(|loc| {
-                // loc may be equal to self.0.len()
-                let loc_or_last = if loc < self.0.len() {
-                    Some(loc)
-                } else if !self.0.is_empty() {
-                    Some(self.0.len() - 1)
-                } else {
-                    None
-                };
-                // There exists an interval at or before the location we should insert
-                if let Some(loc_or_last) = loc_or_last {
-                    if Some(index) == self.0[loc_or_last].end.checked_add(1) {
-                        // index immediately follows an interval
-                        // Checking for sandwiched intervals is not needed because of binary search loc
-                        // i.e. when the index is sandwiched between two intervals we always
-                        // get the right most interval, which puts us in the different if
-                        self.0[loc_or_last].end += 1;
-                    } else if index
-                        .checked_add(1)
-                        .map(|f| f == self.0[loc_or_last].start)
-                        .unwrap_or(false)
-                    {
-                        // checked_add required for if u16::MAX is added
-                        // Value immediately precedes interval
-                        if loc > 0 && self.0[loc - 1].end == index - 1 {
-                            // Merge with preceding interval
-                            self.0[loc - 1].end = self.0[loc].end;
-                            self.0.remove(loc);
-                            return;
-                        }
-                        self.0[loc].start -= 1;
-                    } else if loc_or_last
-                        .checked_sub(1)
-                        .map(|f| self.0[f].end == index - 1)
-                        .unwrap_or(false)
-                    {
-                        // We are sandwiched between 2 intervals, but the previous interval is
-                        // continuous with the index. If the loc
-                        self.0[loc_or_last - 1].end = index;
-                    } else {
-                        // The value stands alone
-                        self.0.insert(loc, Interval::new(index, index));
+        // All intervals before idx are _fully_ before our index (iv.end < index)
+        let idx = self.0.partition_point(|iv| iv.end < index);
+        let (before, maybe_after) = self.0.split_at_mut(idx);
+        if let Some(next) = maybe_after.first_mut() {
+            // Check if the next interval actually already contains our index
+            // Because of partition_point, we know already know end >= index
+            if next.start <= index {
+                // index is already in the interval
+                return false;
+            }
+            // `next` is instead the first interval _after_ our index,
+            // check if we should grow that interval down by one
+            // Because we know from above that next.start > index, adding 1 is safe
+            if next.start == index + 1 {
+                next.start -= 1;
+
+                // Check if the previous interval will now be continuous with this interval
+                if let Some(prev) = before.last_mut() {
+                    // From the partition point: prev.end < index, subtracting 1 is safe
+                    if prev.end == index - 1 {
+                        prev.end = next.end;
+                        self.0.remove(idx);
                     }
-                } else {
-                    // there does not exist a single interval
-                    self.0.insert(loc, Interval::new(index, index));
                 }
-            })
-            .is_err()
+                return true;
+            }
+        }
+        if let Some(prev) = before.last_mut() {
+            // Because we know from the partition point that prev.end < index, adding 1 is safe
+            if prev.end + 1 == index {
+                // Merge with previous interval
+                prev.end += 1;
+                // If we had needed to merge with the next interval, we would have handled that in
+                // the previous if statement, so we're done here
+                return true;
+            }
+        }
+        self.0.insert(idx, Interval::new(index, index));
+        true
     }
 
     #[inline]
