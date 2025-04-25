@@ -24,10 +24,6 @@ impl BitmapStore {
         BitmapStore { len: 0, bits: Box::new([0; BITMAP_LENGTH]) }
     }
 
-    pub fn full() -> BitmapStore {
-        BitmapStore { len: (BITMAP_LENGTH as u64) * 64, bits: Box::new([u64::MAX; BITMAP_LENGTH]) }
-    }
-
     pub fn capacity(&self) -> usize {
         BITMAP_LENGTH * u64::BITS as usize
     }
