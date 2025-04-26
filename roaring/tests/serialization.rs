@@ -565,7 +565,7 @@ fn test_runs() {
 fn assert_invalid_serialization(serialized: &[u8], msg: &str) {
     let result = RoaringBitmap::deserialize_from(serialized);
     if let Ok(res) = result {
-        panic!("Expected error: {}. Got: {:?}", msg, res);
+        panic!("Expected error: {msg}. Got: {res:?}");
     }
 }
 
