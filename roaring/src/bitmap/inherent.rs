@@ -899,6 +899,28 @@ impl RoaringBitmap {
         }
         changed
     }
+
+    /// Ensure the bitmap is internally valid
+    ///
+    /// This is useful for development, but is not needed for normal use:
+    /// bitmaps should _always_ be internally valid.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the bitmap is not valid, with a description of the problem.
+    #[doc(hidden)]
+    pub fn internal_validate(&self) -> Result<(), &'static str> {
+        for window in self.containers.windows(2) {
+            let [first, second] = window else { unreachable!() };
+            if second.key <= first.key {
+                return Err("keys are not strictly increasing");
+            }
+        }
+        for container in &self.containers {
+            container.store.internal_validate()?;
+        }
+        Ok(())
+    }
 }
 
 impl Default for RoaringBitmap {
