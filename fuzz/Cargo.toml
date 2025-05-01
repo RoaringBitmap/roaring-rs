@@ -12,6 +12,9 @@ libfuzzer-sys = { version = "0.4.9", features = ["arbitrary-derive"] }
 roaring = { path = "../roaring" }
 croaring = "2.0"
 
+[features]
+simd = ["roaring/simd"]
+
 [[bin]]
 name = "against_croaring"
 path = "fuzz_targets/against_croaring.rs"

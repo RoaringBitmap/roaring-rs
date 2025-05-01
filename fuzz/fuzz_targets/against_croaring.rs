@@ -33,6 +33,8 @@ fuzz_target!(|input: FuzzInput| {
     for op in input.ops {
         op.apply(&mut lhs_c, &mut rhs_c, &mut lhs_r, &mut rhs_r);
     }
+    lhs_r.internal_validate().unwrap();
+    rhs_r.internal_validate().unwrap();
     check_equal(&lhs_c, &lhs_r);
     check_equal(&rhs_c, &rhs_r);
 });
