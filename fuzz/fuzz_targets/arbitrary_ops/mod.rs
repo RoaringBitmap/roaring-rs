@@ -270,9 +270,13 @@ impl MutableBitmapOperation {
                 y.clear();
             }
             MutableBitmapOperation::Optimize => {
-                let expected_changed = x.run_optimize();
-                let actual_changed = y.optimize();
-                assert_eq!(expected_changed, actual_changed);
+                x.run_optimize();
+                y.optimize();
+                let stat_x = x.statistics();
+                let stat_y = y.statistics();
+                assert_eq!(stat_x.n_run_containers, stat_y.n_run_containers);
+                assert_eq!(stat_x.n_bitset_containers, stat_y.n_bitset_containers);
+                assert_eq!(stat_x.n_array_containers, stat_y.n_array_containers);
             }
             MutableBitmapOperation::Extend(ref items) => {
                 // Safety - Num is repr(transparent) over u32
