@@ -629,6 +629,7 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
         if let Some(value) = self.forward_offset.checked_add(1) {
             self.forward_offset = value;
         } else {
+            self.intervals.next();
             return;
         }
         if Some(self.forward_offset as u64)
@@ -643,6 +644,7 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
         if let Some(value) = self.backward_offset.checked_add(1) {
             self.backward_offset = value;
         } else {
+            self.intervals.next_back();
             return;
         }
         if Some(self.backward_offset as u64)
