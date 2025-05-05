@@ -440,9 +440,10 @@ impl IntervalStore {
 
     pub fn select(&self, mut n: u16) -> Option<u16> {
         for iv in self.0.iter() {
-            let run_len = iv.run_len() as u16;
-            if run_len <= n {
-                n -= iv.run_len() as u16;
+            let run_len = iv.run_len();
+            if run_len <= n.into() {
+                n -= iv.run_len() as u16; // this conversion never overflows since run_len is
+                                          // smaller then a u16
             } else {
                 return Some(iv.start + n);
             }
