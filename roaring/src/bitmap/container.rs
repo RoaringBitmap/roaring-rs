@@ -3,10 +3,11 @@ use core::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
 };
 
-use super::store::{self, Store};
+use super::store::{self, ArrayStore, IntervalStore, Store, BITMAP_BYTES};
 use super::util;
 
 pub const ARRAY_LIMIT: u64 = 4096;
+#[cfg(test)]
 pub const RUN_MAX_SIZE: u64 = 2048;
 
 #[cfg(not(feature = "std"))]
@@ -196,18 +197,41 @@ impl Container {
     }
 
     pub fn optimize(&mut self) -> bool {
-        match self.store {
-            Store::Array(..) | Store::Bitmap(..) => {
+        match &mut self.store {
+            Store::Bitmap(_) => {
                 let num_runs = self.store.count_runs();
-                if num_runs <= RUN_MAX_SIZE && num_runs <= self.len() / 2 {
-                    // convert to run container
-                    self.store = self.store.to_run();
-                    true
-                } else {
-                    self.ensure_correct_store()
+                let size_as_run = IntervalStore::serialized_byte_size(num_runs);
+                if BITMAP_BYTES <= size_as_run {
+                    return false;
                 }
+                self.store = self.store.to_run();
+                true
             }
-            Store::Run(..) => false,
+            Store::Array(array) => {
+                let size_as_array = array.byte_size();
+                let num_runs = self.store.count_runs();
+                let size_as_run = IntervalStore::serialized_byte_size(num_runs);
+                if size_as_array <= size_as_run {
+                    return false;
+                }
+                self.store = self.store.to_run();
+                true
+            }
+            Store::Run(runs) => {
+                let size_as_run = runs.byte_size();
+                let card = runs.len();
+                let size_as_array = ArrayStore::serialized_byte_size(card);
+                let min_size_non_run = size_as_array.min(BITMAP_BYTES);
+                if size_as_run <= min_size_non_run {
+                    return false;
+                }
+                if card <= ARRAY_LIMIT {
+                    self.store = Store::Array(runs.to_array());
+                    return true;
+                }
+                self.store = Store::Bitmap(runs.to_bitmap());
+                true
+            }
         }
     }
 }

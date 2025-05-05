@@ -9,7 +9,7 @@ use core::ops::{
 };
 use core::slice;
 
-pub use self::bitmap_store::BITMAP_LENGTH;
+pub use self::bitmap_store::{BITMAP_BYTES, BITMAP_LENGTH};
 use self::Store::{Array, Bitmap, Run};
 
 pub(crate) use self::array_store::ArrayStore;

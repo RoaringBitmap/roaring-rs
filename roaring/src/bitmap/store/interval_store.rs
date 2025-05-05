@@ -29,7 +29,11 @@ impl IntervalStore {
     }
 
     pub fn byte_size(&self) -> usize {
-        RUN_NUM_BYTES + (RUN_ELEMENT_BYTES * self.run_amount() as usize)
+        Self::serialized_byte_size(self.run_amount())
+    }
+
+    pub fn serialized_byte_size(run_amount: u64) -> usize {
+        RUN_NUM_BYTES + (RUN_ELEMENT_BYTES * run_amount as usize)
     }
 
     #[cfg(feature = "std")]
@@ -458,12 +462,32 @@ impl IntervalStore {
         bits
     }
 
+    pub fn to_array(&self) -> ArrayStore {
+        let mut array = ArrayStore::new();
+        for iv in self.0.iter() {
+            array.insert_range(iv.start..=iv.end);
+        }
+        array
+    }
+
     pub(crate) fn iter(&self) -> RunIterBorrowed {
         self.into_iter()
     }
 
     pub(crate) fn iter_intervals(&self) -> core::slice::Iter<Interval> {
         self.0.iter()
+    }
+}
+
+impl From<IntervalStore> for BitmapStore {
+    fn from(value: IntervalStore) -> Self {
+        value.to_bitmap()
+    }
+}
+
+impl From<IntervalStore> for ArrayStore {
+    fn from(value: IntervalStore) -> Self {
+        value.to_array()
     }
 }
 

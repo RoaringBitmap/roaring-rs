@@ -1,6 +1,7 @@
 use crate::bitmap::container::{Container, ARRAY_LIMIT};
 use crate::bitmap::store::{
-    ArrayStore, BitmapStore, Interval, Store, BITMAP_LENGTH, RUN_ELEMENT_BYTES, RUN_NUM_BYTES,
+    ArrayStore, BitmapStore, Interval, Store, BITMAP_BYTES, BITMAP_LENGTH, RUN_ELEMENT_BYTES,
+    RUN_NUM_BYTES,
 };
 use crate::RoaringBitmap;
 use bytemuck::cast_slice_mut;
@@ -20,10 +21,6 @@ pub(crate) const COOKIE_BYTES: usize = 4;
 pub(crate) const SIZE_BYTES: usize = 4;
 pub(crate) const DESCRIPTION_BYTES: usize = 4;
 pub(crate) const OFFSET_BYTES: usize = 4;
-
-// Sizes of container structures
-pub(crate) const BITMAP_BYTES: usize = BITMAP_LENGTH * 8;
-pub(crate) const ARRAY_ELEMENT_BYTES: usize = 2;
 
 impl RoaringBitmap {
     /// Return the size in bytes of the serialized output.
@@ -48,7 +45,7 @@ impl RoaringBitmap {
             .containers
             .iter()
             .map(|container| match container.store {
-                Store::Array(ref values) => values.len() as usize * ARRAY_ELEMENT_BYTES,
+                Store::Array(ref values) => values.byte_size(),
                 Store::Bitmap(..) => BITMAP_BYTES,
                 Store::Run(ref intervals) => {
                     has_run_containers = true;

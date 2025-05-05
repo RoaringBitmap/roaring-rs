@@ -12,6 +12,7 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 pub const BITMAP_LENGTH: usize = 1024;
+pub const BITMAP_BYTES: usize = BITMAP_LENGTH * 8;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct BitmapStore {
