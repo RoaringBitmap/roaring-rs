@@ -17,6 +17,8 @@ use alloc::boxed::Box;
 
 use super::bitmap_store::{bit, key, BitmapStore, BITMAP_LENGTH};
 
+pub(crate) const ARRAY_ELEMENT_BYTES: usize = 2;
+
 #[derive(Clone, Eq, PartialEq)]
 pub(crate) struct ArrayStore {
     vec: Vec<u16>,
@@ -25,6 +27,14 @@ pub(crate) struct ArrayStore {
 impl ArrayStore {
     pub fn new() -> ArrayStore {
         ArrayStore { vec: vec![] }
+    }
+
+    pub fn serialized_byte_size(cardinality: u64) -> usize {
+        cardinality as usize * ARRAY_ELEMENT_BYTES
+    }
+
+    pub fn byte_size(&self) -> usize {
+        Self::serialized_byte_size(self.len())
     }
 
     #[cfg(feature = "std")]
@@ -460,6 +470,7 @@ mod tests {
         match s {
             Store::Array(vec) => vec.vec,
             Store::Bitmap(bits) => bits.to_array_store().vec,
+            Store::Run(runs) => runs.iter().collect(),
         }
     }
 
@@ -467,6 +478,7 @@ mod tests {
         match s {
             Store::Array(vec) => Store::Bitmap(vec.to_bitmap_store()),
             Store::Bitmap(..) => s,
+            Store::Run(runs) => Store::Bitmap(runs.to_bitmap()),
         }
     }
 
