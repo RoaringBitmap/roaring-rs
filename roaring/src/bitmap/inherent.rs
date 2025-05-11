@@ -1,6 +1,6 @@
 use core::cmp::Ordering;
 use core::mem::size_of;
-use core::ops::RangeBounds;
+use core::ops::{RangeBounds, RangeInclusive};
 
 use crate::bitmap::store::BITMAP_LENGTH;
 use crate::RoaringBitmap;
@@ -211,6 +211,31 @@ impl RoaringBitmap {
         }
     }
 
+    /// Searches and then modifies a specific container with `M` by the given key.
+    /// Creates a new container using `B` if it doesn't exist.
+    ///
+    /// Returns `R` based on `M` or `B`.
+    #[inline]
+    pub(crate) fn mod_or_build_container_by_key<
+        R,
+        M: FnMut(&mut Container) -> R,
+        B: FnMut(u16) -> (Container, R),
+    >(
+        &mut self,
+        key: u16,
+        mut modifier: M,
+        mut builder: B,
+    ) -> R {
+        match self.containers.binary_search_by_key(&key, |c| c.key) {
+            Ok(loc) => modifier(&mut self.containers[loc]),
+            Err(loc) => {
+                let build_value = builder(key);
+                self.containers.insert(loc, build_value.0);
+                build_value.1
+            }
+        }
+    }
+
     /// Inserts a range of values.
     /// Returns the number of inserted values.
     ///
@@ -237,14 +262,19 @@ impl RoaringBitmap {
 
         let (start_container_key, start_index) = util::split(start);
         let (end_container_key, end_index) = util::split(end);
-
-        // Find the container index for start_container_key
-        let first_index = self.find_container_by_key(start_container_key);
+        let modify_container_range =
+            |bitmap: &mut Self, container_key: u16, range: RangeInclusive<u16>| {
+                bitmap.mod_or_build_container_by_key(
+                    container_key,
+                    |container| container.insert_range(range.clone()),
+                    |key| (Container::new_with_range(key, range.clone()), range.len() as u64),
+                )
+            };
 
         // If the end range value is in the same container, just call into
         // the one container.
         if start_container_key == end_container_key {
-            return self.containers[first_index].insert_range(start_index..=end_index);
+            return modify_container_range(self, start_container_key, start_index..=end_index);
         }
 
         // For the first container, insert start_index..=u16::MAX, with
@@ -256,19 +286,14 @@ impl RoaringBitmap {
         let mut inserted = 0;
 
         for i in start_container_key..end_container_key {
-            let index = self.find_container_by_key(i);
-
-            // Insert the range subset for this container
-            inserted += self.containers[index].insert_range(low..=u16::MAX);
+            inserted += modify_container_range(self, i, low..=u16::MAX);
 
             // After the first container, always fill the containers.
             low = 0;
         }
 
         // Handle the last container
-        let last_index = self.find_container_by_key(end_container_key);
-
-        inserted += self.containers[last_index].insert_range(0..=end_index);
+        inserted += modify_container_range(self, end_container_key, 0..=end_index);
 
         inserted
     }

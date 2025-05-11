@@ -24,6 +24,11 @@ impl IntervalStore {
         Self(Default::default())
     }
 
+    pub fn new_with_range(range: RangeInclusive<u16>) -> Self {
+        debug_assert!(!range.is_empty());
+        Self(alloc::vec![Interval::new(*range.start(), *range.end())])
+    }
+
     pub fn full() -> Self {
         Self(alloc::vec![Interval::new(0, u16::MAX)])
     }
@@ -840,6 +845,10 @@ impl Interval {
 
     pub fn run_len(&self) -> u64 {
         u64::from(self.end - self.start) + 1
+    }
+
+    pub fn is_full(&self) -> bool {
+        self.start == 0 && self.end == u16::MAX
     }
 }
 

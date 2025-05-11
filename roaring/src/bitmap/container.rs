@@ -3,7 +3,7 @@ use core::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
 };
 
-use super::store::{self, ArrayStore, IntervalStore, Store, BITMAP_BYTES};
+use super::store::{self, ArrayStore, Interval, IntervalStore, Store, BITMAP_BYTES};
 use super::util;
 
 pub const ARRAY_LIMIT: u64 = 4096;
@@ -28,6 +28,16 @@ pub(crate) struct Iter<'a> {
 impl Container {
     pub fn new(key: u16) -> Container {
         Container { key, store: Store::new() }
+    }
+
+    pub fn new_with_range(key: u16, range: RangeInclusive<u16>) -> Container {
+        if range.len() <= 2 {
+            let mut array = ArrayStore::new();
+            array.insert_range(range);
+            Self { key, store: Store::Array(array) }
+        } else {
+            Self { key, store: Store::Run(IntervalStore::new_with_range(range)) }
+        }
     }
 
     pub fn full(key: u16) -> Container {
@@ -59,15 +69,35 @@ impl Container {
     }
 
     pub fn insert_range(&mut self, range: RangeInclusive<u16>) -> u64 {
-        // If inserting the range will make this a bitmap by itself, do it now
-        if range.len() as u64 > ARRAY_LIMIT {
-            if let Store::Array(arr) = &self.store {
-                self.store = Store::Bitmap(arr.to_bitmap_store());
+        match &self.store {
+            Store::Bitmap(bitmap) => {
+                let added_amount = range.len() as u64
+                    - bitmap
+                        .intersection_len_interval(&Interval::new(*range.start(), *range.end()));
+                let union_cardinality = bitmap.len() + added_amount;
+                if union_cardinality == 1 << 16 {
+                    self.store = Store::Run(IntervalStore::full());
+                    added_amount
+                } else {
+                    self.store.insert_range(range)
+                }
             }
+            Store::Array(array) => {
+                let added_amount = range.len() as u64
+                    - array.intersection_len_interval(&Interval::new(*range.start(), *range.end()));
+                let union_cardinality = array.len() + added_amount;
+                if union_cardinality == 1 << 16 {
+                    self.store = Store::Run(IntervalStore::full());
+                    added_amount
+                } else if union_cardinality <= ARRAY_LIMIT {
+                    self.store.insert_range(range)
+                } else {
+                    self.store = self.store.to_bitmap();
+                    self.store.insert_range(range)
+                }
+            }
+            Store::Run(_) => self.store.insert_range(range),
         }
-        let inserted = self.store.insert_range(range);
-        self.ensure_correct_store();
-        inserted
     }
 
     /// Pushes `index` at the end of the container only if `index` is the new max.

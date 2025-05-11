@@ -334,6 +334,9 @@ impl BitmapStore {
     }
 
     pub(crate) fn intersection_len_interval(&self, interval: &Interval) -> u64 {
+        if interval.is_full() {
+            return self.len();
+        }
         let (start_id, start_bit) = (key(interval.start), bit(interval.start));
         let (end_id, end_bit) = (key(interval.end), bit(interval.end));
         let mut amount: u64 = 0;
