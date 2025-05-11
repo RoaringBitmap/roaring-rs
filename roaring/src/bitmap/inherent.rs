@@ -832,20 +832,42 @@ impl RoaringBitmap {
         }
     }
 
-    // TODO(jpg) actually come up with example that illustrates creation of run containers
     /// Optimizes the container storage for this bitmap.
     /// Returns true if the container storage was modified, false if not.
     ///
     /// # Examples
+    ///
+    /// ```
     /// use roaring::RoaringBitmap;
     ///
-    /// let mut rb = RoaringBitmap::from_iter(1000..100000)
-    /// rb.optimize()
+    /// let mut rb = RoaringBitmap::from_iter(1000..100000);
+    /// rb.optimize();
     /// ```
     pub fn optimize(&mut self) -> bool {
         let mut changed = false;
         for container in &mut self.containers {
             changed |= container.optimize()
+        }
+        changed
+    }
+
+    /// Removes run-length encoding even when it is more space efficient.
+    ///
+    /// Returns true if the container storage was modified, false if not.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::from_iter(0..=10000);
+    /// rb.optimize();
+    /// assert!(rb.remove_run_compression());
+    /// ```
+    pub fn remove_run_compression(&mut self) -> bool {
+        let mut changed = false;
+        for container in &mut self.containers {
+            changed |= container.remove_run_compression()
         }
         changed
     }

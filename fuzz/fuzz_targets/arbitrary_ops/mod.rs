@@ -53,8 +53,7 @@ pub enum MutableBitmapOperation {
     Extend(Vec<Num>),
     SwapSerialization,
     Optimize,
-    // TODO: not implemented in roaring-rs yet
-    // RemoveRunCompression,
+    RemoveRunCompression,
     // Probably turn it into a bitmap
     MakeBitmap { key: u16 },
     // Probably turn it into a Range
@@ -154,13 +153,14 @@ impl ReadBitmapOperation {
             ReadBitmapOperation::Statistics(ranges) => {
                 match ranges {
                     RangeOperations::Optimized => {
-                        x.run_optimize();
-                        y.optimize();
-
+                        x.remove_run_compression();
+                        y.remove_run_compression();
+                        assert_eq!(x.run_optimize(), y.optimize());
                     }
                     RangeOperations::Removed => {
-                        // TODO: Not implemented in roaring-rs yet
-                        return;
+                        x.run_optimize();
+                        y.optimize();
+                        assert_eq!(x.remove_run_compression(), y.remove_run_compression());
                     }
                 }
                 let expected = x.statistics();
@@ -198,13 +198,14 @@ impl ReadBitmapOperation {
             ReadBitmapOperation::SerializedSize(ranges) => {
                 match ranges {
                     RangeOperations::Optimized => {
-                        x.run_optimize();
-                        y.optimize();
-
+                        x.remove_run_compression();
+                        y.remove_run_compression();
+                        assert_eq!(x.run_optimize(), y.optimize());
                     }
                     RangeOperations::Removed => {
-                        // TODO: Not implemented in roaring-rs yet
-                        return;
+                        x.run_optimize();
+                        y.optimize();
+                        assert_eq!(x.remove_run_compression(), y.remove_run_compression());
                     }
                 }
                 let expected = x.get_serialized_size_in_bytes::<croaring::Portable>();
@@ -214,13 +215,14 @@ impl ReadBitmapOperation {
             ReadBitmapOperation::Serialize(ranges) => {
                 match ranges {
                     RangeOperations::Optimized => {
-                        x.run_optimize();
-                        y.optimize();
-
+                        x.remove_run_compression();
+                        y.remove_run_compression();
+                        assert_eq!(x.run_optimize(), y.optimize());
                     }
                     RangeOperations::Removed => {
-                        // TODO: Not implemented in roaring-rs yet
-                        return;
+                        x.run_optimize();
+                        y.optimize();
+                        assert_eq!(x.remove_run_compression(), y.remove_run_compression());
                     }
                 }
                 let expected = x.serialize::<croaring::Portable>();
@@ -270,13 +272,14 @@ impl MutableBitmapOperation {
                 y.clear();
             }
             MutableBitmapOperation::Optimize => {
+                x.remove_run_compression();
+                y.remove_run_compression();
+                assert_eq!(x.run_optimize(), y.optimize());
+            }
+            MutableBitmapOperation::RemoveRunCompression => {
                 x.run_optimize();
                 y.optimize();
-                let stat_x = x.statistics();
-                let stat_y = y.statistics();
-                assert_eq!(stat_x.n_run_containers, stat_y.n_run_containers);
-                assert_eq!(stat_x.n_bitset_containers, stat_y.n_bitset_containers);
-                assert_eq!(stat_x.n_array_containers, stat_y.n_array_containers);
+                assert_eq!(x.remove_run_compression(), y.remove_run_compression());
             }
             MutableBitmapOperation::Extend(ref items) => {
                 // Safety - Num is repr(transparent) over u32
@@ -289,7 +292,8 @@ impl MutableBitmapOperation {
                 let mut y_serialized = Vec::new();
                 y.serialize_into(&mut y_serialized).unwrap();
 
-                let new_x = croaring::Bitmap::try_deserialize::<croaring::Portable>(&y_serialized).unwrap();
+                let new_x =
+                    croaring::Bitmap::try_deserialize::<croaring::Portable>(&y_serialized).unwrap();
                 let new_y = roaring::RoaringBitmap::deserialize_from(&x_serialized[..]).unwrap();
                 assert_eq!(new_x, *x);
                 assert_eq!(new_y, *y);

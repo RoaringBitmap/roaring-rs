@@ -137,6 +137,13 @@ fn optimize_bitmap() {
 }
 
 #[test]
+fn remove_run_compression() {
+    let mut bitmap = RoaringBitmap::from_iter(0..5000);
+    assert!(bitmap.optimize());
+    assert!(bitmap.remove_run_compression());
+}
+
+#[test]
 fn optimize_run() {
     let mut bitmap = RoaringBitmap::from_iter(0..1000);
     assert!(bitmap.optimize());

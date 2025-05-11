@@ -264,6 +264,21 @@ impl Container {
             }
         }
     }
+
+    pub fn remove_run_compression(&mut self) -> bool {
+        match &mut self.store {
+            Store::Bitmap(_) | Store::Array(_) => false,
+            Store::Run(runs) => {
+                let card = runs.len();
+                if card <= ARRAY_LIMIT {
+                    self.store = Store::Array(runs.to_array());
+                } else {
+                    self.store = Store::Bitmap(runs.to_bitmap());
+                }
+                true
+            }
+        }
+    }
 }
 
 impl BitOr<&Container> for &Container {
