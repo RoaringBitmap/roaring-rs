@@ -158,6 +158,8 @@ impl ReadBitmapOperation {
                         assert_eq!(x.run_optimize(), y.optimize());
                     }
                     RangeOperations::Removed => {
+                        x.remove_run_compression();
+                        y.remove_run_compression();
                         x.run_optimize();
                         y.optimize();
                         assert_eq!(x.remove_run_compression(), y.remove_run_compression());
@@ -203,6 +205,8 @@ impl ReadBitmapOperation {
                         assert_eq!(x.run_optimize(), y.optimize());
                     }
                     RangeOperations::Removed => {
+                        x.remove_run_compression();
+                        y.remove_run_compression();
                         x.run_optimize();
                         y.optimize();
                         assert_eq!(x.remove_run_compression(), y.remove_run_compression());
@@ -220,6 +224,8 @@ impl ReadBitmapOperation {
                         assert_eq!(x.run_optimize(), y.optimize());
                     }
                     RangeOperations::Removed => {
+                        x.remove_run_compression();
+                        y.remove_run_compression();
                         x.run_optimize();
                         y.optimize();
                         assert_eq!(x.remove_run_compression(), y.remove_run_compression());
@@ -277,6 +283,8 @@ impl MutableBitmapOperation {
                 assert_eq!(x.run_optimize(), y.optimize());
             }
             MutableBitmapOperation::RemoveRunCompression => {
+                x.remove_run_compression();
+                y.remove_run_compression();
                 x.run_optimize();
                 y.optimize();
                 assert_eq!(x.remove_run_compression(), y.remove_run_compression());
