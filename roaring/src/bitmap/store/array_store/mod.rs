@@ -236,8 +236,8 @@ impl ArrayStore {
         if interval.is_full() {
             return self.len();
         }
-        let start_id = self.vec.partition_point(|&f| f < interval.start);
-        let end_id = self.vec.partition_point(|&f| f <= interval.end);
+        let start_id = self.vec.partition_point(|&f| f < interval.start());
+        let end_id = self.vec.partition_point(|&f| f <= interval.end());
         (end_id.saturating_sub(start_id)) as u64
     }
 

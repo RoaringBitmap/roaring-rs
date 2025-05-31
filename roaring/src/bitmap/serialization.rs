@@ -141,8 +141,8 @@ impl RoaringBitmap {
                 Store::Run(ref intervals) => {
                     writer.write_u16::<LittleEndian>(intervals.run_amount() as u16)?;
                     for iv in intervals.iter_intervals() {
-                        writer.write_u16::<LittleEndian>(iv.start)?;
-                        writer.write_u16::<LittleEndian>(iv.end - iv.start)?;
+                        writer.write_u16::<LittleEndian>(iv.start())?;
+                        writer.write_u16::<LittleEndian>(iv.end() - iv.start())?;
                     }
                 }
             }
@@ -298,7 +298,7 @@ impl RoaringBitmap {
                                     return Err(io::ErrorKind::InvalidData);
                                 }
                             }
-                            Ok(Interval::new(s, end))
+                            Ok(Interval::new_unchecked(s, end))
                         })
                         .collect::<Result<_, _>>()?,
                 );

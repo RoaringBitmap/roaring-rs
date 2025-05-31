@@ -335,14 +335,17 @@ impl Store {
                 let mut intervals = IntervalStore::new();
                 if let Some(mut start) = vec.as_slice().first().copied() {
                     for (idx, &v) in vec.as_slice()[1..].iter().enumerate() {
-                        // TODO: why are we subtracting the same number here?
+                        // subtract current and previous values, then check if the gap is too large
+                        // for a run
                         if v - vec.as_slice()[idx] > 1 {
-                            intervals
-                                .push_interval_unchecked(Interval::new(start, vec.as_slice()[idx]));
+                            intervals.push_interval_unchecked(Interval::new_unchecked(
+                                start,
+                                vec.as_slice()[idx],
+                            ));
                             start = v
                         }
                     }
-                    intervals.push_interval_unchecked(Interval::new(
+                    intervals.push_interval_unchecked(Interval::new_unchecked(
                         start,
                         *vec.as_slice().last().unwrap(),
                     ));
@@ -381,13 +384,13 @@ impl Store {
 
                     // Run continues until end of this container
                     if current == u64::MAX {
-                        intervals.push_interval_unchecked(Interval::new(start, u16::MAX));
+                        intervals.push_interval_unchecked(Interval::new_unchecked(start, u16::MAX));
                         break;
                     }
 
                     let current_last = (!current).trailing_zeros() as u16;
                     last = 64 * i + current_last;
-                    intervals.push_interval_unchecked(Interval::new(start, last - 1));
+                    intervals.push_interval_unchecked(Interval::new_unchecked(start, last - 1));
 
                     // pad LSBs with 0s
                     current &= current + 1;
@@ -680,7 +683,7 @@ impl SubAssign<&Store> for Store {
             }
             (Array(array), Run(runs)) => {
                 runs.iter_intervals().for_each(|iv| {
-                    array.remove_range(iv.start..=iv.end);
+                    array.remove_range(iv.start()..=iv.end());
                 });
             }
             (this @ Run(..), Bitmap(bitmap)) => {
@@ -833,7 +836,7 @@ impl PartialEq for Store {
             }
             (Run(run), Bitmap(bitmap)) | (Bitmap(bitmap), Run(run)) => {
                 run.len() == bitmap.len()
-                    && run.iter_intervals().all(|&iv| bitmap.contains_range(iv.start..=iv.end))
+                    && run.iter_intervals().all(|&iv| bitmap.contains_range(iv.start()..=iv.end()))
             }
             _ => false,
         }

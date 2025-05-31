@@ -36,7 +36,13 @@ impl Container {
             array.insert_range(range);
             Self { key, store: Store::Array(array) }
         } else {
-            Self { key, store: Store::Run(IntervalStore::new_with_range(range)) }
+            Self {
+                key,
+                store: Store::Run(IntervalStore::new_with_range(
+                    // This is ok, since range must be non empty
+                    Interval::new_unchecked(*range.start(), *range.end()),
+                )),
+            }
         }
     }
 
@@ -69,11 +75,16 @@ impl Container {
     }
 
     pub fn insert_range(&mut self, range: RangeInclusive<u16>) -> u64 {
+        if range.is_empty() {
+            return 0;
+        }
         match &self.store {
             Store::Bitmap(bitmap) => {
                 let added_amount = range.len() as u64
-                    - bitmap
-                        .intersection_len_interval(&Interval::new(*range.start(), *range.end()));
+                    - bitmap.intersection_len_interval(&Interval::new_unchecked(
+                        *range.start(),
+                        *range.end(),
+                    ));
                 let union_cardinality = bitmap.len() + added_amount;
                 if union_cardinality == 1 << 16 {
                     self.store = Store::Run(IntervalStore::full());
@@ -84,7 +95,10 @@ impl Container {
             }
             Store::Array(array) => {
                 let added_amount = range.len() as u64
-                    - array.intersection_len_interval(&Interval::new(*range.start(), *range.end()));
+                    - array.intersection_len_interval(&Interval::new_unchecked(
+                        *range.start(),
+                        *range.end(),
+                    ));
                 let union_cardinality = array.len() + added_amount;
                 if union_cardinality == 1 << 16 {
                     self.store = Store::Run(IntervalStore::full());

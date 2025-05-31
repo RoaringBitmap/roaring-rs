@@ -337,8 +337,8 @@ impl BitmapStore {
         if interval.is_full() {
             return self.len();
         }
-        let (start_id, start_bit) = (key(interval.start), bit(interval.start));
-        let (end_id, end_bit) = (key(interval.end), bit(interval.end));
+        let (start_id, start_bit) = (key(interval.start()), bit(interval.start()));
+        let (end_id, end_bit) = (key(interval.end()), bit(interval.end()));
         let mut amount: u64 = 0;
         for (i, mut cur_bit) in self.bits[start_id..=end_id].iter().copied().enumerate() {
             if i == 0 {

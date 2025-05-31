@@ -24,13 +24,12 @@ impl IntervalStore {
         Self(Default::default())
     }
 
-    pub fn new_with_range(range: RangeInclusive<u16>) -> Self {
-        debug_assert!(!range.is_empty());
-        Self(alloc::vec![Interval::new(*range.start(), *range.end())])
+    pub fn new_with_range(range: Interval) -> Self {
+        Self(alloc::vec![range])
     }
 
     pub fn full() -> Self {
-        Self(alloc::vec![Interval::new(0, u16::MAX)])
+        Self(alloc::vec![Interval::new_unchecked(0, u16::MAX)])
     }
 
     pub fn byte_size(&self) -> usize {
@@ -99,7 +98,7 @@ impl IntervalStore {
                 return true;
             }
         }
-        self.0.insert(idx, Interval::new(index, index));
+        self.0.insert(idx, Interval::new_unchecked(index, index));
         true
     }
 
@@ -157,13 +156,13 @@ impl IntervalStore {
                 last_interval.end = index;
                 true
             } else if last_interval.end < index {
-                self.0.push(Interval::new(index, index));
+                self.0.push(Interval::new_unchecked(index, index));
                 true
             } else {
                 false
             }
         } else {
-            self.0.push(Interval::new(index, index));
+            self.0.push(Interval::new_unchecked(index, index));
             true
         }
     }
@@ -185,7 +184,7 @@ impl IntervalStore {
                 } else {
                     // Value lies inside the interval, we need to split it
                     // First construct a new interval with the right part
-                    let new_interval = Interval::new(index + 1, self.0[loc].end);
+                    let new_interval = Interval::new_unchecked(index + 1, self.0[loc].end);
                     // Then shrink the current interval
                     self.0[loc].end = index - 1;
                     // Then insert the new interval leaving gap where value was removed
@@ -200,7 +199,7 @@ impl IntervalStore {
             return 0;
         }
 
-        let mut interval = Interval::new(*range.start(), *range.end());
+        let mut interval = Interval::new_unchecked(*range.start(), *range.end());
         // All intervals in `start_idx..end_idx` are fully contained in our interval.
         let start_idx = self.0.partition_point(|iv| iv.start < interval.start);
         let end_idx = self.0[start_idx..].partition_point(|iv| iv.end <= interval.end) + start_idx;
@@ -212,7 +211,7 @@ impl IntervalStore {
             if prev.end >= interval.start {
                 // We need to remove from the previous interval
                 removed_count +=
-                    Interval::new(interval.start, prev.end.min(interval.end)).run_len();
+                    Interval::new_unchecked(interval.start, prev.end.min(interval.end)).run_len();
                 let new_end = interval.start - 1;
                 add_needed = prev.end > interval.end;
                 if add_needed {
@@ -227,7 +226,7 @@ impl IntervalStore {
             if next.start <= interval.end {
                 // We need to remove everything til interval.end
                 removed_count +=
-                    Interval::new(next.start.max(interval.start), interval.end).run_len();
+                    Interval::new_unchecked(next.start.max(interval.start), interval.end).run_len();
                 next.start = interval.end + 1;
             }
         }
@@ -299,7 +298,7 @@ impl IntervalStore {
     }
 
     pub fn contains_range(&self, range: RangeInclusive<u16>) -> bool {
-        let interval = Interval::new(*range.start(), *range.end());
+        let interval = Interval::new_unchecked(*range.start(), *range.end());
         let start = self.0.binary_search_by(|iv| cmp_index_interval(interval.start, *iv).reverse());
         let end = self.0.binary_search_by(|iv| cmp_index_interval(interval.end, *iv).reverse());
         match (start, end) {
@@ -435,7 +434,7 @@ impl IntervalStore {
             if iv.end <= value {
                 rank += iv.run_len();
             } else if iv.start <= value {
-                rank += Interval::new(iv.start, value).run_len();
+                rank += Interval::new_unchecked(iv.start, value).run_len();
             } else {
                 break;
             }
@@ -788,13 +787,13 @@ impl<I: SliceIterator<Interval>> ExactSizeIterator for RunIter<I> {}
 /// This interval is inclusive to end.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug)]
 pub(crate) struct Interval {
-    pub start: u16,
-    pub end: u16,
+    start: u16,
+    end: u16,
 }
 
 impl From<RangeInclusive<u16>> for Interval {
     fn from(value: RangeInclusive<u16>) -> Self {
-        Interval::new(*value.start(), *value.end())
+        Interval::new_unchecked(*value.start(), *value.end())
     }
 }
 
@@ -827,17 +826,26 @@ pub(crate) fn cmp_index_interval(index: u16, iv: Interval) -> Ordering {
 }
 
 impl Interval {
-    pub fn new(start: u16, end: u16) -> Interval {
-        Interval { start, end }
+    pub fn new_unchecked(start: u16, end: u16) -> Self {
+        debug_assert!(start <= end);
+        Self { start, end }
     }
 
-    pub fn overlaps(&self, interval: &Interval) -> bool {
+    pub fn start(&self) -> u16 {
+        self.start
+    }
+
+    pub fn end(&self) -> u16 {
+        self.end
+    }
+
+    pub fn overlaps(&self, interval: &Self) -> bool {
         interval.start <= self.end && self.start <= interval.end
     }
 
-    pub fn overlapping_interval(&self, other: &Interval) -> Option<Interval> {
+    pub fn overlapping_interval(&self, other: &Self) -> Option<Self> {
         if self.overlaps(other) {
-            Some(Interval::new(self.start.max(other.start), self.end.min(other.end)))
+            Some(Self::new_unchecked(self.start.max(other.start), self.end.min(other.end)))
         } else {
             None
         }
@@ -947,21 +955,21 @@ mod tests {
     #[test]
     fn insert_range_empty() {
         let mut interval_store = IntervalStore(alloc::vec![]);
-        assert_eq!(interval_store.insert_range(1..=2), Interval::new(1, 2).run_len());
+        assert_eq!(interval_store.insert_range(1..=2), Interval::new_unchecked(1, 2).run_len());
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 1, end: 2 },]));
     }
 
     #[test]
     fn insert_range_overlap_begin() {
         let mut interval_store = IntervalStore(alloc::vec![Interval { start: 1, end: 20 }]);
-        assert_eq!(interval_store.insert_range(5..=50), Interval::new(21, 50).run_len());
+        assert_eq!(interval_store.insert_range(5..=50), Interval::new_unchecked(21, 50).run_len());
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 1, end: 50 },]));
     }
 
     #[test]
     fn insert_range_overlap_end() {
         let mut interval_store = IntervalStore(alloc::vec![Interval { start: 10, end: 20 }]);
-        assert_eq!(interval_store.insert_range(5..=15), Interval::new(5, 9).run_len());
+        assert_eq!(interval_store.insert_range(5..=15), Interval::new_unchecked(5, 9).run_len());
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 5, end: 20 },]));
     }
 
@@ -971,14 +979,14 @@ mod tests {
             Interval { start: 10, end: 20 },
             Interval { start: 40, end: 60 },
         ]);
-        assert_eq!(interval_store.insert_range(15..=50), Interval::new(21, 39).run_len());
+        assert_eq!(interval_store.insert_range(15..=50), Interval::new_unchecked(21, 39).run_len());
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 10, end: 60 },]));
     }
 
     #[test]
     fn insert_range_concescutive_begin() {
         let mut interval_store = IntervalStore(alloc::vec![Interval { start: 10, end: 20 },]);
-        assert_eq!(interval_store.insert_range(21..=50), Interval::new(21, 50).run_len());
+        assert_eq!(interval_store.insert_range(21..=50), Interval::new_unchecked(21, 50).run_len());
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 10, end: 50 },]));
     }
 
@@ -988,14 +996,14 @@ mod tests {
             Interval { start: 10, end: 20 },
             Interval { start: 40, end: 60 },
         ]);
-        assert_eq!(interval_store.insert_range(21..=50), Interval::new(21, 39).run_len());
+        assert_eq!(interval_store.insert_range(21..=50), Interval::new_unchecked(21, 39).run_len());
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 10, end: 60 },]));
     }
 
     #[test]
     fn insert_range_concescutive_end() {
         let mut interval_store = IntervalStore(alloc::vec![Interval { start: 50, end: 70 },]);
-        assert_eq!(interval_store.insert_range(21..=49), Interval::new(21, 49).run_len());
+        assert_eq!(interval_store.insert_range(21..=49), Interval::new_unchecked(21, 49).run_len());
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 21, end: 70 },]));
     }
 
@@ -1005,7 +1013,7 @@ mod tests {
             Interval { start: 10, end: 20 },
             Interval { start: 50, end: 70 },
         ]);
-        assert_eq!(interval_store.insert_range(21..=49), Interval::new(21, 49).run_len());
+        assert_eq!(interval_store.insert_range(21..=49), Interval::new_unchecked(21, 49).run_len());
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 10, end: 70 },]));
     }
 
@@ -1015,7 +1023,7 @@ mod tests {
             Interval { start: 10, end: 20 },
             Interval { start: 50, end: 70 },
         ]);
-        assert_eq!(interval_store.insert_range(25..=30), Interval::new(25, 30).run_len());
+        assert_eq!(interval_store.insert_range(25..=30), Interval::new_unchecked(25, 30).run_len());
         assert_eq!(
             interval_store,
             IntervalStore(alloc::vec![
@@ -1034,7 +1042,7 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.insert_range(90..=u16::MAX),
-            Interval::new(90, u16::MAX).run_len()
+            Interval::new_unchecked(90, u16::MAX).run_len()
         );
         assert_eq!(
             interval_store,
@@ -1054,7 +1062,7 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.insert_range(70..=u16::MAX),
-            Interval::new(71, u16::MAX).run_len()
+            Interval::new_unchecked(71, u16::MAX).run_len()
         );
         assert_eq!(
             interval_store,
@@ -1073,9 +1081,9 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.insert_range(0..=u16::MAX),
-            Interval::new(0, u16::MAX).run_len()
-                - Interval::new(10, 20).run_len()
-                - Interval::new(50, 70).run_len()
+            Interval::new_unchecked(0, u16::MAX).run_len()
+                - Interval::new_unchecked(10, 20).run_len()
+                - Interval::new_unchecked(50, 70).run_len()
         );
         assert_eq!(
             interval_store,
@@ -1092,9 +1100,9 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.insert_range(0..=100),
-            Interval::new(0, 100).run_len()
-                - Interval::new(10, 20).run_len()
-                - Interval::new(50, 70).run_len()
+            Interval::new_unchecked(0, 100).run_len()
+                - Interval::new_unchecked(10, 20).run_len()
+                - Interval::new_unchecked(50, 70).run_len()
         );
         assert_eq!(
             interval_store,
@@ -1107,17 +1115,22 @@ mod tests {
 
     #[test]
     fn insert_range_begin_overlap_concescutive_end() {
-        let mut interval_store =
-            IntervalStore(alloc::vec![Interval::new(2, 10), Interval::new(12, 700),]);
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval::new_unchecked(2, 10),
+            Interval::new_unchecked(12, 700),
+        ]);
         assert_eq!(interval_store.insert_range(2..=11), 1);
-        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new(2, 700)]));
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new_unchecked(2, 700)]));
     }
 
     #[test]
     fn insert_range_pin_1() {
-        let mut interval_store = IntervalStore(alloc::vec![Interval::new(65079, 65079)]);
+        let mut interval_store = IntervalStore(alloc::vec![Interval::new_unchecked(65079, 65079)]);
         assert_eq!(interval_store.insert_range(65080..=65080), 1);
-        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new(65079, 65080)]));
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![Interval::new_unchecked(65079, 65080)])
+        );
     }
 
     #[test]
@@ -1254,7 +1267,10 @@ mod tests {
         assert_eq!(interval_store.remove_range(40..=70), 21);
         assert_eq!(
             interval_store,
-            IntervalStore(alloc::vec![Interval::new(400, 600), Interval::new(4000, 6000),])
+            IntervalStore(alloc::vec![
+                Interval::new_unchecked(400, 600),
+                Interval::new_unchecked(4000, 6000),
+            ])
         );
     }
 
@@ -1267,9 +1283,9 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.remove_range(40..=200),
-            Interval::new(40, 60).run_len()
-                + Interval::new(80, 90).run_len()
-                + Interval::new(100, 200).run_len()
+            Interval::new_unchecked(40, 60).run_len()
+                + Interval::new_unchecked(80, 90).run_len()
+                + Interval::new_unchecked(100, 200).run_len()
         );
         assert_eq!(interval_store, IntervalStore(alloc::vec![]));
     }
@@ -1282,7 +1298,7 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.remove_range(40..=80),
-            Interval::new(40, 60).run_len() + Interval::new(70, 80).run_len()
+            Interval::new_unchecked(40, 60).run_len() + Interval::new_unchecked(70, 80).run_len()
         );
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 81, end: 90 },]));
     }
@@ -1295,7 +1311,7 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.remove_range(50..=90),
-            Interval::new(70, 90).run_len() + Interval::new(50, 60).run_len()
+            Interval::new_unchecked(70, 90).run_len() + Interval::new_unchecked(50, 60).run_len()
         );
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 40, end: 49 },]));
     }
@@ -1308,7 +1324,7 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.remove_range(30..=90),
-            Interval::new(70, 90).run_len() + Interval::new(40, 60).run_len()
+            Interval::new_unchecked(70, 90).run_len() + Interval::new_unchecked(40, 60).run_len()
         );
         assert_eq!(interval_store, IntervalStore(alloc::vec![]));
     }
@@ -1322,9 +1338,9 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.remove_range(30..=90),
-            Interval::new(70, 90).run_len() + Interval::new(40, 60).run_len()
+            Interval::new_unchecked(70, 90).run_len() + Interval::new_unchecked(40, 60).run_len()
         );
-        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new(700, 900),]));
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new_unchecked(700, 900),]));
     }
 
     #[test]
@@ -1335,7 +1351,7 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.remove_range(50..=80),
-            Interval::new(70, 80).run_len() + Interval::new(50, 60).run_len()
+            Interval::new_unchecked(70, 80).run_len() + Interval::new_unchecked(50, 60).run_len()
         );
         assert_eq!(
             interval_store,
@@ -1349,7 +1365,10 @@ mod tests {
     #[test]
     fn remove_range_begin_overlap() {
         let mut interval_store = IntervalStore(alloc::vec![Interval { start: 40, end: 60 },]);
-        assert_eq!(interval_store.remove_range(50..=100), Interval::new(50, 60).run_len());
+        assert_eq!(
+            interval_store.remove_range(50..=100),
+            Interval::new_unchecked(50, 60).run_len()
+        );
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 40, end: 49 },]));
     }
 
@@ -1362,9 +1381,9 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.remove_range(50..=1000),
-            Interval::new(50, 60).run_len()
-                + Interval::new(80, 100).run_len()
-                + Interval::new(200, 500).run_len()
+            Interval::new_unchecked(50, 60).run_len()
+                + Interval::new_unchecked(80, 100).run_len()
+                + Interval::new_unchecked(200, 500).run_len()
         );
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 40, end: 49 },]));
     }
@@ -1372,7 +1391,7 @@ mod tests {
     #[test]
     fn remove_range_end_overlap() {
         let mut interval_store = IntervalStore(alloc::vec![Interval { start: 40, end: 60 },]);
-        assert_eq!(interval_store.remove_range(20..=50), Interval::new(40, 50).run_len());
+        assert_eq!(interval_store.remove_range(20..=50), Interval::new_unchecked(40, 50).run_len());
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 51, end: 60 },]));
     }
 
@@ -1385,9 +1404,9 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.remove_range(20..=850),
-            Interval::new(40, 60).run_len()
-                + Interval::new(100, 500).run_len()
-                + Interval::new(800, 850).run_len()
+            Interval::new_unchecked(40, 60).run_len()
+                + Interval::new_unchecked(100, 500).run_len()
+                + Interval::new_unchecked(800, 850).run_len()
         );
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval { start: 851, end: 900 },]));
     }
@@ -1395,7 +1414,7 @@ mod tests {
     #[test]
     fn remove_range_no_overlap() {
         let mut interval_store = IntervalStore(alloc::vec![Interval { start: 40, end: 60 },]);
-        assert_eq!(interval_store.remove_range(20..=80), Interval::new(40, 60).run_len());
+        assert_eq!(interval_store.remove_range(20..=80), Interval::new_unchecked(40, 60).run_len());
         assert_eq!(interval_store, IntervalStore(alloc::vec![]));
     }
 
@@ -1408,9 +1427,9 @@ mod tests {
         ]);
         assert_eq!(
             interval_store.remove_range(20..=60000),
-            Interval::new(40, 60).run_len()
-                + Interval::new(400, 600).run_len()
-                + Interval::new(4000, 6000).run_len()
+            Interval::new_unchecked(40, 60).run_len()
+                + Interval::new_unchecked(400, 600).run_len()
+                + Interval::new_unchecked(4000, 6000).run_len()
         );
         assert_eq!(interval_store, IntervalStore(alloc::vec![]));
     }
@@ -1418,10 +1437,16 @@ mod tests {
     #[test]
     fn remove_range_complete_overlap() {
         let mut interval_store = IntervalStore(alloc::vec![Interval { start: 51, end: 6000 },]);
-        assert_eq!(interval_store.remove_range(500..=600), Interval::new(500, 600).run_len());
+        assert_eq!(
+            interval_store.remove_range(500..=600),
+            Interval::new_unchecked(500, 600).run_len()
+        );
         assert_eq!(
             interval_store,
-            IntervalStore(alloc::vec![Interval::new(51, 499), Interval::new(601, 6000),])
+            IntervalStore(alloc::vec![
+                Interval::new_unchecked(51, 499),
+                Interval::new_unchecked(601, 6000),
+            ])
         );
     }
 
@@ -1434,12 +1459,17 @@ mod tests {
 
     #[test]
     fn remove_range_with_extra() {
-        let mut interval_store =
-            IntervalStore(alloc::vec![Interval::new(38161, 38162), Interval::new(40562, 40562),]);
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval::new_unchecked(38161, 38162),
+            Interval::new_unchecked(40562, 40562),
+        ]);
         assert_eq!(interval_store.remove_range(38162..=38163), 1);
         assert_eq!(
             interval_store,
-            IntervalStore(alloc::vec![Interval::new(38161, 38161), Interval::new(40562, 40562),])
+            IntervalStore(alloc::vec![
+                Interval::new_unchecked(38161, 38161),
+                Interval::new_unchecked(40562, 40562),
+            ])
         );
     }
 
@@ -1460,7 +1490,10 @@ mod tests {
         interval_store.remove_smallest(200);
         assert_eq!(
             interval_store,
-            IntervalStore(alloc::vec![Interval::new(500, 600), Interval::new(4000, 6000),])
+            IntervalStore(alloc::vec![
+                Interval::new_unchecked(500, 600),
+                Interval::new_unchecked(4000, 6000),
+            ])
         );
     }
 
@@ -1472,7 +1505,10 @@ mod tests {
             Interval { start: 4000, end: 6000 },
         ]);
         interval_store.remove_smallest(500);
-        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new(4200, 6000),]));
+        assert_eq!(
+            interval_store,
+            IntervalStore(alloc::vec![Interval::new_unchecked(4200, 6000),])
+        );
     }
 
     #[test]
@@ -1492,7 +1528,10 @@ mod tests {
         interval_store.remove_biggest(200);
         assert_eq!(
             interval_store,
-            IntervalStore(alloc::vec![Interval::new(0, 99), Interval::new(400, 500),])
+            IntervalStore(alloc::vec![
+                Interval::new_unchecked(0, 99),
+                Interval::new_unchecked(400, 500),
+            ])
         );
     }
 
@@ -1504,7 +1543,7 @@ mod tests {
             Interval { start: 9901, end: 10000 },
         ]);
         interval_store.remove_biggest(500);
-        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new(1, 5800),]));
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new_unchecked(1, 5800),]));
     }
 
     #[test]
@@ -1667,24 +1706,30 @@ mod tests {
 
     #[test]
     fn overlapping_interval_1() {
-        let interval1 = Interval::new(0, 100);
-        let interval2 = Interval::new(50, 300);
+        let interval1 = Interval::new_unchecked(0, 100);
+        let interval2 = Interval::new_unchecked(50, 300);
 
-        assert_eq!(interval1.overlapping_interval(&interval2), Some(Interval::new(50, 100)))
+        assert_eq!(
+            interval1.overlapping_interval(&interval2),
+            Some(Interval::new_unchecked(50, 100))
+        )
     }
 
     #[test]
     fn overlapping_interval_2() {
-        let interval1 = Interval::new(50, 300);
-        let interval2 = Interval::new(0, 100);
+        let interval1 = Interval::new_unchecked(50, 300);
+        let interval2 = Interval::new_unchecked(0, 100);
 
-        assert_eq!(interval1.overlapping_interval(&interval2), Some(Interval::new(50, 100)))
+        assert_eq!(
+            interval1.overlapping_interval(&interval2),
+            Some(Interval::new_unchecked(50, 100))
+        )
     }
 
     #[test]
     fn overlapping_interval_3() {
-        let interval1 = Interval::new(0, 100);
-        let interval2 = Interval::new(500, 700);
+        let interval1 = Interval::new_unchecked(0, 100);
+        let interval2 = Interval::new_unchecked(500, 700);
 
         assert_eq!(interval1.overlapping_interval(&interval2), None)
     }
@@ -1703,9 +1748,9 @@ mod tests {
         ]);
         assert_eq!(
             interval_store_1.intersection_len(&interval_store_2),
-            Interval::new(11, 20).run_len()
-                + Interval::new(51, 80).run_len()
-                + Interval::new(111, 120).run_len()
+            Interval::new_unchecked(11, 20).run_len()
+                + Interval::new_unchecked(51, 80).run_len()
+                + Interval::new_unchecked(111, 120).run_len()
         )
     }
 
@@ -1720,9 +1765,9 @@ mod tests {
             Interval { start: 1, end: 80 },
             Interval { start: 101, end: 120 },
         ]);
-        let intersect_len = Interval::new(11, 20).run_len()
-            + Interval::new(51, 80).run_len()
-            + Interval::new(111, 120).run_len();
+        let intersect_len = Interval::new_unchecked(11, 20).run_len()
+            + Interval::new_unchecked(51, 80).run_len()
+            + Interval::new_unchecked(111, 120).run_len();
         assert_eq!(interval_store_1.intersection_len(&interval_store_2), intersect_len);
         assert_eq!(interval_store_2.intersection_len(&interval_store_1), intersect_len);
     }
@@ -1731,7 +1776,7 @@ mod tests {
     fn intersection_len_3() {
         let interval_store_1 = IntervalStore(alloc::vec![Interval { start: 1, end: 2000 },]);
         let interval_store_2 = IntervalStore(alloc::vec![Interval { start: 1001, end: 3000 },]);
-        let intersect_len = Interval::new(1001, 2000).run_len();
+        let intersect_len = Interval::new_unchecked(1001, 2000).run_len();
         assert_eq!(interval_store_1.intersection_len(&interval_store_2), intersect_len);
         assert_eq!(interval_store_2.intersection_len(&interval_store_1), intersect_len);
     }
@@ -1754,7 +1799,7 @@ mod tests {
             bitmap_store.insert(to_set);
         }
         let interval_store_1 = IntervalStore(alloc::vec![Interval { start: 20, end: 600 },]);
-        let intersect_len = Interval::new(20, 200).run_len();
+        let intersect_len = Interval::new_unchecked(20, 200).run_len();
         assert_eq!(interval_store_1.intersection_len_bitmap(&bitmap_store), intersect_len);
     }
 
@@ -1768,8 +1813,8 @@ mod tests {
             Interval { start: 20, end: 6000 },
             Interval { start: 5000, end: 33333 },
         ]);
-        let intersect_len =
-            Interval::new(20, 6000).run_len() + Interval::new(5000, 20000).run_len();
+        let intersect_len = Interval::new_unchecked(20, 6000).run_len()
+            + Interval::new_unchecked(5000, 20000).run_len();
         assert_eq!(interval_store_1.intersection_len_bitmap(&bitmap_store), intersect_len);
     }
 
@@ -1783,8 +1828,8 @@ mod tests {
             Interval { start: 64, end: 6400 },
             Interval { start: 7680, end: 64000 },
         ]);
-        let intersect_len =
-            Interval::new(64, 6400).run_len() + Interval::new(7680, 20000).run_len();
+        let intersect_len = Interval::new_unchecked(64, 6400).run_len()
+            + Interval::new_unchecked(7680, 20000).run_len();
         assert_eq!(interval_store_1.intersection_len_bitmap(&bitmap_store), intersect_len);
     }
 
@@ -1798,8 +1843,8 @@ mod tests {
             Interval { start: 64, end: 6400 },
             Interval { start: 7680, end: 64000 },
         ]);
-        let intersect_len =
-            Interval::new(64, 6400).run_len() + Interval::new(7680, 20005).run_len();
+        let intersect_len = Interval::new_unchecked(64, 6400).run_len()
+            + Interval::new_unchecked(7680, 20005).run_len();
         assert_eq!(interval_store_1.intersection_len_bitmap(&bitmap_store), intersect_len);
     }
 
@@ -1810,7 +1855,7 @@ mod tests {
             bitmap_store.insert(to_set);
         }
         let interval_store_1 = IntervalStore(alloc::vec![Interval { start: 64, end: 64 },]);
-        let intersect_len = Interval::new(64, 64).run_len();
+        let intersect_len = Interval::new_unchecked(64, 64).run_len();
         assert_eq!(interval_store_1.intersection_len_bitmap(&bitmap_store), intersect_len);
     }
 
@@ -1838,7 +1883,8 @@ mod tests {
         ]);
         assert_eq!(
             interval_store_1.len(),
-            Interval::new(20, 600).run_len() + Interval::new(5000, 8000).run_len()
+            Interval::new_unchecked(20, 600).run_len()
+                + Interval::new_unchecked(5000, 8000).run_len()
         );
     }
 
@@ -1855,7 +1901,7 @@ mod tests {
 
     #[test]
     fn min_0() {
-        let interval_store = IntervalStore(alloc::vec![Interval::new(20, u16::MAX)]);
+        let interval_store = IntervalStore(alloc::vec![Interval::new_unchecked(20, u16::MAX)]);
         assert_eq!(interval_store.min(), Some(20));
     }
 
@@ -1867,7 +1913,7 @@ mod tests {
 
     #[test]
     fn max_0() {
-        let interval_store = IntervalStore(alloc::vec![Interval::new(20, u16::MAX)]);
+        let interval_store = IntervalStore(alloc::vec![Interval::new_unchecked(20, u16::MAX)]);
         assert_eq!(interval_store.max(), Some(u16::MAX));
     }
 
@@ -1880,13 +1926,14 @@ mod tests {
     #[test]
     fn rank() {
         let interval_store = IntervalStore(alloc::vec![
-            Interval::new(0, 200),
-            Interval::new(5000, 7000),
-            Interval::new(8000, 10000),
+            Interval::new_unchecked(0, 200),
+            Interval::new_unchecked(5000, 7000),
+            Interval::new_unchecked(8000, 10000),
         ]);
         assert_eq!(
             interval_store.rank(5020),
-            Interval::new(0, 200).run_len() + Interval::new(5000, 5020).run_len()
+            Interval::new_unchecked(0, 200).run_len()
+                + Interval::new_unchecked(5000, 5020).run_len()
         );
         assert_eq!(interval_store.rank(u16::MAX), interval_store.len());
     }
@@ -1894,10 +1941,10 @@ mod tests {
     #[test]
     fn select() {
         let interval_store = IntervalStore(alloc::vec![
-            Interval::new(0, 0),
-            Interval::new(2, 11),
-            Interval::new(5000, 7000),
-            Interval::new(8000, 10000),
+            Interval::new_unchecked(0, 0),
+            Interval::new_unchecked(2, 11),
+            Interval::new_unchecked(5000, 7000),
+            Interval::new_unchecked(8000, 10000),
         ]);
         assert_eq!(interval_store.select(0), Some(0));
         assert_eq!(interval_store.select(1), Some(2));
@@ -1910,25 +1957,25 @@ mod tests {
     #[test]
     fn union_1() {
         let mut interval_store_1 = IntervalStore(alloc::vec![
-            Interval::new(0, 0),
-            Interval::new(2, 11),
-            Interval::new(5000, 7000),
-            Interval::new(8000, 10000),
+            Interval::new_unchecked(0, 0),
+            Interval::new_unchecked(2, 11),
+            Interval::new_unchecked(5000, 7000),
+            Interval::new_unchecked(8000, 10000),
         ]);
         let interval_store_2 = IntervalStore(alloc::vec![
-            Interval::new(0, 0),
-            Interval::new(2, 10),
-            Interval::new(12, 7000),
-            Interval::new(65000, 65050),
+            Interval::new_unchecked(0, 0),
+            Interval::new_unchecked(2, 10),
+            Interval::new_unchecked(12, 7000),
+            Interval::new_unchecked(65000, 65050),
         ]);
         interval_store_1 |= interval_store_2;
         assert_eq!(
             interval_store_1,
             IntervalStore(alloc::vec![
-                Interval::new(0, 0),
-                Interval::new(2, 7000),
-                Interval::new(8000, 10000),
-                Interval::new(65000, 65050),
+                Interval::new_unchecked(0, 0),
+                Interval::new_unchecked(2, 7000),
+                Interval::new_unchecked(8000, 10000),
+                Interval::new_unchecked(65000, 65050),
             ])
         )
     }
@@ -1939,20 +1986,20 @@ mod tests {
         values.sort();
         let array = ArrayStore::from_vec_unchecked(values);
         let mut interval_store = IntervalStore(alloc::vec![
-            Interval::new(0, 0),
-            Interval::new(2, 11),
-            Interval::new(5000, 7000),
-            Interval::new(8000, 10000),
+            Interval::new_unchecked(0, 0),
+            Interval::new_unchecked(2, 11),
+            Interval::new_unchecked(5000, 7000),
+            Interval::new_unchecked(8000, 10000),
         ]);
         interval_store |= &array;
         assert_eq!(
             interval_store,
             IntervalStore(alloc::vec![
-                Interval::new(0, 11),
-                Interval::new(2000, 2000),
-                Interval::new(5000, 7000),
-                Interval::new(8000, 10000),
-                Interval::new(u16::MAX, u16::MAX),
+                Interval::new_unchecked(0, 11),
+                Interval::new_unchecked(2000, 2000),
+                Interval::new_unchecked(5000, 7000),
+                Interval::new_unchecked(8000, 10000),
+                Interval::new_unchecked(u16::MAX, u16::MAX),
             ])
         )
     }
@@ -1960,23 +2007,23 @@ mod tests {
     #[test]
     fn intersection() {
         let interval_store_1 = IntervalStore(alloc::vec![
-            Interval::new(0, 0),
-            Interval::new(2, 11),
-            Interval::new(5000, 7000),
-            Interval::new(8000, 10000),
+            Interval::new_unchecked(0, 0),
+            Interval::new_unchecked(2, 11),
+            Interval::new_unchecked(5000, 7000),
+            Interval::new_unchecked(8000, 10000),
         ]);
         let interval_store_2 = IntervalStore(alloc::vec![
-            Interval::new(0, 0),
-            Interval::new(5, 50),
-            Interval::new(4000, 10000),
+            Interval::new_unchecked(0, 0),
+            Interval::new_unchecked(5, 50),
+            Interval::new_unchecked(4000, 10000),
         ]);
         assert_eq!(
             &interval_store_1 & &interval_store_2,
             IntervalStore(alloc::vec![
-                Interval::new(0, 0),
-                Interval::new(5, 11),
-                Interval::new(5000, 7000),
-                Interval::new(8000, 10000),
+                Interval::new_unchecked(0, 0),
+                Interval::new_unchecked(5, 11),
+                Interval::new_unchecked(5000, 7000),
+                Interval::new_unchecked(8000, 10000),
             ])
         );
         assert_eq!(&interval_store_1 & &interval_store_1, interval_store_1);
@@ -1985,74 +2032,80 @@ mod tests {
     #[test]
     fn difference() {
         let mut interval_store_1 = IntervalStore(alloc::vec![
-            Interval::new(0, 0),
-            Interval::new(2, 11),
-            Interval::new(5000, 7000),
-            Interval::new(8000, 11000),
+            Interval::new_unchecked(0, 0),
+            Interval::new_unchecked(2, 11),
+            Interval::new_unchecked(5000, 7000),
+            Interval::new_unchecked(8000, 11000),
         ]);
         let interval_store_2 = IntervalStore(alloc::vec![
-            Interval::new(0, 0),
-            Interval::new(5, 50),
-            Interval::new(4000, 10000),
+            Interval::new_unchecked(0, 0),
+            Interval::new_unchecked(5, 50),
+            Interval::new_unchecked(4000, 10000),
         ]);
         interval_store_1 -= &interval_store_2;
         assert_eq!(
             interval_store_1,
-            IntervalStore(alloc::vec![Interval::new(2, 4), Interval::new(10001, 11000),])
+            IntervalStore(alloc::vec![
+                Interval::new_unchecked(2, 4),
+                Interval::new_unchecked(10001, 11000),
+            ])
         )
     }
 
     #[test]
     fn symmetric_difference_0() {
         let interval_store_1 = IntervalStore(alloc::vec![
-            Interval::new(0, 0),
-            Interval::new(2, 11),
-            Interval::new(5000, 7000),
-            Interval::new(8000, 11000),
-            Interval::new(40000, 50000),
+            Interval::new_unchecked(0, 0),
+            Interval::new_unchecked(2, 11),
+            Interval::new_unchecked(5000, 7000),
+            Interval::new_unchecked(8000, 11000),
+            Interval::new_unchecked(40000, 50000),
         ]);
         let interval_store_2 = IntervalStore(alloc::vec![
-            Interval::new(0, 0),
-            Interval::new(5, 50),
-            Interval::new(4000, 10000),
+            Interval::new_unchecked(0, 0),
+            Interval::new_unchecked(5, 50),
+            Interval::new_unchecked(4000, 10000),
         ]);
         assert_eq!(
             &interval_store_1 ^ &interval_store_2,
             IntervalStore(alloc::vec![
-                Interval::new(2, 4),
-                Interval::new(12, 50),
-                Interval::new(4000, 4999),
-                Interval::new(7001, 7999),
-                Interval::new(10001, 11000),
-                Interval::new(40000, 50000),
+                Interval::new_unchecked(2, 4),
+                Interval::new_unchecked(12, 50),
+                Interval::new_unchecked(4000, 4999),
+                Interval::new_unchecked(7001, 7999),
+                Interval::new_unchecked(10001, 11000),
+                Interval::new_unchecked(40000, 50000),
             ])
         );
     }
 
     #[test]
     fn symmetric_difference_1() {
-        let interval_store_1 = IntervalStore(alloc::vec![Interval::new(0, 50),]);
-        let interval_store_2 = IntervalStore(alloc::vec![Interval::new(100, 200),]);
+        let interval_store_1 = IntervalStore(alloc::vec![Interval::new_unchecked(0, 50),]);
+        let interval_store_2 = IntervalStore(alloc::vec![Interval::new_unchecked(100, 200),]);
         assert_eq!(
             &interval_store_1 ^ &interval_store_2,
-            IntervalStore(alloc::vec![Interval::new(0, 50), Interval::new(100, 200),])
+            IntervalStore(alloc::vec![
+                Interval::new_unchecked(0, 50),
+                Interval::new_unchecked(100, 200),
+            ])
         );
     }
 
     #[test]
     fn symmetric_difference_2() {
         let interval_store_1 = IntervalStore(alloc::vec![
-            Interval::new(0, 50),
-            Interval::new(500, 600),
-            Interval::new(800, 1000),
+            Interval::new_unchecked(0, 50),
+            Interval::new_unchecked(500, 600),
+            Interval::new_unchecked(800, 1000),
         ]);
-        let interval_store_2 = IntervalStore(alloc::vec![Interval::new(0, 6000),]);
+        let interval_store_2 = IntervalStore(alloc::vec![Interval::new_unchecked(0, 6000),]);
         assert_eq!(
             &interval_store_1 ^ &interval_store_2,
             IntervalStore(alloc::vec![
-                Interval::new(51, 499),
-                Interval::new(601, 799),
-                Interval::new(1001, 6000),
+                Interval::new_unchecked(51, 499),
+                Interval::new_unchecked(601, 799),
+                Interval::new_unchecked(1001, 6000),
             ])
         );
     }
@@ -2060,15 +2113,15 @@ mod tests {
     #[test]
     fn iter_next() {
         let interval_store = IntervalStore(alloc::vec![
-            Interval::new(0, 50),
-            Interval::new(500, 600),
-            Interval::new(800, 1000),
+            Interval::new_unchecked(0, 50),
+            Interval::new_unchecked(500, 600),
+            Interval::new_unchecked(800, 1000),
         ]);
         let mut iter = interval_store.into_iter();
 
-        let size = (Interval::new(0, 50).run_len()
-            + Interval::new(500, 600).run_len()
-            + Interval::new(800, 1000).run_len()) as usize;
+        let size = (Interval::new_unchecked(0, 50).run_len()
+            + Interval::new_unchecked(500, 600).run_len()
+            + Interval::new_unchecked(800, 1000).run_len()) as usize;
         assert_eq!(iter.size_hint(), (size, Some(size)));
 
         let mut i = 0;
@@ -2078,14 +2131,14 @@ mod tests {
             if i >= 51 {
                 break;
             }
-            let size = (Interval::new(i as u16, 50).run_len()
-                + Interval::new(500, 600).run_len()
-                + Interval::new(800, 1000).run_len()) as usize;
+            let size = (Interval::new_unchecked(i as u16, 50).run_len()
+                + Interval::new_unchecked(500, 600).run_len()
+                + Interval::new_unchecked(800, 1000).run_len()) as usize;
             assert_eq!(iter.size_hint(), (size, Some(size)));
         }
 
-        let size =
-            (Interval::new(500, 600).run_len() + Interval::new(800, 1000).run_len()) as usize;
+        let size = (Interval::new_unchecked(500, 600).run_len()
+            + Interval::new_unchecked(800, 1000).run_len()) as usize;
         assert_eq!(iter.size_hint(), (size, Some(size)));
 
         let mut i = 0;
@@ -2095,12 +2148,12 @@ mod tests {
             if i >= 101 {
                 break;
             }
-            let size = (Interval::new((i + 500) as u16, 600).run_len()
-                + Interval::new(800, 1000).run_len()) as usize;
+            let size = (Interval::new_unchecked((i + 500) as u16, 600).run_len()
+                + Interval::new_unchecked(800, 1000).run_len()) as usize;
             assert_eq!(iter.size_hint(), (size, Some(size)));
         }
 
-        let size = Interval::new(800, 1000).run_len() as usize;
+        let size = Interval::new_unchecked(800, 1000).run_len() as usize;
         assert_eq!(iter.size_hint(), (size, Some(size)));
 
         let mut i = 0;
@@ -2113,7 +2166,7 @@ mod tests {
             if i >= 201 {
                 break;
             }
-            let size = (Interval::new((i + 800) as u16, 1000).run_len()) as usize;
+            let size = (Interval::new_unchecked((i + 800) as u16, 1000).run_len()) as usize;
             assert_eq!(iter.size_hint(), (size, Some(size)));
         }
         assert_eq!(iter.size_hint(), (0, Some(0)));
@@ -2125,15 +2178,15 @@ mod tests {
     #[test]
     fn iter_next_back() {
         let interval_store = IntervalStore(alloc::vec![
-            Interval::new(0, 50),
-            Interval::new(500, 600),
-            Interval::new(800, 1000),
+            Interval::new_unchecked(0, 50),
+            Interval::new_unchecked(500, 600),
+            Interval::new_unchecked(800, 1000),
         ]);
         let mut iter = interval_store.into_iter();
 
-        let size = (Interval::new(0, 50).run_len()
-            + Interval::new(500, 600).run_len()
-            + Interval::new(800, 1000).run_len()) as usize;
+        let size = (Interval::new_unchecked(0, 50).run_len()
+            + Interval::new_unchecked(500, 600).run_len()
+            + Interval::new_unchecked(800, 1000).run_len()) as usize;
         assert_eq!(iter.size_hint(), (size, Some(size)));
 
         let mut i = 0;
@@ -2143,9 +2196,10 @@ mod tests {
             if i >= 201 {
                 break;
             }
-            let size = (Interval::new(0, 50).run_len()
-                + Interval::new(500, 600).run_len()
-                + Interval::new(800, (1000 - i) as u16).run_len()) as usize;
+            let size = (Interval::new_unchecked(0, 50).run_len()
+                + Interval::new_unchecked(500, 600).run_len()
+                + Interval::new_unchecked(800, (1000 - i) as u16).run_len())
+                as usize;
             assert_eq!(iter.size_hint(), (size, Some(size)));
         }
 
@@ -2156,8 +2210,9 @@ mod tests {
             if i >= 101 {
                 break;
             }
-            let size = (Interval::new(0, 50).run_len()
-                + Interval::new(500, (600 - i) as u16).run_len()) as usize;
+            let size = (Interval::new_unchecked(0, 50).run_len()
+                + Interval::new_unchecked(500, (600 - i) as u16).run_len())
+                as usize;
             assert_eq!(iter.size_hint(), (size, Some(size)));
         }
 
@@ -2168,7 +2223,7 @@ mod tests {
             if i >= 51 {
                 break;
             }
-            let size = (Interval::new(0, (50 - i) as u16).run_len()) as usize;
+            let size = (Interval::new_unchecked(0, (50 - i) as u16).run_len()) as usize;
             assert_eq!(iter.size_hint(), (size, Some(size)));
         }
         assert_eq!(iter.size_hint(), (0, Some(0)));
@@ -2179,15 +2234,15 @@ mod tests {
     #[test]
     fn iter_next_and_next_back() {
         let interval_store = IntervalStore(alloc::vec![
-            Interval::new(0, 50),
-            Interval::new(500, 600),
-            Interval::new(800, 1000),
+            Interval::new_unchecked(0, 50),
+            Interval::new_unchecked(500, 600),
+            Interval::new_unchecked(800, 1000),
         ]);
         let mut iter = interval_store.into_iter();
 
-        let size = (Interval::new(0, 50).run_len()
-            + Interval::new(500, 600).run_len()
-            + Interval::new(800, 1000).run_len()) as usize;
+        let size = (Interval::new_unchecked(0, 50).run_len()
+            + Interval::new_unchecked(500, 600).run_len()
+            + Interval::new_unchecked(800, 1000).run_len()) as usize;
         assert_eq!(iter.size_hint(), (size, Some(size)));
 
         let mut i = 0;
@@ -2197,13 +2252,15 @@ mod tests {
             if i >= 201 {
                 break;
             }
-            let size = (Interval::new(0, 50).run_len()
-                + Interval::new(500, 600).run_len()
-                + Interval::new(800, (1000 - i) as u16).run_len()) as usize;
+            let size = (Interval::new_unchecked(0, 50).run_len()
+                + Interval::new_unchecked(500, 600).run_len()
+                + Interval::new_unchecked(800, (1000 - i) as u16).run_len())
+                as usize;
             assert_eq!(iter.size_hint(), (size, Some(size)));
         }
 
-        let size = (Interval::new(0, 50).run_len() + Interval::new(500, 600).run_len()) as usize;
+        let size = (Interval::new_unchecked(0, 50).run_len()
+            + Interval::new_unchecked(500, 600).run_len()) as usize;
         assert_eq!(iter.size_hint(), (size, Some(size)));
 
         let mut i = 0;
@@ -2213,12 +2270,13 @@ mod tests {
             if i >= 101 {
                 break;
             }
-            let size = (Interval::new(0, 50).run_len()
-                + Interval::new(500, (600 - i) as u16).run_len()) as usize;
+            let size = (Interval::new_unchecked(0, 50).run_len()
+                + Interval::new_unchecked(500, (600 - i) as u16).run_len())
+                as usize;
             assert_eq!(iter.size_hint(), (size, Some(size)));
         }
 
-        let size = (Interval::new(0, 50).run_len()) as usize;
+        let size = (Interval::new_unchecked(0, 50).run_len()) as usize;
         assert_eq!(iter.size_hint(), (size, Some(size)));
 
         let mut i = 0;
@@ -2228,7 +2286,7 @@ mod tests {
             if i >= 51 {
                 break;
             }
-            let size = (Interval::new(i as u16, 50).run_len()) as usize;
+            let size = (Interval::new_unchecked(i as u16, 50).run_len()) as usize;
             assert_eq!(iter.size_hint(), (size, Some(size)));
         }
         assert_eq!(iter.size_hint(), (0, Some(0)));
@@ -2238,7 +2296,7 @@ mod tests {
 
     #[test]
     fn iter_u16_max() {
-        let interval_store = IntervalStore(alloc::vec![Interval::new(0, u16::MAX),]);
+        let interval_store = IntervalStore(alloc::vec![Interval::new_unchecked(0, u16::MAX),]);
         let mut iter = interval_store.iter();
 
         let mut i = 0;
@@ -2248,7 +2306,7 @@ mod tests {
             if i >= u16::MAX as usize {
                 break;
             }
-            let size = (Interval::new(i as u16, u16::MAX).run_len()) as usize;
+            let size = (Interval::new_unchecked(i as u16, u16::MAX).run_len()) as usize;
             assert_eq!(iter.size_hint(), (size, Some(size)));
         }
 
@@ -2261,7 +2319,7 @@ mod tests {
             if i >= u16::MAX as usize {
                 break;
             }
-            let size = (Interval::new(0, u16::MAX - i as u16).run_len()) as usize;
+            let size = (Interval::new_unchecked(0, u16::MAX - i as u16).run_len()) as usize;
             assert_eq!(iter.size_hint(), (size, Some(size)));
         }
         let mut iter = interval_store.iter();
@@ -2271,9 +2329,9 @@ mod tests {
     #[test]
     fn iter_nth() {
         let interval_store = IntervalStore(alloc::vec![
-            Interval::new(0, 50),
-            Interval::new(500, 600),
-            Interval::new(800, 1000),
+            Interval::new_unchecked(0, 50),
+            Interval::new_unchecked(500, 600),
+            Interval::new_unchecked(800, 1000),
         ]);
         let mut iter = interval_store.iter();
         assert_eq!(iter.nth(50), Some(50));
@@ -2290,9 +2348,9 @@ mod tests {
         let mut iter = interval_store.iter();
         assert_eq!(
             iter.nth(
-                (Interval::new(0, 50).run_len()
-                    + Interval::new(500, 600).run_len()
-                    + Interval::new(800, 1000).run_len()
+                (Interval::new_unchecked(0, 50).run_len()
+                    + Interval::new_unchecked(500, 600).run_len()
+                    + Interval::new_unchecked(800, 1000).run_len()
                     - 1) as usize
             ),
             Some(1000)
@@ -2311,9 +2369,9 @@ mod tests {
     #[test]
     fn iter_advance_to() {
         let interval_store = IntervalStore(alloc::vec![
-            Interval::new(0, 50),
-            Interval::new(500, 600),
-            Interval::new(800, 1000),
+            Interval::new_unchecked(0, 50),
+            Interval::new_unchecked(500, 600),
+            Interval::new_unchecked(800, 1000),
         ]);
         let mut iter = interval_store.iter();
         iter.advance_to(20);
@@ -2347,9 +2405,9 @@ mod tests {
     #[test]
     fn iter_advance_back_to() {
         let interval_store = IntervalStore(alloc::vec![
-            Interval::new(0, 50),
-            Interval::new(500, 600),
-            Interval::new(800, 1000),
+            Interval::new_unchecked(0, 50),
+            Interval::new_unchecked(500, 600),
+            Interval::new_unchecked(800, 1000),
         ]);
         let mut iter = interval_store.iter();
         iter.advance_back_to(u16::MAX);
