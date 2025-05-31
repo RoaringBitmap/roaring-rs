@@ -4,7 +4,7 @@ use core::fmt::{Display, Formatter};
 use core::mem::size_of;
 use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
-use super::ArrayStore;
+use super::{ArrayStore, Interval};
 
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
@@ -12,6 +12,7 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 pub const BITMAP_LENGTH: usize = 1024;
+pub const BITMAP_BYTES: usize = BITMAP_LENGTH * 8;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct BitmapStore {
@@ -22,10 +23,6 @@ pub struct BitmapStore {
 impl BitmapStore {
     pub fn new() -> BitmapStore {
         BitmapStore { len: 0, bits: Box::new([0; BITMAP_LENGTH]) }
-    }
-
-    pub fn full() -> BitmapStore {
-        BitmapStore { len: (BITMAP_LENGTH as u64) * 64, bits: Box::new([u64::MAX; BITMAP_LENGTH]) }
     }
 
     pub fn capacity(&self) -> usize {
@@ -336,6 +333,25 @@ impl BitmapStore {
         self.bits.iter().zip(other.bits.iter()).map(|(&a, &b)| (a & b).count_ones() as u64).sum()
     }
 
+    pub(crate) fn intersection_len_interval(&self, interval: &Interval) -> u64 {
+        if interval.is_full() {
+            return self.len();
+        }
+        let (start_id, start_bit) = (key(interval.start()), bit(interval.start()));
+        let (end_id, end_bit) = (key(interval.end()), bit(interval.end()));
+        let mut amount: u64 = 0;
+        for (i, mut cur_bit) in self.bits[start_id..=end_id].iter().copied().enumerate() {
+            if i == 0 {
+                cur_bit &= u64::MAX << start_bit;
+            }
+            if i == end_id - start_id {
+                cur_bit &= u64::MAX >> (64 - end_bit - 1);
+            }
+            amount += u64::from(cur_bit.count_ones());
+        }
+        amount
+    }
+
     pub(crate) fn intersection_len_array(&self, other: &ArrayStore) -> u64 {
         other
             .iter()
@@ -356,7 +372,6 @@ impl BitmapStore {
         BitmapIter::new(self.bits)
     }
 
-    #[cfg(feature = "std")]
     pub fn as_array(&self) -> &[u64; BITMAP_LENGTH] {
         &self.bits
     }

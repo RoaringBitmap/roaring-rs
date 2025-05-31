@@ -3,10 +3,12 @@ use core::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, Sub, SubAssign,
 };
 
-use super::store::{self, Store};
+use super::store::{self, ArrayStore, Interval, IntervalStore, Store, BITMAP_BYTES};
 use super::util;
 
 pub const ARRAY_LIMIT: u64 = 4096;
+#[cfg(test)]
+pub const RUN_MAX_SIZE: u64 = 2048;
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
@@ -26,6 +28,22 @@ pub(crate) struct Iter<'a> {
 impl Container {
     pub fn new(key: u16) -> Container {
         Container { key, store: Store::new() }
+    }
+
+    pub fn new_with_range(key: u16, range: RangeInclusive<u16>) -> Container {
+        if range.len() <= 2 {
+            let mut array = ArrayStore::new();
+            array.insert_range(range);
+            Self { key, store: Store::Array(array) }
+        } else {
+            Self {
+                key,
+                store: Store::Run(IntervalStore::new_with_range(
+                    // This is ok, since range must be non empty
+                    Interval::new_unchecked(*range.start(), *range.end()),
+                )),
+            }
+        }
     }
 
     pub fn full(key: u16) -> Container {
@@ -57,15 +75,43 @@ impl Container {
     }
 
     pub fn insert_range(&mut self, range: RangeInclusive<u16>) -> u64 {
-        // If inserting the range will make this a bitmap by itself, do it now
-        if range.len() as u64 > ARRAY_LIMIT {
-            if let Store::Array(arr) = &self.store {
-                self.store = Store::Bitmap(arr.to_bitmap_store());
-            }
+        if range.is_empty() {
+            return 0;
         }
-        let inserted = self.store.insert_range(range);
-        self.ensure_correct_store();
-        inserted
+        match &self.store {
+            Store::Bitmap(bitmap) => {
+                let added_amount = range.len() as u64
+                    - bitmap.intersection_len_interval(&Interval::new_unchecked(
+                        *range.start(),
+                        *range.end(),
+                    ));
+                let union_cardinality = bitmap.len() + added_amount;
+                if union_cardinality == 1 << 16 {
+                    self.store = Store::Run(IntervalStore::full());
+                    added_amount
+                } else {
+                    self.store.insert_range(range)
+                }
+            }
+            Store::Array(array) => {
+                let added_amount = range.len() as u64
+                    - array.intersection_len_interval(&Interval::new_unchecked(
+                        *range.start(),
+                        *range.end(),
+                    ));
+                let union_cardinality = array.len() + added_amount;
+                if union_cardinality == 1 << 16 {
+                    self.store = Store::Run(IntervalStore::full());
+                    added_amount
+                } else if union_cardinality <= ARRAY_LIMIT {
+                    self.store.insert_range(range)
+                } else {
+                    self.store = self.store.to_bitmap();
+                    self.store.insert_range(range)
+                }
+            }
+            Store::Run(_) => self.store.insert_range(range),
+        }
     }
 
     /// Pushes `index` at the end of the container only if `index` is the new max.
@@ -119,6 +165,7 @@ impl Container {
                 }
             }
             Store::Array(_) => self.store.remove_smallest(n),
+            Store::Run(_) => self.store.remove_smallest(n),
         };
     }
 
@@ -134,6 +181,7 @@ impl Container {
                 }
             }
             Store::Array(_) => self.store.remove_biggest(n),
+            Store::Run(_) => self.store.remove_biggest(n),
         };
     }
 
@@ -174,19 +222,76 @@ impl Container {
         self.store.rank(index)
     }
 
-    pub(crate) fn ensure_correct_store(&mut self) {
-        match &self.store {
-            Store::Bitmap(ref bits) => {
-                if bits.len() <= ARRAY_LIMIT {
-                    self.store = Store::Array(bits.to_array_store())
-                }
+    pub(crate) fn ensure_correct_store(&mut self) -> bool {
+        let new_store = match &self.store {
+            Store::Bitmap(ref bits) if bits.len() <= ARRAY_LIMIT => {
+                Store::Array(bits.to_array_store()).into()
             }
-            Store::Array(ref vec) => {
-                if vec.len() > ARRAY_LIMIT {
-                    self.store = Store::Bitmap(vec.to_bitmap_store())
-                }
+            Store::Array(ref vec) if vec.len() > ARRAY_LIMIT => {
+                Store::Bitmap(vec.to_bitmap_store()).into()
             }
+            _ => None,
         };
+        if let Some(new_store) = new_store {
+            self.store = new_store;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn optimize(&mut self) -> bool {
+        match &mut self.store {
+            Store::Bitmap(_) => {
+                let num_runs = self.store.count_runs();
+                let size_as_run = IntervalStore::serialized_byte_size(num_runs);
+                if BITMAP_BYTES <= size_as_run {
+                    return false;
+                }
+                self.store = self.store.to_run();
+                true
+            }
+            Store::Array(array) => {
+                let size_as_array = array.byte_size();
+                let num_runs = self.store.count_runs();
+                let size_as_run = IntervalStore::serialized_byte_size(num_runs);
+                if size_as_array <= size_as_run {
+                    return false;
+                }
+                self.store = self.store.to_run();
+                true
+            }
+            Store::Run(runs) => {
+                let size_as_run = runs.byte_size();
+                let card = runs.len();
+                let size_as_array = ArrayStore::serialized_byte_size(card);
+                let min_size_non_run = size_as_array.min(BITMAP_BYTES);
+                if size_as_run <= min_size_non_run {
+                    return false;
+                }
+                if card <= ARRAY_LIMIT {
+                    self.store = Store::Array(runs.to_array());
+                    return true;
+                }
+                self.store = Store::Bitmap(runs.to_bitmap());
+                true
+            }
+        }
+    }
+
+    pub fn remove_run_compression(&mut self) -> bool {
+        match &mut self.store {
+            Store::Bitmap(_) | Store::Array(_) => false,
+            Store::Run(runs) => {
+                let card = runs.len();
+                if card <= ARRAY_LIMIT {
+                    self.store = Store::Array(runs.to_array());
+                } else {
+                    self.store = Store::Bitmap(runs.to_bitmap());
+                }
+                true
+            }
+        }
     }
 }
 
