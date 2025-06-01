@@ -72,7 +72,7 @@ fn test_one() {
 fn test_array() {
     let original = (1000..3000).collect::<RoaringBitmap>();
     let new = serialize_and_deserialize(&original);
-    assert_eq!(dbg!(original), dbg!(new));
+    assert_eq!(original, new);
 }
 
 #[test]
