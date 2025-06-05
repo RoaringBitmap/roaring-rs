@@ -1,18 +1,24 @@
 use crate::bitmap::container::{Container, ARRAY_LIMIT};
-use crate::bitmap::store::{ArrayStore, BitmapStore, Store, BITMAP_LENGTH};
+use crate::bitmap::store::{
+    ArrayStore, BitmapStore, Interval, Store, BITMAP_BYTES, BITMAP_LENGTH, RUN_ELEMENT_BYTES,
+    RUN_NUM_BYTES,
+};
 use crate::RoaringBitmap;
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use core::convert::Infallible;
-use core::ops::RangeInclusive;
 use std::error::Error;
 use std::io;
+
+use super::store::IntervalStore;
 
 pub(crate) const SERIAL_COOKIE_NO_RUNCONTAINER: u32 = 12346;
 pub(crate) const SERIAL_COOKIE: u16 = 12347;
 pub(crate) const NO_OFFSET_THRESHOLD: usize = 4;
 
 // Sizes of header structures
+pub(crate) const COOKIE_BYTES: usize = 4;
+pub(crate) const SIZE_BYTES: usize = 4;
 pub(crate) const DESCRIPTION_BYTES: usize = 4;
 pub(crate) const OFFSET_BYTES: usize = 4;
 
@@ -33,17 +39,23 @@ impl RoaringBitmap {
     /// assert_eq!(rb1, rb2);
     /// ```
     pub fn serialized_size(&self) -> usize {
+        let mut has_run_containers = false;
+        let size = self.containers.len();
         let container_sizes: usize = self
             .containers
             .iter()
             .map(|container| match container.store {
-                Store::Array(ref values) => 8 + values.len() as usize * 2,
-                Store::Bitmap(..) => 8 + 8 * 1024,
+                Store::Array(ref values) => values.byte_size(),
+                Store::Bitmap(..) => BITMAP_BYTES,
+                Store::Run(ref intervals) => {
+                    has_run_containers = true;
+                    intervals.byte_size()
+                }
             })
             .sum();
 
         // header + container sizes
-        8 + container_sizes
+        header_size(size, has_run_containers) + container_sizes
     }
 
     /// Serialize this bitmap into [the standard Roaring on-disk format][format].
@@ -64,23 +76,52 @@ impl RoaringBitmap {
     /// assert_eq!(rb1, rb2);
     /// ```
     pub fn serialize_into<W: io::Write>(&self, mut writer: W) -> io::Result<()> {
-        writer.write_u32::<LittleEndian>(SERIAL_COOKIE_NO_RUNCONTAINER)?;
-        writer.write_u32::<LittleEndian>(self.containers.len() as u32)?;
+        let has_run_containers = self.containers.iter().any(|c| matches!(c.store, Store::Run(_)));
+        let size = self.containers.len();
 
+        // Depending on if run containers are present or not write the appropriate header
+        if has_run_containers {
+            // The new format stores the container count in the most significant bits of the header
+            let cookie = SERIAL_COOKIE as u32 | ((size as u32 - 1) << 16);
+            writer.write_u32::<LittleEndian>(cookie)?;
+            // It is then followed by a bitset indicating which containers are run containers
+            let run_container_bitmap_size = (size + 7) / 8;
+            let mut run_container_bitmap = vec![0; run_container_bitmap_size];
+            for (i, container) in self.containers.iter().enumerate() {
+                if let Store::Run(_) = container.store {
+                    run_container_bitmap[i / 8] |= 1 << (i % 8);
+                }
+            }
+            writer.write_all(&run_container_bitmap)?;
+        } else {
+            // Write old format, cookie followed by container count
+            writer.write_u32::<LittleEndian>(SERIAL_COOKIE_NO_RUNCONTAINER)?;
+            writer.write_u32::<LittleEndian>(size as u32)?;
+        }
+
+        // Write the container descriptions
         for container in &self.containers {
             writer.write_u16::<LittleEndian>(container.key)?;
             writer.write_u16::<LittleEndian>((container.len() - 1) as u16)?;
         }
 
-        let mut offset = 8 + 8 * self.containers.len() as u32;
-        for container in &self.containers {
-            writer.write_u32::<LittleEndian>(offset)?;
-            match container.store {
-                Store::Array(ref values) => {
-                    offset += values.len() as u32 * 2;
-                }
-                Store::Bitmap(..) => {
-                    offset += 8 * 1024;
+        let mut offset = header_size(size, has_run_containers) as u32;
+        let has_offsets = if has_run_containers { size >= OFFSET_BYTES } else { true };
+        if has_offsets {
+            for container in &self.containers {
+                writer.write_u32::<LittleEndian>(offset)?;
+                match container.store {
+                    Store::Array(ref values) => {
+                        offset += values.len() as u32 * 2;
+                    }
+                    Store::Bitmap(..) => {
+                        offset += 8 * 1024;
+                    }
+                    Store::Run(ref intervals) => {
+                        offset += (RUN_NUM_BYTES
+                            + (intervals.run_amount() as usize * RUN_ELEMENT_BYTES))
+                            as u32;
+                    }
                 }
             }
         }
@@ -95,6 +136,13 @@ impl RoaringBitmap {
                 Store::Bitmap(ref bits) => {
                     for &value in bits.as_array() {
                         writer.write_u64::<LittleEndian>(value)?;
+                    }
+                }
+                Store::Run(ref intervals) => {
+                    writer.write_u16::<LittleEndian>(intervals.run_amount() as u16)?;
+                    for iv in intervals.iter_intervals() {
+                        writer.write_u16::<LittleEndian>(iv.start())?;
+                        writer.write_u16::<LittleEndian>(iv.end() - iv.start())?;
                     }
                 }
             }
@@ -238,21 +286,23 @@ impl RoaringBitmap {
                     *len = u16::from_le(*len);
                 });
 
-                let cardinality = intervals.iter().map(|[_, len]| *len as usize).sum();
-                let mut store = Store::with_capacity(cardinality);
                 let mut last_end = None::<u16>;
-                intervals.into_iter().try_for_each(|[s, len]| -> Result<(), io::ErrorKind> {
-                    let end = s.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
-                    if let Some(last_end) = last_end.replace(end) {
-                        if s <= last_end.saturating_add(1) {
-                            // Range overlaps or would be contiguous with the previous range
-                            return Err(io::ErrorKind::InvalidData);
-                        }
-                    }
-                    store.insert_range(RangeInclusive::new(s, end));
-                    Ok(())
-                })?;
-                store
+                let store = IntervalStore::from_vec_unchecked(
+                    intervals
+                        .into_iter()
+                        .map(|[s, len]| -> Result<Interval, io::ErrorKind> {
+                            let end = s.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
+                            if let Some(last_end) = last_end.replace(end) {
+                                if s <= last_end.saturating_add(1) {
+                                    // Range overlaps or would be contiguous with the previous range
+                                    return Err(io::ErrorKind::InvalidData);
+                                }
+                            }
+                            Ok(Interval::new_unchecked(s, end))
+                        })
+                        .collect::<Result<_, _>>()?,
+                );
+                Store::Run(store)
             } else if cardinality <= ARRAY_LIMIT {
                 let mut values = vec![0; cardinality as usize];
                 reader.read_exact(cast_slice_mut(&mut values))?;
@@ -272,6 +322,24 @@ impl RoaringBitmap {
         }
 
         Ok(RoaringBitmap { containers })
+    }
+}
+
+fn header_size(size: usize, has_run_containers: bool) -> usize {
+    if has_run_containers {
+        // New format encodes the size (number of containers) into the 4 byte cookie
+        // Additionally a bitmap is included marking which containers are run containers
+        let run_container_bitmap_size = (size + 7) / 8;
+        // New format conditionally includes offsets if there are 4 or more containers
+        if size >= NO_OFFSET_THRESHOLD {
+            COOKIE_BYTES + ((DESCRIPTION_BYTES + OFFSET_BYTES) * size) + run_container_bitmap_size
+        } else {
+            COOKIE_BYTES + (DESCRIPTION_BYTES * size) + run_container_bitmap_size
+        }
+    } else {
+        // Old format encodes cookie followed by container count
+        // It also always includes the offsets
+        COOKIE_BYTES + SIZE_BYTES + ((DESCRIPTION_BYTES + OFFSET_BYTES) * size)
     }
 }
 

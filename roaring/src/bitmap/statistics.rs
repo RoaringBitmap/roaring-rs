@@ -64,10 +64,13 @@ impl RoaringBitmap {
         let mut n_containers = 0;
         let mut n_array_containers = 0;
         let mut n_bitset_containers = 0;
+        let mut n_run_containers = 0;
         let mut n_values_array_containers = 0;
         let mut n_values_bitset_containers = 0;
+        let mut n_values_run_containers = 0;
         let mut n_bytes_array_containers = 0;
         let mut n_bytes_bitset_containers = 0;
+        let mut n_bytes_run_containers = 0;
         let mut cardinality = 0;
 
         for Container { key: _, store } in &self.containers {
@@ -84,6 +87,12 @@ impl RoaringBitmap {
                     n_bytes_bitset_containers += bitmap.capacity() as u64;
                     n_bitset_containers += 1;
                 }
+                Store::Run(runs) => {
+                    cardinality += runs.len();
+                    n_values_run_containers += runs.len() as u32;
+                    n_bytes_run_containers += runs.byte_size() as u64;
+                    n_run_containers += 1;
+                }
             }
             n_containers += 1;
         }
@@ -91,13 +100,13 @@ impl RoaringBitmap {
         Statistics {
             n_containers,
             n_array_containers,
-            n_run_containers: 0,
+            n_run_containers,
             n_bitset_containers,
             n_values_array_containers,
-            n_values_run_containers: 0,
+            n_values_run_containers,
             n_values_bitset_containers,
             n_bytes_array_containers,
-            n_bytes_run_containers: 0,
+            n_bytes_run_containers,
             n_bytes_bitset_containers,
             max_value: self.max(),
             min_value: self.min(),

@@ -16,6 +16,9 @@ use alloc::vec::Vec;
 use alloc::boxed::Box;
 
 use super::bitmap_store::{bit, key, BitmapStore, BITMAP_LENGTH};
+use super::Interval;
+
+pub(crate) const ARRAY_ELEMENT_BYTES: usize = 2;
 
 #[derive(Clone, Eq, PartialEq)]
 pub(crate) struct ArrayStore {
@@ -25,6 +28,14 @@ pub(crate) struct ArrayStore {
 impl ArrayStore {
     pub fn new() -> ArrayStore {
         ArrayStore { vec: vec![] }
+    }
+
+    pub fn serialized_byte_size(cardinality: u64) -> usize {
+        cardinality as usize * ARRAY_ELEMENT_BYTES
+    }
+
+    pub fn byte_size(&self) -> usize {
+        Self::serialized_byte_size(self.len())
     }
 
     #[cfg(feature = "std")]
@@ -219,6 +230,15 @@ impl ArrayStore {
         #[cfg(not(feature = "simd"))]
         scalar::and(self.as_slice(), other.as_slice(), &mut visitor);
         visitor.into_inner()
+    }
+
+    pub fn intersection_len_interval(&self, interval: &Interval) -> u64 {
+        if interval.is_full() {
+            return self.len();
+        }
+        let start_id = self.vec.partition_point(|&f| f < interval.start());
+        let end_id = self.vec.partition_point(|&f| f <= interval.end());
+        (end_id.saturating_sub(start_id)) as u64
     }
 
     pub fn to_bitmap_store(&self) -> BitmapStore {
@@ -460,6 +480,7 @@ mod tests {
         match s {
             Store::Array(vec) => vec.vec,
             Store::Bitmap(bits) => bits.to_array_store().vec,
+            Store::Run(runs) => runs.iter().collect(),
         }
     }
 
@@ -467,6 +488,7 @@ mod tests {
         match s {
             Store::Array(vec) => Store::Bitmap(vec.to_bitmap_store()),
             Store::Bitmap(..) => s,
+            Store::Run(runs) => Store::Bitmap(runs.to_bitmap()),
         }
     }
 

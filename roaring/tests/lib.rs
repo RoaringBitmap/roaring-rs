@@ -121,3 +121,32 @@ fn to_array() {
         assert!(!bitmap.contains(i));
     }
 }
+
+#[test]
+fn optimize_array() {
+    let mut bitmap = RoaringBitmap::from_iter(0..1000);
+    assert!(bitmap.optimize());
+    let mut bitmap = RoaringBitmap::from_iter(0..5000);
+    assert!(bitmap.optimize());
+}
+
+#[test]
+fn optimize_bitmap() {
+    let mut bitmap = RoaringBitmap::from_iter(0..5000);
+    assert!(bitmap.optimize());
+}
+
+#[test]
+fn remove_run_compression() {
+    let mut bitmap = RoaringBitmap::from_iter(0..5000);
+    assert!(bitmap.optimize());
+    assert!(bitmap.remove_run_compression());
+}
+
+#[test]
+fn optimize_run() {
+    let mut bitmap = RoaringBitmap::from_iter(0..1000);
+    assert!(bitmap.optimize());
+    // Calling optimize a second time should return false as no changes will be made
+    assert!(!bitmap.optimize());
+}
