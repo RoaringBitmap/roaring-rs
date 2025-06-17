@@ -475,11 +475,11 @@ impl IntervalStore {
         array
     }
 
-    pub(crate) fn iter(&self) -> RunIterBorrowed {
+    pub(crate) fn iter(&'_ self) -> RunIterBorrowed<'_> {
         self.into_iter()
     }
 
-    pub(crate) fn iter_intervals(&self) -> core::slice::Iter<Interval> {
+    pub(crate) fn iter_intervals(&'_ self) -> core::slice::Iter<'_, Interval> {
         self.0.iter()
     }
 }

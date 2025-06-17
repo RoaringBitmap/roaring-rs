@@ -121,7 +121,7 @@ pub struct IntoIter {
 }
 
 impl Iter<'_> {
-    fn new(map: &BTreeMap<u32, RoaringBitmap>) -> Iter {
+    fn new(map: &'_ BTreeMap<u32, RoaringBitmap>) -> Iter<'_> {
         let outer = BitmapIter::new(map);
         Iter { outer, front: None, back: None }
     }
@@ -346,7 +346,7 @@ impl RoaringTreemap {
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), None);
     /// ```
-    pub fn iter(&self) -> Iter {
+    pub fn iter(&'_ self) -> Iter<'_> {
         Iter::new(&self.map)
     }
 
@@ -365,7 +365,7 @@ impl RoaringTreemap {
     /// assert_eq!(bitmaps.next(), Some((0, &(0..6000).collect::<RoaringBitmap>())));
     /// assert_eq!(bitmaps.next(), None);
     /// ```
-    pub fn bitmaps(&self) -> BitmapIter {
+    pub fn bitmaps(&'_ self) -> BitmapIter<'_> {
         BitmapIter::new(&self.map)
     }
 

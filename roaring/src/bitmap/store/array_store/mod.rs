@@ -279,7 +279,7 @@ impl ArrayStore {
         self.vec.get(n as usize).cloned()
     }
 
-    pub fn iter(&self) -> core::slice::Iter<u16> {
+    pub fn iter(&'_ self) -> core::slice::Iter<'_, u16> {
         self.vec.iter()
     }
 
