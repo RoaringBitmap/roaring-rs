@@ -152,7 +152,7 @@ fn advance_back_to_impl<'a, It>(
 }
 
 impl Iter<'_> {
-    fn new(containers: &[Container]) -> Iter {
+    fn new(containers: &'_ [Container]) -> Iter<'_> {
         Iter { front: None, containers: containers.iter(), back: None }
     }
 
@@ -558,7 +558,7 @@ impl RoaringBitmap {
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), None);
     /// ```
-    pub fn iter(&self) -> Iter {
+    pub fn iter(&'_ self) -> Iter<'_> {
         Iter::new(&self.containers)
     }
 
