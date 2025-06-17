@@ -2,6 +2,7 @@ use alloc::collections::btree_map::{BTreeMap, Entry};
 use core::iter;
 use core::ops::RangeBounds;
 
+use crate::IntegerTooSmall;
 use crate::RoaringBitmap;
 use crate::RoaringTreemap;
 
@@ -123,9 +124,32 @@ impl RoaringTreemap {
     ///
     /// assert_eq!(rb.iter().collect::<Vec<u64>>(), vec![1, 3, 5]);
     /// ```
+    #[deprecated(since = "0.11.0", note = "use `try_push` instead")]
     pub fn push(&mut self, value: u64) -> bool {
         let (hi, lo) = util::split(value);
-        self.map.entry(hi).or_default().push(lo)
+        self.map.entry(hi).or_default().try_push(lo).is_ok()
+    }
+
+    /// Pushes `value` in the treemap only if it is greater than the current maximum value.
+    ///
+    /// Returns an error if the value is not greater than the current maximum value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::{RoaringTreemap, IntegerTooSmall};
+    ///
+    /// let mut rb = RoaringTreemap::new();
+    /// assert!(rb.try_push(1).is_ok());
+    /// assert!(rb.try_push(3).is_ok());
+    /// assert_eq!(rb.try_push(3), Err(IntegerTooSmall));
+    /// assert!(rb.try_push(5).is_ok());
+    ///
+    /// assert_eq!(rb.iter().collect::<Vec<u64>>(), vec![1, 3, 5]);
+    /// ```
+    pub fn try_push(&mut self, value: u64) -> Result<(), IntegerTooSmall> {
+        let (hi, lo) = util::split(value);
+        self.map.entry(hi).or_default().try_push(lo)
     }
 
     /// Pushes `value` in the treemap only if it is greater than the current maximum value.
