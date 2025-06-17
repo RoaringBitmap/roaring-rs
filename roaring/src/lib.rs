@@ -33,7 +33,7 @@ pub mod treemap;
 pub use bitmap::RoaringBitmap;
 pub use treemap::RoaringTreemap;
 
-/// An error type that is returned when a push in a bitmap did not succeed.
+/// An error type that is returned when a `try_push` in a bitmap did not succeed.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct IntegerTooSmall;
 
