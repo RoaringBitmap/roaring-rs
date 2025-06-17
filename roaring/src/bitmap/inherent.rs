@@ -316,7 +316,30 @@ impl RoaringBitmap {
     /// assert_eq!(rb.iter().collect::<Vec<u32>>(), vec![1, 3, 5]);
     /// ```
     #[inline]
-    pub fn push(&mut self, value: u32) -> Result<(), IntegerTooSmall> {
+    #[deprecated(since = "0.11.0", note = "use `try_push` instead")]
+    pub fn push(&mut self, value: u32) -> bool {
+        self.try_push(value).is_ok()
+    }
+
+    /// Pushes `value` in the bitmap only if it is greater than the current maximum value.
+    ///
+    /// Returns an error if the value is not greater than the current maximum value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::{RoaringBitmap, IntegerTooSmall};
+    ///
+    /// let mut rb = RoaringBitmap::new();
+    /// assert!(rb.try_push(1).is_ok());
+    /// assert!(rb.try_push(3).is_ok());
+    /// assert_eq!(rb.try_push(3), Err(IntegerTooSmall));
+    /// assert!(rb.try_push(5).is_ok());
+    ///
+    /// assert_eq!(rb.iter().collect::<Vec<u32>>(), vec![1, 3, 5]);
+    /// ```
+    #[inline]
+    pub fn try_push(&mut self, value: u32) -> Result<(), IntegerTooSmall> {
         let (key, index) = util::split(value);
 
         match self.containers.last_mut() {
