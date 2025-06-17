@@ -2,6 +2,7 @@ use alloc::collections::btree_map::{BTreeMap, Entry};
 use core::iter;
 use core::ops::RangeBounds;
 
+use crate::IntegerTooSmall;
 use crate::RoaringBitmap;
 use crate::RoaringTreemap;
 
@@ -123,7 +124,7 @@ impl RoaringTreemap {
     ///
     /// assert_eq!(rb.iter().collect::<Vec<u64>>(), vec![1, 3, 5]);
     /// ```
-    pub fn push(&mut self, value: u64) -> bool {
+    pub fn push(&mut self, value: u64) -> Result<(), IntegerTooSmall> {
         let (hi, lo) = util::split(value);
         self.map.entry(hi).or_default().push(lo)
     }

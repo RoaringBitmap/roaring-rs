@@ -33,6 +33,16 @@ pub mod treemap;
 pub use bitmap::RoaringBitmap;
 pub use treemap::RoaringTreemap;
 
+/// An error type that is returned when a push in a bitmap did not succeed.
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct IntegerTooSmall;
+
+impl fmt::Display for IntegerTooSmall {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("inserted integer is smaller than the largest integer")
+    }
+}
+
 /// An error type that is returned when an iterator isn't sorted.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NonSortedIntegers {

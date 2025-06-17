@@ -3,7 +3,7 @@ use core::mem::size_of;
 use core::ops::{RangeBounds, RangeInclusive};
 
 use crate::bitmap::store::BITMAP_LENGTH;
-use crate::RoaringBitmap;
+use crate::{IntegerTooSmall, RoaringBitmap};
 
 use super::container::Container;
 use super::util;
@@ -316,22 +316,27 @@ impl RoaringBitmap {
     /// assert_eq!(rb.iter().collect::<Vec<u32>>(), vec![1, 3, 5]);
     /// ```
     #[inline]
-    pub fn push(&mut self, value: u32) -> bool {
+    pub fn push(&mut self, value: u32) -> Result<(), IntegerTooSmall> {
         let (key, index) = util::split(value);
 
         match self.containers.last_mut() {
-            Some(container) if container.key == key => container.push(index),
-            Some(container) if container.key > key => false,
+            Some(container) if container.key == key => {
+                if container.push(index) {
+                    Ok(())
+                } else {
+                    Err(IntegerTooSmall)
+                }
+            }
+            Some(container) if container.key > key => Err(IntegerTooSmall),
             _otherwise => {
                 let mut container = Container::new(key);
                 container.push(index);
                 self.containers.push(container);
-                true
+                Ok(())
             }
         }
     }
 
-    ///
     /// Pushes `value` at the end of the bitmap.
     /// It is up to the caller to have validated index > self.max()
     ///
