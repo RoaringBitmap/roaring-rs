@@ -19,7 +19,7 @@ jobs:
           - stable
           - beta
           - nightly
-          - 1.71.1
+          - 1.80.1
     env:
       RUSTFLAGS: "-C target-cpu=native -C opt-level=3"
 
@@ -62,7 +62,7 @@ jobs:
           - stable
           - beta
           - nightly
-          - 1.71.1
+          - 1.80.1
         features:
           - default
           - no-std
@@ -96,7 +96,7 @@ jobs:
         run: cargo test -p roaring --features serde
 
       - name: Test Benches
-        if: matrix.rust != '1.71.1' && matrix.features == 'default'
+        if: matrix.rust != '1.80.1' && matrix.features == 'default'
         run: cargo test -p benchmarks --benches
 
       - name: Test no default features
