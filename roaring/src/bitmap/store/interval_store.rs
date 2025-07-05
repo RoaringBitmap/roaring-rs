@@ -482,6 +482,28 @@ impl IntervalStore {
     pub(crate) fn iter_intervals(&'_ self) -> core::slice::Iter<'_, Interval> {
         self.0.iter()
     }
+
+    pub(crate) fn internal_validate(&self) -> Result<(), &'static str> {
+        if self.0.is_empty() {
+            return Err("run container with zero runs");
+        }
+        let mut last_end: Option<u16> = None;
+        for run in &self.0 {
+            if run.start > run.end {
+                return Err("empty run container");
+            }
+            if let Some(last_end) = last_end.replace(run.end) {
+                if last_end >= run.start {
+                    return Err("overlapping or unordered runs");
+                }
+                if last_end.saturating_add(1) >= run.start {
+                    return Err("contiguous runs");
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl From<IntervalStore> for BitmapStore {

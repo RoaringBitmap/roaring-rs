@@ -426,6 +426,17 @@ impl BitmapStore {
             }
         }
     }
+
+    pub(crate) fn internal_validate(&self) -> Result<(), &'static str> {
+        let expected_len: u64 = self.bits.iter().map(|bits| u64::from(bits.count_ones())).sum();
+        if self.len != expected_len {
+            return Err("bitmap cardinality is incorrect");
+        }
+        if self.len <= super::ARRAY_LIMIT {
+            return Err("cardinality is too small for a bitmap container");
+        }
+        Ok(())
+    }
 }
 
 // this can be done in 3 instructions on x86-64 with bmi2 with: tzcnt(pdep(1 << rank, value))

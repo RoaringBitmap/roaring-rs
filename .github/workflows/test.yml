@@ -162,5 +162,8 @@ jobs:
             fuzz/artifacts
             fuzz/corpus
 
-      - name: Run Fuzzer vs croaring for 30 minutes
-        run: cargo fuzz run against_croaring -s none -- -timeout=5 -max_total_time=1800
+      - name: Run Fuzzer vs croaring for 15 minutes
+        run: cargo fuzz run against_croaring -s none -- -timeout=5 -max_total_time=900
+
+      - name: Run Fuzzer (with simd) vs croaring for 15 minutes
+        run: cargo fuzz run --features=simd against_croaring -- -timeout=5 -max_total_time=900

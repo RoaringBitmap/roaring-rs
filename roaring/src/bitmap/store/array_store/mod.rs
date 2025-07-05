@@ -307,6 +307,23 @@ impl ArrayStore {
         }
         self.vec.truncate(pos);
     }
+
+    pub(crate) fn internal_validate(&self) -> Result<(), &'static str> {
+        if self.vec.is_empty() {
+            return Err("zero cardinality in array container");
+        }
+        if self.vec.len() > super::ARRAY_LIMIT as usize {
+            return Err("array cardinality exceeds ARRAY_LIMIT");
+        }
+        for window in self.vec.windows(2) {
+            let &[first, second] = window else { unreachable!() };
+            if first >= second {
+                return Err("array elements not strictly increasing");
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl Default for ArrayStore {

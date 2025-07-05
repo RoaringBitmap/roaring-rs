@@ -400,6 +400,14 @@ impl Store {
             Run(intervals) => Run(intervals.clone()),
         }
     }
+
+    pub(crate) fn internal_validate(&self) -> Result<(), &'static str> {
+        match self {
+            Array(vec) => vec.internal_validate(),
+            Bitmap(bits) => bits.internal_validate(),
+            Run(runs) => runs.internal_validate(),
+        }
+    }
 }
 
 impl Default for Store {
