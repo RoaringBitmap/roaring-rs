@@ -55,6 +55,23 @@ fn sub() {
     assert_eq!(rb3, rb1);
 }
 
+// See issue #327
+#[test]
+fn subtraction_preserves_zero_element() {
+    let mut a = RoaringBitmap::from([0, 35, 80, 104, 138, 214, 235, 258]);
+    let b = RoaringBitmap::from([9, 35, 42, 51, 111, 134, 231, 239]);
+
+    a -= b;
+
+    // The bug: element 0 should still be present but was being removed
+    assert!(a.contains(0), "Element 0 should be present after subtraction");
+
+    // Verify the complete result
+    let expected: Vec<u32> = vec![0, 80, 104, 138, 214, 235, 258];
+    let actual: Vec<u32> = a.iter().collect();
+    assert_eq!(actual, expected, "Subtraction result should match expected values");
+}
+
 #[test]
 fn xor() {
     let mut rb1 = (1..4).collect::<RoaringBitmap>();
