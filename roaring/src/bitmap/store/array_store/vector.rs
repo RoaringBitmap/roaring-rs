@@ -498,9 +498,6 @@ fn simd_merge_u16(a: Simd<u16, 8>, b: Simd<u16, 8>) -> [Simd<u16, 8>; 2] {
 // > of the standard library, so `cargo build -Zbuild-std` may be necessary
 // > to unlock better performance, especially for larger vectors.
 // > A planned compiler improvement will enable using `#[target_feature]` instead.
-//
-// Specifically, e.g. the default `x86_64` target does not enable ssse3, so this may be
-// suboptimal without `-Zbuild-std` on `x86_64` targets.
 pub fn swizzle_to_front(val: u16x8, bitmask: u8) -> u16x8 {
     static SWIZZLE_TABLE: [[u8; 16]; 256] = {
         let mut table = [[0; 16]; 256];
@@ -524,6 +521,32 @@ pub fn swizzle_to_front(val: u16x8, bitmask: u8) -> u16x8 {
     // stick with native byte order as long as we convert back with native endianness too.
     let val_convert: u8x16 = val.to_ne_bytes();
     let swizzle_idxs = u8x16::from_array(SWIZZLE_TABLE[bitmask as usize]);
+
+    // Because the default `x86_64` target does not enable ssse3 (and without -Zbuild-std`
+    // std will not be compiled with it), use a manual swizzle with intrinsics so we can get
+    // reasonable performance without requiring the caller to use `-Zbuild-std`.
+    #[cfg(all(target_arch = "x86_64", any(target_feature = "ssse3", feature = "std")))]
+    {
+        let has_ssse3 = {
+            #[cfg(target_feature = "ssse3")]
+            {
+                true
+            }
+            #[cfg(not(target_feature = "ssse3"))]
+            {
+                // From above, `feature = std` must be true here, so we can do runtime detection
+                std::arch::is_x86_feature_detected!("ssse3")
+            }
+        };
+        if has_ssse3 {
+            use core::arch::x86_64::{__m128i, _mm_shuffle_epi8};
+            let val_m128 = __m128i::from(val_convert);
+            let swizzle_m128 = __m128i::from(swizzle_idxs);
+            // SAFETY: We only are in this block if the target supports `ssse3`
+            let swizzled_m128 = unsafe { _mm_shuffle_epi8(val_m128, swizzle_m128) };
+            return u16x8::from(swizzled_m128);
+        }
+    }
 
     let swizzled: u8x16 = val_convert.swizzle_dyn(swizzle_idxs);
     u16x8::from_ne_bytes(swizzled)
