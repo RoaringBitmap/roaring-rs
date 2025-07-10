@@ -331,11 +331,20 @@ pub fn sub(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
         // or i_b == st_b and we are not done processing the vector...
         // so we need to finish it off.
         if i < st_a {
-            let mut buffer: [u16; 8] = [0; 8]; // buffer to do a masked load
-            buffer[..rhs.len() - j].copy_from_slice(&rhs[j..]);
-            v_b = Simd::from_array(buffer);
-            let a_found_in_b: u8 = matrix_cmp_u16(v_a, v_b).to_bitmask() as u8;
-            runningmask_a_found_in_b |= a_found_in_b;
+            let remaining_rhs = &rhs[j..];
+            if !remaining_rhs.is_empty() {
+                let mut buffer: [u16; 8] = [0; 8]; // buffer to do a masked load
+                buffer[..remaining_rhs.len()].copy_from_slice(remaining_rhs);
+                // Ensure the buffer is filled with a value we should remove: we do not want to
+                // end up trying to remove zero values which aren't actually in rhs
+                buffer[remaining_rhs.len()..].fill(remaining_rhs[0]);
+                v_b = Simd::from_array(buffer);
+                let a_found_in_b: u8 = matrix_cmp_u16(v_a, v_b).to_bitmask() as u8;
+                runningmask_a_found_in_b |= a_found_in_b;
+                let [.., max_va] = *v_a.as_array();
+                let used_rhs = remaining_rhs.partition_point(|&b| b <= max_va);
+                j += used_rhs;
+            }
             let bitmask_belongs_to_difference: u8 = runningmask_a_found_in_b ^ 0xFF;
             visitor.visit_vector(v_a, bitmask_belongs_to_difference);
             i += u16x8::LEN;
