@@ -1,6 +1,6 @@
 [package]
 name = "roaring"
-version = "0.11.0"
+version = "0.11.1"
 rust-version = "1.65.0"
 authors = ["Wim Looman <wim@nemo157.com>", "Kerollmops <kero@meilisearch.com>"]
 description = "A better compressed bitset - pure Rust implementation"
