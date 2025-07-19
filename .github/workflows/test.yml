@@ -19,6 +19,8 @@ jobs:
           - stable
           - beta
           - nightly
+          # When changing this value don't forget to change the `package.rust-version` field in
+          # `roaring/Cargo.toml`!!!
           - 1.80.1
     env:
       RUSTFLAGS: "-C target-cpu=native -C opt-level=3"
