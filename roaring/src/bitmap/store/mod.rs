@@ -898,6 +898,89 @@ impl Iter<'_> {
             Iter::RunBorrowed(inner) => inner.advance_back_to(n),
         }
     }
+
+    pub(crate) fn next_range(&mut self) -> Option<RangeInclusive<u16>> {
+        match self {
+            Iter::Array(inner) => {
+                let slice = inner.as_slice();
+                let len = array_store::first_contiguous_range_len(slice);
+                let mut range = None;
+                if len != 0 {
+                    let first = slice[0];
+                    inner.nth(len - 1);
+                    range = Some(first..=first + (len - 1) as u16);
+                }
+                range
+            }
+            Iter::Vec(inner) => {
+                let slice = inner.as_slice();
+                let len = array_store::first_contiguous_range_len(slice);
+                let mut range = None;
+                if len != 0 {
+                    let first = slice[0];
+                    inner.nth(len - 1);
+                    range = Some(first..=first + (len - 1) as u16);
+                }
+                range
+            }
+            Iter::BitmapBorrowed(inner) => inner.next_range(),
+            Iter::BitmapOwned(inner) => inner.next_range(),
+            Iter::RunBorrowed(inner) => inner.next_range(),
+            Iter::RunOwned(inner) => inner.next_range(),
+        }
+    }
+
+    pub(crate) fn next_range_back(&mut self) -> Option<RangeInclusive<u16>> {
+        match self {
+            Iter::Array(inner) => {
+                let slice = inner.as_slice();
+                let len = array_store::last_contiguous_range_len(slice);
+                let mut range = None;
+                if len != 0 {
+                    let last = slice[slice.len() - 1];
+                    inner.nth_back(len - 1);
+                    range = Some(last - (len - 1) as u16..=last);
+                }
+                range
+            }
+            Iter::Vec(inner) => {
+                let slice = inner.as_slice();
+                let len = array_store::last_contiguous_range_len(slice);
+                let mut range = None;
+                if len != 0 {
+                    let last = slice[slice.len() - 1];
+                    inner.nth_back(len - 1);
+                    range = Some(last - (len - 1) as u16..=last);
+                }
+                range
+            }
+            Iter::BitmapBorrowed(inner) => inner.next_range_back(),
+            Iter::BitmapOwned(inner) => inner.next_range_back(),
+            Iter::RunBorrowed(inner) => inner.next_range_back(),
+            Iter::RunOwned(inner) => inner.next_range_back(),
+        }
+    }
+
+    pub(crate) fn peek(&self) -> Option<u16> {
+        match self {
+            Iter::Array(inner) => inner.as_slice().first().copied(),
+            Iter::Vec(inner) => inner.as_slice().first().copied(),
+            Iter::BitmapBorrowed(inner) => inner.peek(),
+            Iter::BitmapOwned(inner) => inner.peek(),
+            Iter::RunBorrowed(inner) => inner.peek(),
+            Iter::RunOwned(inner) => inner.peek(),
+        }
+    }
+    pub(crate) fn peek_back(&self) -> Option<u16> {
+        match self {
+            Iter::Array(inner) => inner.as_slice().last().copied(),
+            Iter::Vec(inner) => inner.as_slice().last().copied(),
+            Iter::BitmapBorrowed(inner) => inner.peek_back(),
+            Iter::BitmapOwned(inner) => inner.peek_back(),
+            Iter::RunBorrowed(inner) => inner.peek_back(),
+            Iter::RunOwned(inner) => inner.peek_back(),
+        }
+    }
 }
 
 impl Iterator for Iter<'_> {

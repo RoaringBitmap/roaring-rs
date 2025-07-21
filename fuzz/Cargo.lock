@@ -139,7 +139,7 @@ checksum = "74765f6d916ee2faa39bc8e68e4f3ed8949b48cccdac59983d287a7cb71ce9c5"
 
 [[package]]
 name = "roaring"
-version = "0.11.1"
+version = "0.11.2"
 dependencies = [
  "bytemuck",
  "byteorder",
