@@ -92,6 +92,100 @@ fn advance_to_impl<'a, It>(
     }
 }
 
+fn next_range_impl<'a, It>(
+    front_iter: &mut Option<container::Iter<'a>>,
+    containers: &mut It,
+    back_iter: &mut Option<container::Iter<'a>>,
+) -> Option<core::ops::RangeInclusive<u32>>
+where
+    It: Iterator + Clone,
+    It: AsRef<[Container]>,
+    It::Item: IntoIterator<IntoIter = container::Iter<'a>>,
+{
+    let range = loop {
+        if let Some(r) = and_then_or_clear(front_iter, container::Iter::next_range) {
+            break r;
+        }
+        *front_iter = match containers.next() {
+            Some(inner) => Some(inner.into_iter()),
+            None => return and_then_or_clear(back_iter, container::Iter::next_range),
+        }
+    };
+    let (range_start, mut range_end) = (*range.start(), *range.end());
+    while range_end & 0xFFFF == 0xFFFF {
+        let Some(after_end) = range_end.checked_add(1) else {
+            return Some(range_start..=range_end);
+        };
+        let (next_key, _) = util::split(after_end);
+
+        if containers.as_ref().first().is_some_and(|c| c.key == next_key && c.contains(0)) {
+            let mut iter = containers.next().unwrap().into_iter();
+            let next_range = iter.next_range().unwrap();
+            *front_iter = Some(iter);
+            debug_assert_eq!(*next_range.start(), after_end);
+            range_end = *next_range.end();
+        } else {
+            if let Some(iter) = back_iter {
+                if iter.peek() == Some(after_end) {
+                    let next_range = iter.next_range().unwrap();
+                    debug_assert_eq!(*next_range.start(), after_end);
+                    range_end = *next_range.end();
+                }
+            }
+            break;
+        }
+    }
+
+    Some(range_start..=range_end)
+}
+
+fn next_range_back_impl<'a, It>(
+    front_iter: &mut Option<container::Iter<'a>>,
+    containers: &mut It,
+    back_iter: &mut Option<container::Iter<'a>>,
+) -> Option<core::ops::RangeInclusive<u32>>
+where
+    It: DoubleEndedIterator,
+    It: AsRef<[Container]>,
+    It::Item: IntoIterator<IntoIter = container::Iter<'a>>,
+{
+    let range = loop {
+        if let Some(r) = and_then_or_clear(back_iter, container::Iter::next_range_back) {
+            break r;
+        }
+        *back_iter = match containers.next_back() {
+            Some(inner) => Some(inner.into_iter()),
+            None => return and_then_or_clear(front_iter, container::Iter::next_range_back),
+        }
+    };
+    let (mut range_start, range_end) = (*range.start(), *range.end());
+    while range_start & 0xFFFF == 0 {
+        let Some(before_start) = range_start.checked_sub(1) else {
+            return Some(range_start..=range_end);
+        };
+        let (prev_key, _) = util::split(before_start);
+
+        if containers.as_ref().last().is_some_and(|c| c.key == prev_key && c.contains(u16::MAX)) {
+            let mut iter = containers.next_back().unwrap().into_iter();
+            let next_range = iter.next_range_back().unwrap();
+            *back_iter = Some(iter);
+            debug_assert_eq!(*next_range.end(), before_start);
+            range_start = *next_range.start();
+        } else {
+            if let Some(iter) = front_iter {
+                if iter.key == prev_key && iter.peek_back() == Some(before_start) {
+                    let next_range = iter.next_range_back().unwrap();
+                    debug_assert_eq!(*next_range.end(), before_start);
+                    range_start = *next_range.start();
+                }
+            }
+            break;
+        }
+    }
+
+    Some(range_start..=range_end)
+}
+
 fn advance_back_to_impl<'a, It>(
     n: u32,
     front_iter: &mut Option<container::Iter<'a>>,
@@ -197,6 +291,46 @@ impl Iter<'_> {
     pub fn advance_back_to(&mut self, n: u32) {
         advance_back_to_impl(n, &mut self.front, &mut self.containers, &mut self.back);
     }
+
+    /// Returns the range of consecutive set bits from the current position to the end of the current run
+    ///
+    /// After this call, the iterator will be positioned at the first item after the returned range.
+    /// Returns `None` if the iterator is exhausted.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let bm = RoaringBitmap::from([1, 2, 4, 5]);
+    /// let mut iter = bm.iter();
+    /// assert_eq!(iter.next_range(), Some(1..=2));
+    /// assert_eq!(iter.next(), Some(4));
+    /// assert_eq!(iter.next_range(), Some(5..=5));
+    /// ```
+    pub fn next_range(&mut self) -> Option<core::ops::RangeInclusive<u32>> {
+        next_range_impl(&mut self.front, &mut self.containers, &mut self.back)
+    }
+
+    /// Returns the range of consecutive set bits from the start of the current run to the current back position
+    ///
+    /// After this call, the back of the iterator will be positioned at the last item before the returned range.
+    /// Returns `None` if the iterator is exhausted.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let bm = RoaringBitmap::from([1, 2, 4, 5]);
+    /// let mut iter = bm.iter();
+    /// assert_eq!(iter.next_range_back(), Some(4..=5));
+    /// assert_eq!(iter.next_back(), Some(2));
+    /// assert_eq!(iter.next_range_back(), Some(1..=1));
+    /// ```
+    pub fn next_range_back(&mut self) -> Option<core::ops::RangeInclusive<u32>> {
+        next_range_back_impl(&mut self.front, &mut self.containers, &mut self.back)
+    }
 }
 
 impl IntoIter {
@@ -244,6 +378,46 @@ impl IntoIter {
     /// ```
     pub fn advance_back_to(&mut self, n: u32) {
         advance_back_to_impl(n, &mut self.front, &mut self.containers, &mut self.back);
+    }
+
+    /// Returns the range of consecutive set bits from the current position to the end of the current run
+    ///
+    /// After this call, the iterator will be positioned at the first item after the returned range.
+    /// Returns `None` if the iterator is exhausted.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let bm = RoaringBitmap::from([1, 2, 4, 5]);
+    /// let mut iter = bm.into_iter();
+    /// assert_eq!(iter.next_range(), Some(1..=2));
+    /// assert_eq!(iter.next(), Some(4));
+    /// assert_eq!(iter.next_range(), Some(5..=5));
+    /// ```
+    pub fn next_range(&mut self) -> Option<core::ops::RangeInclusive<u32>> {
+        next_range_impl(&mut self.front, &mut self.containers, &mut self.back)
+    }
+
+    /// Returns the range of consecutive set bits from the start of the current run to the current back position
+    ///
+    /// After this call, the back of the iterator will be positioned at the last item before the returned range.
+    /// Returns `None` if the iterator is exhausted.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let bm = RoaringBitmap::from([1, 2, 4, 5]);
+    /// let mut iter = bm.into_iter();
+    /// assert_eq!(iter.next_range_back(), Some(4..=5));
+    /// assert_eq!(iter.next_back(), Some(2));
+    /// assert_eq!(iter.next_range_back(), Some(1..=1));
+    /// ```
+    pub fn next_range_back(&mut self) -> Option<core::ops::RangeInclusive<u32>> {
+        next_range_back_impl(&mut self.front, &mut self.containers, &mut self.back)
     }
 }
 

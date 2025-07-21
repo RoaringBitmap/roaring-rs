@@ -25,6 +25,38 @@ pub(crate) struct ArrayStore {
     vec: Vec<u16>,
 }
 
+/// Return the first contiguous range of elements in a sorted slice.
+pub(crate) fn first_contiguous_range_len(slice: &[u16]) -> usize {
+    let [first, rest @ ..] = slice else {
+        // Explicitly empty range
+        return 0;
+    };
+    let len = rest.partition_point(|item| {
+        let item_ptr = core::ptr::addr_of!(*item);
+        // SAFETY: `item` is guaranteed to be in bounds of `slice`.
+        let elem_distance = usize::try_from(unsafe { item_ptr.offset_from(first) }).unwrap();
+        let value_distance = item.checked_sub(*first).expect("array must be sorted");
+        elem_distance == usize::from(value_distance)
+    });
+    len + 1 // +1 for the first element
+}
+
+/// Return the first contiguous range of elements in a sorted slice.
+pub(crate) fn last_contiguous_range_len(slice: &[u16]) -> usize {
+    let [rest @ .., last] = slice else {
+        // Explicitly empty range
+        return 0;
+    };
+    let last_ptr = core::ptr::addr_of!(*last);
+    let len_from_start = rest.partition_point(|item| {
+        // SAFETY: `item` is guaranteed to be in bounds of `slice`.
+        let elem_distance = usize::try_from(unsafe { last_ptr.offset_from(item) }).unwrap();
+        let value_distance = last.checked_sub(*item).expect("array must be sorted");
+        elem_distance != usize::from(value_distance)
+    });
+    slice.len() - len_from_start
+}
+
 impl ArrayStore {
     pub fn new() -> ArrayStore {
         ArrayStore { vec: vec![] }
