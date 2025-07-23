@@ -95,6 +95,16 @@ pub enum BitmapBinaryOperation {
     AndNot,
 }
 
+#[derive(Arbitrary, Debug)]
+pub enum BitmapIteratorOperation {
+    Next,
+    NextBack,
+    AdvanceTo(Num),
+    AdvanceBackTo(Num),
+    Nth(Num),
+    NthBack(Num),
+}
+
 impl ReadBitmapOperation {
     pub fn apply(&self, x: &mut croaring::Bitmap, y: &mut roaring::RoaringBitmap) {
         match *self {
@@ -382,6 +392,104 @@ impl BitmapBinaryOperation {
                 *lhs_r -= rhs_r;
                 *lhs_c -= rhs_c;
                 assert_eq!(lhs_r.len(), expected_len);
+            }
+        }
+    }
+}
+
+pub struct CRoaringIterRange<'a> {
+    cursor: croaring::bitmap::BitmapCursor<'a>,
+    empty: bool,
+    start: u32,
+    end_inclusive: u32,
+}
+
+impl<'a> CRoaringIterRange<'a> {
+    pub fn new(bitmap: &'a croaring::Bitmap) -> Self {
+        CRoaringIterRange {
+            cursor: bitmap.cursor(),
+            start: 0,
+            end_inclusive: u32::MAX,
+            empty: false,
+        }
+    }
+
+    fn next(&mut self) -> Option<u32> {
+        if self.empty {
+            return None;
+        }
+        self.cursor.reset_at_or_after(self.start);
+        let res = self.cursor.current().filter(|&n| n <= self.end_inclusive);
+        match res {
+            None => self.empty = true,
+            Some(n) if n == self.end_inclusive => self.empty = true,
+            Some(n) => self.start = n + 1,
+        }
+        res
+    }
+
+    fn next_back(&mut self) -> Option<u32> {
+        if self.empty {
+            return None;
+        }
+        self.cursor.reset_at_or_after(self.end_inclusive);
+        if self.cursor.current().is_none_or(|n| n > self.end_inclusive) {
+            self.cursor.move_prev();
+        }
+        let res = self.cursor.current().filter(|&n| n >= self.start);
+        match res {
+            None => self.empty = true,
+            Some(n) if n == self.start => self.empty = true,
+            Some(n) => self.end_inclusive = n - 1,
+        }
+        res
+    }
+
+    fn advance_to(&mut self, num: u32) {
+        self.start = self.start.max(num);
+    }
+
+    fn advance_back_to(&mut self, num: u32) {
+        self.end_inclusive = self.end_inclusive.min(num);
+    }
+
+    fn nth(&mut self, num: u32) -> Option<u32> {
+        for _ in 0..num {
+            _ = self.next();
+        }
+        self.next()
+    }
+
+    fn nth_back(&mut self, num: u32) -> Option<u32> {
+        for _ in 0..num {
+            _ = self.next_back();
+        }
+        self.next_back()
+    }
+}
+
+impl BitmapIteratorOperation {
+    pub fn apply(&self, x: &mut CRoaringIterRange, y: &mut roaring::bitmap::Iter) {
+        match *self {
+            BitmapIteratorOperation::Next => {
+                assert_eq!(x.next(), y.next());
+            }
+            BitmapIteratorOperation::NextBack => {
+                assert_eq!(x.next_back(), y.next_back());
+            }
+            BitmapIteratorOperation::AdvanceTo(n) => {
+                x.advance_to(n.0);
+                y.advance_to(n.0);
+            }
+            BitmapIteratorOperation::AdvanceBackTo(n) => {
+                x.advance_back_to(n.0);
+                y.advance_back_to(n.0);
+            }
+            BitmapIteratorOperation::Nth(n) => {
+                assert_eq!(x.nth(n.0), y.nth(n.0 as usize));
+            }
+            BitmapIteratorOperation::NthBack(n) => {
+                assert_eq!(x.nth_back(n.0), y.nth_back(n.0 as usize));
             }
         }
     }
