@@ -659,9 +659,13 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
             self.intervals.next();
             return;
         }
-        if Some(self.forward_offset as u64)
-            >= self.intervals.as_slice().first().map(|f| f.run_len())
-        {
+        let total_offset = u64::from(self.forward_offset)
+            + if self.intervals.as_slice().len() == 1 {
+                u64::from(self.backward_offset)
+            } else {
+                0
+            };
+        if Some(total_offset) >= self.intervals.as_slice().first().map(|f| f.run_len()) {
             self.intervals.next();
             self.forward_offset = 0;
         }
@@ -674,9 +678,9 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
             self.intervals.next_back();
             return;
         }
-        if Some(self.backward_offset as u64)
-            >= self.intervals.as_slice().last().map(|f| f.run_len())
-        {
+        let total_offset = u64::from(self.backward_offset)
+            + if self.intervals.as_slice().len() == 1 { u64::from(self.forward_offset) } else { 0 };
+        if Some(total_offset) >= self.intervals.as_slice().last().map(|f| f.run_len()) {
             self.intervals.next_back();
             self.backward_offset = 0;
         }

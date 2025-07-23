@@ -224,3 +224,15 @@ fn advance_run_back_before_start() {
     iter.advance_back_to(499);
     assert_eq!(iter.next_back(), None);
 }
+
+#[test]
+fn advance_run_back_reduces_forward_iter() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(0..=0x4000);
+    let mut iter = bitmap.iter();
+    iter.advance_back_to(1);
+
+    assert_eq!(iter.next(), Some(0));
+    assert_eq!(iter.next(), Some(1));
+    assert_eq!(iter.next(), None);
+}
