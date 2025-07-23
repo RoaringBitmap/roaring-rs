@@ -712,6 +712,8 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
             }
             Err(index) => {
                 if index == self.intervals.as_slice().len() {
+                    // Consume the whole iterator
+                    self.intervals.nth(index);
                     return;
                 }
                 if let Some(value) = index.checked_sub(1) {
@@ -747,6 +749,8 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
             }
             Err(index) => {
                 if index == 0 {
+                    // Consume the whole iterator
+                    self.intervals.nth_back(self.intervals.as_slice().len());
                     return;
                 }
                 let backward_index = self.intervals.as_slice().len() - index;

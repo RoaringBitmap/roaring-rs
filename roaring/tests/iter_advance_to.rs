@@ -206,3 +206,21 @@ fn advance_bitset_back_to_start_word() {
     }
     assert_eq!(iter.next(), None);
 }
+
+#[test]
+fn advance_run_past_the_end() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(0..=0x35B00);
+    let mut iter = bitmap.iter();
+    iter.advance_to(0x35B01);
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn advance_run_back_before_start() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(500..=0x35B00);
+    let mut iter = bitmap.iter();
+    iter.advance_back_to(499);
+    assert_eq!(iter.next_back(), None);
+}
