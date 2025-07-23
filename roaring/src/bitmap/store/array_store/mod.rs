@@ -422,7 +422,7 @@ impl BitAndAssign<&Self> for ArrayStore {
             let mut i = 0;
             self.retain(|x| {
                 i += rhs.iter().skip(i).position(|y| *y >= x).unwrap_or(rhs.vec.len());
-                rhs.vec.get(i).map_or(false, |y| x == *y)
+                rhs.vec.get(i).is_some_and(|y| x == *y)
             });
         }
     }

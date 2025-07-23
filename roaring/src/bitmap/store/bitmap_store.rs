@@ -40,7 +40,7 @@ impl BitmapStore {
 
     pub fn from_lsb0_bytes_unchecked(bytes: &[u8], byte_offset: usize, bits_set: u64) -> Self {
         const BITMAP_BYTES: usize = BITMAP_LENGTH * size_of::<u64>();
-        assert!(byte_offset.checked_add(bytes.len()).map_or(false, |sum| sum <= BITMAP_BYTES));
+        assert!(byte_offset.checked_add(bytes.len()).is_some_and(|sum| sum <= BITMAP_BYTES));
 
         // If we know we're writing the full bitmap, we can avoid the initial memset to 0
         let mut bits = if bytes.len() == BITMAP_BYTES {
@@ -68,7 +68,7 @@ impl BitmapStore {
         if !cfg!(target_endian = "little") {
             // Convert all words we touched (even partially) to little-endian
             let start_word = byte_offset / size_of::<u64>();
-            let end_word = (byte_offset + bytes.len() + (size_of::<u64>() - 1)) / size_of::<u64>();
+            let end_word = (byte_offset + bytes.len()).div_ceil(size_of::<u64>());
 
             // The 0th byte is the least significant byte, so we've written the bytes in little-endian
             for word in &mut bits[start_word..end_word] {
