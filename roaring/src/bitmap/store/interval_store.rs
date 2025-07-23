@@ -712,7 +712,18 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
                 if let Some(value) = index.checked_sub(1) {
                     self.intervals.nth(value);
                 }
-                self.forward_offset = n - self.intervals.as_slice().first().unwrap().start;
+                let first_interval = self.intervals.as_slice().first().unwrap();
+                self.forward_offset = n - first_interval.start;
+                if self.intervals.as_slice().len() == 1
+                    && u64::from(self.forward_offset) + u64::from(self.backward_offset)
+                        >= first_interval.run_len()
+                {
+                    // If we are now the only interval, and we've now met the forward offset,
+                    // consume the final interval
+                    _ = self.intervals.next();
+                    self.forward_offset = 0;
+                    self.backward_offset = 0;
+                }
             }
             Err(index) => {
                 if index == self.intervals.as_slice().len() {
@@ -749,7 +760,18 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
                 if let Some(value) = backward_index.checked_sub(1) {
                     self.intervals.nth_back(value);
                 }
-                self.backward_offset = self.intervals.as_slice().last().unwrap().end - n;
+                let last_interval = self.intervals.as_slice().last().unwrap();
+                self.backward_offset = last_interval.end - n;
+                if self.intervals.as_slice().len() == 1
+                    && u64::from(self.forward_offset) + u64::from(self.backward_offset)
+                        >= last_interval.run_len()
+                {
+                    // If we are now the only interval, and we've now met the forward offset,
+                    // consume the final interval
+                    _ = self.intervals.next_back();
+                    self.forward_offset = 0;
+                    self.backward_offset = 0;
+                }
             }
             Err(index) => {
                 if index == 0 {
