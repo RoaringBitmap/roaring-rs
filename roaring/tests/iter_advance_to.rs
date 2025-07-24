@@ -246,3 +246,12 @@ fn advance_run_front_and_back_past_each_other() {
     iter.advance_to(300);
     assert_eq!(iter.next(), None);
 }
+
+#[test]
+fn advance_run_with_nth() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(36141..=224407);
+    let mut iter = bitmap.iter();
+    iter.advance_back_to(101779);
+    assert_eq!(iter.nth(100563), None);
+}

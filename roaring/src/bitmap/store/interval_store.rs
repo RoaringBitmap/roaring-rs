@@ -808,6 +808,13 @@ impl<I: SliceIterator<Interval>> Iterator for RunIter<I> {
     }
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        if n > usize::from(u16::MAX) {
+            // Consume the whole iterator
+            self.intervals.nth(self.intervals.as_slice().len());
+            self.forward_offset = 0;
+            self.backward_offset = 0;
+            return None;
+        }
         if let Some(skip) = n.checked_sub(1) {
             let mut to_skip = skip as u64;
             loop {
