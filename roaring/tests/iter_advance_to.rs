@@ -255,3 +255,14 @@ fn advance_run_with_nth() {
     iter.advance_back_to(101779);
     assert_eq!(iter.nth(100563), None);
 }
+
+#[test]
+fn advance_bitset_front_and_back_past_each_other() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(0..=0x4000);
+    bitmap.remove_run_compression();
+    let mut iter = bitmap.iter();
+    iter.advance_back_to(100);
+    iter.advance_to(300);
+    assert_eq!(iter.next(), None);
+}
