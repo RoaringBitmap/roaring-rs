@@ -75,13 +75,13 @@ impl RoaringBitmap {
                 let size = ((cookie >> 16) + 1) as usize;
                 (size, size >= NO_OFFSET_THRESHOLD, true)
             } else {
-                return Err(io::Error::new(io::ErrorKind::Other, "unknown cookie value"));
+                return Err(io::Error::other("unknown cookie value"));
             }
         };
 
         // Read the run container bitmap if necessary
         let run_container_bitmap = if has_run_containers {
-            let mut bitmap = vec![0u8; (size + 7) / 8];
+            let mut bitmap = vec![0u8; size.div_ceil(8)];
             reader.read_exact(&mut bitmap)?;
             Some(bitmap)
         } else {
@@ -89,7 +89,7 @@ impl RoaringBitmap {
         };
 
         if size > u16::MAX as usize + 1 {
-            return Err(io::Error::new(io::ErrorKind::Other, "size is greater than supported"));
+            return Err(io::Error::other("size is greater than supported"));
         }
 
         // Read the container descriptions
@@ -125,7 +125,7 @@ impl RoaringBitmap {
 
             // If the run container bitmap is present, check if this container is a run container
             let is_run_container =
-                run_container_bitmap.as_ref().map_or(false, |bm| bm[i / 8] & (1 << (i % 8)) != 0);
+                run_container_bitmap.as_ref().is_some_and(|bm| bm[i / 8] & (1 << (i % 8)) != 0);
 
             let store = if is_run_container {
                 let runs = reader.read_u16::<LittleEndian>()?;
@@ -232,7 +232,7 @@ impl RoaringBitmap {
 
             // If the run container bitmap is present, check if this container is a run container
             let is_run_container =
-                run_container_bitmap.as_ref().map_or(false, |bm| bm[i / 8] & (1 << (i % 8)) != 0);
+                run_container_bitmap.as_ref().is_some_and(|bm| bm[i / 8] & (1 << (i % 8)) != 0);
 
             let store = if is_run_container {
                 let runs = reader.read_u16::<LittleEndian>().unwrap();

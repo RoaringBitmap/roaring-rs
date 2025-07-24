@@ -85,7 +85,7 @@ impl RoaringBitmap {
             let cookie = SERIAL_COOKIE as u32 | ((size as u32 - 1) << 16);
             writer.write_u32::<LittleEndian>(cookie)?;
             // It is then followed by a bitset indicating which containers are run containers
-            let run_container_bitmap_size = (size + 7) / 8;
+            let run_container_bitmap_size = size.div_ceil(8);
             let mut run_container_bitmap = vec![0; run_container_bitmap_size];
             for (i, container) in self.containers.iter().enumerate() {
                 if let Store::Run(_) = container.store {
@@ -223,13 +223,13 @@ impl RoaringBitmap {
                 let size = ((cookie >> 16) + 1) as usize;
                 (size, size >= NO_OFFSET_THRESHOLD, true)
             } else {
-                return Err(io::Error::new(io::ErrorKind::Other, "unknown cookie value"));
+                return Err(io::Error::other("unknown cookie value"));
             }
         };
 
         // Read the run container bitmap if necessary
         let run_container_bitmap = if has_run_containers {
-            let mut bitmap = vec![0u8; (size + 7) / 8];
+            let mut bitmap = vec![0u8; size.div_ceil(8)];
             reader.read_exact(&mut bitmap)?;
             Some(bitmap)
         } else {
@@ -237,7 +237,7 @@ impl RoaringBitmap {
         };
 
         if size > u16::MAX as usize + 1 {
-            return Err(io::Error::new(io::ErrorKind::Other, "size is greater than supported"));
+            return Err(io::Error::other("size is greater than supported"));
         }
 
         // Read the container descriptions
@@ -269,7 +269,7 @@ impl RoaringBitmap {
 
             // If the run container bitmap is present, check if this container is a run container
             let is_run_container =
-                run_container_bitmap.as_ref().map_or(false, |bm| bm[i / 8] & (1 << (i % 8)) != 0);
+                run_container_bitmap.as_ref().is_some_and(|bm| bm[i / 8] & (1 << (i % 8)) != 0);
 
             let store = if is_run_container {
                 let runs = reader.read_u16::<LittleEndian>()?;
@@ -329,7 +329,7 @@ fn header_size(size: usize, has_run_containers: bool) -> usize {
     if has_run_containers {
         // New format encodes the size (number of containers) into the 4 byte cookie
         // Additionally a bitmap is included marking which containers are run containers
-        let run_container_bitmap_size = (size + 7) / 8;
+        let run_container_bitmap_size = size.div_ceil(8);
         // New format conditionally includes offsets if there are 4 or more containers
         if size >= NO_OFFSET_THRESHOLD {
             COOKIE_BYTES + ((DESCRIPTION_BYTES + OFFSET_BYTES) * size) + run_container_bitmap_size
