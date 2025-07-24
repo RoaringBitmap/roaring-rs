@@ -731,6 +731,8 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
                 if index == self.intervals.as_slice().len() {
                     // Consume the whole iterator
                     self.intervals.nth(index);
+                    self.forward_offset = 0;
+                    self.backward_offset = 0;
                     return;
                 }
                 if let Some(value) = index.checked_sub(1) {
@@ -779,6 +781,8 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
                 if index == 0 {
                     // Consume the whole iterator
                     self.intervals.nth_back(self.intervals.as_slice().len());
+                    self.forward_offset = 0;
+                    self.backward_offset = 0;
                     return;
                 }
                 let backward_index = self.intervals.as_slice().len() - index;

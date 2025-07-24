@@ -248,6 +248,17 @@ fn advance_run_front_and_back_past_each_other() {
 }
 
 #[test]
+fn advance_run_both_sides_past_each_other() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(0..0x1000);
+    let mut iter = bitmap.iter();
+    iter.advance_back_to(100);
+    iter.advance_to(0xFFFF);
+    assert_eq!(iter.len(), 0);
+    assert_eq!(iter.nth_back(0), None);
+}
+
+#[test]
 fn advance_run_with_nth() {
     let mut bitmap = RoaringBitmap::new();
     bitmap.insert_range(36141..=224407);
