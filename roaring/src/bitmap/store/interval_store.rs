@@ -657,6 +657,7 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
             self.forward_offset = value;
         } else {
             self.intervals.next();
+            self.forward_offset = 0;
             return;
         }
         let total_offset = u64::from(self.forward_offset)
@@ -676,6 +677,7 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
             self.backward_offset = value;
         } else {
             self.intervals.next_back();
+            self.backward_offset = 0;
             return;
         }
         let total_offset = u64::from(self.backward_offset)
