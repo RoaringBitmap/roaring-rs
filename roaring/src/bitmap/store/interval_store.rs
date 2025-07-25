@@ -693,9 +693,10 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
     }
 
     fn remaining_size(&self) -> usize {
-        (self.intervals.as_slice().iter().map(|f| f.run_len()).sum::<u64>()
-            - self.forward_offset as u64
-            - self.backward_offset as u64) as usize
+        let total_size = self.intervals.as_slice().iter().map(|f| f.run_len()).sum::<u64>();
+        let total_offset = u64::from(self.forward_offset) + u64::from(self.backward_offset);
+        debug_assert!(total_size >= total_offset);
+        total_size.saturating_sub(total_offset) as usize
     }
 
     /// Advance the iterator to the first value greater than or equal to `n`.
