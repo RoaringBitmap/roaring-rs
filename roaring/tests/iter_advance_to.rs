@@ -279,6 +279,16 @@ fn advance_to_with_next_len() {
 }
 
 #[test]
+fn tmp() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(196363..=262143);
+    let mut iter = bitmap.iter();
+    assert_eq!(iter.next_back(), Some(262143));
+    iter.advance_to(228960);
+    assert_eq!(iter.nth(36643), None);
+}
+
+#[test]
 fn advance_bitset_front_and_back_past_each_other() {
     let mut bitmap = RoaringBitmap::new();
     bitmap.insert_range(0..=0x4000);

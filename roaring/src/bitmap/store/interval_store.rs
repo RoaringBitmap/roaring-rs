@@ -829,9 +829,14 @@ impl<I: SliceIterator<Interval>> Iterator for RunIter<I> {
         if let Some(skip) = n.checked_sub(1) {
             let mut to_skip = skip as u64;
             loop {
-                let to_remove = (self.intervals.as_slice().first()?.run_len()
-                    - self.forward_offset as u64)
-                    .min(to_skip);
+                let full_first_interval_len = self.intervals.as_slice().first()?.run_len();
+                let consumed_len = u64::from(self.forward_offset)
+                    + if self.intervals.as_slice().len() == 1 {
+                        u64::from(self.backward_offset)
+                    } else {
+                        0
+                    };
+                let to_remove = (full_first_interval_len - consumed_len).min(to_skip);
                 to_skip -= to_remove;
                 self.forward_offset += to_remove as u16;
                 self.move_next();
