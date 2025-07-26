@@ -210,6 +210,31 @@ fn interleaved_bitmap() {
     assert!(outside_in(values).eq(outside_in(bitmap)));
 }
 
+#[test]
+fn run_nth_max() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(0..0x1_0000);
+    let mut iter = bitmap.iter();
+    assert_eq!(iter.nth(0x0_FFFF), Some(0x0_FFFF));
+    assert_eq!(iter.len(), 0);
+    #[allow(clippy::iter_nth_zero)]
+    {
+        assert_eq!(iter.nth(0), None);
+    }
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn run_nth_back_max() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(0..0x1_0000);
+    let mut iter = bitmap.iter();
+    assert_eq!(iter.nth_back(0x0_FFFF), Some(0));
+    assert_eq!(iter.len(), 0);
+    assert_eq!(iter.nth_back(0), None);
+    assert_eq!(iter.next_back(), None);
+}
+
 proptest! {
     #[test]
     fn interleaved_iter(values in btree_set(any::<u32>(), 50_000..=100_000)) {

@@ -657,13 +657,18 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
             self.forward_offset = value;
         } else {
             self.intervals.next();
+            self.forward_offset = 0;
             return;
         }
-        if Some(self.forward_offset as u64)
-            >= self.intervals.as_slice().first().map(|f| f.run_len())
-        {
+        let only_interval = self.intervals.as_slice().len() == 1;
+        let total_offset = u64::from(self.forward_offset)
+            + if only_interval { u64::from(self.backward_offset) } else { 0 };
+        if Some(total_offset) >= self.intervals.as_slice().first().map(|f| f.run_len()) {
             self.intervals.next();
             self.forward_offset = 0;
+            if only_interval {
+                self.backward_offset = 0;
+            }
         }
     }
 
@@ -672,20 +677,26 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
             self.backward_offset = value;
         } else {
             self.intervals.next_back();
+            self.backward_offset = 0;
             return;
         }
-        if Some(self.backward_offset as u64)
-            >= self.intervals.as_slice().last().map(|f| f.run_len())
-        {
+        let only_interval = self.intervals.as_slice().len() == 1;
+        let total_offset = u64::from(self.backward_offset)
+            + if only_interval { u64::from(self.forward_offset) } else { 0 };
+        if Some(total_offset) >= self.intervals.as_slice().last().map(|f| f.run_len()) {
             self.intervals.next_back();
             self.backward_offset = 0;
+            if only_interval {
+                self.forward_offset = 0;
+            }
         }
     }
 
     fn remaining_size(&self) -> usize {
-        (self.intervals.as_slice().iter().map(|f| f.run_len()).sum::<u64>()
-            - self.forward_offset as u64
-            - self.backward_offset as u64) as usize
+        let total_size = self.intervals.as_slice().iter().map(|f| f.run_len()).sum::<u64>();
+        let total_offset = u64::from(self.forward_offset) + u64::from(self.backward_offset);
+        debug_assert!(total_size >= total_offset);
+        total_size.saturating_sub(total_offset) as usize
     }
 
     /// Advance the iterator to the first value greater than or equal to `n`.
@@ -708,10 +719,25 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
                 if let Some(value) = index.checked_sub(1) {
                     self.intervals.nth(value);
                 }
-                self.forward_offset = n - self.intervals.as_slice().first().unwrap().start;
+                let first_interval = self.intervals.as_slice().first().unwrap();
+                self.forward_offset = n - first_interval.start;
+                if self.intervals.as_slice().len() == 1
+                    && u64::from(self.forward_offset) + u64::from(self.backward_offset)
+                        >= first_interval.run_len()
+                {
+                    // If we are now the only interval, and we've now met the forward offset,
+                    // consume the final interval
+                    _ = self.intervals.next();
+                    self.forward_offset = 0;
+                    self.backward_offset = 0;
+                }
             }
             Err(index) => {
                 if index == self.intervals.as_slice().len() {
+                    // Consume the whole iterator
+                    self.intervals.nth(index);
+                    self.forward_offset = 0;
+                    self.backward_offset = 0;
                     return;
                 }
                 if let Some(value) = index.checked_sub(1) {
@@ -743,10 +769,25 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
                 if let Some(value) = backward_index.checked_sub(1) {
                     self.intervals.nth_back(value);
                 }
-                self.backward_offset = self.intervals.as_slice().last().unwrap().end - n;
+                let last_interval = self.intervals.as_slice().last().unwrap();
+                self.backward_offset = last_interval.end - n;
+                if self.intervals.as_slice().len() == 1
+                    && u64::from(self.forward_offset) + u64::from(self.backward_offset)
+                        >= last_interval.run_len()
+                {
+                    // If we are now the only interval, and we've now met the forward offset,
+                    // consume the final interval
+                    _ = self.intervals.next_back();
+                    self.forward_offset = 0;
+                    self.backward_offset = 0;
+                }
             }
             Err(index) => {
                 if index == 0 {
+                    // Consume the whole iterator
+                    self.intervals.nth_back(self.intervals.as_slice().len());
+                    self.forward_offset = 0;
+                    self.backward_offset = 0;
                     return;
                 }
                 let backward_index = self.intervals.as_slice().len() - index;
@@ -778,12 +819,24 @@ impl<I: SliceIterator<Interval>> Iterator for RunIter<I> {
     }
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        if n > usize::from(u16::MAX) {
+            // Consume the whole iterator
+            self.intervals.nth(self.intervals.as_slice().len());
+            self.forward_offset = 0;
+            self.backward_offset = 0;
+            return None;
+        }
         if let Some(skip) = n.checked_sub(1) {
             let mut to_skip = skip as u64;
             loop {
-                let to_remove = (self.intervals.as_slice().first()?.run_len()
-                    - self.forward_offset as u64)
-                    .min(to_skip);
+                let full_first_interval_len = self.intervals.as_slice().first()?.run_len();
+                let consumed_len = u64::from(self.forward_offset)
+                    + if self.intervals.as_slice().len() == 1 {
+                        u64::from(self.backward_offset)
+                    } else {
+                        0
+                    };
+                let to_remove = (full_first_interval_len - consumed_len).min(to_skip);
                 to_skip -= to_remove;
                 self.forward_offset += to_remove as u16;
                 self.move_next();
@@ -2401,7 +2454,7 @@ mod tests {
         iter.advance_to(800);
         assert_eq!(iter.next(), Some(800));
         iter.advance_to(u16::MAX);
-        assert_eq!(iter.next(), Some(801));
+        assert_eq!(iter.next(), None);
 
         let mut iter = interval_store.iter();
         iter.advance_to(100);

@@ -5,11 +5,12 @@ mod arbitrary_ops;
 use libfuzzer_sys::arbitrary::{self, Arbitrary};
 use libfuzzer_sys::fuzz_target;
 
-use crate::arbitrary_ops::{check_equal, Operation};
+use crate::arbitrary_ops::{check_equal, BitmapIteratorOperation, CRoaringIterRange, Operation};
 
 #[derive(Arbitrary, Debug)]
 struct FuzzInput<'a> {
     ops: Vec<Operation>,
+    iter_ops: Vec<BitmapIteratorOperation>,
     initial_input: &'a [u8],
 }
 
@@ -35,6 +36,14 @@ fuzz_target!(|input: FuzzInput| {
     }
     lhs_r.internal_validate().unwrap();
     rhs_r.internal_validate().unwrap();
+
+    let mut lhs_c_iter = CRoaringIterRange::new(&lhs_c);
+    let mut lhs_r_iter = lhs_r.iter();
+
+    for op in input.iter_ops {
+        op.apply(&mut lhs_c_iter, &mut lhs_r_iter);
+    }
+
     check_equal(&lhs_c, &lhs_r);
     check_equal(&rhs_c, &rhs_r);
 });
