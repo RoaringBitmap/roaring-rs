@@ -2454,7 +2454,7 @@ mod tests {
         iter.advance_to(800);
         assert_eq!(iter.next(), Some(800));
         iter.advance_to(u16::MAX);
-        assert_eq!(iter.next(), Some(801));
+        assert_eq!(iter.next(), None);
 
         let mut iter = interval_store.iter();
         iter.advance_to(100);
