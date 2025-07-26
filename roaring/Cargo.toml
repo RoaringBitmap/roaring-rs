@@ -1,6 +1,6 @@
 [package]
 name = "roaring"
-version = "0.11.1"
+version = "0.11.2"
 # When changing this value don't forget to change the MSRV test in `.github/workflows/test.yml`!!
 rust-version = "1.80.1"
 authors = ["Wim Looman <wim@nemo157.com>", "Kerollmops <kero@meilisearch.com>"]
