@@ -298,3 +298,16 @@ fn advance_bitset_front_and_back_past_each_other() {
     iter.advance_to(300);
     assert_eq!(iter.next(), None);
 }
+
+#[test]
+fn combine_with_nth() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(0..=0xFFFF);
+    bitmap.remove_run_compression();
+    let mut iter = bitmap.iter();
+
+    // Use nth to skip to a specific position
+    assert_eq!(iter.nth(100), Some(100));
+    iter.advance_back_to(50);
+    assert_eq!(iter.next_back(), None);
+}
