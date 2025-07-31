@@ -103,6 +103,8 @@ pub enum BitmapIteratorOperation {
     AdvanceBackTo(Num),
     Nth(Num),
     NthBack(Num),
+    NextRange,
+    NextRangeBack,
 }
 
 impl ReadBitmapOperation {
@@ -466,6 +468,69 @@ impl<'a> CRoaringIterRange<'a> {
         }
         self.next_back()
     }
+
+    fn next_range(&mut self) -> Option<RangeInclusive<u32>> {
+        if self.empty {
+            return None;
+        }
+        self.cursor.reset_at_or_after(self.start);
+        let range_start = self.cursor.current()?;
+        if range_start > self.end_inclusive {
+            self.empty = true;
+            return None;
+        }
+        let mut range_end_inclusive = range_start;
+        while range_end_inclusive < self.end_inclusive {
+            if let Some(next) = self.cursor.next() {
+                if next == range_end_inclusive + 1 {
+                    range_end_inclusive = next;
+                    continue;
+                }
+            }
+            break;
+        }
+
+        if range_end_inclusive == self.end_inclusive {
+            self.empty = true;
+        } else {
+            self.start = range_end_inclusive + 1;
+        }
+
+        Some(range_start..=range_end_inclusive)
+    }
+
+    fn next_range_back(&mut self) -> Option<RangeInclusive<u32>> {
+        if self.empty {
+            return None;
+        }
+        self.cursor.reset_at_or_after(self.end_inclusive);
+        if self.cursor.current().is_none_or(|n| n > self.end_inclusive) {
+            self.cursor.move_prev();
+        }
+        let range_end_inclusive = self.cursor.current()?;
+        if range_end_inclusive < self.start {
+            self.empty = true;
+            return None;
+        }
+        let mut range_start = range_end_inclusive;
+        while range_start > self.start {
+            if let Some(prev) = self.cursor.prev() {
+                if prev == range_start - 1 {
+                    range_start = prev;
+                    continue;
+                }
+            }
+            break;
+        }
+
+        if range_start == self.start {
+            self.empty = true;
+        } else {
+            self.end_inclusive = range_start - 1;
+        }
+
+        Some(range_start..=range_end_inclusive)
+    }
 }
 
 impl BitmapIteratorOperation {
@@ -490,6 +555,12 @@ impl BitmapIteratorOperation {
             }
             BitmapIteratorOperation::NthBack(n) => {
                 assert_eq!(x.nth_back(n.0), y.nth_back(n.0 as usize));
+            }
+            BitmapIteratorOperation::NextRange => {
+                assert_eq!(x.next_range(), y.next_range());
+            }
+            BitmapIteratorOperation::NextRangeBack => {
+                assert_eq!(x.next_range_back(), y.next_range_back());
             }
         }
     }

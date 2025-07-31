@@ -10,6 +10,7 @@ use super::{ArrayStore, Interval};
 use alloc::boxed::Box;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
+use core::mem;
 
 pub const BITMAP_LENGTH: usize = 1024;
 pub const BITMAP_BYTES: usize = BITMAP_LENGTH * 8;
@@ -565,33 +566,212 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
         self.key_back = new_key;
         *dst = value & low_bits;
     }
+
+    pub(crate) fn next_range(&mut self) -> Option<RangeInclusive<u16>> {
+        let value = *advance_to_next_nonzero_word(
+            &mut self.key,
+            &mut self.value,
+            self.bits.borrow(),
+            &mut self.key_back,
+            &mut self.value_back,
+        )?;
+        let offset = value.trailing_zeros() as u16;
+        let start = self.key * 64 + offset;
+        let value = value >> offset;
+        let num_set = value.trailing_ones() as u16;
+        let mut end_inclusive = start + (num_set - 1);
+        if num_set + offset != 64 {
+            self.value &= !0 << (num_set + offset);
+            return Some(start..=end_inclusive);
+        }
+        self.value = 0;
+        if self.key == self.key_back {
+            return Some(start..=end_inclusive);
+        }
+        loop {
+            debug_assert!(self.key < self.key_back);
+            self.key += 1;
+            self.value = if self.key == self.key_back {
+                mem::replace(&mut self.value_back, 0)
+            } else {
+                // Safety:
+                //   - self.key and self.key_back are always kept in bounds
+                unsafe { *self.bits.borrow().get_unchecked(self.key as usize) }
+            };
+            let set_bits = self.value.trailing_ones() as u16;
+            end_inclusive += set_bits;
+            if set_bits != 64 || self.key == self.key_back {
+                if set_bits != 64 {
+                    self.value &= !0 << set_bits;
+                } else {
+                    self.value = 0;
+                }
+                return Some(start..=end_inclusive);
+            }
+        }
+    }
+
+    pub(crate) fn next_range_back(&mut self) -> Option<RangeInclusive<u16>> {
+        let value_dst = advance_back_to_next_nonzero_word(
+            &mut self.key,
+            &mut self.value,
+            self.bits.borrow(),
+            &mut self.key_back,
+            &mut self.value_back,
+        )?;
+
+        let end_offset = value_dst.leading_zeros() as u16;
+        let end_inclusive = self.key_back * 64 + (63 - end_offset);
+        let value = *value_dst << end_offset;
+        let num_set = value.leading_ones() as u16;
+        let mut start = end_inclusive - (num_set - 1);
+        if num_set + end_offset != 64 {
+            *value_dst &= !0 >> (num_set + end_offset);
+            return Some(start..=end_inclusive);
+        }
+        *value_dst = 0;
+        if self.key == self.key_back {
+            return Some(start..=end_inclusive);
+        }
+        loop {
+            debug_assert!(self.key_back > self.key);
+            self.key_back -= 1;
+            let value_dst = if self.key_back == self.key {
+                &mut self.value
+            } else {
+                // Safety:
+                //   - self.key and self.key_back are always kept in bounds
+                let value = unsafe { *self.bits.borrow().get_unchecked(self.key_back as usize) };
+                self.value_back = value;
+                &mut self.value_back
+            };
+            let set_bits = value_dst.leading_ones() as u16;
+            start -= set_bits;
+            if set_bits != 64 || self.key_back == self.key {
+                if set_bits != 64 {
+                    *value_dst &= !0 >> set_bits;
+                } else {
+                    *value_dst = 0;
+                }
+                return Some(start..=end_inclusive);
+            }
+        }
+    }
+
+    pub(crate) fn peek(&self) -> Option<u16> {
+        let mut key = self.key;
+        let mut value = self.value;
+        let mut key_back = self.key_back;
+        let mut value_back = self.value_back;
+        let value = advance_to_next_nonzero_word(
+            &mut key,
+            &mut value,
+            self.bits.borrow(),
+            &mut key_back,
+            &mut value_back,
+        )?;
+
+        let index = value.trailing_zeros() as u16;
+        Some(64 * key + index)
+    }
+
+    pub(crate) fn peek_back(&self) -> Option<u16> {
+        let mut key = self.key;
+        let mut key_back = self.key_back;
+        let mut value = self.value;
+        let mut value_back = self.value_back;
+        let value = advance_back_to_next_nonzero_word(
+            &mut key,
+            &mut value,
+            self.bits.borrow(),
+            &mut key_back,
+            &mut value_back,
+        )?;
+        let index_from_left = value.leading_zeros() as u16;
+        let index = 63 - index_from_left;
+        Some(64 * key_back + index)
+    }
+}
+
+fn advance_to_next_nonzero_word<'a>(
+    key: &mut u16,
+    value: &'a mut u64,
+    bits: &[u64; BITMAP_LENGTH],
+    key_back: &mut u16,
+    value_back: &'a mut u64,
+) -> Option<&'a mut u64> {
+    if *value == 0 {
+        if *key >= *key_back {
+            return None;
+        }
+        loop {
+            debug_assert!(*key < *key_back);
+            *key += 1;
+            if *key == *key_back {
+                *value = mem::replace(value_back, 0);
+                if *value == 0 {
+                    return None;
+                }
+                break;
+            }
+            // Safety:
+            //   - self.key and self.key_back are always kept in bounds
+            *value = unsafe { *bits.get_unchecked(*key as usize) };
+            if *value != 0 {
+                break;
+            }
+        }
+    }
+    debug_assert!(*value != 0);
+    Some(value)
+}
+
+fn advance_back_to_next_nonzero_word<'a>(
+    key: &mut u16,
+    value: &'a mut u64,
+    bits: &[u64; BITMAP_LENGTH],
+    key_back: &mut u16,
+    value_back: &'a mut u64,
+) -> Option<&'a mut u64> {
+    if *key_back > *key {
+        if *value_back != 0 {
+            return Some(value_back);
+        }
+        loop {
+            debug_assert!(key_back > key);
+            *key_back -= 1;
+            if *key_back == *key {
+                break;
+            }
+            // Safety:
+            //   - self.key and self.key_back are always kept in bounds
+            *value_back = unsafe { *bits.get_unchecked(*key_back as usize) };
+            if *value_back != 0 {
+                return Some(value_back);
+            }
+        }
+    }
+    debug_assert!(*key_back == *key);
+    if *value != 0 {
+        Some(value)
+    } else {
+        None
+    }
 }
 
 impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
     type Item = u16;
 
     fn next(&mut self) -> Option<u16> {
-        if self.value == 0 {
-            'get_val: {
-                if self.key >= self.key_back {
-                    return None;
-                }
-                for key in self.key + 1..self.key_back {
-                    self.value = unsafe { *self.bits.borrow().get_unchecked(key as usize) };
-                    if self.value != 0 {
-                        self.key = key;
-                        break 'get_val;
-                    }
-                }
-                self.key = self.key_back;
-                self.value = self.value_back;
-                if self.value == 0 {
-                    return None;
-                }
-            }
-        }
-        let index = self.value.trailing_zeros() as u16;
-        self.value &= self.value - 1;
+        let value = advance_to_next_nonzero_word(
+            &mut self.key,
+            &mut self.value,
+            self.bits.borrow(),
+            &mut self.key_back,
+            &mut self.value_back,
+        )?;
+        let index = value.trailing_zeros() as u16;
+        *value &= *value - 1;
         Some(64 * self.key + index)
     }
 
@@ -616,23 +796,17 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> Iterator for BitmapIter<B> {
 
 impl<B: Borrow<[u64; BITMAP_LENGTH]>> DoubleEndedIterator for BitmapIter<B> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        loop {
-            let value =
-                if self.key_back <= self.key { &mut self.value } else { &mut self.value_back };
-            if *value == 0 {
-                if self.key_back <= self.key {
-                    return None;
-                }
-                self.key_back -= 1;
-                self.value_back =
-                    unsafe { *self.bits.borrow().get_unchecked(self.key_back as usize) };
-                continue;
-            }
-            let index_from_left = value.leading_zeros() as u16;
-            let index = 63 - index_from_left;
-            *value &= !(1 << index);
-            return Some(64 * self.key_back + index);
-        }
+        let value_dst = advance_back_to_next_nonzero_word(
+            &mut self.key,
+            &mut self.value,
+            self.bits.borrow(),
+            &mut self.key_back,
+            &mut self.value_back,
+        )?;
+        let index_from_left = value_dst.leading_zeros() as u16;
+        let index = 63 - index_from_left;
+        *value_dst &= !(1 << index);
+        Some(64 * self.key_back + index)
     }
 }
 
