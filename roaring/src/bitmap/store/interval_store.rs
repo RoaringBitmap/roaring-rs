@@ -798,6 +798,42 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
             }
         }
     }
+
+    pub(crate) fn next_range(&mut self) -> Option<RangeInclusive<u16>> {
+        let interval = self.intervals.as_slice().first()?;
+        let end_offset =
+            if self.intervals.as_slice().len() == 1 { self.backward_offset } else { 0 };
+        let result = interval.start + self.forward_offset..=interval.end - end_offset;
+        _ = self.intervals.next();
+        self.forward_offset = 0;
+        if self.intervals.as_slice().is_empty() {
+            self.backward_offset = 0;
+        }
+        Some(result)
+    }
+
+    pub(crate) fn next_range_back(&mut self) -> Option<RangeInclusive<u16>> {
+        let interval = self.intervals.as_slice().last()?;
+        let start_offset =
+            if self.intervals.as_slice().len() == 1 { self.forward_offset } else { 0 };
+        let result = interval.start + start_offset..=interval.end - self.backward_offset;
+        _ = self.intervals.next_back();
+        self.backward_offset = 0;
+        if self.intervals.as_slice().is_empty() {
+            self.forward_offset = 0;
+        }
+        Some(result)
+    }
+
+    pub(crate) fn peek(&self) -> Option<u16> {
+        let result = self.intervals.as_slice().first()?.start + self.forward_offset;
+        Some(result)
+    }
+
+    pub(crate) fn peek_back(&self) -> Option<u16> {
+        let result = self.intervals.as_slice().last()?.end - self.backward_offset;
+        Some(result)
+    }
 }
 
 impl<I: SliceIterator<Interval>> Iterator for RunIter<I> {
