@@ -438,12 +438,40 @@ impl DoubleEndedIterator for Iter<'_> {
 impl ExactSizeIterator for Iter<'_> {}
 
 impl Iter<'_> {
+    pub(crate) fn peek(&self) -> Option<u32> {
+        self.inner.peek().map(|i| util::join(self.key, i))
+    }
+
+    pub(crate) fn peek_back(&self) -> Option<u32> {
+        self.inner.peek_back().map(|i| util::join(self.key, i))
+    }
+
     pub(crate) fn advance_to(&mut self, index: u16) {
         self.inner.advance_to(index);
     }
 
     pub(crate) fn advance_back_to(&mut self, index: u16) {
         self.inner.advance_back_to(index);
+    }
+
+    /// Returns the range of consecutive set bits from the current position to the end of the current run
+    ///
+    /// After this call, the iterator will be positioned at the first item after the returned range.
+    /// Returns `None` if the iterator is exhausted.
+    pub(crate) fn next_range(&mut self) -> Option<RangeInclusive<u32>> {
+        self.inner
+            .next_range()
+            .map(|r| util::join(self.key, *r.start())..=util::join(self.key, *r.end()))
+    }
+
+    /// Returns the range of consecutive set bits from the start of the current run to the current back position
+    ///
+    /// After this call, the back of the iterator will be positioned at the last item before the returned range.
+    /// Returns `None` if the iterator is exhausted.
+    pub(crate) fn next_range_back(&mut self) -> Option<RangeInclusive<u32>> {
+        self.inner
+            .next_range_back()
+            .map(|r| util::join(self.key, *r.start())..=util::join(self.key, *r.end()))
     }
 }
 
