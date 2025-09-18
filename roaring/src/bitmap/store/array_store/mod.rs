@@ -41,7 +41,7 @@ pub(crate) fn first_contiguous_range_len(slice: &[u16]) -> usize {
     len + 1 // +1 for the first element
 }
 
-/// Return the first contiguous range of elements in a sorted slice.
+/// Return the last contiguous range of elements in a sorted slice.
 pub(crate) fn last_contiguous_range_len(slice: &[u16]) -> usize {
     let [rest @ .., last] = slice else {
         // Explicitly empty range
