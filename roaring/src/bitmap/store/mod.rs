@@ -852,6 +852,9 @@ impl PartialEq for Store {
     }
 }
 
+// reflexivity: a == a.
+impl Eq for Store {}
+
 impl Iter<'_> {
     /// Advance the iterator to the first value greater than or equal to `n`.
     pub(crate) fn advance_to(&mut self, n: u16) {
