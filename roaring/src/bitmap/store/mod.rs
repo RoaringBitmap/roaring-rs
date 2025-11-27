@@ -846,7 +846,8 @@ impl PartialEq for Store {
                 run.len() == bitmap.len()
                     && run.iter_intervals().all(|&iv| bitmap.contains_range(iv.start()..=iv.end()))
             }
-            _ => false,
+            // Invariant: Array len <= 4096, bitmap len > 4096.
+            (Array(_), Bitmap(_)) | (Bitmap(_), Array(_)) => false,
         }
     }
 }
