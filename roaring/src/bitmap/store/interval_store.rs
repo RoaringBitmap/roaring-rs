@@ -8,6 +8,7 @@ use core::{cmp::Ordering, ops::ControlFlow};
 use super::{ArrayStore, BitmapStore};
 
 #[derive(PartialEq, Eq, Clone, Debug)]
+#[cfg_attr(feature = "allocative", derive(allocative::Allocative))]
 pub(crate) struct IntervalStore(Vec<Interval>);
 
 pub(crate) const RUN_NUM_BYTES: usize = 2;
@@ -897,6 +898,7 @@ impl<I: SliceIterator<Interval>> ExactSizeIterator for RunIter<I> {}
 
 /// This interval is inclusive to end.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug)]
+#[cfg_attr(feature = "allocative", derive(allocative::Allocative))]
 pub(crate) struct Interval {
     start: u16,
     end: u16,
