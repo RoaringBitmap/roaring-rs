@@ -155,7 +155,7 @@ impl BitmapStore {
     }
 
     pub fn push(&mut self, index: u16) -> bool {
-        if self.max().map_or(true, |max| max < index) {
+        if self.max().is_none_or(|max| max < index) {
             self.insert(index);
             true
         } else {
