@@ -150,7 +150,7 @@ impl ArrayStore {
     }
 
     pub fn push(&mut self, index: u16) -> bool {
-        if self.max().map_or(true, |max| max < index) {
+        if self.max().is_none_or(|max| max < index) {
             self.vec.push(index);
             true
         } else {
@@ -493,7 +493,7 @@ impl SubAssign<&Self> for ArrayStore {
             let mut i = 0;
             self.retain(|x| {
                 i += rhs.iter().skip(i).position(|y| *y >= x).unwrap_or(rhs.vec.len());
-                rhs.vec.get(i).map_or(true, |y| x != *y)
+                rhs.vec.get(i).is_none_or(|y| x != *y)
             });
         }
     }
