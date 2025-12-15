@@ -2,7 +2,7 @@
 name = "roaring"
 version = "0.11.3"
 # When changing this value don't forget to change the MSRV test in `.github/workflows/test.yml`!!
-rust-version = "1.80.1"
+rust-version = "1.82.0"
 authors = ["Wim Looman <wim@nemo157.com>", "Kerollmops <kero@meilisearch.com>"]
 description = "A better compressed bitset - pure Rust implementation"
 
