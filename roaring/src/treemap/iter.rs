@@ -7,6 +7,7 @@ use crate::bitmap::IntoIter as IntoIter32;
 use crate::bitmap::Iter as Iter32;
 use crate::{NonSortedIntegers, RoaringBitmap, RoaringTreemap};
 
+#[derive(Clone)]
 struct To64Iter<'a> {
     hi: u32,
     inner: Iter32<'a>,
@@ -61,6 +62,7 @@ fn to64iter(t: (u32, &RoaringBitmap)) -> To64Iter<'_> {
     To64Iter { hi: t.0, inner: t.1.iter() }
 }
 
+#[derive(Clone)]
 struct To64IntoIter {
     hi: u32,
     inner: IntoIter32,
@@ -108,6 +110,7 @@ type InnerIntoIter = iter::FlatMap<
 >;
 
 /// An iterator for `RoaringTreemap`.
+#[derive(Clone)]
 pub struct Iter<'a> {
     outer: BitmapIter<'a>,
     front: Option<To64Iter<'a>>,
@@ -524,6 +527,7 @@ impl RoaringTreemap {
 }
 
 /// An iterator of `RoaringBitmap`s for `RoaringTreemap`.
+#[derive(Clone)]
 pub struct BitmapIter<'a> {
     treemap: &'a BTreeMap<u32, RoaringBitmap>,
     range: btree_map::Range<'a, u32, RoaringBitmap>,
