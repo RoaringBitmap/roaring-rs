@@ -36,7 +36,7 @@ pub use self::iter::{BitmapIter, IntoIter, Iter};
 /// rb.insert(7);
 /// println!("total bits set to true: {}", rb.len());
 /// ```
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub struct RoaringTreemap {
     map: BTreeMap<u32, RoaringBitmap>,
 }

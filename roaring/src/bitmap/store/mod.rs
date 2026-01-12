@@ -846,10 +846,14 @@ impl PartialEq for Store {
                 run.len() == bitmap.len()
                     && run.iter_intervals().all(|&iv| bitmap.contains_range(iv.start()..=iv.end()))
             }
-            _ => false,
+            // Invariant: Array len <= 4096, bitmap len > 4096.
+            (Array(_), Bitmap(_)) | (Bitmap(_), Array(_)) => false,
         }
     }
 }
+
+// reflexivity: a == a.
+impl Eq for Store {}
 
 impl Iter<'_> {
     /// Advance the iterator to the first value greater than or equal to `n`.

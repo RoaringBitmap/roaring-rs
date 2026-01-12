@@ -13,7 +13,7 @@ pub const RUN_MAX_SIZE: u64 = 2048;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub(crate) struct Container {
     pub key: u16,
     pub store: Store,
