@@ -318,7 +318,8 @@ impl RoaringTreemap {
     /// assert!(rb.is_full());
     /// ```
     pub fn is_full(&self) -> bool {
-        self.map.len() == (u32::MAX as usize + 1) && self.map.values().all(RoaringBitmap::is_full)
+        self.map.len() == (u32::MAX as u64 + 1) as usize
+            && self.map.values().all(RoaringBitmap::is_full)
     }
 
     /// Returns the number of distinct integers added to the set.
