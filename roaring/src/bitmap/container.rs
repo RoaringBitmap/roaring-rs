@@ -14,6 +14,7 @@ pub const RUN_MAX_SIZE: u64 = 2048;
 use alloc::vec::Vec;
 
 #[derive(PartialEq, Clone)]
+#[cfg_attr(feature = "allocative", derive(allocative::Allocative))]
 pub(crate) struct Container {
     pub key: u16,
     pub store: Store,

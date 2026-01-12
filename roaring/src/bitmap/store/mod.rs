@@ -25,6 +25,7 @@ use crate::bitmap::container::ARRAY_LIMIT;
 use alloc::boxed::Box;
 
 #[derive(Clone)]
+#[cfg_attr(feature = "allocative", derive(allocative::Allocative))]
 pub(crate) enum Store {
     Array(ArrayStore),
     Bitmap(BitmapStore),

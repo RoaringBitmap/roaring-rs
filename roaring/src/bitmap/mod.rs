@@ -45,6 +45,7 @@ use alloc::vec::Vec;
 /// println!("total bits set to true: {}", rb.len());
 /// ```
 #[derive(PartialEq)]
+#[cfg_attr(feature = "allocative", derive(allocative::Allocative))]
 pub struct RoaringBitmap {
     containers: Vec<container::Container>,
 }

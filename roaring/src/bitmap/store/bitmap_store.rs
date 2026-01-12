@@ -16,6 +16,7 @@ pub const BITMAP_LENGTH: usize = 1024;
 pub const BITMAP_BYTES: usize = BITMAP_LENGTH * 8;
 
 #[derive(Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "allocative", derive(allocative::Allocative))]
 pub struct BitmapStore {
     len: u64,
     bits: Box<[u64; BITMAP_LENGTH]>,

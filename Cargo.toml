@@ -17,6 +17,7 @@ proptest = "1.6.0"
 serde = "1.0.217"
 serde_json = "1.0.138"
 zip = { version = "0.6", default-features = false }
+allocative = { version = "0.3" }
 
 [profile.test]
 opt-level = 2
