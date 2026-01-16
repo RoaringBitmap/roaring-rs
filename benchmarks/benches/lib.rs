@@ -599,6 +599,12 @@ fn intersection_with_serialized(c: &mut Criterion) {
     })
 }
 
+fn union_with_serialized(c: &mut Criterion) {
+    pairwise_ops_with_serialized(c, "union_with_serialized_unchecked", |a, b| {
+        a.union_with_serialized_unchecked(Cursor::new(b)).unwrap()
+    })
+}
+
 // LEGACY BENCHMARKS
 // =================
 
@@ -784,5 +790,6 @@ criterion_group!(
     successive_and,
     successive_or,
     intersection_with_serialized,
+    union_with_serialized
 );
 criterion_main!(benches);
