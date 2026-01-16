@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use std::cmp::Reverse;
+use std::io::Cursor;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
 use criterion::measurement::Measurement;
@@ -111,6 +112,41 @@ fn pairwise_binary_op_matrix(
                     black_box(op_len(a, b));
                 }
             })
+        });
+    }
+
+    group.finish();
+}
+
+fn pairwise_ops_with_serialized(
+    c: &mut Criterion,
+    op_name: &str,
+    op_ref_own: fn(&RoaringBitmap, &[u8]) -> RoaringBitmap,
+) {
+    let mut group = c.benchmark_group(format!("pairwise_{op_name}"));
+
+    for dataset in Datasets {
+        let pairs = dataset.bitmaps.iter().cloned().tuple_windows::<(_, _)>().collect::<Vec<_>>();
+
+        group.bench_function(BenchmarkId::new("ref_own", &dataset.name), |b| {
+            b.iter_batched(
+                || {
+                    pairs
+                        .iter()
+                        .map(|(a, b)| {
+                            let mut buf = Vec::new();
+                            b.serialize_into(&mut buf).unwrap();
+                            (a.clone(), buf)
+                        })
+                        .collect::<Vec<_>>()
+                },
+                |bitmaps| {
+                    for (a, b) in bitmaps {
+                        black_box(op_ref_own(&a, &b));
+                    }
+                },
+                BatchSize::SmallInput,
+            );
         });
     }
 
@@ -557,6 +593,12 @@ fn successive_or(c: &mut Criterion) {
     group.finish();
 }
 
+fn intersection_with_serialized(c: &mut Criterion) {
+    pairwise_ops_with_serialized(c, "intersection_with_serialized_unchecked", |a, b| {
+        a.intersection_with_serialized_unchecked(Cursor::new(b)).unwrap()
+    })
+}
+
 // LEGACY BENCHMARKS
 // =================
 
@@ -740,6 +782,7 @@ criterion_group!(
     serialization,
     deserialization,
     successive_and,
-    successive_or
+    successive_or,
+    intersection_with_serialized,
 );
 criterion_main!(benches);
