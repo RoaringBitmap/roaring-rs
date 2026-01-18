@@ -691,6 +691,55 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
         let index = 63 - index_from_left;
         Some(64 * key_back + index)
     }
+
+    /// Read multiple values from the iterator into `dst`.
+    /// Returns the number of values read.
+    ///
+    /// This can be significantly faster than calling `next()` repeatedly.
+    pub fn next_many(&mut self, dst: &mut [u16]) -> usize {
+        if dst.is_empty() {
+            return 0;
+        }
+
+        let mut count = 0;
+        let bits = self.bits.borrow();
+
+        while count < dst.len() {
+            // Advance to next non-zero word if current is empty
+            if self.value == 0 {
+                if self.key >= self.key_back {
+                    break;
+                }
+                loop {
+                    self.key += 1;
+                    if self.key == self.key_back {
+                        self.value = core::mem::replace(&mut self.value_back, 0);
+                        break;
+                    }
+                    // Safety: key is always in bounds
+                    self.value = unsafe { *bits.get_unchecked(self.key as usize) };
+                    if self.value != 0 {
+                        break;
+                    }
+                }
+                if self.value == 0 {
+                    break;
+                }
+            }
+
+            // Extract set bits from current word
+            let base = self.key as u16 * 64;
+            while self.value != 0 && count < dst.len() {
+                let bit_pos = self.value.trailing_zeros() as u16;
+                dst[count] = base + bit_pos;
+                count += 1;
+                // Clear the lowest set bit
+                self.value &= self.value - 1;
+            }
+        }
+
+        count
+    }
 }
 
 fn advance_to_next_nonzero_word<'a>(
