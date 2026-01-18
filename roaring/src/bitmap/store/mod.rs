@@ -1038,6 +1038,36 @@ impl Iterator for Iter<'_> {
     }
 }
 
+impl Iter<'_> {
+    /// Read multiple values from the iterator into `dst`.
+    /// Returns the number of values read.
+    ///
+    /// This can be significantly faster than calling `next()` repeatedly.
+    pub fn next_many(&mut self, dst: &mut [u16]) -> usize {
+        match self {
+            Iter::Array(inner) => {
+                let remaining = inner.as_slice();
+                let n = remaining.len().min(dst.len());
+                dst[..n].copy_from_slice(&remaining[..n]);
+                if n > 0 { _ = inner.nth(n - 1); }
+                n
+            }
+            Iter::Vec(inner) => {
+                let remaining = inner.as_slice();
+                let n = remaining.len().min(dst.len());
+                dst[..n].copy_from_slice(&remaining[..n]);
+                if n > 0 { _ = inner.nth(n - 1); }
+                n
+            }
+            Iter::BitmapBorrowed(inner) => inner.next_many(dst),
+            Iter::BitmapOwned(inner) => inner.next_many(dst),
+            Iter::RunBorrowed(inner) => inner.next_many(dst),
+            Iter::RunOwned(inner) => inner.next_many(dst),
+        }
+    }
+}
+
+
 impl DoubleEndedIterator for Iter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         match self {

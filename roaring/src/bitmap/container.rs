@@ -473,6 +473,34 @@ impl Iter<'_> {
             .next_range_back()
             .map(|r| util::join(self.key, *r.start())..=util::join(self.key, *r.end()))
     }
+
+    /// Read multiple values from the iterator into `dst`.
+    /// Returns the number of values read.
+    ///
+    /// This can be significantly faster than calling `next()` repeatedly.
+    pub(crate) fn next_many(&mut self, dst: &mut [u32]) -> usize {
+        // Use a temporary u16 buffer for the inner iterator
+        const BUF_SIZE: usize = 256;
+        let mut buf = [0u16; BUF_SIZE];
+
+        let key = self.key;
+        let mut count = 0;
+
+        while count < dst.len() {
+            let remaining = dst.len() - count;
+            let to_read = remaining.min(BUF_SIZE);
+            let n = self.inner.next_many(&mut buf[..to_read]);
+            if n == 0 {
+                break;
+            }
+            for i in 0..n {
+                dst[count + i] = util::join(key, buf[i]);
+            }
+            count += n;
+        }
+
+        count
+    }
 }
 
 impl fmt::Debug for Container {
