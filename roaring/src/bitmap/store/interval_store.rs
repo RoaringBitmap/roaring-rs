@@ -834,6 +834,59 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
         let result = self.intervals.as_slice().last()?.end - self.backward_offset;
         Some(result)
     }
+
+    /// Read multiple values from the iterator into `dst`.
+    /// Returns the number of values read.
+    ///
+    /// This can be significantly faster than calling `next()` repeatedly
+    /// because it processes runs in bulk.
+    pub fn next_many(&mut self, dst: &mut [u16]) -> usize {
+        if dst.is_empty() {
+            return 0;
+        }
+
+        let mut count = 0;
+
+        while count < dst.len() {
+            let Some(interval) = self.intervals.as_slice().first() else {
+                break;
+            };
+
+            let end_offset = if self.intervals.as_slice().len() == 1 {
+                self.backward_offset
+            } else {
+                0
+            };
+
+            let start = interval.start + self.forward_offset;
+            let end = interval.end - end_offset;
+
+            // How many values can we emit from this interval?
+            let available = (end - start + 1) as usize;
+            let to_emit = available.min(dst.len() - count);
+
+            // Emit values
+            for i in 0..to_emit {
+                dst[count + i] = start + i as u16;
+            }
+            count += to_emit;
+
+            // Advance within or past this interval
+            if to_emit == available {
+                // Consumed entire interval
+                _ = self.intervals.next();
+                self.forward_offset = 0;
+                if self.intervals.as_slice().is_empty() {
+                    self.backward_offset = 0;
+                }
+            } else {
+                // Partial consumption
+                self.forward_offset += to_emit as u16;
+            }
+        }
+
+        count
+    }
 }
 
 impl<I: SliceIterator<Interval>> Iterator for RunIter<I> {
