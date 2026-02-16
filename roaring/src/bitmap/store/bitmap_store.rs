@@ -26,7 +26,7 @@ impl BitmapStore {
         BitmapStore { len: 0, bits: Box::new([0; BITMAP_LENGTH]) }
     }
 
-    pub fn capacity(&self) -> usize {
+    pub const fn capacity(&self) -> usize {
         BITMAP_LENGTH * u64::BITS as usize
     }
 
@@ -282,11 +282,11 @@ impl BitmapStore {
         ArrayStore::from_vec_unchecked(vec)
     }
 
-    pub fn len(&self) -> u64 {
+    pub const fn len(&self) -> u64 {
         self.len
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.len == 0
     }
 
@@ -813,12 +813,12 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> DoubleEndedIterator for BitmapIter<B> {
 impl<B: Borrow<[u64; BITMAP_LENGTH]>> ExactSizeIterator for BitmapIter<B> {}
 
 #[inline]
-pub fn key(index: u16) -> usize {
+pub const fn key(index: u16) -> usize {
     index as usize / 64
 }
 
 #[inline]
-pub fn bit(index: u16) -> usize {
+pub const fn bit(index: u16) -> usize {
     index as usize % 64
 }
 

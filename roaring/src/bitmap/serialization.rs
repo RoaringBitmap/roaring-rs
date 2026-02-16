@@ -325,7 +325,7 @@ impl RoaringBitmap {
     }
 }
 
-fn header_size(size: usize, has_run_containers: bool) -> usize {
+const fn header_size(size: usize, has_run_containers: bool) -> usize {
     if has_run_containers {
         // New format encodes the size (number of containers) into the 4 byte cookie
         // Additionally a bitmap is included marking which containers are run containers
