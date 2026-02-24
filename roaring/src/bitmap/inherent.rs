@@ -101,7 +101,7 @@ impl RoaringBitmap {
 
             result
         }
-        if offset % 8 != 0 {
+        if !offset.is_multiple_of(8) {
             let shift = offset as usize % 8;
             let shifted_bytes = shift_bytes(bytes, shift);
             return RoaringBitmap::from_lsb0_bytes(offset - shift as u32, &shifted_bytes);
