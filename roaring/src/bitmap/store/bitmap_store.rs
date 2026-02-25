@@ -696,9 +696,9 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
     /// Returns the number of values read.
     ///
     /// This can be significantly faster than calling `next()` repeatedly.
-    pub fn next_many(&mut self, dst: &mut [u16]) -> usize {
+    pub fn next_many<'a>(&mut self, dst: &'a mut [u16]) -> &'a [u16] {
         if dst.is_empty() {
-            return 0;
+            return &[];
         }
 
         let mut count = 0;
@@ -728,7 +728,7 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
             }
 
             // Extract set bits from current word
-            let base = self.key as u16 * 64;
+            let base = self.key * 64;
             while self.value != 0 && count < dst.len() {
                 let bit_pos = self.value.trailing_zeros() as u16;
                 dst[count] = base + bit_pos;
@@ -738,7 +738,7 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
             }
         }
 
-        count
+        &dst[..count]
     }
 }
 

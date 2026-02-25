@@ -840,9 +840,9 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
     ///
     /// This can be significantly faster than calling `next()` repeatedly
     /// because it processes runs in bulk.
-    pub fn next_many(&mut self, dst: &mut [u16]) -> usize {
+    pub fn next_many<'a>(&mut self, dst: &'a mut [u16]) -> &'a [u16] {
         if dst.is_empty() {
-            return 0;
+            return &[];
         }
 
         let mut count = 0;
@@ -852,11 +852,8 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
                 break;
             };
 
-            let end_offset = if self.intervals.as_slice().len() == 1 {
-                self.backward_offset
-            } else {
-                0
-            };
+            let end_offset =
+                if self.intervals.as_slice().len() == 1 { self.backward_offset } else { 0 };
 
             let start = interval.start + self.forward_offset;
             let end = interval.end - end_offset;
@@ -885,7 +882,7 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
             }
         }
 
-        count
+        &dst[..count]
     }
 }
 

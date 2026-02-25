@@ -349,29 +349,28 @@ impl Iter<'_> {
     /// let mut iter = bitmap.iter();
     /// let mut buf = [0u32; 32];
     ///
-    /// let n = iter.next_many(&mut buf);
-    /// assert_eq!(n, 32);
-    /// assert_eq!(buf[0], 0);
-    /// assert_eq!(buf[31], 31);
+    /// let out = iter.next_many(&mut buf);
+    /// assert_eq!(out.len(), 32);
+    /// assert_eq!(out[0], 0);
+    /// assert_eq!(out[31], 31);
     ///
     /// // Iterate remainder
-    /// let n = iter.next_many(&mut buf);
-    /// assert_eq!(n, 32);
-    /// assert_eq!(buf[0], 32);
+    /// let out = iter.next_many(&mut buf);
+    /// assert_eq!(out.len(), 32);
+    /// assert_eq!(out[0], 32);
     /// ```
-    pub fn next_many(&mut self, dst: &mut [u32]) -> usize {
+    pub fn next_many<'a>(&mut self, dst: &'a mut [u32]) -> &'a [u32] {
         if dst.is_empty() {
-            return 0;
+            return &[];
         }
 
         let mut count = 0;
 
         // First drain from the front container iterator if present
         if let Some(ref mut front_iter) = self.front {
-            let n = front_iter.next_many(&mut dst[count..]);
-            count += n;
+            count += front_iter.next_many(&mut dst[count..]).len();
             if count >= dst.len() {
-                return count;
+                return &dst[..count];
             }
             // Front is exhausted
             self.front = None;
@@ -384,13 +383,13 @@ impl Iter<'_> {
                 break;
             };
             let mut container_iter = container.into_iter();
-            let n = container_iter.next_many(&mut dst[count..]);
-            count += n;
+            let out = container_iter.next_many(&mut dst[count..]);
+            count += out.len();
 
             // If container still has values, save it as new front
-            if n > 0 && container_iter.len() > 0 {
+            if !out.is_empty() && container_iter.len() > 0 {
                 self.front = Some(container_iter);
-                return count;
+                return &dst[..count];
             }
         }
 
@@ -398,14 +397,14 @@ impl Iter<'_> {
         if count < dst.len() {
             if let Some(ref mut back_iter) = self.back {
                 let n = back_iter.next_many(&mut dst[count..]);
-                count += n;
+                count += n.len();
                 if back_iter.len() == 0 {
                     self.back = None;
                 }
             }
         }
 
-        count
+        &dst[..count]
     }
 }
 
@@ -513,29 +512,28 @@ impl IntoIter {
     /// let mut iter = bitmap.into_iter();
     /// let mut buf = [0u32; 32];
     ///
-    /// let n = iter.next_many(&mut buf);
-    /// assert_eq!(n, 32);
-    /// assert_eq!(buf[0], 0);
-    /// assert_eq!(buf[31], 31);
+    /// let out = iter.next_many(&mut buf);
+    /// assert_eq!(out.len(), 32);
+    /// assert_eq!(out[0], 0);
+    /// assert_eq!(out[31], 31);
     ///
     /// // Iterate remainder
-    /// let n = iter.next_many(&mut buf);
-    /// assert_eq!(n, 32);
-    /// assert_eq!(buf[0], 32);
+    /// let out = iter.next_many(&mut buf);
+    /// assert_eq!(out.len(), 32);
+    /// assert_eq!(out[0], 32);
     /// ```
-    pub fn next_many(&mut self, dst: &mut [u32]) -> usize {
+    pub fn next_many<'a>(&mut self, dst: &'a mut [u32]) -> &'a [u32] {
         if dst.is_empty() {
-            return 0;
+            return &[];
         }
 
         let mut count = 0;
 
         // First drain from the front container iterator if present
         if let Some(ref mut front_iter) = self.front {
-            let n = front_iter.next_many(&mut dst[count..]);
-            count += n;
+            count += front_iter.next_many(&mut dst[count..]).len();
             if count >= dst.len() {
-                return count;
+                return &dst[..count];
             }
             // Front is exhausted
             self.front = None;
@@ -548,28 +546,27 @@ impl IntoIter {
                 break;
             };
             let mut container_iter = container.into_iter();
-            let n = container_iter.next_many(&mut dst[count..]);
-            count += n;
+            let out = container_iter.next_many(&mut dst[count..]);
+            count += out.len();
 
             // If container still has values, save it as new front
-            if n > 0 && container_iter.len() > 0 {
+            if !out.is_empty() && container_iter.len() > 0 {
                 self.front = Some(container_iter);
-                return count;
+                return &dst[..count];
             }
         }
 
         // Finally, try draining from the back iterator if present
         if count < dst.len() {
             if let Some(ref mut back_iter) = self.back {
-                let n = back_iter.next_many(&mut dst[count..]);
-                count += n;
+                count += back_iter.next_many(&mut dst[count..]).len();
                 if back_iter.len() == 0 {
                     self.back = None;
                 }
             }
         }
 
-        count
+        &dst[..count]
     }
 }
 
