@@ -10,24 +10,24 @@ fn next_many_simple() {
     let mut iter = bitmap.iter();
     let mut buf = [0u32; 32];
 
-    let n = iter.next_many(&mut buf);
-    assert_eq!(n, 32);
-    assert_eq!(&buf[..n], &(0..32).collect::<Vec<_>>()[..]);
+    let out = iter.next_many(&mut buf);
+    assert_eq!(out.len(), 32);
+    assert_eq!(&out[..], &(0..32).collect::<Vec<_>>()[..]);
 
-    let n = iter.next_many(&mut buf);
-    assert_eq!(n, 32);
-    assert_eq!(&buf[..n], &(32..64).collect::<Vec<_>>()[..]);
+    let out = iter.next_many(&mut buf);
+    assert_eq!(out.len(), 32);
+    assert_eq!(&out[..], &(32..64).collect::<Vec<_>>()[..]);
 
-    let n = iter.next_many(&mut buf);
-    assert_eq!(n, 32);
-    assert_eq!(&buf[..n], &(64..96).collect::<Vec<_>>()[..]);
+    let out = iter.next_many(&mut buf);
+    assert_eq!(out.len(), 32);
+    assert_eq!(&out[..], &(64..96).collect::<Vec<_>>()[..]);
 
-    let n = iter.next_many(&mut buf);
-    assert_eq!(n, 4);
-    assert_eq!(&buf[..n], &[96, 97, 98, 99]);
+    let out = iter.next_many(&mut buf);
+    assert_eq!(out.len(), 4);
+    assert_eq!(&out[..], &[96, 97, 98, 99]);
 
-    let n = iter.next_many(&mut buf);
-    assert_eq!(n, 0);
+    let out = iter.next_many(&mut buf);
+    assert!(out.is_empty());
 }
 
 /// Test next_many with IntoIter (owned iterator)
@@ -39,11 +39,11 @@ fn next_many_into_iter() {
     let mut all_values = Vec::new();
 
     loop {
-        let n = iter.next_many(&mut buf);
-        if n == 0 {
+        let out = iter.next_many(&mut buf);
+        if out.is_empty() {
             break;
         }
-        all_values.extend_from_slice(&buf[..n]);
+        all_values.extend_from_slice(&out[..]);
     }
 
     let expected: Vec<u32> = (0..100).collect();
@@ -57,8 +57,8 @@ fn next_many_empty_buffer() {
     let mut iter = bitmap.iter();
     let mut buf = [0u32; 0];
 
-    let n = iter.next_many(&mut buf);
-    assert_eq!(n, 0);
+    let out = iter.next_many(&mut buf);
+    assert!(out.is_empty());
     // Iterator should not be advanced
     assert_eq!(iter.next(), Some(0));
 }
@@ -70,8 +70,8 @@ fn next_many_empty_bitmap() {
     let mut iter = bitmap.iter();
     let mut buf = [0u32; 32];
 
-    let n = iter.next_many(&mut buf);
-    assert_eq!(n, 0);
+    let out = iter.next_many(&mut buf);
+    assert!(out.is_empty());
 }
 
 /// Test next_many across multiple containers
@@ -82,10 +82,10 @@ fn next_many_multiple_containers() {
     let mut iter = bitmap.iter();
     let mut buf = [0u32; 32];
 
-    let n = iter.next_many(&mut buf);
-    assert_eq!(n, 15);
+    let out = iter.next_many(&mut buf);
+    assert_eq!(out.len(), 15);
     let expected: Vec<u32> = (65530..65545).collect();
-    assert_eq!(&buf[..n], &expected[..]);
+    assert_eq!(&out[..], &expected[..]);
 }
 
 /// Test next_many with large buffer
@@ -95,10 +95,10 @@ fn next_many_large_buffer() {
     let mut iter = bitmap.iter();
     let mut buf = [0u32; 1000];
 
-    let n = iter.next_many(&mut buf);
-    assert_eq!(n, 50);
+    let out = iter.next_many(&mut buf);
+    assert_eq!(out.len(), 50);
     let expected: Vec<u32> = (0..50).collect();
-    assert_eq!(&buf[..n], &expected[..]);
+    assert_eq!(&out[..], &expected[..]);
 }
 
 /// Test next_many with bitmap store (dense values)
@@ -111,11 +111,11 @@ fn next_many_bitmap_store() {
     let mut all_values = Vec::new();
 
     loop {
-        let n = iter.next_many(&mut buf);
-        if n == 0 {
+        let out = iter.next_many(&mut buf);
+        if out.is_empty() {
             break;
         }
-        all_values.extend_from_slice(&buf[..n]);
+        all_values.extend_from_slice(&out[..]);
     }
 
     let expected: Vec<u32> = (0..10000).collect();
@@ -128,17 +128,17 @@ fn next_many_run_store() {
     let mut bitmap = RoaringBitmap::new();
     bitmap.insert_range(0..1000);
     bitmap.insert_range(2000..3000);
-    
+
     let mut iter = bitmap.iter();
     let mut buf = [0u32; 256];
     let mut all_values = Vec::new();
 
     loop {
-        let n = iter.next_many(&mut buf);
-        if n == 0 {
+        let out = iter.next_many(&mut buf);
+        if out.is_empty() {
             break;
         }
-        all_values.extend_from_slice(&buf[..n]);
+        all_values.extend_from_slice(&out[..]);
     }
 
     let expected: Vec<u32> = (0..1000).chain(2000..3000).collect();
@@ -153,23 +153,23 @@ fn next_many_interleaved_with_next() {
     let mut buf = [0u32; 10];
 
     // Read first 10 via next_many
-    let n = iter.next_many(&mut buf);
-    assert_eq!(n, 10);
-    assert_eq!(&buf[..n], &(0..10).collect::<Vec<_>>()[..]);
+    let out = iter.next_many(&mut buf);
+    assert_eq!(out.len(), 10);
+    assert_eq!(&out[..], &(0..10).collect::<Vec<_>>()[..]);
 
     // Read one via next
     assert_eq!(iter.next(), Some(10));
 
     // Read next 10 via next_many
-    let n = iter.next_many(&mut buf);
-    assert_eq!(n, 10);
-    assert_eq!(&buf[..n], &(11..21).collect::<Vec<_>>()[..]);
+    let out = iter.next_many(&mut buf);
+    assert_eq!(out.len(), 10);
+    assert_eq!(&out[..], &(11..21).collect::<Vec<_>>()[..]);
 
     // Read one via next
     assert_eq!(iter.next(), Some(21));
 }
 
-/// Test next_many preserves no gaps/duplicates
+// Test next_many preserves no gaps/duplicates
 proptest! {
     #[test]
     fn next_many_correctness(values in btree_set(any::<u32>(), ..=10_000)) {
@@ -179,11 +179,11 @@ proptest! {
         let mut collected = Vec::new();
 
         loop {
-            let n = iter.next_many(&mut buf);
-            if n == 0 {
+            let out = iter.next_many(&mut buf);
+            if out.is_empty() {
                 break;
             }
-            collected.extend_from_slice(&buf[..n]);
+            collected.extend_from_slice(&out[..]);
         }
 
         let expected: Vec<u32> = values.into_iter().collect();
@@ -191,7 +191,7 @@ proptest! {
     }
 }
 
-/// Test next_many with various buffer sizes
+// Test next_many with various buffer sizes
 proptest! {
     #[test]
     fn next_many_various_buffer_sizes(
@@ -204,11 +204,11 @@ proptest! {
         let mut collected = Vec::new();
 
         loop {
-            let n = iter.next_many(&mut buf);
-            if n == 0 {
+            let out = iter.next_many(&mut buf);
+            if out.is_empty() {
                 break;
             }
-            collected.extend_from_slice(&buf[..n]);
+            collected.extend_from_slice(&out[..]);
         }
 
         let expected: Vec<u32> = values.into_iter().collect();
@@ -216,7 +216,7 @@ proptest! {
     }
 }
 
-/// Test next_many with IntoIter correctness
+// Test next_many with IntoIter correctness
 proptest! {
     #[test]
     fn next_many_into_iter_correctness(values in btree_set(any::<u32>(), ..=10_000)) {
@@ -226,11 +226,11 @@ proptest! {
         let mut collected = Vec::new();
 
         loop {
-            let n = iter.next_many(&mut buf);
-            if n == 0 {
+            let out = iter.next_many(&mut buf);
+            if out.is_empty() {
                 break;
             }
-            collected.extend_from_slice(&buf[..n]);
+            collected.extend_from_slice(&out[..]);
         }
 
         let expected: Vec<u32> = values.into_iter().collect();
