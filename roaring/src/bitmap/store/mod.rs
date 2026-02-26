@@ -1043,7 +1043,7 @@ impl Iter<'_> {
     /// Returns the number of values read.
     ///
     /// This can be significantly faster than calling `next()` repeatedly.
-    pub fn next_many<'a>(&mut self, dst: &'a mut [u16]) -> &'a [u16] {
+    pub fn next_many<'a>(&mut self, dst: &'a mut [u16]) -> &'a mut [u16] {
         match self {
             Iter::Array(inner) => {
                 let remaining = inner.as_slice();
@@ -1052,7 +1052,7 @@ impl Iter<'_> {
                 if n > 0 {
                     _ = inner.nth(n - 1);
                 }
-                &dst[..n]
+                &mut dst[..n]
             }
             Iter::Vec(inner) => {
                 let remaining = inner.as_slice();
@@ -1061,7 +1061,7 @@ impl Iter<'_> {
                 if n > 0 {
                     _ = inner.nth(n - 1);
                 }
-                &dst[..n]
+                &mut dst[..n]
             }
             Iter::BitmapBorrowed(inner) => inner.next_many(dst),
             Iter::BitmapOwned(inner) => inner.next_many(dst),

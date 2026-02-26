@@ -696,9 +696,9 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
     /// Returns the number of values read.
     ///
     /// This can be significantly faster than calling `next()` repeatedly.
-    pub fn next_many<'a>(&mut self, dst: &'a mut [u16]) -> &'a [u16] {
+    pub fn next_many<'a>(&mut self, dst: &'a mut [u16]) -> &'a mut [u16] {
         if dst.is_empty() {
-            return &[];
+            return &mut [];
         }
 
         let mut count = 0;
@@ -738,7 +738,7 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
             }
         }
 
-        &dst[..count]
+        &mut dst[..count]
     }
 }
 
