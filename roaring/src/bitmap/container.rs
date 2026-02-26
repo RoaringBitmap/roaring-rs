@@ -479,27 +479,7 @@ impl Iter<'_> {
     ///
     /// This can be significantly faster than calling `next()` repeatedly.
     pub(crate) fn next_many<'a>(&mut self, dst: &'a mut [u32]) -> &'a mut [u32] {
-        // Use a temporary u16 buffer for the inner iterator
-        const BUF_SIZE: usize = 256;
-        let mut buf = [0u16; BUF_SIZE];
-
-        let key = self.key;
-        let mut count = 0;
-
-        while count < dst.len() {
-            let remaining = dst.len() - count;
-            let to_read = remaining.min(BUF_SIZE);
-            let out_len = self.inner.next_many(&mut buf[..to_read]).len();
-            if out_len == 0 {
-                break;
-            }
-            for i in 0..out_len {
-                dst[count + i] = util::join(key, buf[i]);
-            }
-            count += out_len;
-        }
-
-        &mut dst[..count]
+        self.inner.next_many(self.key, dst)
     }
 }
 

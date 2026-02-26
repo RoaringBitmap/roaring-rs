@@ -5,6 +5,8 @@ use core::ops::{
 use core::slice::Iter;
 use core::{cmp::Ordering, ops::ControlFlow};
 
+use crate::bitmap::util;
+
 use super::{ArrayStore, BitmapStore};
 
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -840,7 +842,7 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
     ///
     /// This can be significantly faster than calling `next()` repeatedly
     /// because it processes runs in bulk.
-    pub fn next_many<'a>(&mut self, dst: &'a mut [u16]) -> &'a mut [u16] {
+    pub fn next_many<'a>(&mut self, high: u16, dst: &'a mut [u32]) -> &'a mut [u32] {
         if dst.is_empty() {
             return &mut [];
         }
@@ -864,7 +866,7 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
 
             // Emit values
             for i in 0..to_emit {
-                dst[count + i] = start + i as u16;
+                dst[count + i] = util::join(high, start + i as u16);
             }
             count += to_emit;
 
