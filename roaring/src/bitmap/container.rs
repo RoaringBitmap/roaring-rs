@@ -485,7 +485,7 @@ impl Iter<'_> {
     /// Returns the number of values read.
     ///
     /// This can be significantly faster than calling `next()` repeatedly.
-    pub(crate) fn next_many<'a>(&mut self, dst: &'a mut [u32]) -> &'a [u32] {
+    pub(crate) fn next_many<'a>(&mut self, dst: &'a mut [u32]) -> &'a mut [u32] {
         // Use a temporary u16 buffer for the inner iterator
         const BUF_SIZE: usize = 256;
         let mut buf = [0u16; BUF_SIZE];
@@ -506,7 +506,7 @@ impl Iter<'_> {
             count += out_len;
         }
 
-        &dst[..count]
+        &mut dst[..count]
     }
 }
 

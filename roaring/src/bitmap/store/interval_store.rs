@@ -870,9 +870,9 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
     ///
     /// This can be significantly faster than calling `next()` repeatedly
     /// because it processes runs in bulk.
-    pub fn next_many<'a>(&mut self, dst: &'a mut [u16]) -> &'a [u16] {
+    pub fn next_many<'a>(&mut self, dst: &'a mut [u16]) -> &'a mut [u16] {
         if dst.is_empty() {
-            return &[];
+            return &mut [];
         }
 
         let mut count = 0;
@@ -912,7 +912,7 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
             }
         }
 
-        &dst[..count]
+        &mut dst[..count]
     }
 }
 

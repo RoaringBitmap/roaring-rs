@@ -359,9 +359,9 @@ impl Iter<'_> {
     /// assert_eq!(out.len(), 32);
     /// assert_eq!(out[0], 32);
     /// ```
-    pub fn next_many<'a>(&mut self, dst: &'a mut [u32]) -> &'a [u32] {
+    pub fn next_many<'a>(&mut self, dst: &'a mut [u32]) -> &'a mut [u32] {
         if dst.is_empty() {
-            return &[];
+            return &mut [];
         }
 
         let mut count = 0;
@@ -370,7 +370,7 @@ impl Iter<'_> {
         if let Some(ref mut front_iter) = self.front {
             count += front_iter.next_many(&mut dst[count..]).len();
             if count >= dst.len() {
-                return &dst[..count];
+                return &mut dst[..count];
             }
             // Front is exhausted
             self.front = None;
@@ -389,7 +389,7 @@ impl Iter<'_> {
             // If container still has values, save it as new front
             if !out.is_empty() && container_iter.len() > 0 {
                 self.front = Some(container_iter);
-                return &dst[..count];
+                return &mut dst[..count];
             }
         }
 
@@ -404,7 +404,7 @@ impl Iter<'_> {
             }
         }
 
-        &dst[..count]
+        &mut dst[..count]
     }
 }
 
@@ -522,9 +522,9 @@ impl IntoIter {
     /// assert_eq!(out.len(), 32);
     /// assert_eq!(out[0], 32);
     /// ```
-    pub fn next_many<'a>(&mut self, dst: &'a mut [u32]) -> &'a [u32] {
+    pub fn next_many<'a>(&mut self, dst: &'a mut [u32]) -> &'a mut [u32] {
         if dst.is_empty() {
-            return &[];
+            return &mut [];
         }
 
         let mut count = 0;
@@ -533,7 +533,7 @@ impl IntoIter {
         if let Some(ref mut front_iter) = self.front {
             count += front_iter.next_many(&mut dst[count..]).len();
             if count >= dst.len() {
-                return &dst[..count];
+                return &mut dst[..count];
             }
             // Front is exhausted
             self.front = None;
@@ -552,7 +552,7 @@ impl IntoIter {
             // If container still has values, save it as new front
             if !out.is_empty() && container_iter.len() > 0 {
                 self.front = Some(container_iter);
-                return &dst[..count];
+                return &mut dst[..count];
             }
         }
 
@@ -566,7 +566,7 @@ impl IntoIter {
             }
         }
 
-        &dst[..count]
+        &mut dst[..count]
     }
 }
 
