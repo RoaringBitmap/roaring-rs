@@ -836,7 +836,7 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
     }
 
     /// Read multiple values from the iterator into `dst`.
-    /// Returns the number of values read.
+    /// Returns a mutable slice of `dst` that contains the read values.
     ///
     /// This can be significantly faster than calling `next()` repeatedly
     /// because it processes runs in bulk.

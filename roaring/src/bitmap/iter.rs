@@ -334,8 +334,8 @@ impl Iter<'_> {
 
     /// Retrieve the next `dst.len()` values from the iterator and write them into `dst`.
     ///
-    /// Returns the number of values written. This will be less than `dst.len()` only
-    /// if the iterator is exhausted.
+    /// Returns a mutable slice of `dst` that contains the read values. A slice shorter
+    /// than `dst.len()` is returned if the iterator is exhausted.
     ///
     /// This method is significantly faster than calling `next()` repeatedly due to
     /// reduced per-element overhead and better CPU cache utilization.
@@ -497,8 +497,8 @@ impl IntoIter {
 
     /// Retrieve the next `dst.len()` values from the iterator and write them into `dst`.
     ///
-    /// Returns the number of values written. This will be less than `dst.len()` only
-    /// if the iterator is exhausted.
+    /// Returns a mutable slice of `dst` that contains the read values. A slice shorter
+    /// than `dst.len()` is returned if the iterator is exhausted.
     ///
     /// This method is significantly faster than calling `next()` repeatedly due to
     /// reduced per-element overhead and better CPU cache utilization.

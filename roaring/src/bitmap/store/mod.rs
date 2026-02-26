@@ -1040,7 +1040,7 @@ impl Iterator for Iter<'_> {
 
 impl Iter<'_> {
     /// Read multiple values from the iterator into `dst`.
-    /// Returns the number of values read.
+    /// Returns a mutable slice of `dst` that contains the read values.
     ///
     /// This can be significantly faster than calling `next()` repeatedly.
     pub fn next_many<'a>(&mut self, dst: &'a mut [u16]) -> &'a mut [u16] {
