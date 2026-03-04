@@ -400,15 +400,11 @@ impl RoaringBitmap {
     pub fn remove(&mut self, value: u32) -> bool {
         let (key, index) = util::split(value);
         match self.containers.binary_search_by_key(&key, |c| c.key) {
-            Ok(loc) => {
-                if self.containers[loc].remove(index) {
-                    if self.containers[loc].is_empty() {
-                        self.containers.remove(loc);
-                    }
-                    true
-                } else {
-                    false
+            Ok(loc) if self.containers[loc].remove(index) => {
+                if self.containers[loc].is_empty() {
+                    self.containers.remove(loc);
                 }
+                true
             }
             _ => false,
         }
