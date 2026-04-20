@@ -1,5 +1,5 @@
 extern crate roaring;
-use roaring::RoaringTreemap;
+use roaring::{RoaringBitmap, RoaringTreemap};
 
 #[test]
 fn smoke() {
@@ -116,4 +116,45 @@ fn to_array() {
     for i in 3000..5000 {
         assert!(!bitmap.contains(i));
     }
+}
+
+#[test]
+fn optimize_prunes_empty_bitmaps_and_returns_true() {
+    let mut treemap = RoaringTreemap::from_bitmaps([
+        (0, RoaringBitmap::new()),
+        (1, RoaringBitmap::from_iter([1337])),
+        (2, RoaringBitmap::new()),
+    ]);
+
+    assert_eq!(
+        treemap.bitmaps().map(|(partition, _)| partition).collect::<Vec<_>>(),
+        vec![0, 1, 2],
+    );
+
+    assert!(treemap.optimize());
+
+    assert_eq!(treemap.bitmaps().map(|(partition, _)| partition).collect::<Vec<_>>(), vec![1],);
+    assert_eq!(treemap.iter().collect::<Vec<_>>(), vec![(1_u64 << 32) | 1337]);
+}
+
+#[test]
+fn optimize_works_for_single_shard() {
+    // Mirrors `optimize_run` from `tests/lib.rs` to show the treemap forwards
+    // optimization to its child bitmap when there are no empty partitions to prune.
+    let values = 1000_u64..10000;
+    let expected = values.clone().collect::<Vec<_>>();
+
+    let mut treemap = RoaringTreemap::from_iter(values);
+
+    assert!(treemap.optimize());
+    assert_eq!(treemap.iter().collect::<Vec<_>>(), expected);
+    assert!(!treemap.optimize());
+}
+
+#[test]
+fn optimize_returns_false_when_nothing_changes() {
+    let mut treemap = RoaringTreemap::from_iter([1_u64, 5, 9]);
+
+    assert!(!treemap.optimize());
+    assert_eq!(treemap.iter().collect::<Vec<_>>(), vec![1, 5, 9]);
 }
