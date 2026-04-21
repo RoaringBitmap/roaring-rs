@@ -272,6 +272,95 @@ impl RoaringTreemap {
         }
     }
 
+    /// Returns `true` if all values in the range are present in this set.
+    ///
+    /// An empty range is always contained.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let mut rb = RoaringTreemap::new();
+    /// // An empty range is always contained
+    /// assert!(rb.contains_range(7..7));
+    ///
+    /// rb.insert_range(1..0x1_0000_0000);
+    /// assert!(rb.contains_range(1..0x1_0000_0000));
+    /// assert!(rb.contains_range(2..0x1_0000_0000));
+    /// // 0 is not contained
+    /// assert!(!rb.contains_range(0..2));
+    /// // 0x1_0000_0000 is not contained
+    /// assert!(!rb.contains_range(1..=0x1_0000_0000));
+    /// ```
+    pub fn contains_range<R>(&self, range: R) -> bool
+    where
+        R: RangeBounds<u64>,
+    {
+        let (start, end) = match util::convert_range_to_inclusive(range) {
+            Some(range) => (*range.start(), *range.end()),
+            None => return true,
+        };
+        let (start_hi, start_lo) = util::split(start);
+        let (end_hi, end_lo) = util::split(end);
+
+        let mut expected_key = start_hi;
+        for (&key, bitmap) in self.map.range(start_hi..=end_hi) {
+            if key != expected_key {
+                return false;
+            }
+            let lo_start = if key == start_hi { start_lo } else { 0 };
+            let lo_end = if key == end_hi { end_lo } else { u32::MAX };
+            if !bitmap.contains_range(lo_start..=lo_end) {
+                return false;
+            }
+            match key.checked_add(1) {
+                Some(k) => expected_key = k,
+                None => return true,
+            }
+        }
+        expected_key > end_hi
+    }
+
+    /// Returns the number of elements in this set which are in the passed range.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let mut rb = RoaringTreemap::new();
+    /// rb.insert_range(0x1_0000_0000..0x4_0000_0000);
+    /// rb.insert(0x5_0000_0001);
+    /// rb.insert(0x5_0000_0005);
+    /// rb.insert(u64::MAX);
+    ///
+    /// assert_eq!(rb.range_cardinality(0..0x1_0000_0000), 0);
+    /// assert_eq!(rb.range_cardinality(0x1_0000_0000..0x4_0000_0000), 0x3_0000_0000);
+    /// assert_eq!(rb.range_cardinality(0x5_0000_0000..0x6_0000_0000), 2);
+    /// assert_eq!(rb.range_cardinality(0x1_0000_0000..0x1_0000_0000), 0);
+    /// assert_eq!(rb.range_cardinality(0x5_0000_0000..=u64::MAX), 3);
+    /// ```
+    pub fn range_cardinality<R>(&self, range: R) -> u64
+    where
+        R: RangeBounds<u64>,
+    {
+        let (start, end) = match util::convert_range_to_inclusive(range) {
+            Some(range) => (*range.start(), *range.end()),
+            None => return 0,
+        };
+        let (start_hi, start_lo) = util::split(start);
+        let (end_hi, end_lo) = util::split(end);
+
+        let mut cardinality = 0u64;
+        for (&key, bitmap) in self.map.range(start_hi..=end_hi) {
+            let lo_start = if key == start_hi { start_lo } else { 0 };
+            let lo_end = if key == end_hi { end_lo } else { u32::MAX };
+            cardinality += bitmap.range_cardinality(lo_start..=lo_end);
+        }
+        cardinality
+    }
+
     /// Clears all integers in this set.
     ///
     /// # Examples
