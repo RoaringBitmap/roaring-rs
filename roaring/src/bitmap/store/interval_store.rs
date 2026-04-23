@@ -862,23 +862,23 @@ impl<I: SliceIterator<Interval>> Iterator for RunIter<I> {
             self.backward_offset = 0;
             return None;
         }
-        if let Some(skip) = n.checked_sub(1) {
-            let mut to_skip = skip as u64;
-            loop {
-                let full_first_interval_len = self.intervals.as_slice().first()?.run_len();
-                let consumed_len = u64::from(self.forward_offset)
-                    + if self.intervals.as_slice().len() == 1 {
-                        u64::from(self.backward_offset)
-                    } else {
-                        0
-                    };
-                let to_remove = (full_first_interval_len - consumed_len).min(to_skip);
-                to_skip -= to_remove;
-                self.forward_offset += to_remove as u16;
+        let mut to_skip = n as u64;
+        loop {
+            let full_first_interval_len = self.intervals.as_slice().first()?.run_len();
+            let consumed_len = u64::from(self.forward_offset)
+                + if self.intervals.as_slice().len() == 1 {
+                    u64::from(self.backward_offset)
+                } else {
+                    0
+                };
+            let to_remove = (full_first_interval_len - consumed_len).min(to_skip);
+            to_skip -= to_remove;
+            self.forward_offset += to_remove as u16;
+            if consumed_len + to_remove >= full_first_interval_len {
                 self.move_next();
-                if to_skip == 0 {
-                    break;
-                }
+            }
+            if to_skip == 0 {
+                break;
             }
         }
         self.next()
