@@ -352,13 +352,14 @@ impl RoaringTreemap {
         let (start_hi, start_lo) = util::split(start);
         let (end_hi, end_lo) = util::split(end);
 
-        let mut cardinality = 0u64;
-        for (&key, bitmap) in self.map.range(start_hi..=end_hi) {
-            let lo_start = if key == start_hi { start_lo } else { 0 };
-            let lo_end = if key == end_hi { end_lo } else { u32::MAX };
-            cardinality += bitmap.range_cardinality(lo_start..=lo_end);
-        }
-        cardinality
+        self.map
+            .range(start_hi..=end_hi)
+            .map(|(&key, bitmap)| {
+                let lo_start = if key == start_hi { start_lo } else { 0 };
+                let lo_end = if key == end_hi { end_lo } else { u32::MAX };
+                bitmap.range_cardinality(lo_start..=lo_end)
+            })
+            .sum::<u64>()
     }
 
     /// Clears all integers in this set.
