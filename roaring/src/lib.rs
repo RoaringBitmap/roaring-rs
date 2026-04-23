@@ -33,6 +33,11 @@ pub mod treemap;
 pub use bitmap::RoaringBitmap;
 pub use treemap::RoaringTreemap;
 
+#[cfg(feature = "rkyv")]
+pub use bitmap::ArchivedRoaringBitmap;
+#[cfg(feature = "rkyv")]
+pub use treemap::ArchivedRoaringTreemap;
+
 /// An error type that is returned when a `try_push` in a bitmap did not succeed.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct IntegerTooSmall;

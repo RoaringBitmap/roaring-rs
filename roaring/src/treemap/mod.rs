@@ -12,8 +12,12 @@ mod cmp;
 mod inherent;
 mod iter;
 mod ops;
+
+#[cfg(feature = "rkyv")]
+mod rkyv;
 #[cfg(feature = "serde")]
 mod serde;
+
 #[cfg(feature = "std")]
 mod serialization;
 
@@ -37,6 +41,7 @@ pub use self::iter::{BitmapIter, IntoIter, Iter};
 /// println!("total bits set to true: {}", rb.len());
 /// ```
 #[derive(PartialEq, Eq)]
+#[cfg_attr(feature = "rkyv", derive(::rkyv::Archive, ::rkyv::Serialize, ::rkyv::Deserialize))]
 pub struct RoaringTreemap {
     map: BTreeMap<u32, RoaringBitmap>,
 }

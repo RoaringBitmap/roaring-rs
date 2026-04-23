@@ -21,8 +21,9 @@ use super::Interval;
 pub(crate) const ARRAY_ELEMENT_BYTES: usize = 2;
 
 #[derive(Clone, Eq, PartialEq)]
+#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
 pub(crate) struct ArrayStore {
-    vec: Vec<u16>,
+    pub(crate) vec: Vec<u16>,
 }
 
 /// Return the first contiguous range of elements in a sorted slice.

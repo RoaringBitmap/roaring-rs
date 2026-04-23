@@ -8,7 +8,8 @@ use core::{cmp::Ordering, ops::ControlFlow};
 use super::{ArrayStore, BitmapStore};
 
 #[derive(PartialEq, Eq, Clone, Debug)]
-pub(crate) struct IntervalStore(Vec<Interval>);
+#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
+pub(crate) struct IntervalStore(pub(crate) Vec<Interval>);
 
 pub(crate) const RUN_NUM_BYTES: usize = 2;
 pub(crate) const RUN_ELEMENT_BYTES: usize = 4;
@@ -897,9 +898,10 @@ impl<I: SliceIterator<Interval>> ExactSizeIterator for RunIter<I> {}
 
 /// This interval is inclusive to end.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug)]
+#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
 pub(crate) struct Interval {
-    start: u16,
-    end: u16,
+    pub(crate) start: u16,
+    pub(crate) end: u16,
 }
 
 impl From<RangeInclusive<u16>> for Interval {
