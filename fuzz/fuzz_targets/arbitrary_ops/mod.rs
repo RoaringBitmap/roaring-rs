@@ -272,7 +272,7 @@ impl MutableBitmapOperation {
                 if should_push {
                     x.add(n);
                 }
-                assert_eq!(should_push, y.push(n));
+                assert_eq!(should_push, y.try_push(n).is_ok());
             }
             MutableBitmapOperation::Remove(Num(n)) => {
                 let expected = x.remove_checked(n);
