@@ -20,6 +20,7 @@ license = "MIT OR Apache-2.0"
 bytemuck = { workspace = true, optional = true }
 byteorder = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
+rkyv = { workspace = true, optional = true }
 
 [features]
 default = ["std"]
@@ -31,3 +32,4 @@ std = ["dep:bytemuck", "dep:byteorder"]
 proptest = { workspace = true }
 serde_json = { workspace = true }
 postcard = { workspace = true }
+rkyv = { workspace = true, features = ["bytecheck"] }

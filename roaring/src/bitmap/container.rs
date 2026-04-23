@@ -14,6 +14,7 @@ pub const RUN_MAX_SIZE: u64 = 2048;
 use alloc::vec::Vec;
 
 #[derive(PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize))]
 pub(crate) struct Container {
     pub key: u16,
     pub store: Store,

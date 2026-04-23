@@ -15,8 +15,12 @@ mod iter;
 mod ops;
 #[cfg(feature = "std")]
 mod ops_with_serialized;
+
+#[cfg(feature = "rkyv")]
+mod rkyv;
 #[cfg(feature = "serde")]
 mod serde;
+
 #[cfg(feature = "std")]
 mod serialization;
 
@@ -45,6 +49,7 @@ use alloc::vec::Vec;
 /// println!("total bits set to true: {}", rb.len());
 /// ```
 #[derive(PartialEq, Eq)]
+#[cfg_attr(feature = "rkyv", derive(::rkyv::Archive, ::rkyv::Serialize, ::rkyv::Deserialize))]
 pub struct RoaringBitmap {
     containers: Vec<container::Container>,
 }
