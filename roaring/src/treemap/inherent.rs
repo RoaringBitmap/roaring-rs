@@ -343,6 +343,35 @@ impl RoaringTreemap {
         self.map.values().map(RoaringBitmap::len).sum()
     }
 
+    /// Optimizes the underlying bitmap storage and removes empty partitions.
+    ///
+    /// Returns true if the treemap storage was modified, false if not.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let mut rb = RoaringTreemap::from_iter(1000..100000);
+    /// rb.optimize();
+    /// ```
+    pub fn optimize(&mut self) -> bool {
+        let mut changed = false;
+
+        self.map.retain(|_, bitmap| {
+            changed |= bitmap.optimize();
+
+            if bitmap.is_empty() {
+                changed = true;
+                false
+            } else {
+                true
+            }
+        });
+
+        changed
+    }
+
     /// Returns the minimum value in the set (if the set is non-empty).
     ///
     /// # Examples
@@ -456,5 +485,43 @@ impl Clone for RoaringTreemap {
 
     fn clone_from(&mut self, other: &Self) {
         self.map.clone_from(&other.map);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{RoaringBitmap, RoaringTreemap};
+    use alloc::vec::Vec;
+    use proptest::collection::btree_map;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn optimize_preserves_values(mut treemap in RoaringTreemap::arbitrary()) {
+            let before = treemap.iter().collect::<Vec<_>>();
+
+            treemap.optimize();
+
+            let after = treemap.iter().collect::<Vec<_>>();
+            prop_assert_eq!(before, after);
+        }
+
+        #[test]
+        fn optimize_prunes_empty_partitions_from_bitmaps(
+            bitmaps in btree_map(0u32..=16, RoaringBitmap::arbitrary(), 0usize..=16)
+        ) {
+            let mut treemap = RoaringTreemap::from_bitmaps(bitmaps);
+            let before = treemap.iter().collect::<Vec<_>>();
+            let had_empty_partition = treemap.bitmaps().any(|(_, bitmap)| bitmap.is_empty());
+
+            let changed = treemap.optimize();
+
+            prop_assert_eq!(treemap.iter().collect::<Vec<_>>(), before);
+            prop_assert!(treemap.bitmaps().all(|(_, bitmap)| !bitmap.is_empty()));
+
+            if had_empty_partition {
+                prop_assert!(changed);
+            }
+        }
     }
 }
