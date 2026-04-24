@@ -20,6 +20,7 @@ pub(crate) use interval_store::{IntervalStore, RunIterBorrowed, RunIterOwned};
 pub(crate) use interval_store::{RUN_ELEMENT_BYTES, RUN_NUM_BYTES};
 
 use crate::bitmap::container::ARRAY_LIMIT;
+use crate::bitmap::util;
 
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
@@ -1034,6 +1035,45 @@ impl Iterator for Iter<'_> {
             Iter::BitmapOwned(inner) => inner.nth(n),
             Iter::RunOwned(inner) => inner.nth(n),
             Iter::RunBorrowed(inner) => inner.nth(n),
+        }
+    }
+}
+
+impl Iter<'_> {
+    /// Read multiple values from the iterator into `dst`.
+    /// Returns a mutable slice of `dst` that contains the read values.
+    ///
+    /// This can be significantly faster than calling `next()` repeatedly.
+    pub fn next_many<'a>(&mut self, high: u16, dst: &'a mut [u32]) -> &'a mut [u32] {
+        match self {
+            Iter::Array(inner) => {
+                let remaining = inner.as_slice();
+                let n = remaining.len().min(dst.len());
+                dst[..n]
+                    .iter_mut()
+                    .zip(&remaining[..n])
+                    .for_each(|(o, low)| *o = util::join(high, *low));
+                if n > 0 {
+                    _ = inner.nth(n - 1);
+                }
+                &mut dst[..n]
+            }
+            Iter::Vec(inner) => {
+                let remaining = inner.as_slice();
+                let n = remaining.len().min(dst.len());
+                dst[..n]
+                    .iter_mut()
+                    .zip(&remaining[..n])
+                    .for_each(|(o, low)| *o = util::join(high, *low));
+                if n > 0 {
+                    _ = inner.nth(n - 1);
+                }
+                &mut dst[..n]
+            }
+            Iter::BitmapBorrowed(inner) => inner.next_many(high, dst),
+            Iter::BitmapOwned(inner) => inner.next_many(high, dst),
+            Iter::RunBorrowed(inner) => inner.next_many(high, dst),
+            Iter::RunOwned(inner) => inner.next_many(high, dst),
         }
     }
 }
