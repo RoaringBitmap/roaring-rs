@@ -862,23 +862,23 @@ impl<I: SliceIterator<Interval>> Iterator for RunIter<I> {
             self.backward_offset = 0;
             return None;
         }
-        if let Some(skip) = n.checked_sub(1) {
-            let mut to_skip = skip as u64;
-            loop {
-                let full_first_interval_len = self.intervals.as_slice().first()?.run_len();
-                let consumed_len = u64::from(self.forward_offset)
-                    + if self.intervals.as_slice().len() == 1 {
-                        u64::from(self.backward_offset)
-                    } else {
-                        0
-                    };
-                let to_remove = (full_first_interval_len - consumed_len).min(to_skip);
-                to_skip -= to_remove;
-                self.forward_offset += to_remove as u16;
+        let mut to_skip = n as u64;
+        loop {
+            let full_first_interval_len = self.intervals.as_slice().first()?.run_len();
+            let consumed_len = u64::from(self.forward_offset)
+                + if self.intervals.as_slice().len() == 1 {
+                    u64::from(self.backward_offset)
+                } else {
+                    0
+                };
+            let to_remove = (full_first_interval_len - consumed_len).min(to_skip);
+            to_skip -= to_remove;
+            self.forward_offset += to_remove as u16;
+            if consumed_len + to_remove >= full_first_interval_len {
                 self.move_next();
-                if to_skip == 0 {
-                    break;
-                }
+            }
+            if to_skip == 0 {
+                break;
             }
         }
         self.next()
@@ -2475,6 +2475,27 @@ mod tests {
 
         let mut iter = interval_store.iter();
         assert_eq!(iter.nth(u16::MAX as usize), None);
+    }
+
+    // Regression test for https://github.com/RoaringBitmap/roaring-rs/issues/352
+    #[test]
+    #[allow(clippy::iter_nth_zero)]
+    fn iter_nth_single_element_intervals() {
+        // A RunStore made of single-element intervals {0,0}, {2,2}, ..., {246,246}.
+        // nth(123) must return 246 (index 123 in the sequence 0, 2, 4, ...).
+        // The buggy code returned 244 (index 122).
+        let intervals: alloc::vec::Vec<_> =
+            (0u16..=246).step_by(2).map(|v| Interval::new_unchecked(v, v)).collect();
+        let interval_store = IntervalStore(intervals);
+
+        let mut iter = interval_store.iter();
+        assert_eq!(iter.nth(0), Some(0));
+
+        let mut iter = interval_store.iter();
+        assert_eq!(iter.nth(1), Some(2));
+
+        let mut iter = interval_store.iter();
+        assert_eq!(iter.nth(123), Some(246));
     }
 
     #[test]
