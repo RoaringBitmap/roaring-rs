@@ -5,6 +5,7 @@ mod visitor;
 use crate::bitmap::store::array_store::visitor::{CardinalityCounter, VecWriter};
 use core::cmp::Ordering;
 use core::cmp::Ordering::*;
+use core::convert::identity;
 use core::fmt::{Display, Formatter};
 use core::mem::size_of;
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitXor, RangeInclusive, Sub, SubAssign};
@@ -126,7 +127,11 @@ impl ArrayStore {
 
     #[inline]
     pub fn insert(&mut self, index: u16) -> bool {
-        self.vec.binary_search(&index).map_err(|loc| self.vec.insert(loc, index)).is_err()
+        #[cfg(feature = "simd")]
+        let result = vector::quad_search(&self.vec, index);
+        #[cfg(not(feature = "simd"))]
+        let result = self.vec.binary_search(&index);
+        result.map_err(|loc| self.vec.insert(loc, index)).is_err()
     }
 
     pub fn insert_range(&mut self, range: RangeInclusive<u16>) -> u64 {
@@ -134,12 +139,20 @@ impl ArrayStore {
         let end = *range.end();
 
         // Figure out the starting/ending position in the vec.
-        let pos_start = self.vec.binary_search(&start).unwrap_or_else(|x| x);
-        let pos_end = pos_start
-            + match self.vec[pos_start..].binary_search(&end) {
-                Ok(x) => x + 1,
-                Err(x) => x,
-            };
+        #[cfg(feature = "simd")]
+        let pos_start = vector::quad_search(&self.vec, start).unwrap_or_else(identity);
+        #[cfg(not(feature = "simd"))]
+        let pos_start = self.vec.binary_search(&start).unwrap_or_else(identity);
+
+        #[cfg(feature = "simd")]
+        let pos_end_result = vector::quad_search(&self.vec[pos_start..], end);
+        #[cfg(not(feature = "simd"))]
+        let pos_end_result = self.vec[pos_start..].binary_search(&end);
+
+        let pos_end = match pos_end_result {
+            Ok(x) => x + pos_start + 1,
+            Err(x) => x + pos_start,
+        };
 
         // Overwrite the range in the middle - there's no need to take
         // into account any existing elements between start and end, as
@@ -175,7 +188,12 @@ impl ArrayStore {
     }
 
     pub fn remove(&mut self, index: u16) -> bool {
-        self.vec.binary_search(&index).map(|loc| self.vec.remove(loc)).is_ok()
+        #[cfg(feature = "simd")]
+        let result = vector::quad_search(&self.vec, index);
+        #[cfg(not(feature = "simd"))]
+        let result = self.vec.binary_search(&index);
+
+        result.map(|loc| self.vec.remove(loc)).is_ok()
     }
 
     pub fn remove_range(&mut self, range: RangeInclusive<u16>) -> u64 {
@@ -183,12 +201,21 @@ impl ArrayStore {
         let end = *range.end();
 
         // Figure out the starting/ending position in the vec.
-        let pos_start = self.vec.binary_search(&start).unwrap_or_else(|x| x);
-        let pos_end = pos_start
-            + match self.vec[pos_start..].binary_search(&end) {
-                Ok(x) => x + 1,
-                Err(x) => x,
-            };
+        #[cfg(feature = "simd")]
+        let pos_start = vector::quad_search(&self.vec, start).unwrap_or_else(identity);
+        #[cfg(not(feature = "simd"))]
+        let pos_start = self.vec.binary_search(&start).unwrap_or_else(identity);
+
+        #[cfg(feature = "simd")]
+        let pos_end_result = vector::quad_search(&self.vec[pos_start..], end);
+        #[cfg(not(feature = "simd"))]
+        let pos_end_result = self.vec[pos_start..].binary_search(&end);
+
+        let pos_end = match pos_end_result {
+            Ok(x) => x + pos_start + 1,
+            Err(x) => x + pos_start,
+        };
+
         self.vec.drain(pos_start..pos_end);
         (pos_end - pos_start) as u64
     }
@@ -203,7 +230,10 @@ impl ArrayStore {
     }
 
     pub fn contains(&self, index: u16) -> bool {
-        self.vec.binary_search(&index).is_ok()
+        #[cfg(feature = "simd")]
+        return vector::quad_contains(&self.vec, index);
+        #[cfg(not(feature = "simd"))]
+        return self.vec.binary_search(&index).is_ok();
     }
 
     pub fn contains_range(&self, range: RangeInclusive<u16>) -> bool {
@@ -213,13 +243,20 @@ impl ArrayStore {
         if self.vec.len() < range_count {
             return false;
         }
-        let start_i = match self.vec.binary_search(&start) {
+
+        #[cfg(feature = "simd")]
+        let result = vector::quad_search(&self.vec, start);
+        #[cfg(not(feature = "simd"))]
+        let result = self.vec.binary_search(&start);
+
+        let start_i = match result {
             Ok(i) => i,
             Err(_) => return false,
         };
 
-        // If there are `range_count` items, last item in the next range_count should be the
-        // expected end value, because this vec is sorted and has no duplicates
+        // If there are `range_count` items, last item in the next range_count
+        // should be the expected end value, because this vec is sorted and
+        // has no duplicates
         self.vec.get(start_i + range_count - 1) == Some(&end)
     }
 
@@ -301,7 +338,12 @@ impl ArrayStore {
     }
 
     pub fn rank(&self, index: u16) -> u64 {
-        match self.vec.binary_search(&index) {
+        #[cfg(feature = "simd")]
+        let result = vector::quad_search(&self.vec, index);
+        #[cfg(not(feature = "simd"))]
+        let result = self.vec.binary_search(&index);
+
+        match result {
             Ok(i) => i as u64 + 1,
             Err(i) => i as u64,
         }
