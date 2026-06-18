@@ -150,3 +150,11 @@ fn optimize_run() {
     // Calling optimize a second time should return false as no changes will be made
     assert!(!bitmap.optimize());
 }
+
+#[test]
+fn statistics_full_run() {
+    let stats = RoaringBitmap::full().statistics();
+    let expected: u64 = 1 << 32;
+    assert_eq!(stats.cardinality, expected);
+    assert_eq!(u64::from(stats.n_values_run_containers), expected);
+}
