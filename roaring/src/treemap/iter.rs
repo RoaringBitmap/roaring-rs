@@ -1,4 +1,5 @@
 use alloc::collections::{btree_map, BTreeMap};
+use core::cmp::Ordering;
 use core::iter;
 use core::ops::Add;
 
@@ -147,24 +148,39 @@ impl Iter<'_> {
     pub fn advance_to(&mut self, n: u64) {
         let (key, index) = util::split(n);
 
+        if let Some(ref mut front) = self.front {
+            match front.hi.cmp(&key) {
+                Ordering::Less => {}
+                Ordering::Equal => {
+                    front.advance_to(index);
+                    return;
+                }
+                Ordering::Greater => return,
+            }
+            self.front = None;
+        }
+
         self.outer.advance_to(key);
 
-        if self.front.is_none() {
-            let Some(next) = self.outer.next() else {
-                // if the current front iterator is empty or not yet initialized,
-                // but the outer bitmap iterator is empty, then consume the back
-                // iterator from the front if it is not also exhausted
-                if let Some(ref mut back) = self.back {
-                    back.advance_to(index);
+        let Some(next) = self.outer.next() else {
+            // if the current front iterator is empty or not yet initialized,
+            // but the outer bitmap iterator is empty, then consume the back
+            // iterator from the front if it is not also exhausted
+            if let Some(ref mut back) = self.back {
+                match back.hi.cmp(&key) {
+                    Ordering::Less => self.back = None,
+                    Ordering::Equal => back.advance_to(index),
+                    Ordering::Greater => {}
                 }
-                return;
-            };
-            self.front = Some(to64iter(next));
-        }
+            }
+            return;
+        };
 
-        if let Some(ref mut front) = self.front {
+        let mut front = to64iter(next);
+        if front.hi == key {
             front.advance_to(index);
         }
+        self.front = Some(front);
     }
 
     /// Advance the back of the iterator to the first position where the item has a value <= `n`
@@ -185,24 +201,39 @@ impl Iter<'_> {
     pub fn advance_back_to(&mut self, n: u64) {
         let (key, index) = util::split(n);
 
+        if let Some(ref mut back) = self.back {
+            match back.hi.cmp(&key) {
+                Ordering::Less => return,
+                Ordering::Equal => {
+                    back.advance_back_to(index);
+                    return;
+                }
+                Ordering::Greater => {}
+            }
+            self.back = None;
+        }
+
         self.outer.advance_back_to(key);
 
-        if self.back.is_none() {
-            let Some(next_back) = self.outer.next_back() else {
-                // if the current back iterator is empty or not yet initialized,
-                // but the outer bitmap iterator is empty, then consume the front
-                // iterator from the back if it is not also exhausted
-                if let Some(ref mut front) = self.front {
-                    front.advance_back_to(index);
+        let Some(next_back) = self.outer.next_back() else {
+            // if the current back iterator is empty or not yet initialized,
+            // but the outer bitmap iterator is empty, then consume the front
+            // iterator from the back if it is not also exhausted
+            if let Some(ref mut front) = self.front {
+                match front.hi.cmp(&key) {
+                    Ordering::Less => {}
+                    Ordering::Equal => front.advance_back_to(index),
+                    Ordering::Greater => self.front = None,
                 }
-                return;
-            };
-            self.back = Some(to64iter(next_back));
-        }
+            }
+            return;
+        };
 
-        if let Some(ref mut back) = self.back {
+        let mut back = to64iter(next_back);
+        if back.hi == key {
             back.advance_back_to(index);
         }
+        self.back = Some(back);
     }
 }
 
