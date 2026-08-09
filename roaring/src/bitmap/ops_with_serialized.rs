@@ -1,7 +1,6 @@
 use bytemuck::cast_slice_mut;
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::convert::Infallible;
-
 use std::error::Error;
 use std::io::{self, SeekFrom};
 use std::mem;
@@ -359,17 +358,7 @@ impl RoaringBitmap {
         });
 
         if has_offsets {
-            let mut offsets = vec![0; size];
-            reader.read_exact(cast_slice_mut(&mut offsets))?;
-            offsets.iter_mut().for_each(|offset| *offset = u32::from_le(*offset));
-            return self.union_with_serialized_impl_with_offsets(
-                reader,
-                a,
-                b,
-                &descriptions,
-                &offsets,
-                run_container_bitmap.as_deref(),
-            );
+            reader.seek(SeekFrom::Current(size as i64 * 4))?;
         }
 
         let mut containers = Vec::new();
@@ -409,80 +398,6 @@ impl RoaringBitmap {
             } else {
                 let mut values = Box::new([0; BITMAP_LENGTH]);
                 reader.read_exact(cast_slice_mut(&mut values[..]))?;
-                values.iter_mut().for_each(|n| *n = u64::from_le(*n));
-                let bitmap = b(cardinality, values)
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-                Store::Bitmap(bitmap)
-            };
-
-            let mut right_container = Container { key, store };
-            if left_containers.peek().is_some_and(|container| container.key == key) {
-                right_container |= left_containers.next().unwrap();
-            }
-            if !right_container.is_empty() {
-                containers.push(right_container);
-            }
-        }
-
-        containers.extend(left_containers.cloned());
-        Ok(RoaringBitmap { containers })
-    }
-
-    fn union_with_serialized_impl_with_offsets<R, A, AErr, B, BErr>(
-        &self,
-        mut reader: R,
-        a: A,
-        b: B,
-        descriptions: &[[u16; 2]],
-        offsets: &[u32],
-        run_container_bitmap: Option<&[u8]>,
-    ) -> io::Result<RoaringBitmap>
-    where
-        R: io::Read + io::Seek,
-        A: Fn(Vec<u16>) -> Result<ArrayStore, AErr>,
-        AErr: Error + Send + Sync + 'static,
-        B: Fn(u64, Box<[u64; 1024]>) -> Result<BitmapStore, BErr>,
-        BErr: Error + Send + Sync + 'static,
-    {
-        let mut containers = Vec::new();
-        let mut left_containers = self.containers.iter().peekable();
-        for (i, &[key, len_minus_one]) in descriptions.iter().enumerate() {
-            while left_containers.peek().is_some_and(|container| container.key < key) {
-                containers.push(left_containers.next().unwrap().clone());
-            }
-
-            reader.seek(SeekFrom::Start(offsets[i] as u64))?;
-
-            let cardinality = u64::from(len_minus_one) + 1;
-            let is_run_container =
-                run_container_bitmap.as_ref().is_some_and(|bm| bm[i / 8] & (1 << (i % 8)) != 0);
-
-            let store = if is_run_container {
-                let runs = reader.read_u16::<LittleEndian>().unwrap();
-                let mut intervals = vec![[0, 0]; runs as usize];
-                reader.read_exact(cast_slice_mut(&mut intervals)).unwrap();
-                intervals.iter_mut().for_each(|[s, len]| {
-                    *s = u16::from_le(*s);
-                    *len = u16::from_le(*len);
-                });
-
-                let cardinality = intervals.iter().map(|[_, len]| *len as usize).sum();
-                let mut store = Store::with_capacity(cardinality);
-                intervals.into_iter().try_for_each(|[s, len]| -> Result<(), io::ErrorKind> {
-                    let end = s.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
-                    store.insert_range(RangeInclusive::new(s, end));
-                    Ok(())
-                })?;
-                store
-            } else if cardinality <= ARRAY_LIMIT {
-                let mut values = vec![0; cardinality as usize];
-                reader.read_exact(cast_slice_mut(&mut values)).unwrap();
-                values.iter_mut().for_each(|n| *n = u16::from_le(*n));
-                let array = a(values).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-                Store::Array(array)
-            } else {
-                let mut values = Box::new([0; BITMAP_LENGTH]);
-                reader.read_exact(cast_slice_mut(&mut values[..])).unwrap();
                 values.iter_mut().for_each(|n| *n = u64::from_le(*n));
                 let bitmap = b(cardinality, values)
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
