@@ -361,7 +361,7 @@ impl RoaringBitmap {
             reader.seek(SeekFrom::Current(size as i64 * 4))?;
         }
 
-        let mut containers = Vec::new();
+        let mut containers = Vec::with_capacity(self.containers.len() + descriptions.len());
         let mut left_containers = self.containers.iter().peekable();
         for (i, &[key, len_minus_one]) in descriptions.iter().enumerate() {
             while left_containers.peek().is_some_and(|container| container.key < key) {
