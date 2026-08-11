@@ -102,11 +102,10 @@ impl ArrayStore {
 
         let mut vec = Vec::with_capacity(bits_set as usize);
 
-        let chunks = bytes.chunks_exact(size_of::<Word>());
-        let remainder = chunks.remainder();
-        for (index, chunk) in chunks.enumerate() {
+        let (chunks, remainder) = bytes.as_chunks::<{ size_of::<Word>() }>();
+        for (index, chunk) in chunks.iter().enumerate() {
             let bit_index = (byte_offset + index * size_of::<Word>()) * 8;
-            let mut word = Word::from_le_bytes(chunk.try_into().unwrap());
+            let mut word = Word::from_le_bytes(*chunk);
 
             while word != 0 {
                 vec.push((word.trailing_zeros() + bit_index as u32) as u16);
