@@ -43,6 +43,9 @@ impl fmt::Display for IntegerTooSmall {
     }
 }
 
+#[cfg(feature = "std")]
+impl std::error::Error for IntegerTooSmall {}
+
 /// An error type that is returned when an iterator isn't sorted.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NonSortedIntegers {
