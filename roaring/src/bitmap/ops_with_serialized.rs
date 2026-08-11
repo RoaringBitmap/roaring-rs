@@ -236,9 +236,9 @@ impl RoaringBitmap {
                 run_container_bitmap.as_ref().is_some_and(|bm| bm[i / 8] & (1 << (i % 8)) != 0);
 
             let store = if is_run_container {
-                let runs = reader.read_u16::<LittleEndian>().unwrap();
+                let runs = reader.read_u16::<LittleEndian>()?;
                 let mut intervals = vec![[0, 0]; runs as usize];
-                reader.read_exact(cast_slice_mut(&mut intervals)).unwrap();
+                reader.read_exact(cast_slice_mut(&mut intervals))?;
                 intervals.iter_mut().for_each(|[s, len]| {
                     *s = u16::from_le(*s);
                     *len = u16::from_le(*len);
@@ -254,13 +254,13 @@ impl RoaringBitmap {
                 store
             } else if cardinality <= ARRAY_LIMIT {
                 let mut values = vec![0; cardinality as usize];
-                reader.read_exact(cast_slice_mut(&mut values)).unwrap();
+                reader.read_exact(cast_slice_mut(&mut values))?;
                 values.iter_mut().for_each(|n| *n = u16::from_le(*n));
                 let array = a(values).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
                 Store::Array(array)
             } else {
                 let mut values = Box::new([0; BITMAP_LENGTH]);
-                reader.read_exact(cast_slice_mut(&mut values[..])).unwrap();
+                reader.read_exact(cast_slice_mut(&mut values[..]))?;
                 values.iter_mut().for_each(|n| *n = u64::from_le(*n));
                 let bitmap = b(cardinality, values)
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
