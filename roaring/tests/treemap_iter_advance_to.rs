@@ -34,6 +34,31 @@ fn to_next_bitmap() {
 }
 
 #[test]
+fn advance_to_later_bitmap_after_iteration_started() {
+    let later_bitmap = 1u64 << 32;
+    let bm = RoaringTreemap::from([1, 3, later_bitmap]);
+    let mut i = bm.iter();
+
+    assert_eq!(i.next(), Some(1));
+    i.advance_to(later_bitmap);
+
+    assert_eq!(i.next(), Some(later_bitmap));
+    assert_eq!(i.next(), None);
+}
+
+#[test]
+fn advance_to_missing_bitmap() {
+    let later_bitmap = 1u64 << 32;
+    let bm = RoaringTreemap::from([later_bitmap]);
+    let mut i = bm.iter();
+
+    i.advance_to(3);
+
+    assert_eq!(i.next(), Some(later_bitmap));
+    assert_eq!(i.next(), None);
+}
+
+#[test]
 fn iter_back_basic() {
     let bm = RoaringTreemap::from([1, 2, 3, 4, 11, 12, 13, 14]);
     let mut i = bm.iter();
@@ -44,6 +69,31 @@ fn iter_back_basic() {
     assert_eq!(i.next_back(), Some(3));
 
     assert_eq!(i.next(), None);
+    assert_eq!(i.next_back(), None);
+}
+
+#[test]
+fn advance_back_to_earlier_bitmap_after_iteration_started() {
+    let later_bitmap = 1u64 << 32;
+    let bm = RoaringTreemap::from([1, later_bitmap, later_bitmap + 2]);
+    let mut i = bm.iter();
+
+    assert_eq!(i.next_back(), Some(later_bitmap + 2));
+    i.advance_back_to(1);
+
+    assert_eq!(i.next_back(), Some(1));
+    assert_eq!(i.next_back(), None);
+}
+
+#[test]
+fn advance_back_to_missing_bitmap() {
+    let later_bitmap = 1u64 << 32;
+    let bm = RoaringTreemap::from([3]);
+    let mut i = bm.iter();
+
+    i.advance_back_to(later_bitmap);
+
+    assert_eq!(i.next_back(), Some(3));
     assert_eq!(i.next_back(), None);
 }
 

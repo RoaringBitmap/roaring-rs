@@ -66,10 +66,9 @@ impl Store {
         // using u64s than for each byte
         let bits_set = {
             let mut bits_set = 0;
-            let chunks = bytes.chunks_exact(mem::size_of::<u64>());
-            let remainder = chunks.remainder();
+            let (chunks, remainder) = bytes.as_chunks::<{ mem::size_of::<u64>() }>();
             for chunk in chunks {
-                let chunk = u64::from_ne_bytes(chunk.try_into().unwrap());
+                let chunk = u64::from_ne_bytes(*chunk);
                 bits_set += u64::from(chunk.count_ones());
             }
             for byte in remainder {
