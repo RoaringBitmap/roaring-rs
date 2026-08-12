@@ -261,7 +261,10 @@ impl IntervalStore {
             }
         }
         if let Some(last_interval) = last_interval {
-            if last_interval.run_len() < amount {
+            // `<=`, not `<`: when the amount left equals this interval's run
+            // length the whole interval is consumed and must be dropped, not
+            // shrunk to `start = end + 1` (an inverted interval) (#359).
+            if last_interval.run_len() <= amount {
                 remove_to += 1;
             } else {
                 last_interval.start += amount as u16;
@@ -285,7 +288,11 @@ impl IntervalStore {
             }
         }
         if let Some(last_interval) = last_interval {
-            if last_interval.run_len() >= amount {
+            // `>`, not `>=`: when the amount left equals this interval's run
+            // length the whole interval is consumed and is removed by the
+            // `drain` below; shrinking it would set `end = start - 1` (an
+            // inverted interval) (#359).
+            if last_interval.run_len() > amount {
                 remove_to += 1;
                 last_interval.end -= amount as u16;
             }
@@ -1655,6 +1662,31 @@ mod tests {
         ]);
         interval_store.remove_biggest(500);
         assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new_unchecked(1, 5800),]));
+    }
+
+    #[test]
+    fn remove_smallest_exact_interval_boundary() {
+        // #359: removing exactly the run length of the first interval must drop
+        // it entirely, not shrink it past its end into an inverted interval.
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 0, end: 2 },
+            Interval { start: 4, end: 4 },
+        ]);
+        interval_store.remove_smallest(3); // == run_len of [0, 2]
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new_unchecked(4, 4)]));
+    }
+
+    #[test]
+    fn remove_biggest_exact_interval_boundary() {
+        // #359: removing exactly the run length of the last interval must drop
+        // it entirely, not shrink its end below its start into an inverted
+        // interval.
+        let mut interval_store = IntervalStore(alloc::vec![
+            Interval { start: 2, end: 2 },
+            Interval { start: 4, end: 8 },
+        ]);
+        interval_store.remove_biggest(5); // == run_len of [4, 8]
+        assert_eq!(interval_store, IntervalStore(alloc::vec![Interval::new_unchecked(2, 2)]));
     }
 
     #[test]
