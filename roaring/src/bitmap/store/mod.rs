@@ -42,7 +42,7 @@ pub(crate) enum Iter<'a> {
 }
 
 impl Store {
-    pub fn new() -> Store {
+    pub const fn new() -> Store {
         Store::Array(ArrayStore::new())
     }
 

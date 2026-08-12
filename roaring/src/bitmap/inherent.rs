@@ -20,7 +20,7 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     /// let rb = RoaringBitmap::new();
     /// ```
-    pub fn new() -> RoaringBitmap {
+    pub const fn new() -> RoaringBitmap {
         RoaringBitmap { containers: Vec::new() }
     }
 
