@@ -4,11 +4,11 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
 use git2::FetchOptions;
-use once_cell::sync::OnceCell as SyncOnceCell;
+use std::sync::OnceLock;
 
 use roaring::RoaringBitmap;
 
-static INSTANCE: SyncOnceCell<Vec<Dataset>> = SyncOnceCell::new();
+static INSTANCE: OnceLock<Vec<Dataset>> = OnceLock::new();
 
 pub struct Datasets;
 
@@ -69,7 +69,7 @@ fn init_datasets() -> Result<PathBuf, Box<dyn std::error::Error>> {
 
     // Setup progress callbacks
 
-    let pb_cell = once_cell::unsync::OnceCell::new();
+    let pb_cell = std::cell::OnceCell::new();
     let mut cb = git2::RemoteCallbacks::new();
 
     cb.transfer_progress(|progress| {
