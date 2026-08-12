@@ -4,6 +4,8 @@ use core::fmt::{Display, Formatter};
 use core::mem::size_of;
 use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
 
+use crate::bitmap::util;
+
 use super::{ArrayStore, Interval};
 
 #[cfg(not(feature = "std"))]
@@ -690,6 +692,55 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
         let index_from_left = value.leading_zeros() as u16;
         let index = 63 - index_from_left;
         Some(64 * key_back + index)
+    }
+
+    /// Read multiple values from the iterator into `dst`.
+    /// Returns a mutable slice of `dst` that contains the read values.
+    ///
+    /// This can be significantly faster than calling `next()` repeatedly.
+    pub fn next_many<'a>(&mut self, high: u16, dst: &'a mut [u32]) -> &'a mut [u32] {
+        if dst.is_empty() {
+            return &mut [];
+        }
+
+        let mut count = 0;
+        let bits = self.bits.borrow();
+
+        while count < dst.len() {
+            // Advance to next non-zero word if current is empty
+            if self.value == 0 {
+                if self.key >= self.key_back {
+                    break;
+                }
+                loop {
+                    self.key += 1;
+                    if self.key == self.key_back {
+                        self.value = core::mem::replace(&mut self.value_back, 0);
+                        break;
+                    }
+                    // Safety: key is always in bounds
+                    self.value = unsafe { *bits.get_unchecked(self.key as usize) };
+                    if self.value != 0 {
+                        break;
+                    }
+                }
+                if self.value == 0 {
+                    break;
+                }
+            }
+
+            // Extract set bits from current word
+            let base = self.key * 64;
+            while self.value != 0 && count < dst.len() {
+                let bit_pos = self.value.trailing_zeros() as u16;
+                dst[count] = util::join(high, base + bit_pos);
+                count += 1;
+                // Clear the lowest set bit
+                self.value &= self.value - 1;
+            }
+        }
+
+        &mut dst[..count]
     }
 }
 
