@@ -76,7 +76,8 @@ impl RoaringBitmap {
     /// assert_eq!(rb1, rb2);
     /// ```
     pub fn serialize_into<W: io::Write>(&self, mut writer: W) -> io::Result<()> {
-        let has_run_containers = self.containers.iter().any(|c| matches!(c.store, Store::Run(_)));
+        let has_run_containers = cfg!(feature = "run-length-serialization")
+            && self.containers.iter().any(|c| matches!(c.store, Store::Run(_)));
         let size = self.containers.len();
 
         // Depending on if run containers are present or not write the appropriate header
@@ -118,9 +119,17 @@ impl RoaringBitmap {
                         offset += 8 * 1024;
                     }
                     Store::Run(ref intervals) => {
-                        offset += (RUN_NUM_BYTES
-                            + (intervals.run_amount() as usize * RUN_ELEMENT_BYTES))
-                            as u32;
+                        offset += if cfg!(feature = "run-length-serialization") {
+                            (RUN_NUM_BYTES + (intervals.run_amount() as usize * RUN_ELEMENT_BYTES))
+                                as u32
+                        } else {
+                            let count = intervals.len();
+                            if count <= ARRAY_LIMIT {
+                                count as u32 * 2
+                            } else {
+                                8 * 1024
+                            }
+                        };
                     }
                 }
             }
@@ -139,10 +148,23 @@ impl RoaringBitmap {
                     }
                 }
                 Store::Run(ref intervals) => {
-                    writer.write_u16::<LittleEndian>(intervals.run_amount() as u16)?;
-                    for iv in intervals.iter_intervals() {
-                        writer.write_u16::<LittleEndian>(iv.start())?;
-                        writer.write_u16::<LittleEndian>(iv.end() - iv.start())?;
+                    if cfg!(feature = "run-length-serialization") {
+                        writer.write_u16::<LittleEndian>(intervals.run_amount() as u16)?;
+                        for iv in intervals.iter_intervals() {
+                            writer.write_u16::<LittleEndian>(iv.start())?;
+                            writer.write_u16::<LittleEndian>(iv.end() - iv.start())?;
+                        }
+                    } else {
+                        let count = intervals.len();
+                        if count <= ARRAY_LIMIT {
+                            for &value in intervals.to_array().iter() {
+                                writer.write_u16::<LittleEndian>(value)?;
+                            }
+                        } else {
+                            for &value in intervals.to_bitmap().as_array() {
+                                writer.write_u64::<LittleEndian>(value)?;
+                            }
+                        }
                     }
                 }
             }
