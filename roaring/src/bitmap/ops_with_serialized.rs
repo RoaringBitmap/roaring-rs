@@ -668,6 +668,146 @@ impl RoaringBitmap {
         Ok(RoaringBitmap { containers })
     }
 
+    /// Computes the union between this [`RoaringBitmap`] and a serialized one,
+    /// in place.
+    ///
+    /// This is the in-place counterpart of
+    /// [`RoaringBitmap::union_with_serialized_unchecked`]: containers already
+    /// present in `self` are merged in place (reusing their allocations) and
+    /// containers only present in `other` are moved into `self`, so no result
+    /// bitmap is allocated. Prefer it when the union result should replace
+    /// `self`.
+    ///
+    /// # Errors
+    ///
+    /// If error happens, the operation stops early and `self` is left in a partially-updated state.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    /// use std::io::Cursor;
+    ///
+    /// let mut rb1: RoaringBitmap = (1..4).collect();
+    /// let rb2: RoaringBitmap = (3..5).collect();
+    ///
+    /// let mut bytes = Vec::new();
+    /// rb2.serialize_into(&mut bytes).unwrap();
+    ///
+    /// rb1.union_assign_with_serialized_unchecked(Cursor::new(&bytes)).unwrap();
+    /// assert_eq!(rb1, (1..5).collect::<RoaringBitmap>());
+    /// ```
+    pub fn union_assign_with_serialized_unchecked<R>(&mut self, other: R) -> io::Result<()>
+    where
+        R: io::Read + io::Seek,
+    {
+        RoaringBitmap::union_assign_with_serialized_impl::<R, _, Infallible, _, Infallible>(
+            self,
+            other,
+            |values| Ok(ArrayStore::from_vec_unchecked(values)),
+            |len, values| Ok(BitmapStore::from_unchecked(len, values)),
+        )
+    }
+
+    fn union_assign_with_serialized_impl<R, A, AErr, B, BErr>(
+        &mut self,
+        mut reader: R,
+        a: A,
+        b: B,
+    ) -> io::Result<()>
+    where
+        R: io::Read + io::Seek,
+        A: Fn(Vec<u16>) -> Result<ArrayStore, AErr>,
+        AErr: Error + Send + Sync + 'static,
+        B: Fn(u64, Box<[u64; 1024]>) -> Result<BitmapStore, BErr>,
+        BErr: Error + Send + Sync + 'static,
+    {
+        let (size, has_offsets, has_run_containers) = {
+            let cookie = reader.read_u32::<LittleEndian>()?;
+            if cookie == SERIAL_COOKIE_NO_RUNCONTAINER {
+                (reader.read_u32::<LittleEndian>()? as usize, true, false)
+            } else if (cookie as u16) == SERIAL_COOKIE {
+                let size = ((cookie >> 16) + 1) as usize;
+                (size, size >= NO_OFFSET_THRESHOLD, true)
+            } else {
+                return Err(io::Error::other("unknown cookie value"));
+            }
+        };
+
+        let run_container_bitmap = if has_run_containers {
+            let mut bitmap = vec![0u8; size.div_ceil(8)];
+            reader.read_exact(&mut bitmap)?;
+            Some(bitmap)
+        } else {
+            None
+        };
+
+        if size > u16::MAX as usize + 1 {
+            return Err(io::Error::other("size is greater than supported"));
+        }
+
+        let mut descriptions = vec![[0; 2]; size];
+        reader.read_exact(cast_slice_mut(&mut descriptions))?;
+        descriptions.iter_mut().for_each(|[key, len]| {
+            *key = u16::from_le(*key);
+            *len = u16::from_le(*len);
+        });
+
+        if has_offsets {
+            reader.seek(SeekFrom::Current(size as i64 * 4))?;
+        }
+
+        for (i, &[key, len_minus_one]) in descriptions.iter().enumerate() {
+            let cardinality = u64::from(len_minus_one) + 1;
+            let is_run_container =
+                run_container_bitmap.as_ref().is_some_and(|bm| bm[i / 8] & (1 << (i % 8)) != 0);
+
+            let store = if is_run_container {
+                let runs = reader.read_u16::<LittleEndian>()?;
+                let mut intervals = vec![[0, 0]; runs as usize];
+                reader.read_exact(cast_slice_mut(&mut intervals))?;
+                intervals.iter_mut().for_each(|[s, len]| {
+                    *s = u16::from_le(*s);
+                    *len = u16::from_le(*len);
+                });
+
+                let cardinality = intervals.iter().map(|[_, len]| *len as usize).sum();
+                let mut store = Store::with_capacity(cardinality);
+                intervals.into_iter().try_for_each(|[s, len]| -> Result<(), io::ErrorKind> {
+                    let end = s.checked_add(len).ok_or(io::ErrorKind::InvalidData)?;
+                    store.insert_range(RangeInclusive::new(s, end));
+                    Ok(())
+                })?;
+                store
+            } else if cardinality <= ARRAY_LIMIT {
+                let mut values = vec![0; cardinality as usize];
+                reader.read_exact(cast_slice_mut(&mut values))?;
+                values.iter_mut().for_each(|n| *n = u16::from_le(*n));
+                let array = a(values).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                Store::Array(array)
+            } else {
+                let mut values = Box::new([0; BITMAP_LENGTH]);
+                reader.read_exact(cast_slice_mut(&mut values[..]))?;
+                values.iter_mut().for_each(|n| *n = u64::from_le(*n));
+                let bitmap = b(cardinality, values)
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                Store::Bitmap(bitmap)
+            };
+
+            let rhs_container = Container { key, store };
+            match self.containers.binary_search_by_key(&key, |c| c.key) {
+                Ok(loc) => {
+                    self.containers[loc] |= rhs_container;
+                }
+                Err(loc) => {
+                    self.containers.insert(loc, rhs_container);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Computes the difference between a materialized [`RoaringBitmap`] and a serialized one.
     ///
     /// This is faster and more space efficient when you only need the difference result.
@@ -1121,6 +1261,20 @@ mod test {
             let serialized_bytes_b = &serialized_bytes_b[..];
 
             prop_assert_eq!(a.union_with_serialized_unchecked(Cursor::new(serialized_bytes_b)).unwrap(), a | b);
+        }
+
+        #[test]
+        fn union_assign_with_serialized_eq_materialized_union(
+            a in RoaringBitmap::arbitrary(),
+            b in RoaringBitmap::arbitrary()
+        ) {
+            let mut serialized_bytes_b = Vec::new();
+            b.serialize_into(&mut serialized_bytes_b).unwrap();
+            let serialized_bytes_b = &serialized_bytes_b[..];
+
+            let mut assigned = a.clone();
+            assigned.union_assign_with_serialized_unchecked(Cursor::new(serialized_bytes_b)).unwrap();
+            prop_assert_eq!(assigned, a | b);
         }
     }
 
