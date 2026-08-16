@@ -18,9 +18,9 @@ pub struct Statistics {
     /// Number of bitset containers in the bitmap
     pub n_bitset_containers: u32,
     /// Number of values stored in array containers
-    pub n_values_array_containers: u32,
+    pub n_values_array_containers: u64,
     /// Number of values stored in run containers
-    pub n_values_run_containers: u32,
+    pub n_values_run_containers: u64,
     /// Number of values stored in bitset containers
     pub n_values_bitset_containers: u64,
     /// Number of bytes used by array containers
@@ -77,7 +77,7 @@ impl RoaringBitmap {
             match store {
                 Store::Array(array) => {
                     cardinality += array.len();
-                    n_values_array_containers += array.len() as u32;
+                    n_values_array_containers += array.len();
                     n_bytes_array_containers += (array.capacity() * mem::size_of::<u32>()) as u64;
                     n_array_containers += 1;
                 }
@@ -89,7 +89,7 @@ impl RoaringBitmap {
                 }
                 Store::Run(runs) => {
                     cardinality += runs.len();
-                    n_values_run_containers += runs.len() as u32;
+                    n_values_run_containers += runs.len();
                     n_bytes_run_containers += runs.byte_size() as u64;
                     n_run_containers += 1;
                 }
