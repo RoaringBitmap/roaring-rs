@@ -526,7 +526,7 @@ mod test {
 
     proptest! {
         #[test]
-        fn union_with_serialized_eq_materialized_intersection(
+        fn union_with_serialized_eq_materialized_union(
             a in RoaringBitmap::arbitrary(),
             b in RoaringBitmap::arbitrary()
         ) {
