@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use std::cmp::Reverse;
+use std::io::Cursor;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
 use criterion::measurement::Measurement;
@@ -666,14 +667,8 @@ fn intersection_with_serialized(c: &mut Criterion) {
     pairwise_ops_with_serialized(
         c,
         "intersection_with_serialized",
-        |a, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            a & &rhs
-        },
-        |a, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            *a &= &rhs;
-        },
+        |a, b| a.intersection_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |a, b| a.intersection_assign_with_serialized_unchecked(Cursor::new(b)).unwrap()
     )
 }
 
@@ -681,14 +676,8 @@ fn union_with_serialized(c: &mut Criterion) {
     pairwise_ops_with_serialized(
         c,
         "union_with_serialized",
-        |a, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            a | &rhs
-        },
-        |a, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            *a |= &rhs;
-        },
+        |a, b| a.union_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |a, b| a.union_assign_with_serialized_unchecked(Cursor::new(b)).unwrap()
     )
 }
 
@@ -696,14 +685,8 @@ fn difference_with_serialized(c: &mut Criterion) {
     pairwise_ops_with_serialized(
         c,
         "difference_with_serialized",
-        |a, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            a - &rhs
-        },
-        |a, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            *a -= &rhs;
-        },
+        |a, b| a.difference_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |a, b| a.difference_assign_with_serialized_unchecked(Cursor::new(b)).unwrap()
     )
 }
 
@@ -711,14 +694,8 @@ fn symmetric_difference_with_serialized(c: &mut Criterion) {
     pairwise_ops_with_serialized(
         c,
         "symmetric_difference_with_serialized",
-        |a, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            a ^ &rhs
-        },
-        |a, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            *a ^= &rhs;
-        },
+        |a, b| a.symmetric_difference_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |a, b| a.symmetric_difference_assign_with_serialized_unchecked(Cursor::new(b)).unwrap()
     )
 }
 
@@ -726,14 +703,8 @@ fn successive_and_with_serialized(c: &mut Criterion) {
     successive_ops_with_serialized(
         c,
         "Successive And With Serialized",
-        |acc, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            *acc = &*acc & &rhs;
-        },
-        |acc, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            *acc &= &rhs;
-        },
+        |acc, b| *acc = acc.intersection_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |acc, b| acc.intersection_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
     )
 }
 
@@ -741,14 +712,8 @@ fn successive_or_with_serialized(c: &mut Criterion) {
     successive_ops_with_serialized(
         c,
         "Successive Or With Serialized",
-        |acc, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            *acc = &*acc | &rhs;
-        },
-        |acc, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            *acc |= &rhs;
-        },
+        |acc, b| *acc = acc.union_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |acc, b| acc.union_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
     )
 }
 
@@ -756,14 +721,8 @@ fn successive_sub_with_serialized(c: &mut Criterion) {
     successive_ops_with_serialized(
         c,
         "Successive Sub With Serialized",
-        |acc, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            *acc = &*acc - &rhs;
-        },
-        |acc, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            *acc -= &rhs;
-        },
+        |acc, b| *acc = acc.difference_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |acc, b| acc.difference_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
     )
 }
 
@@ -771,14 +730,8 @@ fn successive_xor_with_serialized(c: &mut Criterion) {
     successive_ops_with_serialized(
         c,
         "Successive Xor With Serialized",
-        |acc, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            *acc = &*acc ^ &rhs;
-        },
-        |acc, b| {
-            let rhs = RoaringBitmap::deserialize_unchecked_from(b).unwrap();
-            *acc ^= &rhs;
-        },
+        |acc, b| *acc = acc.symmetric_difference_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |acc, b| acc.symmetric_difference_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
     )
 }
 
