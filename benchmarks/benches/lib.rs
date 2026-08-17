@@ -135,7 +135,10 @@ fn pairwise_ops_with_serialized(
     let mut group = c.benchmark_group(format!("pairwise_{op_name}"));
 
     for dataset in Datasets {
-        let pairs = dataset.bitmaps.iter().tuple_windows::<(_, _)>()
+        let pairs = dataset
+            .bitmaps
+            .iter()
+            .tuple_windows::<(_, _)>()
             .map(|(a, b)| {
                 let mut buf = Vec::new();
                 b.serialize_into(&mut buf).unwrap();
@@ -668,7 +671,7 @@ fn intersection_with_serialized(c: &mut Criterion) {
         c,
         "intersection_with_serialized",
         |a, b| a.intersection_with_serialized_unchecked(Cursor::new(b)).unwrap(),
-        |a, b| a.intersection_assign_with_serialized_unchecked(Cursor::new(b)).unwrap()
+        |a, b| a.intersection_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
     )
 }
 
@@ -677,7 +680,7 @@ fn union_with_serialized(c: &mut Criterion) {
         c,
         "union_with_serialized",
         |a, b| a.union_with_serialized_unchecked(Cursor::new(b)).unwrap(),
-        |a, b| a.union_assign_with_serialized_unchecked(Cursor::new(b)).unwrap()
+        |a, b| a.union_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
     )
 }
 
@@ -686,7 +689,7 @@ fn difference_with_serialized(c: &mut Criterion) {
         c,
         "difference_with_serialized",
         |a, b| a.difference_with_serialized_unchecked(Cursor::new(b)).unwrap(),
-        |a, b| a.difference_assign_with_serialized_unchecked(Cursor::new(b)).unwrap()
+        |a, b| a.difference_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
     )
 }
 
@@ -695,7 +698,7 @@ fn symmetric_difference_with_serialized(c: &mut Criterion) {
         c,
         "symmetric_difference_with_serialized",
         |a, b| a.symmetric_difference_with_serialized_unchecked(Cursor::new(b)).unwrap(),
-        |a, b| a.symmetric_difference_assign_with_serialized_unchecked(Cursor::new(b)).unwrap()
+        |a, b| a.symmetric_difference_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
     )
 }
 
