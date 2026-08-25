@@ -1,5 +1,6 @@
 use core::borrow::Borrow;
 use core::cmp::Ordering;
+use core::hash::{Hash, Hasher};
 use core::iter::Peekable;
 
 use super::container::Container;
@@ -147,6 +148,18 @@ where
                 Ordering::Less => Some((self.left.next(), None)),
                 Ordering::Greater => Some((None, self.right.next())),
             },
+        }
+    }
+}
+
+impl Hash for RoaringBitmap {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // Bitmaps holding the same values are equal even when their containers
+        // use different internal representations (array, bitmap or run), so the
+        // hash has to be built from the values rather than from the layout.
+        self.len().hash(state);
+        for value in self {
+            value.hash(state);
         }
     }
 }
