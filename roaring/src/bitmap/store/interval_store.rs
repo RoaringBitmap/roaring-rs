@@ -300,6 +300,30 @@ impl IntervalStore {
         self.0.drain(remove_to..);
     }
 
+    /// Retains only the elements specified by the predicate.
+    pub fn retain(&mut self, mut f: impl FnMut(u16) -> bool) {
+        let mut new_intervals: Vec<Interval> = Vec::new();
+        for interval in self.0.iter() {
+            // Build retained intervals from this interval
+            let mut start: Option<u16> = None;
+            for value in *interval {
+                if f(value) {
+                    if start.is_none() {
+                        start = Some(value);
+                    }
+                } else {
+                    if let Some(s) = start.take() {
+                        new_intervals.push(Interval::new_unchecked(s, value - 1));
+                    }
+                }
+            }
+            if let Some(s) = start {
+                new_intervals.push(Interval::new_unchecked(s, interval.end));
+            }
+        }
+        self.0 = new_intervals;
+    }
+
     pub fn contains(&self, index: u16) -> bool {
         self.0.binary_search_by(|iv| cmp_index_interval(index, *iv).reverse()).is_ok()
     }
