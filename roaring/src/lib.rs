@@ -54,7 +54,7 @@ pub struct NonSortedIntegers {
 
 impl NonSortedIntegers {
     /// Returns the number of elements that were
-    pub fn valid_until(&self) -> u64 {
+    pub const fn valid_until(&self) -> u64 {
         self.valid_until
     }
 }

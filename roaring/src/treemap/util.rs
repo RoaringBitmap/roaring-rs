@@ -1,7 +1,7 @@
 use core::ops::{Bound, RangeBounds, RangeInclusive};
 
 #[inline]
-pub fn split(value: u64) -> (u32, u32) {
+pub const fn split(value: u64) -> (u32, u32) {
     ((value >> 32) as u32, value as u32)
 }
 

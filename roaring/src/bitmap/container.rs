@@ -26,7 +26,7 @@ pub(crate) struct Iter<'a> {
 }
 
 impl Container {
-    pub fn new(key: u16) -> Container {
+    pub const fn new(key: u16) -> Container {
         Container { key, store: Store::new() }
     }
 

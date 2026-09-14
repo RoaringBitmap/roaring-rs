@@ -3,7 +3,7 @@ use core::ops::{Bound, RangeBounds, RangeInclusive};
 /// Returns the container key and the index
 /// in this container for a given integer.
 #[inline]
-pub fn split(value: u32) -> (u16, u16) {
+pub const fn split(value: u32) -> (u16, u16) {
     ((value >> 16) as u16, value as u16)
 }
 

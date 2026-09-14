@@ -67,11 +67,11 @@ pub struct CardinalityCounter {
 }
 
 impl CardinalityCounter {
-    pub fn new() -> CardinalityCounter {
+    pub const fn new() -> CardinalityCounter {
         CardinalityCounter { count: 0 }
     }
 
-    pub fn into_inner(self) -> u64 {
+    pub const fn into_inner(self) -> u64 {
         self.count as u64
     }
 }
