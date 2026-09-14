@@ -4,7 +4,7 @@ use crate::bitmap::store::{
     RUN_NUM_BYTES,
 };
 use crate::RoaringBitmap;
-use bytemuck::cast_slice_mut;
+use bytemuck::{cast_slice, cast_slice_mut};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use core::convert::Infallible;
 use std::error::Error;
@@ -129,13 +129,31 @@ impl RoaringBitmap {
         for container in &self.containers {
             match container.store {
                 Store::Array(ref values) => {
-                    for &value in values.iter() {
-                        writer.write_u16::<LittleEndian>(value)?;
+                    #[cfg(target_endian = "little")]
+                    {
+                        // On little-endian the in-memory u16 layout matches the wire
+                        // format, so we can write the entire array in one bulk operation.
+                        writer.write_all(cast_slice(values.as_slice()))?;
+                    }
+                    #[cfg(not(target_endian = "little"))]
+                    {
+                        for &value in values.iter() {
+                            writer.write_u16::<LittleEndian>(value)?;
+                        }
                     }
                 }
                 Store::Bitmap(ref bits) => {
-                    for &value in bits.as_array() {
-                        writer.write_u64::<LittleEndian>(value)?;
+                    #[cfg(target_endian = "little")]
+                    {
+                        // On little-endian the in-memory u64 layout matches the wire
+                        // format, so we can write the entire 8 KiB bitmap at once.
+                        writer.write_all(cast_slice(bits.as_array().as_slice()))?;
+                    }
+                    #[cfg(not(target_endian = "little"))]
+                    {
+                        for &value in bits.as_array() {
+                            writer.write_u64::<LittleEndian>(value)?;
+                        }
                     }
                 }
                 Store::Run(ref intervals) => {
