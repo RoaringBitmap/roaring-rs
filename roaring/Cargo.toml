@@ -22,9 +22,12 @@ byteorder = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 
 [features]
-default = ["std"]
+default = ["std", "run-length-serialization"]
 serde = ["dep:serde", "std"]
 simd = []
+# When enabled, run-length encoding is used for serialization.
+# Note that run-length decoding is always supported.
+run-length-serialization = []
 std = ["dep:bytemuck", "dep:byteorder"]
 
 [dev-dependencies]
