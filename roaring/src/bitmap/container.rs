@@ -185,6 +185,12 @@ impl Container {
         };
     }
 
+    /// Retains only the elements specified by the predicate.
+    pub fn retain(&mut self, f: impl FnMut(u16) -> bool) {
+        self.store.retain(f);
+        self.ensure_correct_store();
+    }
+
     pub fn contains(&self, index: u16) -> bool {
         self.store.contains(index)
     }

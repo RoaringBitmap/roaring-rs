@@ -176,6 +176,15 @@ impl Store {
         }
     }
 
+    /// Retains only the elements specified by the predicate.
+    pub fn retain(&mut self, f: impl FnMut(u16) -> bool) {
+        match self {
+            Array(vec) => vec.retain(f),
+            Bitmap(bits) => bits.retain(f),
+            Run(runs) => runs.retain(f),
+        }
+    }
+
     pub fn contains(&self, index: u16) -> bool {
         match self {
             Array(vec) => vec.contains(index),
