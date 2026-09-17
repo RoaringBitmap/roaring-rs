@@ -856,6 +856,28 @@ impl RoaringBitmap {
         }
     }
 
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other word, remove all elements `e` such that `f(e)` returns `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut rb = RoaringBitmap::from_iter(0..10);
+    /// rb.retain(|x| x % 2 == 0);
+    /// assert_eq!(rb, RoaringBitmap::from_iter([0, 2, 4, 6, 8]));
+    /// ```
+    #[inline]
+    pub fn retain(&mut self, mut f: impl FnMut(u32) -> bool) {
+        for container in &mut self.containers {
+            let key = container.key;
+            container.retain(|i| f(util::join(key, i)));
+        }
+        self.containers.retain(|c| !c.is_empty());
+    }
+
     /// Optimizes the container storage for this bitmap.
     /// Returns true if the container storage was modified, false if not.
     ///
@@ -1190,5 +1212,90 @@ mod tests {
         let mut bitmap = RoaringBitmap::from_iter([1, 2, 3]);
         bitmap.remove_biggest(4);
         assert_eq!(bitmap, RoaringBitmap::default());
+    }
+
+    #[test]
+    fn retain_array() {
+        let mut bitmap = RoaringBitmap::from_iter([1, 2, 3, 7, 9, 11]);
+        bitmap.retain(|x| x % 2 == 1);
+        assert_eq!(bitmap, RoaringBitmap::from_iter([1, 3, 7, 9, 11]));
+
+        bitmap = RoaringBitmap::from_iter([2, 4, 6, 8]);
+        bitmap.retain(|x| x % 4 == 0);
+        assert_eq!(bitmap, RoaringBitmap::from_iter([4, 8]));
+
+        // Retain all
+        bitmap = RoaringBitmap::from_iter([1, 2, 3]);
+        bitmap.retain(|_| true);
+        assert_eq!(bitmap, RoaringBitmap::from_iter([1, 2, 3]));
+
+        // Retain none
+        bitmap = RoaringBitmap::from_iter([1, 2, 3]);
+        bitmap.retain(|_| false);
+        assert!(bitmap.is_empty());
+    }
+
+    #[test]
+    fn retain_bitmap() {
+        let mut bitmap = RoaringBitmap::new();
+        bitmap.insert_range(0..4098);
+        bitmap.retain(|x| x % 2 == 0);
+        let expected: RoaringBitmap = (0..4098).step_by(2).collect();
+        assert_eq!(bitmap, expected);
+
+        // Retain all
+        bitmap = RoaringBitmap::new();
+        bitmap.insert_range(0..10_000);
+        bitmap.retain(|_| true);
+        assert_eq!(bitmap.len(), 10_000);
+
+        // Retain none
+        bitmap = RoaringBitmap::new();
+        bitmap.insert_range(0..10_000);
+        bitmap.retain(|_| false);
+        assert!(bitmap.is_empty());
+    }
+
+    #[test]
+    fn retain_multi_container() {
+        let mut bitmap = RoaringBitmap::from_iter(0u32..65536);
+        for i in (65536..131072).step_by(2) {
+            bitmap.insert(i);
+        }
+        bitmap.retain(|x| x % 4 == 0);
+
+        let expected: RoaringBitmap = (0..131072).filter(|&x| x % 4 == 0).collect();
+        assert_eq!(bitmap, expected);
+    }
+
+    #[test]
+    fn retain_empty() {
+        let mut bitmap = RoaringBitmap::new();
+        bitmap.retain(|_| true);
+        assert!(bitmap.is_empty());
+    }
+
+    proptest! {
+        #[test]
+        fn retain_preserves_values(mut bitmap in RoaringBitmap::arbitrary()) {
+            let predicate = |x: u32| !x.is_multiple_of(3);
+            let expected: RoaringBitmap = bitmap.iter().filter(|&x| predicate(x)).collect();
+
+            bitmap.retain(predicate);
+
+            prop_assert_eq!(bitmap, expected);
+        }
+
+        #[test]
+        fn retain_all_preserves(mut bitmap in RoaringBitmap::arbitrary()) {
+            bitmap.retain(|_| true);
+            prop_assert_eq!(bitmap.iter().collect::<Vec<_>>(), bitmap.iter().collect::<Vec<_>>());
+        }
+
+        #[test]
+        fn retain_none_becomes_empty(mut bitmap in RoaringBitmap::arbitrary()) {
+            bitmap.retain(|_| false);
+            prop_assert!(bitmap.is_empty());
+        }
     }
 }
