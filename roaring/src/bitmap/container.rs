@@ -473,6 +473,14 @@ impl Iter<'_> {
             .next_range_back()
             .map(|r| util::join(self.key, *r.start())..=util::join(self.key, *r.end()))
     }
+
+    /// Read multiple values from the iterator into `dst`.
+    /// Returns a mutable slice of `dst` that contains the read values.
+    ///
+    /// This can be significantly faster than calling `next()` repeatedly.
+    pub(crate) fn next_many<'a>(&mut self, dst: &'a mut [u32]) -> &'a mut [u32] {
+        self.inner.next_many(self.key, dst)
+    }
 }
 
 impl fmt::Debug for Container {

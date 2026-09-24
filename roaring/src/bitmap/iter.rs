@@ -331,6 +331,81 @@ impl Iter<'_> {
     pub fn next_range_back(&mut self) -> Option<core::ops::RangeInclusive<u32>> {
         next_range_back_impl(&mut self.front, &mut self.containers, &mut self.back)
     }
+
+    /// Retrieve the next `dst.len()` values from the iterator and write them into `dst`.
+    ///
+    /// Returns a mutable slice of `dst` that contains the read values. A slice shorter
+    /// than `dst.len()` is returned if the iterator is exhausted.
+    ///
+    /// This method is significantly faster than calling `next()` repeatedly due to
+    /// reduced per-element overhead and better CPU cache utilization.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let bitmap: RoaringBitmap = (0..100).collect();
+    /// let mut iter = bitmap.iter();
+    /// let mut buf = [0u32; 32];
+    ///
+    /// let out = iter.next_many(&mut buf);
+    /// assert_eq!(out.len(), 32);
+    /// assert_eq!(out[0], 0);
+    /// assert_eq!(out[31], 31);
+    ///
+    /// // Iterate remainder
+    /// let out = iter.next_many(&mut buf);
+    /// assert_eq!(out.len(), 32);
+    /// assert_eq!(out[0], 32);
+    /// ```
+    pub fn next_many<'a>(&mut self, dst: &'a mut [u32]) -> &'a mut [u32] {
+        if dst.is_empty() {
+            return &mut [];
+        }
+
+        let mut count = 0;
+
+        // First drain from the front container iterator if present
+        if let Some(ref mut front_iter) = self.front {
+            count += front_iter.next_many(&mut dst[count..]).len();
+            if count >= dst.len() {
+                return &mut dst[..count];
+            }
+            // Front is exhausted
+            self.front = None;
+        }
+
+        // Process remaining containers
+        while count < dst.len() {
+            let Some(container) = self.containers.next() else {
+                // No more containers in the middle, try the back
+                break;
+            };
+            let mut container_iter = container.into_iter();
+            let out = container_iter.next_many(&mut dst[count..]);
+            count += out.len();
+
+            // If container still has values, save it as new front
+            if !out.is_empty() && container_iter.len() > 0 {
+                self.front = Some(container_iter);
+                return &mut dst[..count];
+            }
+        }
+
+        // Finally, try draining from the back iterator if present
+        if count < dst.len() {
+            if let Some(ref mut back_iter) = self.back {
+                let n = back_iter.next_many(&mut dst[count..]);
+                count += n.len();
+                if back_iter.len() == 0 {
+                    self.back = None;
+                }
+            }
+        }
+
+        &mut dst[..count]
+    }
 }
 
 impl IntoIter {
@@ -418,6 +493,80 @@ impl IntoIter {
     /// ```
     pub fn next_range_back(&mut self) -> Option<core::ops::RangeInclusive<u32>> {
         next_range_back_impl(&mut self.front, &mut self.containers, &mut self.back)
+    }
+
+    /// Retrieve the next `dst.len()` values from the iterator and write them into `dst`.
+    ///
+    /// Returns a mutable slice of `dst` that contains the read values. A slice shorter
+    /// than `dst.len()` is returned if the iterator is exhausted.
+    ///
+    /// This method is significantly faster than calling `next()` repeatedly due to
+    /// reduced per-element overhead and better CPU cache utilization.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let bitmap: RoaringBitmap = (0..100).collect();
+    /// let mut iter = bitmap.into_iter();
+    /// let mut buf = [0u32; 32];
+    ///
+    /// let out = iter.next_many(&mut buf);
+    /// assert_eq!(out.len(), 32);
+    /// assert_eq!(out[0], 0);
+    /// assert_eq!(out[31], 31);
+    ///
+    /// // Iterate remainder
+    /// let out = iter.next_many(&mut buf);
+    /// assert_eq!(out.len(), 32);
+    /// assert_eq!(out[0], 32);
+    /// ```
+    pub fn next_many<'a>(&mut self, dst: &'a mut [u32]) -> &'a mut [u32] {
+        if dst.is_empty() {
+            return &mut [];
+        }
+
+        let mut count = 0;
+
+        // First drain from the front container iterator if present
+        if let Some(ref mut front_iter) = self.front {
+            count += front_iter.next_many(&mut dst[count..]).len();
+            if count >= dst.len() {
+                return &mut dst[..count];
+            }
+            // Front is exhausted
+            self.front = None;
+        }
+
+        // Process remaining containers
+        while count < dst.len() {
+            let Some(container) = self.containers.next() else {
+                // No more containers in the middle, try the back
+                break;
+            };
+            let mut container_iter = container.into_iter();
+            let out = container_iter.next_many(&mut dst[count..]);
+            count += out.len();
+
+            // If container still has values, save it as new front
+            if !out.is_empty() && container_iter.len() > 0 {
+                self.front = Some(container_iter);
+                return &mut dst[..count];
+            }
+        }
+
+        // Finally, try draining from the back iterator if present
+        if count < dst.len() {
+            if let Some(ref mut back_iter) = self.back {
+                count += back_iter.next_many(&mut dst[count..]).len();
+                if back_iter.len() == 0 {
+                    self.back = None;
+                }
+            }
+        }
+
+        &mut dst[..count]
     }
 }
 
