@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use std::cmp::Reverse;
+use std::io::Cursor;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
 use criterion::measurement::Measurement;
@@ -111,6 +112,114 @@ fn pairwise_binary_op_matrix(
                     black_box(op_len(a, b));
                 }
             })
+        });
+    }
+
+    group.finish();
+}
+
+// Pairwise compare frame for the *_with_serialized evaluation: natural pair
+// order (first bitmap of each pair is the materialized lhs, second is the
+// serialized rhs — no small/large swap), serialization outside the timed
+// setup, one group per op with a "ref_ref" (borrowing) and an "assign_ref"
+// (in-place) bench per group. This commit sits BEFORE the *_with_serialized
+// implementations land, so both slots run the deserialize baselines; a later
+// commit switches the slots to the ws / ws_assign implementations, and
+// criterion's saved-baseline comparison reports the change per slot.
+fn pairwise_ops_with_serialized(
+    c: &mut Criterion,
+    op_name: &str,
+    op_ref_ref: fn(&RoaringBitmap, &[u8]) -> RoaringBitmap,
+    op_assign_ref: fn(&mut RoaringBitmap, &[u8]) -> (),
+) {
+    let mut group = c.benchmark_group(format!("pairwise_{op_name}"));
+
+    for dataset in Datasets {
+        let pairs = dataset
+            .bitmaps
+            .iter()
+            .tuple_windows::<(_, _)>()
+            .map(|(a, b)| {
+                let mut buf = Vec::new();
+                b.serialize_into(&mut buf).unwrap();
+                (a.clone(), Box::from(buf))
+            })
+            .collect::<Vec<_>>();
+
+        group.bench_function(BenchmarkId::new("ref_ref", &dataset.name), |b| {
+            b.iter_batched_ref(
+                || pairs.clone(),
+                |bitmaps| {
+                    for (a, b) in bitmaps {
+                        black_box(op_ref_ref(a, b));
+                    }
+                },
+                BatchSize::SmallInput,
+            );
+        });
+
+        group.bench_function(BenchmarkId::new("assign_ref", &dataset.name), |b| {
+            b.iter_batched_ref(
+                || pairs.clone(),
+                |bitmaps| {
+                    for (a, b) in bitmaps {
+                        black_box(op_assign_ref(a, b));
+                    }
+                },
+                BatchSize::SmallInput,
+            );
+        });
+    }
+
+    group.finish();
+}
+
+// Successive chains for the *_with_serialized evaluation, same shape as
+// pairwise_ops_with_serialized: fold every bitmap but the first into an
+// accumulator seeded from the first bitmap (all four ops need a non-empty
+// seed for a uniform shape), one group per op, "ref_ref" (borrowing chain,
+// per-step result assigned back) and "assign_ref" (in-place chain) benches
+// per group. Before the ws implementations land, both chains run the
+// deserialize baselines; a later commit switches them to ws / ws_assign.
+fn successive_ops_with_serialized(
+    c: &mut Criterion,
+    group_name: &str,
+    op_ref_ref: fn(&mut RoaringBitmap, &[u8]),
+    op_assign_ref: fn(&mut RoaringBitmap, &[u8]),
+) {
+    let mut group = c.benchmark_group(group_name);
+
+    for dataset in Datasets {
+        let first = dataset.bitmaps[0].clone();
+        let serialized: Vec<Box<[u8]>> = dataset
+            .bitmaps
+            .iter()
+            .skip(1)
+            .map(|b| {
+                let mut buf = Vec::new();
+                b.serialize_into(&mut buf).unwrap();
+                Box::from(buf)
+            })
+            .collect();
+
+        group.bench_function(BenchmarkId::new("ref_ref", &dataset.name), |b| {
+            b.iter(|| {
+                let mut acc = first.clone();
+                for bytes in &serialized {
+                    op_ref_ref(&mut acc, bytes.as_ref());
+                }
+                black_box(&acc);
+            });
+        });
+
+        group.bench_function(BenchmarkId::new("assign_ref", &dataset.name), |b| {
+            b.iter(|| {
+                let mut acc = first.clone();
+                for bytes in &serialized {
+                    op_assign_ref(&mut acc, bytes.as_ref());
+                }
+                black_box(&acc);
+            });
         });
     }
 
@@ -557,6 +666,78 @@ fn successive_or(c: &mut Criterion) {
     group.finish();
 }
 
+fn intersection_with_serialized(c: &mut Criterion) {
+    pairwise_ops_with_serialized(
+        c,
+        "intersection_with_serialized",
+        |a, b| a.intersection_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |a, b| a.intersection_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+    )
+}
+
+fn union_with_serialized(c: &mut Criterion) {
+    pairwise_ops_with_serialized(
+        c,
+        "union_with_serialized",
+        |a, b| a.union_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |a, b| a.union_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+    )
+}
+
+fn difference_with_serialized(c: &mut Criterion) {
+    pairwise_ops_with_serialized(
+        c,
+        "difference_with_serialized",
+        |a, b| a.difference_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |a, b| a.difference_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+    )
+}
+
+fn symmetric_difference_with_serialized(c: &mut Criterion) {
+    pairwise_ops_with_serialized(
+        c,
+        "symmetric_difference_with_serialized",
+        |a, b| a.symmetric_difference_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |a, b| a.symmetric_difference_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+    )
+}
+
+fn successive_and_with_serialized(c: &mut Criterion) {
+    successive_ops_with_serialized(
+        c,
+        "Successive And With Serialized",
+        |acc, b| *acc = acc.intersection_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |acc, b| acc.intersection_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+    )
+}
+
+fn successive_or_with_serialized(c: &mut Criterion) {
+    successive_ops_with_serialized(
+        c,
+        "Successive Or With Serialized",
+        |acc, b| *acc = acc.union_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |acc, b| acc.union_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+    )
+}
+
+fn successive_sub_with_serialized(c: &mut Criterion) {
+    successive_ops_with_serialized(
+        c,
+        "Successive Sub With Serialized",
+        |acc, b| *acc = acc.difference_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |acc, b| acc.difference_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+    )
+}
+
+fn successive_xor_with_serialized(c: &mut Criterion) {
+    successive_ops_with_serialized(
+        c,
+        "Successive Xor With Serialized",
+        |acc, b| *acc = acc.symmetric_difference_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+        |acc, b| acc.symmetric_difference_assign_with_serialized_unchecked(Cursor::new(b)).unwrap(),
+    )
+}
+
 // LEGACY BENCHMARKS
 // =================
 
@@ -740,6 +921,14 @@ criterion_group!(
     serialization,
     deserialization,
     successive_and,
-    successive_or
+    successive_or,
+    intersection_with_serialized,
+    union_with_serialized,
+    difference_with_serialized,
+    symmetric_difference_with_serialized,
+    successive_and_with_serialized,
+    successive_or_with_serialized,
+    successive_sub_with_serialized,
+    successive_xor_with_serialized
 );
 criterion_main!(benches);
