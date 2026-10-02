@@ -152,9 +152,18 @@ fn optimize_run() {
 }
 
 #[test]
+fn statistics_array_count_remains_u32() {
+    let bitmap = RoaringBitmap::from_iter([1, 2, 65_536]);
+    let stats = bitmap.statistics();
+    let count: u32 = stats.n_values_array_containers;
+    assert_eq!(stats.n_array_containers, 2);
+    assert_eq!(count, 3);
+}
+
+#[test]
 fn statistics_full_run() {
     let stats = RoaringBitmap::full().statistics();
     let expected: u64 = 1 << 32;
     assert_eq!(stats.cardinality, expected);
-    assert_eq!(u64::from(stats.n_values_run_containers), expected);
+    assert_eq!(stats.n_values_run_containers, expected);
 }
