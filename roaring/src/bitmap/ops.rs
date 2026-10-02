@@ -2,6 +2,7 @@ use core::mem;
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
 use crate::bitmap::container::Container;
+use crate::bitmap::util::SortedInserts;
 use crate::bitmap::Pairs;
 use crate::RoaringBitmap;
 
@@ -161,26 +162,30 @@ impl BitOrAssign<RoaringBitmap> for RoaringBitmap {
             mem::swap(self, &mut rhs);
         }
 
+        let mut inserts = SortedInserts::new();
         for container in rhs.containers {
             let key = container.key;
             match self.containers.binary_search_by_key(&key, |c| c.key) {
-                Err(loc) => self.containers.insert(loc, container),
+                Err(loc) => inserts.insert(&mut self.containers, loc, container),
                 Ok(loc) => BitOrAssign::bitor_assign(&mut self.containers[loc], container),
             }
         }
+        inserts.finish(&mut self.containers);
     }
 }
 
 impl BitOrAssign<&RoaringBitmap> for RoaringBitmap {
     /// An `union` between two sets.
     fn bitor_assign(&mut self, rhs: &RoaringBitmap) {
+        let mut inserts = SortedInserts::new();
         for container in &rhs.containers {
             let key = container.key;
             match self.containers.binary_search_by_key(&key, |c| c.key) {
-                Err(loc) => self.containers.insert(loc, container.clone()),
+                Err(loc) => inserts.insert(&mut self.containers, loc, container.clone()),
                 Ok(loc) => BitOrAssign::bitor_assign(&mut self.containers[loc], container),
             }
         }
+        inserts.finish(&mut self.containers);
     }
 }
 

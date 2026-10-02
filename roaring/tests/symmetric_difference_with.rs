@@ -1,5 +1,9 @@
 extern crate roaring;
-use roaring::RoaringBitmap;
+use std::collections::BTreeSet;
+
+use proptest::collection::vec;
+use proptest::prelude::*;
+use roaring::{MultiOps, RoaringBitmap};
 
 #[test]
 fn array() {
@@ -121,4 +125,75 @@ fn bitmaps() {
     bitmap1 ^= bitmap2;
 
     assert_eq!(bitmap1, bitmap3);
+}
+
+#[test]
+fn interleaved_containers() {
+    // One side has containers at even keys and the other one at odd keys.
+    let even = (0..4096).map(|key| key << 17).collect::<RoaringBitmap>();
+    let odd = (0..4096).map(|key| (key << 17) | (1 << 16)).collect::<RoaringBitmap>();
+    let expected = (0..8192).map(|key| key << 16).collect::<RoaringBitmap>();
+
+    let mut bitmap = even.clone();
+    bitmap ^= &odd;
+    assert_eq!(bitmap, expected);
+
+    let mut bitmap = odd.clone();
+    bitmap ^= even.clone();
+    assert_eq!(bitmap, expected);
+
+    assert_eq!([&even, &odd].symmetric_difference(), expected);
+    assert_eq!([odd, even].symmetric_difference(), expected);
+}
+
+/// A bitmap made of ranges of up to 64 values spread over up to 512 containers,
+/// along with the set of its values.
+fn bitmap_and_set() -> impl Strategy<Value = (RoaringBitmap, BTreeSet<u32>)> {
+    vec((0u32..512, any::<u16>(), 0u32..64), 0..256).prop_map(|ranges| {
+        let mut bitmap = RoaringBitmap::new();
+        let mut set = BTreeSet::new();
+        for (key, low, len) in ranges {
+            let start = (key << 16) | u32::from(low);
+            let end = (start + len).min(start | 0xFFFF);
+            bitmap.insert_range(start..=end);
+            set.extend(start..=end);
+        }
+        (bitmap, set)
+    })
+}
+
+proptest! {
+    #[test]
+    fn symmetric_difference_matches_btreeset(
+        (a, set_a) in bitmap_and_set(),
+        (b, set_b) in bitmap_and_set(),
+        (c, set_c) in bitmap_and_set(),
+    ) {
+        let expected = &set_a ^ &set_b;
+
+        let mut assign_ref = a.clone();
+        assign_ref ^= &b;
+        let mut assign_own = a.clone();
+        assign_own ^= b.clone();
+
+        for bitmap in [
+            assign_ref,
+            assign_own,
+            &a ^ &b,
+            &a ^ b.clone(),
+            a.clone() ^ &b,
+            a.clone() ^ b.clone(),
+            [&a, &b].symmetric_difference(),
+            [a.clone(), b.clone()].symmetric_difference(),
+        ] {
+            prop_assert_eq!(bitmap.len(), expected.len() as u64);
+            prop_assert!(bitmap.iter().eq(expected.iter().copied()));
+        }
+
+        let expected = &expected ^ &set_c;
+        for bitmap in [[&a, &b, &c].symmetric_difference(), [a, b, c].symmetric_difference()] {
+            prop_assert_eq!(bitmap.len(), expected.len() as u64);
+            prop_assert!(bitmap.iter().eq(expected.iter().copied()));
+        }
+    }
 }
