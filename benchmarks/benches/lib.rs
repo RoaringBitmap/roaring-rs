@@ -557,6 +557,66 @@ fn successive_or(c: &mut Criterion) {
     group.finish();
 }
 
+fn interleaved_containers(c: &mut Criterion) {
+    let mut group = c.benchmark_group("interleaved_containers");
+    group.sample_size(10);
+
+    // One bitmap has containers at even keys and the other one at odd keys,
+    // so that none of the containers of one side exists on the other side.
+    for size in [8192u32, 16384, 32768] {
+        let even: RoaringBitmap = (0..size).map(|key| key << 17).collect();
+        let odd: RoaringBitmap = (0..size).map(|key| (key << 17) | (1 << 16)).collect();
+
+        group.bench_function(BenchmarkId::new("or_assign_own", size), |b| {
+            b.iter_batched(
+                || (even.clone(), odd.clone()),
+                |(mut a, b)| {
+                    a |= b;
+                    a
+                },
+                BatchSize::LargeInput,
+            );
+        });
+
+        group.bench_function(BenchmarkId::new("or_assign_ref", size), |b| {
+            b.iter_batched(
+                || even.clone(),
+                |mut a| {
+                    a |= &odd;
+                    a
+                },
+                BatchSize::LargeInput,
+            );
+        });
+
+        group.bench_function(BenchmarkId::new("multi_or_own", size), |b| {
+            b.iter_batched(
+                || [even.clone(), odd.clone()],
+                |bitmaps| bitmaps.union(),
+                BatchSize::LargeInput,
+            );
+        });
+
+        group.bench_function(BenchmarkId::new("multi_or_ref", size), |b| {
+            b.iter(|| [&even, &odd].union());
+        });
+
+        group.bench_function(BenchmarkId::new("multi_xor_own", size), |b| {
+            b.iter_batched(
+                || [even.clone(), odd.clone()],
+                |bitmaps| bitmaps.symmetric_difference(),
+                BatchSize::LargeInput,
+            );
+        });
+
+        group.bench_function(BenchmarkId::new("multi_xor_ref", size), |b| {
+            b.iter(|| [&even, &odd].symmetric_difference());
+        });
+    }
+
+    group.finish();
+}
+
 // LEGACY BENCHMARKS
 // =================
 
@@ -740,6 +800,7 @@ criterion_group!(
     serialization,
     deserialization,
     successive_and,
-    successive_or
+    successive_or,
+    interleaved_containers
 );
 criterion_main!(benches);
