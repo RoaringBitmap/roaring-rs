@@ -70,5 +70,8 @@ https://github.com/RoaringBitmap/roaring-rs/actions/workflows/test.yml/badge.svg
 
 ## Experimental features
 
-The `simd` feature is in active development. It has not been tested. If you would like to build with `simd` note that
-`std::simd` is only available in Rust nightly.
+The `simd` feature is in active development. It is implemented with the [fearless_simd] crate and works on stable
+Rust. When the `std` feature is enabled, the best available SIMD instruction set is detected at runtime on x86 and
+x86-64; otherwise, it is determined by the target features enabled at compile time (e.g. with `-C target-cpu=native`).
+
+[fearless_simd]: https://docs.rs/fearless_simd

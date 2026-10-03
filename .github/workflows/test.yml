@@ -49,8 +49,9 @@ jobs:
           cargo clippy -p roaring --all-targets --features serde -- -Dclippy::todo -D warnings
 
       - name: Check SIMD
-        if: matrix.rust == 'nightly'
-        run: cargo clippy -p roaring --all-targets --all-features -- -D warnings
+        run: |
+          cargo clippy -p roaring --all-targets --all-features -- -D warnings
+          cargo clippy -p roaring --all-targets --no-default-features --features simd -- -D warnings
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -69,7 +70,7 @@ jobs:
           - default
           - no-std
         include:
-          - rust: nightly
+          - rust: stable
             features: simd
     env:
       RUSTFLAGS: "-C target-cpu=native -C opt-level=3"
@@ -106,8 +107,10 @@ jobs:
         run: cargo test -p roaring --no-default-features
 
       - name: SIMD test
-        if: matrix.rust == 'nightly' && matrix.features == 'simd'
-        run: cargo +nightly test -p roaring --features simd
+        if: matrix.features == 'simd'
+        run: |
+          cargo test -p roaring --features simd
+          cargo test -p roaring --no-default-features --features simd
 
   miri:
     runs-on: ubuntu-latest
