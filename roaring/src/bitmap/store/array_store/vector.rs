@@ -66,7 +66,7 @@ fn or_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binary
     fn handle_vector<S: Simd>(old: u16x8<S>, new: u16x8<S>) -> (u16x8<S>, u8) {
         // `[old[7], new[0], ..., new[6]]`
         let tmp: u16x8<S> = old.slide::<7>(new);
-        let mask = 255 - tmp.simd_eq(new).to_bitmask() as u8;
+        let mask = !tmp.simd_eq(new).to_bitmask() as u8;
         (new, mask)
     }
 
@@ -225,8 +225,8 @@ fn xor_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
         let eq_l: mask16x8<S> = tmp2.simd_eq(tmp1);
         let eq_r: mask16x8<S> = tmp2.simd_eq(new);
         let eq_l_or_r: mask16x8<S> = eq_l | eq_r;
-        let mask: u8 = eq_l_or_r.to_bitmask() as u8;
-        (tmp2, 255 - mask)
+        let mask: u8 = !(eq_l_or_r.to_bitmask() as u8);
+        (tmp2, mask)
     }
 
     if (lhs.len() < 8) || (rhs.len() < 8) {
@@ -357,7 +357,7 @@ fn sub_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
                 // Ok. In this code path, we are ready to write our v_a
                 // because there is no need to read more from B, they will
                 // all be large values.
-                let bitmask_belongs_to_difference = runningmask_a_found_in_b ^ 0xFF;
+                let bitmask_belongs_to_difference = !runningmask_a_found_in_b;
                 visitor.visit_vector(v_a, bitmask_belongs_to_difference);
                 i += LANES;
                 if i == st_a {
@@ -399,7 +399,7 @@ fn sub_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
                 let used_rhs = remaining_rhs.partition_point(|&b| b <= max_va);
                 j += used_rhs;
             }
-            let bitmask_belongs_to_difference: u8 = runningmask_a_found_in_b ^ 0xFF;
+            let bitmask_belongs_to_difference: u8 = !runningmask_a_found_in_b;
             visitor.visit_vector(v_a, bitmask_belongs_to_difference);
             i += LANES;
         }
