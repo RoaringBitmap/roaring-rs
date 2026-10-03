@@ -4,8 +4,9 @@
 //! Prior work: Schlegel et al., Fast Sorted-Set Intersection using SIMD Instructions
 //!
 //! Rust port notes:
-//! The x86 PCMPESTRM instruction has been replaced with a portable all-pairs comparison
-//! (see `matrix_cmp_u16`), which takes more instructions but is available on every SIMD level.
+//! Like CRoaring, the intersection and difference use the x86 PCMPISTRM instruction (falling back
+//! to PCMPESTRM while a zero may be present) where SSE4.2 is available. Other SIMD levels use a
+//! portable all-pairs comparison (see `matrix_cmp_u16`) instead.
 //!
 //! The public functions select a SIMD level at runtime with `fearless_simd::dispatch!`, and call
 //! implementations generic over the SIMD level. Those are annotated with `#[simd]`, so that they
@@ -164,7 +165,7 @@ fn and_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
         let mut v_a: u16x8<S> = load(simd, &lhs[i..]);
         let mut v_b: u16x8<S> = load(simd, &rhs[j..]);
         loop {
-            let mask = matrix_cmp_u16(v_a, v_b).to_bitmask() as u8;
+            let mask = matrix_cmp_bitmask(v_a, v_b, lhs[i] == 0 || rhs[j] == 0);
             visitor.visit_vector(v_a, mask);
 
             let a_max: u16 = lhs[i + LANES - 1];
@@ -348,7 +349,7 @@ fn sub_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
         loop {
             // a_found_in_b will contain a mask indicate for each entry in A
             // whether it is seen in B
-            let a_found_in_b: u8 = matrix_cmp_u16(v_a, v_b).to_bitmask() as u8;
+            let a_found_in_b: u8 = matrix_cmp_bitmask(v_a, v_b, lhs[i] == 0 || rhs[j] == 0);
             runningmask_a_found_in_b |= a_found_in_b;
             // we always compare the last values of A and B
             let a_max: u16 = lhs[i + LANES - 1];
@@ -391,7 +392,8 @@ fn sub_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
                 // end up trying to remove zero values which aren't actually in rhs
                 buffer[remaining_rhs.len()..].fill(remaining_rhs[0]);
                 v_b = load(simd, &buffer);
-                let a_found_in_b: u8 = matrix_cmp_u16(v_a, v_b).to_bitmask() as u8;
+                let a_found_in_b: u8 =
+                    matrix_cmp_bitmask(v_a, v_b, lhs[i] == 0 || remaining_rhs[0] == 0);
                 runningmask_a_found_in_b |= a_found_in_b;
                 // Read from `lhs` (which `v_a` was loaded from): reading a lane of `v_a` makes LLVM
                 // split `v_a` into pieces in the loop above
@@ -448,6 +450,52 @@ fn matrix_cmp_u16<S: Simd>(a: u16x8<S>, b: u16x8<S>) -> mask16x8<S> {
         | a.simd_eq(b.rotate_elements_left::<5>())
         | a.simd_eq(b.rotate_elements_left::<6>())
         | a.simd_eq(b.rotate_elements_left::<7>())
+}
+
+/// Like [`matrix_cmp_u16`], but returns the mask as a bitmask, with bit `i` set if `a[i]` is in `b`
+///
+/// `may_contain_zero` must be true if either vector may contain a zero lane: because the vectors
+/// come from sorted arrays, that can only be the first lane of the first vector of either array.
+///
+/// Uses the SSE4.2 PCMPISTRM instruction where it is available, falling back to the slower
+/// PCMPESTRM when there may be a zero (which PCMPISTRM treats as the end of the string).
+#[inline(always)]
+fn matrix_cmp_bitmask<S: Simd>(a: u16x8<S>, b: u16x8<S>, may_contain_zero: bool) -> u8 {
+    if !may_contain_zero {
+        debug_assert!(a[0] != 0 && b[0] != 0)
+    }
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    if let Some(sse4_2) = a.token().level().as_sse4_2() {
+        return x86::matrix_cmp_bitmask(sse4_2, a.into(), b.into(), may_contain_zero);
+    }
+    matrix_cmp_u16(a, b).to_bitmask() as u8
+}
+
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+mod x86 {
+    #[cfg(target_arch = "x86")]
+    use core::arch::x86::*;
+    #[cfg(target_arch = "x86_64")]
+    use core::arch::x86_64::*;
+
+    fearless_simd::kernel!(
+        /// Returns a bitmask with bit `i` set if lane `i` of `a` is equal to any lane of `b`
+        #[inline]
+        pub(super) fn matrix_cmp_bitmask(
+            sse4_2: Sse4_2,
+            a: __m128i,
+            b: __m128i,
+            may_contain_zero: bool,
+        ) -> u8 {
+            const MODE: i32 = _SIDD_UWORD_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_BIT_MASK;
+            let found = if may_contain_zero {
+                _mm_cmpestrm::<MODE>(b, 8, a, 8)
+            } else {
+                _mm_cmpistrm::<MODE>(b, a)
+            };
+            _mm_cvtsi128_si32(found) as u8
+        }
+    );
 }
 
 /// Assuming that a and b are sorted, returns an array of the sorted output.
@@ -586,6 +634,11 @@ mod test {
             let a = u16x8::from_slice(simd, &[1, 2, 3, 4, 32, 33, 34, 35]);
             let b = u16x8::from_slice(simd, &[2, 4, 6, 8, 10, 12, 14, 35]);
             assert_eq!(matrix_cmp_u16(a, b).to_bitmask(), 0b1000_1010);
+            assert_eq!(matrix_cmp_bitmask(a, b, false), 0b1000_1010);
+            assert_eq!(matrix_cmp_bitmask(a, b, true), 0b1000_1010);
+            let a = u16x8::from_slice(simd, &[0, 2, 3, 4, 32, 33, 34, 35]);
+            let b = u16x8::from_slice(simd, &[0, 4, 6, 8, 10, 12, 14, 35]);
+            assert_eq!(matrix_cmp_bitmask(a, b, true), 0b1000_1001);
         });
     }
 }
