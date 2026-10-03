@@ -1,5 +1,9 @@
 #[cfg(feature = "simd")]
 use crate::bitmap::store::array_store::vector::swizzle_to_front;
+#[cfg(feature = "simd")]
+use fearless_simd::{prelude::*, u16x8};
+#[cfg(feature = "simd")]
+use fearless_simd_macros::simd;
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
@@ -13,7 +17,7 @@ use alloc::vec::Vec;
 /// computing the cardinality of an operation without materializng a new bitmap.
 pub trait BinaryOperationVisitor {
     #[cfg(feature = "simd")]
-    fn visit_vector(&mut self, value: core::simd::u16x8, mask: u8);
+    fn visit_vector<S: Simd>(&mut self, value: u16x8<S>, mask: u8);
     fn visit_scalar(&mut self, value: u16);
     fn visit_slice(&mut self, values: &[u16]);
 }
@@ -40,7 +44,8 @@ impl VecWriter {
 
 impl BinaryOperationVisitor for VecWriter {
     #[cfg(feature = "simd")]
-    fn visit_vector(&mut self, value: core::simd::u16x8, mask: u8) {
+    #[simd]
+    fn visit_vector<S: Simd>(&mut self, value: u16x8<S>, mask: u8) {
         let result = swizzle_to_front(value, mask);
 
         // This idiom is better than subslicing result, as it compiles down to an unaligned vector
@@ -48,7 +53,7 @@ impl BinaryOperationVisitor for VecWriter {
         // A more straightforward, but unsafe way would be ptr::write_unaligned and Vec::set_len
         // Writing a vector at once is why the vectorized algorithms do not operate in place
         // first write the entire vector
-        self.vec.extend_from_slice(&result.as_array()[..]);
+        self.vec.extend_from_slice(result.as_slice());
         // next truncate the masked out values
         self.vec.truncate(self.vec.len() - (result.len() - mask.count_ones() as usize));
     }
@@ -78,7 +83,7 @@ impl CardinalityCounter {
 
 impl BinaryOperationVisitor for CardinalityCounter {
     #[cfg(feature = "simd")]
-    fn visit_vector(&mut self, _value: core::simd::u16x8, mask: u8) {
+    fn visit_vector<S: Simd>(&mut self, _value: u16x8<S>, mask: u8) {
         self.count += mask.count_ones() as usize;
     }
 
