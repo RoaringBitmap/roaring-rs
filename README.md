@@ -33,15 +33,6 @@ branch to better see the changes.
 Those benchmarks are designed on top of the Criterion library,
 you can read more about it [on the user guide][].
 
-To measure bitmap equality with synthetic inputs, without downloading datasets, run:
-
-```sh
-cargo bench -p benchmarks --bench equality
-```
-
-This covers equal and unequal bitmaps, different densities and sizes, and array and run
-containers. Input construction and cloning are outside the timed comparisons.
-
 ## License
 
 Licensed under either of

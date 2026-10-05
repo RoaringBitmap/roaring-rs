@@ -23,7 +23,3 @@ simd = ["roaring/simd"]
 [[bench]]
 name = "lib"
 harness = false
-
-[[bench]]
-name = "equality"
-harness = false
