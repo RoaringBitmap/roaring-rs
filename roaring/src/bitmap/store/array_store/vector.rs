@@ -20,6 +20,7 @@
 
 use super::scalar;
 use crate::bitmap::store::array_store::visitor::BinaryOperationVisitor;
+use core::hint::select_unpredictable;
 use fearless_simd::prelude::*;
 use fearless_simd::{dispatch, mask16x8, u16x8, Level};
 use fearless_simd_macros::simd;
@@ -71,57 +72,34 @@ fn or_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binary
         (new, mask)
     }
 
-    if (lhs.len() < 8) || (rhs.len() < 8) {
+    let (lhs_chunks, lhs_remain) = lhs.as_chunks::<LANES>();
+    let (rhs_chunks, rhs_remain) = rhs.as_chunks::<LANES>();
+    let ([lhs_first, ..], [rhs_first, ..]) = (lhs_chunks, rhs_chunks) else {
         scalar::or(lhs, rhs, visitor);
         return;
-    }
+    };
 
-    let len1: usize = lhs.len() / 8;
-    let len2: usize = rhs.len() / 8;
-
-    let v_a: u16x8<S> = load(simd, lhs);
-    let v_b: u16x8<S> = load(simd, rhs);
+    let v_a = u16x8::load_array_ref(simd, lhs_first);
+    let v_b = u16x8::load_array_ref(simd, rhs_first);
     let (mut v_min, mut v_max) = bitonic_merge(v_a, v_b);
 
     let mut i = 1;
     let mut j = 1;
     let (v, m) = handle_vector(u16x8::splat(simd, u16::MAX), v_min);
     visitor.visit_vector(v, m);
-    let mut v_prev: u16x8<S> = v_min;
-    if (i < len1) && (j < len2) {
-        let mut v: u16x8<S>;
-        let mut cur_a: u16 = lhs[8 * i];
-        let mut cur_b: u16 = rhs[8 * j];
-        loop {
-            if cur_a <= cur_b {
-                v = load(simd, &lhs[8 * i..]);
-                i += 1;
-                if i < len1 {
-                    cur_a = lhs[8 * i];
-                } else {
-                    break;
-                }
-            } else {
-                v = load(simd, &rhs[8 * j..]);
-                j += 1;
-                if j < len2 {
-                    cur_b = rhs[8 * j];
-                } else {
-                    break;
-                }
-            }
-            (v_min, v_max) = bitonic_merge(v_max, v);
-            let (v, m) = handle_vector(v_prev, v_min);
-            visitor.visit_vector(v, m);
-            v_prev = v_min;
-        }
+    let mut v_prev = v_min;
+    while let (Some(lhs_chunk), Some(rhs_chunk)) = (lhs_chunks.get(i), rhs_chunks.get(j)) {
+        let take_lhs = lhs_chunk[0] <= rhs_chunk[0];
+        let (src, side) = select_unpredictable(take_lhs, (lhs_chunk, &mut i), (rhs_chunk, &mut j));
+        let v = u16x8::load_array_ref(simd, src);
+        *side += 1;
         (v_min, v_max) = bitonic_merge(v_max, v);
         let (v, m) = handle_vector(v_prev, v_min);
         visitor.visit_vector(v, m);
         v_prev = v_min;
     }
 
-    debug_assert!(i == len1 || j == len2);
+    debug_assert!(i == lhs_chunks.len() || j == rhs_chunks.len());
 
     // we finish the rest off using a scalar algorithm
     // could be improved?
@@ -129,17 +107,17 @@ fn or_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binary
     // copy the small end on a tmp buffer
     let mut buffer: [u16; 16] = [0; 16];
     let (v, m) = handle_vector(v_prev, v_max);
-    store(swizzle_to_front(v, m), buffer.as_mut_slice());
+    swizzle_to_front(v, m).store_array(buffer.first_chunk_mut().unwrap());
     let mut rem = m.count_ones() as usize;
 
-    let (tail_a, tail_b, tail_len) = if i == len1 {
-        (&lhs[8 * i..], &rhs[8 * j..], lhs.len() - 8 * len1)
+    let (tail_a, tail_b) = if i == lhs_chunks.len() {
+        (lhs_remain, &rhs[LANES * j..])
     } else {
-        (&rhs[8 * j..], &lhs[8 * i..], rhs.len() - 8 * len2)
+        (rhs_remain, &lhs[LANES * i..])
     };
 
-    buffer[rem..rem + tail_len].copy_from_slice(tail_a);
-    rem += tail_len;
+    buffer[rem..rem + tail_a.len()].copy_from_slice(tail_a);
+    rem += tail_a.len();
 
     if rem == 0 {
         visitor.visit_slice(tail_b)
@@ -156,39 +134,43 @@ pub fn and(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
 
 #[simd]
 fn and_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
-    let st_a = (lhs.len() / LANES) * LANES;
-    let st_b = (rhs.len() / LANES) * LANES;
+    let (lhs_chunks, _) = lhs.as_chunks::<LANES>();
+    let (rhs_chunks, _) = rhs.as_chunks::<LANES>();
 
-    let mut i: usize = 0;
-    let mut j: usize = 0;
-    if (i < st_a) && (j < st_b) {
-        let mut v_a: u16x8<S> = load(simd, &lhs[i..]);
-        let mut v_b: u16x8<S> = load(simd, &rhs[j..]);
+    let mut i = 0;
+    let mut j = 0;
+    if let ([lhs_first, ..], [rhs_first, ..]) = (lhs_chunks, rhs_chunks) {
+        let mut lhs_chunk = lhs_first;
+        let mut rhs_chunk = rhs_first;
+        let mut v_a = u16x8::load_array_ref(simd, lhs_chunk);
+        let mut v_b = u16x8::load_array_ref(simd, rhs_chunk);
         loop {
-            let mask = matrix_cmp_bitmask(v_a, v_b, lhs[i] == 0 || rhs[j] == 0);
+            let mask = matrix_cmp_bitmask(v_a, v_b, lhs_chunk[0] == 0 || rhs_chunk[0] == 0);
             visitor.visit_vector(v_a, mask);
 
-            let a_max: u16 = lhs[i + LANES - 1];
-            let b_max: u16 = rhs[j + LANES - 1];
+            let a_max = *lhs_chunk.last().unwrap();
+            let b_max = *rhs_chunk.last().unwrap();
             if a_max <= b_max {
-                i += LANES;
-                if i == st_a {
-                    break;
+                i += 1;
+                match lhs_chunks.get(i) {
+                    Some(next) => lhs_chunk = next,
+                    None => break,
                 }
-                v_a = load(simd, &lhs[i..]);
+                v_a = u16x8::load_array_ref(simd, lhs_chunk);
             }
             if b_max <= a_max {
-                j += LANES;
-                if j == st_b {
-                    break;
+                j += 1;
+                match rhs_chunks.get(j) {
+                    Some(next) => rhs_chunk = next,
+                    None => break,
                 }
-                v_b = load(simd, &rhs[j..]);
+                v_b = u16x8::load_array_ref(simd, rhs_chunk);
             }
         }
     }
 
     // intersect the tail using scalar intersection
-    scalar::and(&lhs[i..], &rhs[j..], visitor);
+    scalar::and(&lhs[LANES * i..], &rhs[LANES * j..], visitor);
 }
 
 // a one-pass xor algorithm
@@ -230,57 +212,34 @@ fn xor_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
         (tmp2, mask)
     }
 
-    if (lhs.len() < 8) || (rhs.len() < 8) {
+    let (lhs_chunks, lhs_remain) = lhs.as_chunks::<LANES>();
+    let (rhs_chunks, rhs_remain) = rhs.as_chunks::<LANES>();
+    let ([lhs_first, ..], [rhs_first, ..]) = (lhs_chunks, rhs_chunks) else {
         scalar::xor(lhs, rhs, visitor);
         return;
-    }
+    };
 
-    let len1: usize = lhs.len() / 8;
-    let len2: usize = rhs.len() / 8;
-
-    let v_a: u16x8<S> = load(simd, lhs);
-    let v_b: u16x8<S> = load(simd, rhs);
+    let v_a = u16x8::load_array_ref(simd, lhs_first);
+    let v_b = u16x8::load_array_ref(simd, rhs_first);
     let (mut v_min, mut v_max) = bitonic_merge(v_a, v_b);
 
     let mut i = 1;
     let mut j = 1;
     let (v, m) = handle_vector(u16x8::splat(simd, u16::MAX), v_min);
     visitor.visit_vector(v, m);
-    let mut v_prev: u16x8<S> = v_min;
-    if (i < len1) && (j < len2) {
-        let mut v: u16x8<S>;
-        let mut cur_a: u16 = lhs[8 * i];
-        let mut cur_b: u16 = rhs[8 * j];
-        loop {
-            if cur_a <= cur_b {
-                v = load(simd, &lhs[8 * i..]);
-                i += 1;
-                if i < len1 {
-                    cur_a = lhs[8 * i];
-                } else {
-                    break;
-                }
-            } else {
-                v = load(simd, &rhs[8 * j..]);
-                j += 1;
-                if j < len2 {
-                    cur_b = rhs[8 * j];
-                } else {
-                    break;
-                }
-            }
-            (v_min, v_max) = bitonic_merge(v, v_max);
-            let (v, m) = handle_vector(v_prev, v_min);
-            visitor.visit_vector(v, m);
-            v_prev = v_min;
-        }
+    let mut v_prev = v_min;
+    while let (Some(lhs_chunk), Some(rhs_chunk)) = (lhs_chunks.get(i), rhs_chunks.get(j)) {
+        let take_lhs = lhs_chunk[0] <= rhs_chunk[0];
+        let (src, side) = select_unpredictable(take_lhs, (lhs_chunk, &mut i), (rhs_chunk, &mut j));
+        let v = u16x8::load_array_ref(simd, src);
+        *side += 1;
         (v_min, v_max) = bitonic_merge(v, v_max);
         let (v, m) = handle_vector(v_prev, v_min);
         visitor.visit_vector(v, m);
         v_prev = v_min;
     }
 
-    debug_assert!(i == len1 || j == len2);
+    debug_assert!(i == lhs_chunks.len() || j == rhs_chunks.len());
 
     // we finish the rest off using a scalar algorithm
     // could be improved?
@@ -289,7 +248,7 @@ fn xor_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
     let mut buffer: [u16; 17] = [0; 17];
     // remaining size
     let (v, m) = handle_vector(v_prev, v_max);
-    store(swizzle_to_front(v, m), buffer.as_mut_slice());
+    swizzle_to_front(v, m).store_array(buffer.first_chunk_mut().unwrap());
     let mut rem = m.count_ones() as usize;
 
     // Store `v_max` rather than reading its lanes with indexing, which makes LLVM split
@@ -303,14 +262,14 @@ fn xor_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
         rem += 1;
     }
 
-    let (tail_a, tail_b, tail_len) = if i == len1 {
-        (&lhs[8 * i..], &rhs[8 * j..], lhs.len() - 8 * len1)
+    let (tail_a, tail_b) = if i == lhs_chunks.len() {
+        (lhs_remain, &rhs[LANES * j..])
     } else {
-        (&rhs[8 * j..], &lhs[8 * i..], rhs.len() - 8 * len2)
+        (rhs_remain, &lhs[LANES * i..])
     };
 
-    buffer[rem..rem + tail_len].copy_from_slice(tail_a);
-    rem += tail_len;
+    buffer[rem..rem + tail_a.len()].copy_from_slice(tail_a);
+    rem += tail_a.len();
 
     if rem == 0 {
         visitor.visit_slice(tail_b)
@@ -335,98 +294,86 @@ fn sub_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
         return;
     }
 
-    let st_a = (lhs.len() / LANES) * LANES;
-    let st_b = (rhs.len() / LANES) * LANES;
+    let (lhs_chunks, _) = lhs.as_chunks::<LANES>();
+    let (rhs_chunks, _) = rhs.as_chunks::<LANES>();
 
     let mut i = 0;
     let mut j = 0;
-    if (i < st_a) && (j < st_b) {
-        let mut v_a: u16x8<S> = load(simd, &lhs[i..]);
-        let mut v_b: u16x8<S> = load(simd, &rhs[j..]);
+    let mut rhs_tail = rhs;
+    if let ([lhs_first, ..], [rhs_first, ..]) = (lhs_chunks, rhs_chunks) {
+        let mut lhs_chunk = lhs_first;
+        let mut rhs_chunk = rhs_first;
+        let mut v_a = u16x8::load_array_ref(simd, lhs_chunk);
+        let mut v_b = u16x8::load_array_ref(simd, rhs_chunk);
         // we have a running mask which indicates which values from a have been
         // spotted in b, these don't get written out.
         let mut runningmask_a_found_in_b: u8 = 0;
         loop {
             // a_found_in_b will contain a mask indicate for each entry in A
             // whether it is seen in B
-            let a_found_in_b: u8 = matrix_cmp_bitmask(v_a, v_b, lhs[i] == 0 || rhs[j] == 0);
+            let a_found_in_b: u8 =
+                matrix_cmp_bitmask(v_a, v_b, lhs_chunk[0] == 0 || rhs_chunk[0] == 0);
             runningmask_a_found_in_b |= a_found_in_b;
             // we always compare the last values of A and B
-            let a_max: u16 = lhs[i + LANES - 1];
-            let b_max: u16 = rhs[j + LANES - 1];
+            let a_max = *lhs_chunk.last().unwrap();
+            let b_max = *rhs_chunk.last().unwrap();
             if a_max <= b_max {
                 // Ok. In this code path, we are ready to write our v_a
                 // because there is no need to read more from B, they will
                 // all be large values.
                 let bitmask_belongs_to_difference = !runningmask_a_found_in_b;
                 visitor.visit_vector(v_a, bitmask_belongs_to_difference);
-                i += LANES;
-                if i == st_a {
-                    break;
+                i += 1;
+                match lhs_chunks.get(i) {
+                    Some(next) => lhs_chunk = next,
+                    None => break,
                 }
                 runningmask_a_found_in_b = 0;
-                v_a = load(simd, &lhs[i..]);
+                v_a = u16x8::load_array_ref(simd, lhs_chunk);
             }
             if b_max <= a_max {
                 // in this code path, the current v_b has become useless
-                j += LANES;
-                if j == st_b {
-                    break;
+                j += 1;
+                match rhs_chunks.get(j) {
+                    Some(next) => rhs_chunk = next,
+                    None => break,
                 }
-                v_b = load(simd, &rhs[j..]);
+                v_b = u16x8::load_array_ref(simd, rhs_chunk);
             }
         }
 
-        debug_assert!(i == st_a || j == st_b);
+        debug_assert!(i == lhs_chunks.len() || j == rhs_chunks.len());
+        rhs_tail = &rhs[LANES * j..];
 
         // End of main vectorized loop
-        // At this point either i_a == st_a, which is the end of the vectorized processing,
-        // or i_b == st_b and we are not done processing the vector...
-        // so we need to finish it off.
-        if i < st_a {
-            let remaining_rhs = &rhs[j..];
-            if !remaining_rhs.is_empty() {
+        // At this point either all of lhs's chunks are processed, which is the end of the
+        // vectorized processing, or all of rhs's chunks are and we are not done processing
+        // `lhs_chunk`... so we need to finish it off.
+        if i < lhs_chunks.len() {
+            if !rhs_tail.is_empty() {
                 let mut buffer: [u16; 8] = [0; 8]; // buffer to do a masked load
-                buffer[..remaining_rhs.len()].copy_from_slice(remaining_rhs);
+                buffer[..rhs_tail.len()].copy_from_slice(rhs_tail);
                 // Ensure the buffer is filled with a value we should remove: we do not want to
                 // end up trying to remove zero values which aren't actually in rhs
-                buffer[remaining_rhs.len()..].fill(remaining_rhs[0]);
-                v_b = load(simd, &buffer);
+                buffer[rhs_tail.len()..].fill(rhs_tail[0]);
+                v_b = u16x8::load_array_ref(simd, &buffer);
                 let a_found_in_b: u8 =
-                    matrix_cmp_bitmask(v_a, v_b, lhs[i] == 0 || remaining_rhs[0] == 0);
+                    matrix_cmp_bitmask(v_a, v_b, lhs_chunk[0] == 0 || rhs_tail[0] == 0);
                 runningmask_a_found_in_b |= a_found_in_b;
-                // Read from `lhs` (which `v_a` was loaded from): reading a lane of `v_a` makes LLVM
-                // split `v_a` into pieces in the loop above
-                let max_va = lhs[i + LANES - 1];
-                let used_rhs = remaining_rhs.partition_point(|&b| b <= max_va);
-                j += used_rhs;
+                // Read from `lhs_chunk` (which `v_a` was loaded from): reading a lane of `v_a`
+                // makes LLVM split `v_a` into pieces in the loop above
+                let max_va = *lhs_chunk.last().unwrap();
+                let used_rhs = rhs_tail.partition_point(|&b| b <= max_va);
+                rhs_tail = &rhs_tail[used_rhs..];
             }
             let bitmask_belongs_to_difference: u8 = !runningmask_a_found_in_b;
             visitor.visit_vector(v_a, bitmask_belongs_to_difference);
-            i += LANES;
+            i += 1;
         }
     }
 
     // do the tail using scalar code
-    scalar::sub(&lhs[i..], &rhs[j..], visitor);
-}
-
-/// load the first `LANES` values of `src`
-///
-/// ### Panics
-///   - If `src` is shorter than `LANES`
-#[inline(always)]
-fn load<S: Simd>(simd: S, src: &[u16]) -> u16x8<S> {
-    u16x8::from_slice(simd, &src[..LANES])
-}
-
-/// write `v` to the first `LANES` values of `out`
-///
-/// ### Panics
-///   - If `out` is shorter than `LANES`
-#[inline(always)]
-fn store<S: Simd>(v: u16x8<S>, out: &mut [u16]) {
-    v.store_slice(&mut out[..LANES])
+    scalar::sub(&lhs[LANES * i..], rhs_tail, visitor);
 }
 
 /// Compare all lanes in `a` to all lanes in `b`
