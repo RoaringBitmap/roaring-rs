@@ -81,7 +81,7 @@ fn or_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binary
 
     let v_a: u16x8<S> = load(simd, lhs);
     let v_b: u16x8<S> = load(simd, rhs);
-    let [mut v_min, mut v_max] = simd_merge_u16(v_a, v_b);
+    let (mut v_min, mut v_max) = bitonic_merge(v_a, v_b);
 
     let mut i = 1;
     let mut j = 1;
@@ -110,12 +110,12 @@ fn or_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binary
                     break;
                 }
             }
-            [v_min, v_max] = simd_merge_u16(v, v_max);
+            (v_min, v_max) = bitonic_merge(v_max, v);
             let (v, m) = handle_vector(v_prev, v_min);
             visitor.visit_vector(v, m);
             v_prev = v_min;
         }
-        [v_min, v_max] = simd_merge_u16(v, v_max);
+        (v_min, v_max) = bitonic_merge(v_max, v);
         let (v, m) = handle_vector(v_prev, v_min);
         visitor.visit_vector(v, m);
         v_prev = v_min;
@@ -240,7 +240,7 @@ fn xor_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
 
     let v_a: u16x8<S> = load(simd, lhs);
     let v_b: u16x8<S> = load(simd, rhs);
-    let [mut v_min, mut v_max] = simd_merge_u16(v_a, v_b);
+    let (mut v_min, mut v_max) = bitonic_merge(v_a, v_b);
 
     let mut i = 1;
     let mut j = 1;
@@ -269,12 +269,12 @@ fn xor_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
                     break;
                 }
             }
-            [v_min, v_max] = simd_merge_u16(v, v_max);
+            (v_min, v_max) = bitonic_merge(v, v_max);
             let (v, m) = handle_vector(v_prev, v_min);
             visitor.visit_vector(v, m);
             v_prev = v_min;
         }
-        [v_min, v_max] = simd_merge_u16(v, v_max);
+        (v_min, v_max) = bitonic_merge(v, v_max);
         let (v, m) = handle_vector(v_prev, v_min);
         visitor.visit_vector(v, m);
         v_prev = v_min;
@@ -499,23 +499,27 @@ mod x86 {
 }
 
 /// Assuming that a and b are sorted, returns an array of the sorted output.
-/// Developed originally for merge sort using SIMD instructions.
-/// Standard merge. See, e.g., Inoue and Taura, SIMD- and Cache-Friendly
-/// Algorithm for Sorting an Array of Structures
 #[inline(always)]
-fn simd_merge_u16<S: Simd>(a: u16x8<S>, b: u16x8<S>) -> [u16x8<S>; 2] {
-    let mut tmp: u16x8<S> = a.min(b);
-    let mut max: u16x8<S> = a.max(b);
-    tmp = tmp.rotate_elements_left::<1>();
-    let mut min: u16x8<S> = tmp.min(max);
-    for _ in 0..6 {
-        max = tmp.max(max);
-        tmp = min.rotate_elements_left::<1>();
-        min = tmp.min(max);
+fn bitonic_merge<S: Simd, V: SimdInt<S>>(mut a: V, mut b: V) -> (V, V) {
+    const { assert!(V::LEN.is_power_of_two()) }
+
+    // Conceptually, a ++ reverse(b) is a bitonic sequence.
+    b = b.reverse();
+
+    // Each bitonic stage compare-exchanges positions that differ in one index
+    // bit, from the most significant down. Lane-wise min/max between `a` and
+    // `b` handles the top bit (which vector a value is in). Interleaving is a
+    // perfect shuffle: it rotates the index bits left by one, moving the next
+    // bit to compare into the top position. After log2(2 * LEN) stages, the
+    // bits have rotated all the way around, so the lanes are back in
+    // ascending order.
+    for _ in 0..V::LEN.trailing_zeros() + 1 {
+        let lo = a.min(b);
+        let hi = a.max(b);
+        (a, b) = lo.interleave(hi);
     }
-    max = tmp.max(max);
-    min = min.rotate_elements_left::<1>();
-    [min, max]
+
+    (a, b)
 }
 
 /// Move the values in `val` with the corresponding index in `bitmask`
@@ -558,6 +562,40 @@ mod test {
     use alloc::vec::Vec;
     use proptest::prelude::*;
 
+    fn check_bitonic_merge<S: Simd, V: SimdInt<S>>(
+        simd: S,
+        lhs: &[V::Element],
+        rhs: &[V::Element],
+    ) {
+        let mut expected = [lhs, rhs].concat();
+        expected.sort_unstable();
+
+        let (lo, hi) = bitonic_merge(V::from_slice(simd, lhs), V::from_slice(simd, rhs));
+        assert_eq!(lo.as_slice(), &expected[..V::LEN], "lhs: {lhs:?}, rhs: {rhs:?}");
+        assert_eq!(hi.as_slice(), &expected[V::LEN..], "lhs: {lhs:?}, rhs: {rhs:?}");
+    }
+
+    #[test]
+    fn bitonic_merge_handles_every_distinct_lane_interleaving() {
+        dispatch!(level(), simd => {
+            for mask in 0..=u16::MAX {
+                if mask.count_ones() as usize != LANES {
+                    continue;
+                }
+                let mut lhs = Vec::with_capacity(LANES);
+                let mut rhs = Vec::with_capacity(LANES);
+                for value in 0..16 {
+                    if mask & (1 << value) != 0 {
+                        lhs.push(value);
+                    } else {
+                        rhs.push(value);
+                    }
+                }
+                check_bitonic_merge::<_, u16x8<_>>(simd, &lhs, &rhs);
+            }
+        });
+    }
+
     /// Checks the vectorized op produces the same result as the scalar op
     fn check_op(
         vector: impl Fn(&[u16], &[u16], &mut VecWriter),
@@ -581,6 +619,18 @@ mod test {
     }
 
     proptest! {
+        #[test]
+        fn bitonic_merge_matches_sorted_concatenation(
+            mut lhs in prop::array::uniform8(prop_oneof![any::<u16>(), 0u16..16]),
+            mut rhs in prop::array::uniform8(prop_oneof![any::<u16>(), 0u16..16]),
+        ) {
+            lhs.sort_unstable();
+            rhs.sort_unstable();
+            dispatch!(level(), simd => {
+                check_bitonic_merge::<_, u16x8<_>>(simd, &lhs, &rhs);
+            });
+        }
+
         #[test]
         fn vector_ops_match_scalar_dense(
             lhs in prop::collection::btree_set(0u16..256, 0..200),
