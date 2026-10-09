@@ -35,8 +35,17 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, clippy
 
+      # Builds use `-C target-cpu=native`, so cached artifacts (including proc macros, which run in
+      # the compiler) only work on runners with the same target features
+      - name: Identify native target features
+        id: native
+        run: |
+          echo "features=$(rustc --print cfg -C target-cpu=native | grep '^target_feature=' | sha256sum | cut -c1-12)" >> "$GITHUB_OUTPUT"
+
       - name: Caching
         uses: Swatinem/rust-cache@v2
+        with:
+          key: native-${{ steps.native.outputs.features }}
 
       - name: Check
         # clippy will also do a build check
@@ -49,8 +58,9 @@ jobs:
           cargo clippy -p roaring --all-targets --features serde -- -Dclippy::todo -D warnings
 
       - name: Check SIMD
-        if: matrix.rust == 'nightly'
-        run: cargo clippy -p roaring --all-targets --all-features -- -D warnings
+        run: |
+          cargo clippy -p roaring --all-targets --all-features -- -D warnings
+          cargo clippy -p roaring --all-targets --no-default-features --features simd -- -D warnings
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -69,7 +79,7 @@ jobs:
           - default
           - no-std
         include:
-          - rust: nightly
+          - rust: stable
             features: simd
     env:
       RUSTFLAGS: "-C target-cpu=native -C opt-level=3"
@@ -85,8 +95,17 @@ jobs:
           repository: "RoaringBitmap/real-roaring-datasets"
           path: "benchmarks/real-roaring-datasets"
 
+      # Builds use `-C target-cpu=native`, so cached artifacts (including proc macros, which run in
+      # the compiler) only work on runners with the same target features
+      - name: Identify native target features
+        id: native
+        run: |
+          echo "features=$(rustc --print cfg -C target-cpu=native | grep '^target_feature=' | sha256sum | cut -c1-12)" >> "$GITHUB_OUTPUT"
+
       - name: Caching
         uses: Swatinem/rust-cache@v2
+        with:
+          key: native-${{ steps.native.outputs.features }}
 
       - name: Initialize rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -106,8 +125,10 @@ jobs:
         run: cargo test -p roaring --no-default-features
 
       - name: SIMD test
-        if: matrix.rust == 'nightly' && matrix.features == 'simd'
-        run: cargo +nightly test -p roaring --features simd
+        if: matrix.features == 'simd'
+        run: |
+          cargo test -p roaring --features simd
+          cargo test -p roaring --no-default-features --features simd
 
   miri:
     runs-on: ubuntu-latest
@@ -126,8 +147,17 @@ jobs:
           toolchain: nightly
           components: miri
 
+      # Builds use `-C target-cpu=native`, so cached artifacts (including proc macros, which run in
+      # the compiler) only work on runners with the same target features
+      - name: Identify native target features
+        id: native
+        run: |
+          echo "features=$(rustc --print cfg -C target-cpu=native | grep '^target_feature=' | sha256sum | cut -c1-12)" >> "$GITHUB_OUTPUT"
+
       - name: Caching
         uses: Swatinem/rust-cache@v2
+        with:
+          key: native-${{ steps.native.outputs.features }}
 
       - name: Setup miri
         run: cargo miri setup
@@ -150,8 +180,17 @@ jobs:
         with:
           toolchain: nightly
 
+      # Builds use `-C target-cpu=native`, so cached artifacts (including proc macros, which run in
+      # the compiler) only work on runners with the same target features
+      - name: Identify native target features
+        id: native
+        run: |
+          echo "features=$(rustc --print cfg -C target-cpu=native | grep '^target_feature=' | sha256sum | cut -c1-12)" >> "$GITHUB_OUTPUT"
+
       - name: Caching
         uses: Swatinem/rust-cache@v2
+        with:
+          key: native-${{ steps.native.outputs.features }}
 
       - name: Install cargo fuzz
         run: cargo install cargo-fuzz

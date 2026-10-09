@@ -8,6 +8,8 @@ roaring = { path = "roaring" }
 bytemuck = "1.25.2"
 byteorder = "1.5.0"
 criterion = "0.5"
+fearless_simd = { version = "1.0.0", default-features = false }
+fearless_simd_macros = "0.1.0"
 git2 = { version = "0.21", default-features = false }
 indicatif = "0.17"
 itertools = "0.15"
