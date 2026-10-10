@@ -314,6 +314,30 @@ fn xor(c: &mut Criterion) {
     )
 }
 
+fn and_skewed(c: &mut Criterion) {
+    let mut group = c.benchmark_group("and_skewed");
+    let large: RoaringBitmap = (0..4000).map(|i| i * 16).collect();
+    for small_len in [10, 4000] {
+        let stride = 65536 / small_len;
+        let small: RoaringBitmap = (0..small_len).map(|i| i * stride + i % 2 * 8).collect();
+        let id = format!("{small_len}_vs_4000");
+        group.bench_function(BenchmarkId::new("and", &id), |b| {
+            b.iter(|| black_box(&small) & black_box(&large))
+        });
+        group.bench_function(BenchmarkId::new("and_assign", &id), |b| {
+            b.iter_batched(
+                || small.clone(),
+                |mut small| small &= black_box(&large),
+                BatchSize::SmallInput,
+            )
+        });
+        group.bench_function(BenchmarkId::new("intersection_len", &id), |b| {
+            b.iter(|| black_box(&small).intersection_len(black_box(&large)))
+        });
+    }
+    group.finish();
+}
+
 fn subset(c: &mut Criterion) {
     let mut group = c.benchmark_group("pairwise_subset");
     pairwise_binary_op(&mut group, "is_subset", |a, b| a.is_subset(&b));
@@ -726,6 +750,7 @@ criterion_group!(
     rank,
     select,
     and,
+    and_skewed,
     or,
     sub,
     xor,

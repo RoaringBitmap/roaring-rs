@@ -2,7 +2,9 @@ mod scalar;
 mod vector;
 mod visitor;
 
-use crate::bitmap::store::array_store::visitor::{CardinalityCounter, VecWriter};
+use crate::bitmap::store::array_store::visitor::{
+    BinaryOperationVisitor, CardinalityCounter, VecWriter,
+};
 use core::cmp::Ordering;
 use core::cmp::Ordering::*;
 use core::fmt::{Display, Formatter};
@@ -55,6 +57,25 @@ pub(crate) fn last_contiguous_range_len(slice: &[u16]) -> usize {
         elem_distance != usize::from(value_distance)
     });
     slice.len() - len_from_start
+}
+
+/// Same size ratio as CRoaring's `array_container_intersection`.
+const SKEWED_THRESHOLD: usize = 64;
+
+fn is_skewed(lhs: &[u16], rhs: &[u16]) -> bool {
+    lhs.len().min(rhs.len()) * SKEWED_THRESHOLD < lhs.len().max(rhs.len())
+}
+
+fn intersect(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
+    if is_skewed(lhs, rhs) {
+        if lhs.len() < rhs.len() {
+            scalar::and_skewed(lhs, rhs, visitor);
+        } else {
+            scalar::and_skewed(rhs, lhs, visitor);
+        }
+    } else {
+        vector::and(lhs, rhs, visitor);
+    }
 }
 
 impl ArrayStore {
@@ -256,7 +277,7 @@ impl ArrayStore {
 
     pub fn intersection_len(&self, other: &Self) -> u64 {
         let mut visitor = CardinalityCounter::new();
-        vector::and(self.as_slice(), other.as_slice(), &mut visitor);
+        intersect(self.as_slice(), other.as_slice(), &mut visitor);
         visitor.into_inner()
     }
 
@@ -425,7 +446,7 @@ impl BitAnd<Self> for &ArrayStore {
 
     fn bitand(self, rhs: Self) -> Self::Output {
         let mut visitor = VecWriter::new(self.vec.len().min(rhs.vec.len()));
-        vector::and(self.as_slice(), rhs.as_slice(), &mut visitor);
+        intersect(self.as_slice(), rhs.as_slice(), &mut visitor);
         ArrayStore::from_vec_unchecked(visitor.into_inner())
     }
 }
@@ -433,7 +454,7 @@ impl BitAnd<Self> for &ArrayStore {
 impl BitAndAssign<&Self> for ArrayStore {
     fn bitand_assign(&mut self, rhs: &Self) {
         let mut visitor = VecWriter::new(self.vec.len().min(rhs.vec.len()));
-        vector::and(self.as_slice(), rhs.as_slice(), &mut visitor);
+        intersect(self.as_slice(), rhs.as_slice(), &mut visitor);
         self.vec = visitor.into_inner()
     }
 }
@@ -484,6 +505,8 @@ impl BitXor<Self> for &ArrayStore {
 mod tests {
     use super::*;
     use crate::bitmap::store::Store;
+    use proptest::collection::btree_set;
+    use proptest::prelude::*;
 
     fn into_vec(s: Store) -> Vec<u16> {
         match s {
@@ -669,5 +692,45 @@ mod tests {
         let rhs = ArrayStore::from_vec_unchecked(vec![0, 1, 2, 3, 4, 5, 6, 7, 200]);
         lhs -= &rhs;
         assert_eq!(lhs.as_slice(), (100..117).collect::<Vec<u16>>());
+    }
+
+    fn assert_and_matches_merge(lhs: Vec<u16>, rhs: Vec<u16>) {
+        let capacity = lhs.len().min(rhs.len());
+        let mut expected = VecWriter::new(capacity);
+        scalar::and(&lhs, &rhs, &mut expected);
+        let expected = expected.into_inner();
+
+        let mut skewed = VecWriter::new(capacity);
+        scalar::and_skewed(&lhs, &rhs, &mut skewed);
+        assert_eq!(skewed.into_inner(), expected);
+
+        let lhs = ArrayStore::from_vec_unchecked(lhs);
+        let rhs = ArrayStore::from_vec_unchecked(rhs);
+        for (a, b) in [(&lhs, &rhs), (&rhs, &lhs)] {
+            assert_eq!((a & b).vec, expected);
+            assert_eq!(a.intersection_len(b), expected.len() as u64);
+            let mut assigned = a.clone();
+            assigned &= b;
+            assert_eq!(assigned.vec, expected);
+        }
+    }
+
+    #[test]
+    fn test_and_skewed_edge_cases() {
+        let large: Vec<u16> = (0..8192).map(|x| x * 8).collect();
+        assert_and_matches_merge(vec![], large.clone());
+        assert_and_matches_merge(vec![1, 7, 65535], large.clone());
+        assert_and_matches_merge((0..40).map(|x| x * 1600).collect(), large);
+        assert_and_matches_merge((60000..60010).collect(), (100..5000).collect());
+    }
+
+    proptest! {
+        #[test]
+        fn and_skewed_matches_merge(
+            small in btree_set(0..=u16::MAX, 0..=80),
+            large in btree_set(0..=u16::MAX, 0..=4096),
+        ) {
+            assert_and_matches_merge(small.into_iter().collect(), large.into_iter().collect());
+        }
     }
 }
