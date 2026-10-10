@@ -53,6 +53,56 @@ pub fn and(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) 
     }
 }
 
+/// Intersects a small array with a much larger one, binary searching `large` for four
+/// elements of `small` at a time. Based on CRoaring's `intersect_skewed_uint16`.
+// Out of line so the merge loop in the same callers compiles as it does without it.
+#[inline(never)]
+pub fn and_skewed(small: &[u16], large: &[u16], visitor: &mut impl BinaryOperationVisitor) {
+    let mut large = large;
+    let (chunks, remainder) = small.as_chunks::<4>();
+    for &targets in chunks {
+        if large.is_empty() {
+            return;
+        }
+        let indexes = lower_bounds(large, targets);
+        for (target, index) in targets.into_iter().zip(indexes) {
+            if large.get(index) == Some(&target) {
+                visitor.visit_scalar(target);
+            }
+        }
+        large = &large[indexes[3]..];
+    }
+    for &a in remainder {
+        match large.binary_search(&a) {
+            Ok(i) => {
+                visitor.visit_scalar(a);
+                large = &large[i + 1..];
+            }
+            Err(i) => large = &large[i..],
+        }
+    }
+}
+
+/// Branchless binary searches for four targets at once.
+/// `array` must not be empty.
+#[inline]
+fn lower_bounds(array: &[u16], targets: [u16; 4]) -> [usize; 4] {
+    let mut bases = [0; 4];
+    let mut n = array.len();
+    while n > 1 {
+        let half = n / 2;
+        for (base, target) in bases.iter_mut().zip(targets) {
+            // SAFETY: `half < n`, and `base + n <= len` is invariant
+            // (`base` grows by `half` only as `n` shrinks by it).
+            if unsafe { *array.get_unchecked(*base + half) } < target {
+                *base += half;
+            }
+        }
+        n -= half;
+    }
+    core::array::from_fn(|i| bases[i] + (array[bases[i]] < targets[i]) as usize)
+}
+
 #[inline]
 pub fn sub(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
     // Traverse both arrays
