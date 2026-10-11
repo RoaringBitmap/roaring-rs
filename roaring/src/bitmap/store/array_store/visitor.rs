@@ -25,6 +25,8 @@ pub struct VecWriter {
 }
 
 impl VecWriter {
+    /// `capacity` must be an upper bound on the length of the output.
+    /// `visit_scalar` panics rather than grow past it.
     pub fn new(capacity: usize) -> VecWriter {
         let vec = Vec::with_capacity(capacity);
         VecWriter { vec }
@@ -54,6 +56,8 @@ impl BinaryOperationVisitor for VecWriter {
     }
 
     fn visit_scalar(&mut self, value: u16) {
+        // Lets the compiler drop the grow path of `push` from the merge loops.
+        assert!(self.vec.len() < self.vec.capacity());
         self.vec.push(value)
     }
 
