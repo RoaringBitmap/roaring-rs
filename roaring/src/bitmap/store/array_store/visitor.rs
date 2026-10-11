@@ -28,6 +28,9 @@ impl VecWriter {
     /// `capacity` must be an upper bound on the length of the output.
     /// `visit_scalar` panics rather than grow past it.
     pub fn new(capacity: usize) -> VecWriter {
+        // `visit_vector` writes a whole vector before truncating it.
+        #[cfg(feature = "simd")]
+        let capacity = capacity + 8;
         let vec = Vec::with_capacity(capacity);
         VecWriter { vec }
     }
