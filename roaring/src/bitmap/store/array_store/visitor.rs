@@ -1,7 +1,7 @@
 #[cfg(feature = "simd")]
-use crate::bitmap::store::array_store::vector::swizzle_to_front;
+use crate::bitmap::store::array_store::vector::count_set_lanes;
 #[cfg(feature = "simd")]
-use fearless_simd::{prelude::*, u16x8};
+use fearless_simd::{mask16x8, prelude::*, u16x8};
 #[cfg(feature = "simd")]
 use fearless_simd_macros::simd;
 
@@ -17,7 +17,7 @@ use alloc::vec::Vec;
 /// computing the cardinality of an operation without materializng a new bitmap.
 pub trait BinaryOperationVisitor {
     #[cfg(feature = "simd")]
-    fn visit_vector<S: Simd>(&mut self, value: u16x8<S>, mask: u8);
+    fn visit_vector<S: Simd>(&mut self, value: u16x8<S>, mask: mask16x8<S>);
     fn visit_scalar(&mut self, value: u16);
     fn visit_slice(&mut self, values: &[u16]);
 }
@@ -45,8 +45,9 @@ impl VecWriter {
 impl BinaryOperationVisitor for VecWriter {
     #[cfg(feature = "simd")]
     #[simd]
-    fn visit_vector<S: Simd>(&mut self, value: u16x8<S>, mask: u8) {
-        let result = swizzle_to_front(value, mask);
+    fn visit_vector<S: Simd>(&mut self, value: u16x8<S>, mask: mask16x8<S>) {
+        let result = value.compress(mask);
+        let result_size = count_set_lanes(mask);
 
         // This idiom is better than subslicing result, as it compiles down to an unaligned vector
         // store instr.
@@ -55,7 +56,7 @@ impl BinaryOperationVisitor for VecWriter {
         // first write the entire vector
         self.vec.extend_from_slice(result.as_slice());
         // next truncate the masked out values
-        self.vec.truncate(self.vec.len() - (result.len() - mask.count_ones() as usize));
+        self.vec.truncate(self.vec.len() - (result.len() - result_size));
     }
 
     fn visit_scalar(&mut self, value: u16) {
@@ -83,8 +84,8 @@ impl CardinalityCounter {
 
 impl BinaryOperationVisitor for CardinalityCounter {
     #[cfg(feature = "simd")]
-    fn visit_vector<S: Simd>(&mut self, _value: u16x8<S>, mask: u8) {
-        self.count += mask.count_ones() as usize;
+    fn visit_vector<S: Simd>(&mut self, _value: u16x8<S>, mask: mask16x8<S>) {
+        self.count += count_set_lanes(mask);
     }
 
     fn visit_scalar(&mut self, _value: u16) {
