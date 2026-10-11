@@ -709,4 +709,16 @@ mod tests {
         lhs -= &rhs;
         assert_eq!(lhs.as_slice(), (100..117).collect::<Vec<u16>>());
     }
+
+    #[test]
+    #[cfg(feature = "simd")]
+    fn test_array_and_subset_does_not_regrow() {
+        let lhs = ArrayStore::from_vec_unchecked((0..500).map(|i| i * 8).collect());
+        let rhs = ArrayStore::from_vec_unchecked((0..4000).collect());
+
+        let and = &lhs & &rhs;
+
+        assert_eq!(and, lhs);
+        assert!(and.vec.capacity() < 2 * lhs.vec.len());
+    }
 }
