@@ -63,11 +63,10 @@ fn or_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binary
     // returns `new`, with a mask of its values which were not already written,
     // assuming that the previously written vector was `old`
     #[inline(always)]
-    fn handle_vector<S: Simd>(old: u16x8<S>, new: u16x8<S>) -> (u16x8<S>, u8) {
+    fn handle_vector<S: Simd>(old: u16x8<S>, new: u16x8<S>) -> (u16x8<S>, mask16x8<S>) {
         // `[old[7], new[0], ..., new[6]]`
         let tmp: u16x8<S> = old.slide::<7>(new);
-        let mask = !tmp.simd_eq(new).to_bitmask() as u8;
-        (new, mask)
+        (new, tmp.simd_ne(new))
     }
 
     let (lhs_chunks, lhs_remain) = lhs.as_chunks::<LANES>();
@@ -105,8 +104,8 @@ fn or_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binary
     // copy the small end on a tmp buffer
     let mut buffer: [u16; 16] = [0; 16];
     let (v, m) = handle_vector(v_prev, v_max);
-    swizzle_to_front(v, m).store_array(buffer.first_chunk_mut().unwrap());
-    let mut rem = m.count_ones() as usize;
+    v.compress(m).store_array(buffer.first_chunk_mut().unwrap());
+    let mut rem = count_set_lanes(m);
 
     let (tail_a, tail_b) = if i == lhs_chunks.len() {
         (lhs_remain, &rhs[LANES * j..])
@@ -143,7 +142,7 @@ fn and_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
         let mut v_a = u16x8::load_array_ref(simd, lhs_chunk);
         let mut v_b = u16x8::load_array_ref(simd, rhs_chunk);
         loop {
-            let mask = matrix_cmp_bitmask(v_a, v_b, lhs_chunk[0] == 0 || rhs_chunk[0] == 0);
+            let mask = matrix_cmp_mask(v_a, v_b, lhs_chunk[0] == 0 || rhs_chunk[0] == 0);
             visitor.visit_vector(v_a, mask);
 
             let a_max = *lhs_chunk.last().unwrap();
@@ -198,16 +197,14 @@ fn xor_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
     // returns the vector to write, and a mask of the values to write from it,
     // omitting repeated values assuming that previously written vector was "old"
     #[inline(always)]
-    fn handle_vector<S: Simd>(old: u16x8<S>, new: u16x8<S>) -> (u16x8<S>, u8) {
+    fn handle_vector<S: Simd>(old: u16x8<S>, new: u16x8<S>) -> (u16x8<S>, mask16x8<S>) {
         // `[old[6], old[7], new[0], ..., new[5]]`
         let tmp1: u16x8<S> = old.slide::<6>(new);
         // `[old[7], new[0], ..., new[6]]`
         let tmp2: u16x8<S> = old.slide::<7>(new);
-        let eq_l: mask16x8<S> = tmp2.simd_eq(tmp1);
-        let eq_r: mask16x8<S> = tmp2.simd_eq(new);
-        let eq_l_or_r: mask16x8<S> = eq_l | eq_r;
-        let mask: u8 = !(eq_l_or_r.to_bitmask() as u8);
-        (tmp2, mask)
+        let ne_l: mask16x8<S> = tmp2.simd_ne(tmp1);
+        let ne_r: mask16x8<S> = tmp2.simd_ne(new);
+        (tmp2, ne_l & ne_r)
     }
 
     let (lhs_chunks, lhs_remain) = lhs.as_chunks::<LANES>();
@@ -246,8 +243,8 @@ fn xor_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
     let mut buffer: [u16; 17] = [0; 17];
     // remaining size
     let (v, m) = handle_vector(v_prev, v_max);
-    swizzle_to_front(v, m).store_array(buffer.first_chunk_mut().unwrap());
-    let mut rem = m.count_ones() as usize;
+    v.compress(m).store_array(buffer.first_chunk_mut().unwrap());
+    let mut rem = count_set_lanes(m);
 
     // Store `v_max` rather than reading its lanes with indexing, which makes LLVM split
     // `v_max` into pieces in the merge loop above
@@ -305,12 +302,11 @@ fn sub_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
         let mut v_b = u16x8::load_array_ref(simd, rhs_chunk);
         // we have a running mask which indicates which values from a have been
         // spotted in b, these don't get written out.
-        let mut runningmask_a_found_in_b: u8 = 0;
+        let mut runningmask_a_found_in_b = mask16x8::splat(simd, false);
         loop {
             // a_found_in_b will contain a mask indicate for each entry in A
             // whether it is seen in B
-            let a_found_in_b: u8 =
-                matrix_cmp_bitmask(v_a, v_b, lhs_chunk[0] == 0 || rhs_chunk[0] == 0);
+            let a_found_in_b = matrix_cmp_mask(v_a, v_b, lhs_chunk[0] == 0 || rhs_chunk[0] == 0);
             runningmask_a_found_in_b |= a_found_in_b;
             // we always compare the last values of A and B
             let a_max = *lhs_chunk.last().unwrap();
@@ -326,7 +322,7 @@ fn sub_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
                     Some(next) => lhs_chunk = next,
                     None => break,
                 }
-                runningmask_a_found_in_b = 0;
+                runningmask_a_found_in_b = mask16x8::splat(simd, false);
                 v_a = u16x8::load_array_ref(simd, lhs_chunk);
             }
             if b_max <= a_max {
@@ -355,8 +351,7 @@ fn sub_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
                 // end up trying to remove zero values which aren't actually in rhs
                 buffer[rhs_tail.len()..].fill(rhs_tail[0]);
                 v_b = u16x8::load_array_ref(simd, &buffer);
-                let a_found_in_b: u8 =
-                    matrix_cmp_bitmask(v_a, v_b, lhs_chunk[0] == 0 || rhs_tail[0] == 0);
+                let a_found_in_b = matrix_cmp_mask(v_a, v_b, lhs_chunk[0] == 0 || rhs_tail[0] == 0);
                 runningmask_a_found_in_b |= a_found_in_b;
                 // Read from `lhs_chunk` (which `v_a` was loaded from): reading a lane of `v_a`
                 // makes LLVM split `v_a` into pieces in the loop above
@@ -364,7 +359,7 @@ fn sub_impl<S: Simd>(simd: S, lhs: &[u16], rhs: &[u16], visitor: &mut impl Binar
                 let used_rhs = rhs_tail.partition_point(|&b| b <= max_va);
                 rhs_tail = &rhs_tail[used_rhs..];
             }
-            let bitmask_belongs_to_difference: u8 = !runningmask_a_found_in_b;
+            let bitmask_belongs_to_difference = !runningmask_a_found_in_b;
             visitor.visit_vector(v_a, bitmask_belongs_to_difference);
             i += 1;
         }
@@ -397,7 +392,7 @@ fn matrix_cmp_u16<S: Simd>(a: u16x8<S>, b: u16x8<S>) -> mask16x8<S> {
         | a.simd_eq(b.rotate_elements_left::<7>())
 }
 
-/// Like [`matrix_cmp_u16`], but returns the mask as a bitmask, with bit `i` set if `a[i]` is in `b`
+/// Like [`matrix_cmp_u16`], with a hint for when PCMPISTRM can be used
 ///
 /// `may_contain_zero` must be true if either vector may contain a zero lane: because the vectors
 /// come from sorted arrays, that can only be the first lane of the first vector of either array.
@@ -405,15 +400,16 @@ fn matrix_cmp_u16<S: Simd>(a: u16x8<S>, b: u16x8<S>) -> mask16x8<S> {
 /// Uses the SSE4.2 PCMPISTRM instruction where it is available, falling back to the slower
 /// PCMPESTRM when there may be a zero (which PCMPISTRM treats as the end of the string).
 #[inline(always)]
-fn matrix_cmp_bitmask<S: Simd>(a: u16x8<S>, b: u16x8<S>, may_contain_zero: bool) -> u8 {
+fn matrix_cmp_mask<S: Simd>(a: u16x8<S>, b: u16x8<S>, may_contain_zero: bool) -> mask16x8<S> {
     if !may_contain_zero {
         debug_assert!(a[0] != 0 && b[0] != 0)
     }
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     if let Some(sse4_2) = a.token().level().as_sse4_2() {
-        return x86::matrix_cmp_bitmask(sse4_2, a.into(), b.into(), may_contain_zero);
+        return x86::matrix_cmp_mask(sse4_2, a.into(), b.into(), may_contain_zero)
+            .simd_into(a.simd);
     }
-    matrix_cmp_u16(a, b).to_bitmask() as u8
+    matrix_cmp_u16(a, b)
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -424,23 +420,30 @@ mod x86 {
     use core::arch::x86_64::*;
 
     fearless_simd::kernel!(
-        /// Returns a bitmask with bit `i` set if lane `i` of `a` is equal to any lane of `b`
+        /// Returns a mask with lane `i` set if lane `i` of `a` is equal to any lane of `b`
         #[inline]
-        pub(super) fn matrix_cmp_bitmask(
+        pub(super) fn matrix_cmp_mask(
             sse4_2: Sse4_2,
             a: __m128i,
             b: __m128i,
             may_contain_zero: bool,
-        ) -> u8 {
-            const MODE: i32 = _SIDD_UWORD_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_BIT_MASK;
-            let found = if may_contain_zero {
+        ) -> __m128i {
+            const MODE: i32 = _SIDD_UWORD_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_UNIT_MASK;
+            if may_contain_zero {
                 _mm_cmpestrm::<MODE>(b, 8, a, 8)
             } else {
                 _mm_cmpistrm::<MODE>(b, a)
-            };
-            _mm_cvtsi128_si32(found) as u8
+            }
         }
     );
+}
+
+/// Returns the number of lanes set in `mask`
+#[inline(always)]
+pub fn count_set_lanes<S: Simd>(mask: mask16x8<S>) -> usize {
+    // Masking off the high bits lets LLVM prove the count is at most `LANES`, but for some
+    // `to_bitmask` implementations (e.g. NEON) LLVM can't see that without help.
+    (mask.to_bitmask() & 0xff).count_ones() as usize
 }
 
 /// Assuming that a and b are sorted, returns an array of the sorted output.
@@ -465,39 +468,6 @@ fn bitonic_merge<S: Simd, V: SimdInt<S>>(mut a: V, mut b: V) -> (V, V) {
     }
 
     (a, b)
-}
-
-/// Move the values in `val` with the corresponding index in `bitmask`
-/// set to the front of the return vector, preserving their order.
-///
-/// The values in the return vector after index bitmask.count_ones() is unspecified.
-// Dynamic swizzles operate on bytes, so the swizzle table moves the `u16` lanes two bytes at a time.
-//
-// e.g. if `bitmask` is `0b0101`, then swizzle the first two bytes (the first u16 lane) to the
-// first two positions, and the 5th and 6th bytes (the third u16 lane) to the next two positions.
-#[inline(always)]
-pub fn swizzle_to_front<S: Simd>(val: u16x8<S>, bitmask: u8) -> u16x8<S> {
-    static SWIZZLE_TABLE: [[u8; 16]; 256] = {
-        let mut table = [[0; 16]; 256];
-        let mut n = 0usize;
-        while n < table.len() {
-            let mut x = n;
-            let mut i = 0;
-            while x > 0 {
-                let lsb = x.trailing_zeros() as u8;
-                x ^= 1 << lsb;
-                table[n][i] = lsb * 2; // first byte
-                table[n][i + 1] = lsb * 2 + 1; // second byte
-                i += 2;
-            }
-            n += 1;
-        }
-        table
-    };
-
-    // Our swizzle table retains the order of the bytes in the 16 bit lanes,
-    // so it works with either native byte order.
-    val.swizzle_dyn(SWIZZLE_TABLE[bitmask as usize])
 }
 
 #[cfg(test)]
@@ -594,20 +564,6 @@ mod test {
     }
 
     #[test]
-    fn swizzle_to_front_keeps_masked_lanes_in_order() {
-        dispatch!(level(), simd => {
-            let values: [u16; 8] = [10, 11, 12, 13, 14, 15, 16, 17];
-            let v = u16x8::from_slice(simd, &values);
-            for mask in 0..=255u8 {
-                let expected: Vec<u16> =
-                    (0..8).filter(|i| mask & (1 << i) != 0).map(|i| values[i]).collect();
-                let result = swizzle_to_front(v, mask);
-                assert_eq!(&result.as_slice()[..expected.len()], &expected[..]);
-            }
-        });
-    }
-
-    #[test]
     fn vector_ops_match_scalar_at_lane_boundaries() {
         // Lengths around multiples of `LANES` exercise the scalar fallback, the vector loops,
         // and the partial vector tails; the offsets give disjoint, interleaved, and equal inputs.
@@ -629,11 +585,11 @@ mod test {
             let a = u16x8::from_slice(simd, &[1, 2, 3, 4, 32, 33, 34, 35]);
             let b = u16x8::from_slice(simd, &[2, 4, 6, 8, 10, 12, 14, 35]);
             assert_eq!(matrix_cmp_u16(a, b).to_bitmask(), 0b1000_1010);
-            assert_eq!(matrix_cmp_bitmask(a, b, false), 0b1000_1010);
-            assert_eq!(matrix_cmp_bitmask(a, b, true), 0b1000_1010);
+            assert_eq!(matrix_cmp_mask(a, b, false).to_bitmask(), 0b1000_1010);
+            assert_eq!(matrix_cmp_mask(a, b, true).to_bitmask(), 0b1000_1010);
             let a = u16x8::from_slice(simd, &[0, 2, 3, 4, 32, 33, 34, 35]);
             let b = u16x8::from_slice(simd, &[0, 4, 6, 8, 10, 12, 14, 35]);
-            assert_eq!(matrix_cmp_bitmask(a, b, true), 0b1000_1001);
+            assert_eq!(matrix_cmp_mask(a, b, true).to_bitmask(), 0b1000_1001);
         });
     }
 }
