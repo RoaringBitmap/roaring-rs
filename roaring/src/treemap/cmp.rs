@@ -106,10 +106,20 @@ impl RoaringTreemap {
     }
 }
 
+impl PartialEq for RoaringTreemap {
+    fn eq(&self, other: &RoaringTreemap) -> bool {
+        let lhs = self.map.iter().filter(|(_, rb)| !rb.is_empty());
+        let rhs = other.map.iter().filter(|(_, rb)| !rb.is_empty());
+        lhs.eq(rhs)
+    }
+}
+
 impl<'a> Iterator for Pairs<'a> {
     type Item = (Option<&'a RoaringBitmap>, Option<&'a RoaringBitmap>);
 
     fn next(&mut self) -> Option<Self::Item> {
+        while self.0.next_if(|(_, rb)| rb.is_empty()).is_some() {}
+        while self.1.next_if(|(_, rb)| rb.is_empty()).is_some() {}
         enum Which {
             Left,
             Right,
@@ -133,5 +143,32 @@ impl<'a> Iterator for Pairs<'a> {
             Which::Both => Some((self.0.next().map(|e| e.1), self.1.next().map(|e| e.1))),
             Which::None => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{RoaringBitmap, RoaringTreemap};
+
+    #[test]
+    fn eq_and_subset_ignore_empty_partitions() {
+        let mut non_empty = RoaringBitmap::new();
+        non_empty.insert(42);
+
+        let with_empty =
+            RoaringTreemap::from_bitmaps([(0, RoaringBitmap::new()), (1, non_empty.clone())]);
+        let without_empty = RoaringTreemap::from_bitmaps([(1, non_empty)]);
+
+        assert_eq!(with_empty, without_empty);
+        assert!(with_empty.is_subset(&without_empty));
+        assert!(without_empty.is_subset(&with_empty));
+
+        let only_empty = RoaringTreemap::from_bitmaps([(0, RoaringBitmap::new())]);
+        let default_empty = RoaringTreemap::new();
+        assert_eq!(only_empty, default_empty);
+        assert!(only_empty.is_subset(&default_empty));
+        assert!(default_empty.is_subset(&only_empty));
+        assert!(only_empty.is_subset(&without_empty));
+        assert!(!without_empty.is_subset(&only_empty));
     }
 }
