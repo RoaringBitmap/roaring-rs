@@ -80,7 +80,7 @@ impl Store {
             return None;
         }
 
-        Some(if bits_set < ARRAY_LIMIT {
+        Some(if bits_set <= ARRAY_LIMIT {
             Array(ArrayStore::from_lsb0_bytes(bytes, byte_offset, bits_set))
         } else {
             Bitmap(BitmapStore::from_lsb0_bytes_unchecked(bytes, byte_offset, bits_set))
