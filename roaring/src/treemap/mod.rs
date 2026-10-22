@@ -9,6 +9,7 @@ mod util;
 // the docs
 mod arbitrary;
 mod cmp;
+mod entry;
 mod inherent;
 mod iter;
 mod ops;
@@ -17,6 +18,7 @@ mod serde;
 #[cfg(feature = "std")]
 mod serialization;
 
+pub use self::entry::{BitmapEntry, OccupiedBitmapEntry, VacantBitmapEntry};
 pub use self::iter::{BitmapIter, IntoIter, Iter};
 
 /// A compressed bitmap with u64 values.
