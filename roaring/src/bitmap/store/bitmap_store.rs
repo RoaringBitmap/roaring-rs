@@ -405,6 +405,27 @@ impl BitmapStore {
         }
     }
 
+    /// Retains only the elements specified by the predicate.
+    pub fn retain(&mut self, mut f: impl FnMut(u16) -> bool) {
+        let mut new_len = 0u64;
+        for (key, word) in self.bits.iter_mut().enumerate() {
+            let mut new_word = 0u64;
+            let mut remaining = *word;
+            while remaining != 0 {
+                let bit = remaining.trailing_zeros();
+                let index = (key as u16) * 64 + bit as u16;
+                if f(index) {
+                    new_word |= 1 << bit;
+                    new_len += 1;
+                }
+                // Clear this bit
+                remaining &= remaining - 1;
+            }
+            *word = new_word;
+        }
+        self.len = new_len;
+    }
+
     /// Set N bits that are currently 1 bit from the lower bit to 0.
     pub fn remove_biggest(&mut self, mut clear_bits: u64) {
         if self.len() < clear_bits {
