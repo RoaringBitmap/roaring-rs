@@ -58,11 +58,11 @@ pub(crate) fn last_contiguous_range_len(slice: &[u16]) -> usize {
 }
 
 impl ArrayStore {
-    pub fn new() -> ArrayStore {
+    pub const fn new() -> ArrayStore {
         ArrayStore { vec: vec![] }
     }
 
-    pub fn serialized_byte_size(cardinality: u64) -> usize {
+    pub const fn serialized_byte_size(cardinality: u64) -> usize {
         cardinality as usize * ARRAY_ELEMENT_BYTES
     }
 
