@@ -548,3 +548,118 @@ pub fn swizzle_to_front(val: u16x8, bitmask: u8) -> u16x8 {
     let swizzled: u8x16 = val_convert.swizzle_dyn(swizzle_idxs);
     u16x8::from_ne_bytes(swizzled)
 }
+
+#[inline]
+pub fn quad_contains(slice: &[u16], val: u16) -> bool {
+    const GAP: usize = u16x8::LEN * 2;
+
+    let (chunks, remaining) = slice.as_chunks::<GAP>();
+
+    if chunks.is_empty() {
+        return match remaining.iter().copied().find(|v| *v >= val) {
+            Some(v) => v == val,
+            None => false,
+        };
+    }
+
+    let num_blocks = chunks.len();
+    let mut base = 0;
+    let mut n = num_blocks;
+    while n > 3 {
+        let quarter = n >> 2; // equivalent to n / 4
+
+        let k1 = chunks[base + quarter][GAP - 1];
+        let k2 = chunks[base + 2 * quarter][GAP - 1];
+        let k3 = chunks[base + 3 * quarter][GAP - 1];
+
+        let c1 = (k1 < val) as usize;
+        let c2 = (k2 < val) as usize;
+        let c3 = (k3 < val) as usize;
+
+        base += (c1 + c2 + c3) * quarter;
+        n -= 3 * quarter;
+    }
+
+    while n > 1 {
+        let half = n >> 1; // equivalent to n / 2
+        base = if chunks[base + half][GAP - 1] < val { base + half } else { base };
+        n -= half;
+    }
+
+    let lo = if chunks[base][GAP - 1] < val { base + 1 } else { base };
+
+    if lo < num_blocks {
+        let ndl = u16x8::splat(val);
+        // I would love to work with arrays here...
+        let v0 = u16x8::from_slice(&chunks[lo][..GAP / 2]);
+        let v1 = u16x8::from_slice(&chunks[lo][GAP / 2..]);
+        return (v0.simd_eq(ndl) | v1.simd_eq(ndl)).any();
+    }
+
+    match slice.iter().copied().skip(num_blocks * GAP).find(|v| *v >= val) {
+        Some(v) => v == val,
+        None => false,
+    }
+}
+
+#[inline]
+pub fn quad_search(slice: &[u16], val: u16) -> Result<usize, usize> {
+    const GAP: usize = u16x8::LEN * 2;
+
+    let (chunks, remaining) = slice.as_chunks::<GAP>();
+
+    if chunks.is_empty() {
+        return match remaining.iter().copied().enumerate().find(|(_, v)| *v >= val) {
+            Some((i, v)) if v == val => Ok(i),
+            Some((i, _)) => Err(i),
+            None => Err(slice.len()),
+        };
+    }
+
+    let num_blocks = chunks.len();
+    let mut base = 0;
+    let mut n = num_blocks;
+    while n > 3 {
+        let quarter = n >> 2; // equivalent to n / 4
+
+        let k1 = chunks[base + quarter][GAP - 1];
+        let k2 = chunks[base + 2 * quarter][GAP - 1];
+        let k3 = chunks[base + 3 * quarter][GAP - 1];
+
+        let c1 = (k1 < val) as usize;
+        let c2 = (k2 < val) as usize;
+        let c3 = (k3 < val) as usize;
+
+        base += (c1 + c2 + c3) * quarter;
+        n -= 3 * quarter;
+    }
+
+    while n > 1 {
+        let half = n >> 1; // equivalent to n / 2
+        base = if chunks[base + half][GAP - 1] < val { base + half } else { base };
+        n -= half;
+    }
+
+    let lo = if chunks[base][GAP - 1] < val { base + 1 } else { base };
+
+    if lo < num_blocks {
+        let ndl = u16x8::splat(val);
+        // I would love to work with arrays here...
+        let v0 = u16x8::from_slice(&chunks[lo][..GAP / 2]);
+        let v1 = u16x8::from_slice(&chunks[lo][GAP / 2..]);
+        let base_index = lo * GAP;
+        return match (v0.simd_ge(ndl).first_set(), v1.simd_ge(ndl).first_set()) {
+            (Some(i), _) if v0[i] == val => Ok(base_index + i),
+            (Some(i), _) => Err(base_index + i),
+            (_, Some(i)) if v1[i] == val => Ok(base_index + GAP / 2 + i),
+            (_, Some(i)) => Err(base_index + GAP / 2 + i),
+            (None, None) => Err(slice.len()),
+        };
+    }
+
+    match slice.iter().copied().enumerate().skip(num_blocks * GAP).find(|(_, v)| *v >= val) {
+        Some((i, v)) if v == val => Ok(i),
+        Some((i, _)) => Err(i),
+        None => Err(slice.len()),
+    }
+}
