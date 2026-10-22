@@ -550,7 +550,13 @@ impl RoaringTreemap {
     /// assert_eq!(rb.select(3), None);
     /// ```
     pub fn select(&self, mut n: u64) -> Option<u64> {
-        for (&key, bitmap) in &self.map {
+        let mut bitmaps = self.map.iter();
+        while let Some((&key, bitmap)) = bitmaps.next() {
+            if bitmaps.len() == 0 {
+                // The last bitmap needs no `len()`: its `select` returns `None` past its end.
+                let n = u32::try_from(n).ok()?;
+                return bitmap.select(n).map(|index| util::join(key, index));
+            }
             let len = bitmap.len();
             if len > n {
                 return Some(((key as u64) << 32) | bitmap.select(n as u32).unwrap() as u64);
@@ -582,8 +588,9 @@ impl Clone for RoaringTreemap {
 mod test {
     use crate::{RoaringBitmap, RoaringTreemap};
     use alloc::vec::Vec;
-    use proptest::collection::btree_map;
+    use proptest::collection::{btree_map, vec};
     use proptest::prelude::*;
+    use proptest::sample::Index;
 
     proptest! {
         #[test]
@@ -612,6 +619,36 @@ mod test {
             if had_empty_partition {
                 prop_assert!(changed);
             }
+        }
+
+        #[test]
+        fn select_returns_the_nth_value(
+            bitmaps in btree_map(0u32..=16, RoaringBitmap::arbitrary(), 0usize..=16),
+            indices in vec(any::<Index>(), 0..=64),
+        ) {
+            // `from_bitmaps` keeps empty bitmaps, which `select` must step over
+            let treemap = RoaringTreemap::from_bitmaps(bitmaps);
+            let values = treemap.iter().collect::<Vec<_>>();
+
+            // the first and last values of every bitmap, plus random positions
+            let mut positions = Vec::new();
+            let mut offset = 0;
+            for (_, bitmap) in treemap.bitmaps() {
+                let len = bitmap.len();
+                if len > 0 {
+                    positions.extend([offset, offset + len - 1]);
+                }
+                offset += len;
+            }
+            if !values.is_empty() {
+                positions.extend(indices.iter().map(|i| i.index(values.len()) as u64));
+            }
+
+            for n in positions {
+                prop_assert_eq!(treemap.select(n), Some(values[n as usize]));
+            }
+            prop_assert_eq!(treemap.select(values.len() as u64), None);
+            prop_assert_eq!(treemap.select(u64::MAX), None);
         }
     }
 }
