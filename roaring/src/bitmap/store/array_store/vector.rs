@@ -15,8 +15,6 @@
 //! features by being inlined, and `#[simd]` does not force inlining, which can leave them out of
 //! line in the hot loops.
 
-#![cfg(feature = "simd")]
-
 use super::scalar;
 use crate::bitmap::store::array_store::visitor::BinaryOperationVisitor;
 use fearless_simd::prelude::*;

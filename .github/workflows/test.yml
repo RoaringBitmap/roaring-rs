@@ -57,11 +57,6 @@ jobs:
           cargo clippy -p roaring --all-targets --no-default-features -- -D warnings
           cargo clippy -p roaring --all-targets --features serde -- -Dclippy::todo -D warnings
 
-      - name: Check SIMD
-        run: |
-          cargo clippy -p roaring --all-targets --all-features -- -D warnings
-          cargo clippy -p roaring --all-targets --no-default-features --features simd -- -D warnings
-
       - name: Check formatting
         run: cargo fmt --all -- --check
 
@@ -78,9 +73,6 @@ jobs:
         features:
           - default
           - no-std
-        include:
-          - rust: stable
-            features: simd
     env:
       RUSTFLAGS: "-C target-cpu=native -C opt-level=3"
       ROARINGRS_BENCH_OFFLINE: "true"
@@ -123,12 +115,6 @@ jobs:
       - name: Test no default features
         if: matrix.features == 'no-std'
         run: cargo test -p roaring --no-default-features
-
-      - name: SIMD test
-        if: matrix.features == 'simd'
-        run: |
-          cargo test -p roaring --features simd
-          cargo test -p roaring --no-default-features --features simd
 
   miri:
     runs-on: ubuntu-latest
@@ -204,7 +190,4 @@ jobs:
             fuzz/corpus
 
       - name: Run Fuzzer vs croaring for 15 minutes
-        run: cargo fuzz run against_croaring -s none -- -timeout=5 -max_total_time=900
-
-      - name: Run Fuzzer (with simd) vs croaring for 15 minutes
-        run: cargo fuzz run --features=simd against_croaring -- -timeout=5 -max_total_time=900
+        run: cargo fuzz run against_croaring -- -timeout=5 -max_total_time=900

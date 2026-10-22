@@ -68,10 +68,10 @@ https://github.com/RoaringBitmap/roaring-rs/actions/workflows/test.yml/badge.svg
 [real-world datasets]: https://github.com/RoaringBitmap/real-roaring-datasets
 [on the user guide]: https://bheisler.github.io/criterion.rs/book/user_guide/user_guide.html
 
-## Experimental features
+## SIMD
 
-The `simd` feature is in active development. It is implemented with the [fearless_simd] crate and works on stable
-Rust. When the `std` feature is enabled, the best available SIMD instruction set is detected at runtime on x86 and
-x86-64; otherwise, it is determined by the target features enabled at compile time (e.g. with `-C target-cpu=native`).
+Some operations are accelerated with SIMD, implemented with the [fearless_simd] crate. When the `std` feature is
+enabled, the best available SIMD instruction set is detected at runtime on x86 and x86-64; otherwise, it is determined
+by the target features enabled at compile time (e.g. with `-C target-cpu=native`).
 
 [fearless_simd]: https://docs.rs/fearless_simd

@@ -1,8 +1,5 @@
-#[cfg(feature = "simd")]
 use crate::bitmap::store::array_store::vector::swizzle_to_front;
-#[cfg(feature = "simd")]
 use fearless_simd::{prelude::*, u16x8};
-#[cfg(feature = "simd")]
 use fearless_simd_macros::simd;
 
 #[cfg(not(feature = "std"))]
@@ -16,7 +13,6 @@ use alloc::vec::Vec;
 /// their results. Future work can utilize the exiting algorithms to trivially implement
 /// computing the cardinality of an operation without materializng a new bitmap.
 pub trait BinaryOperationVisitor {
-    #[cfg(feature = "simd")]
     fn visit_vector<S: Simd>(&mut self, value: u16x8<S>, mask: u8);
     fn visit_scalar(&mut self, value: u16);
     fn visit_slice(&mut self, values: &[u16]);
@@ -43,7 +39,6 @@ impl VecWriter {
 }
 
 impl BinaryOperationVisitor for VecWriter {
-    #[cfg(feature = "simd")]
     #[simd]
     fn visit_vector<S: Simd>(&mut self, value: u16x8<S>, mask: u8) {
         let result = swizzle_to_front(value, mask);
@@ -82,7 +77,6 @@ impl CardinalityCounter {
 }
 
 impl BinaryOperationVisitor for CardinalityCounter {
-    #[cfg(feature = "simd")]
     fn visit_vector<S: Simd>(&mut self, _value: u16x8<S>, mask: u8) {
         self.count += mask.count_ones() as usize;
     }
