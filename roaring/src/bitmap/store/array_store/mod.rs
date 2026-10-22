@@ -483,7 +483,7 @@ impl SubAssign<&Self> for ArrayStore {
     fn sub_assign(&mut self, rhs: &Self) {
         #[cfg(feature = "simd")]
         {
-            let mut visitor = VecWriter::new(self.vec.len().min(rhs.vec.len()));
+            let mut visitor = VecWriter::new(self.vec.len());
             vector::sub(self.as_slice(), rhs.as_slice(), &mut visitor);
             self.vec = visitor.into_inner()
         }
@@ -700,5 +700,25 @@ mod tests {
         let mut store = Store::Array(ArrayStore::from_vec_unchecked(vec![1, 2, 130, 500]));
         store.remove_biggest(2);
         assert_eq!(into_vec(store), vec![1, 2]);
+    }
+
+    #[test]
+    fn test_array_sub_assign_larger_than_rhs() {
+        let mut lhs = ArrayStore::from_vec_unchecked((100..117).collect());
+        let rhs = ArrayStore::from_vec_unchecked(vec![0, 1, 2, 3, 4, 5, 6, 7, 200]);
+        lhs -= &rhs;
+        assert_eq!(lhs.as_slice(), (100..117).collect::<Vec<u16>>());
+    }
+
+    #[test]
+    #[cfg(feature = "simd")]
+    fn test_array_and_subset_does_not_regrow() {
+        let lhs = ArrayStore::from_vec_unchecked((0..500).map(|i| i * 8).collect());
+        let rhs = ArrayStore::from_vec_unchecked((0..4000).collect());
+
+        let and = &lhs & &rhs;
+
+        assert_eq!(and, lhs);
+        assert!(and.vec.capacity() < 2 * lhs.vec.len());
     }
 }
