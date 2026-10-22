@@ -1,5 +1,8 @@
 use core::ops::{Bound, RangeBounds, RangeInclusive};
 
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+
 /// Returns the container key and the index
 /// in this container for a given integer.
 #[inline]
@@ -61,10 +64,65 @@ where
     }
 }
 
+// Thresholds of `SortedInserts`, picked from benchmarks.
+const FEW_INSERTS: usize = 8;
+const SHORT_SHIFT: usize = 64;
+
+/// Inserts values into a sorted `Vec` at the positions given by failed binary searches.
+///
+/// Every insertion shifts the values after it, which is quadratic when many values are
+/// interleaved with the existing ones. So a value is only inserted directly when that is
+/// cheap: when it shifts fewer than `SHORT_SHIFT` values, or for the first `FEW_INSERTS`
+/// values that shift more. The other ones are deferred and merged into the vector by
+/// `finish` in a single pass.
+pub struct SortedInserts<T> {
+    long_inserts: usize,
+    deferred: Vec<(usize, T)>,
+}
+
+impl<T> SortedInserts<T> {
+    pub fn new() -> Self {
+        SortedInserts { long_inserts: 0, deferred: Vec::new() }
+    }
+
+    /// Inserts `value` at `index` in `vec`, or defers it until `finish` is called.
+    /// `index` must come from a failed binary search in `vec`, and values must be
+    /// given in ascending order.
+    pub fn insert(&mut self, vec: &mut Vec<T>, index: usize, value: T) {
+        let short = vec.len() - index < SHORT_SHIFT;
+        if short || self.long_inserts < FEW_INSERTS {
+            // The deferred indexes stay valid: the values deferred so far belong at or
+            // before `index`, so before `value`.
+            vec.insert(index, value);
+            self.long_inserts += usize::from(!short);
+        } else {
+            self.deferred.push((index, value));
+        }
+    }
+
+    /// Merges the deferred values into `vec`, moving the values that follow the first
+    /// deferred index once.
+    pub fn finish(self, vec: &mut Vec<T>) {
+        let Some(&(start, _)) = self.deferred.first() else { return };
+        vec.reserve(self.deferred.len());
+        let mut tail = vec.split_off(start).into_iter();
+        let mut prev = start;
+        for (index, value) in self.deferred {
+            vec.extend(tail.by_ref().take(index - prev));
+            vec.push(value);
+            prev = index;
+        }
+        vec.extend(tail);
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::{convert_range_to_inclusive, join, split, ConvertRangeError};
+    use super::{convert_range_to_inclusive, join, split, ConvertRangeError, SortedInserts};
     use core::ops::Bound;
+
+    #[cfg(not(feature = "std"))]
+    use alloc::vec::Vec;
 
     #[test]
     fn test_split_u32() {
@@ -118,5 +176,32 @@ mod test {
             Err(ConvertRangeError::Empty),
             convert_range_to_inclusive((Bound::Excluded(0), Bound::Included(0)))
         );
+    }
+
+    #[test]
+    fn test_sorted_inserts() {
+        fn check(mut vec: Vec<u32>, values: Vec<u32>) {
+            let mut expected = [vec.as_slice(), values.as_slice()].concat();
+            expected.sort_unstable();
+
+            let mut inserts = SortedInserts::new();
+            for value in values {
+                let index = vec.binary_search(&value).unwrap_err();
+                inserts.insert(&mut vec, index, value);
+            }
+            inserts.finish(&mut vec);
+            assert_eq!(vec, expected);
+        }
+
+        let even: Vec<u32> = (0..1000).map(|i| 2 * i).collect();
+        let odd: Vec<u32> = (0..1000).map(|i| 2 * i + 1).collect();
+        check(even.clone(), odd.clone());
+        check(odd.clone(), even.clone());
+        check(even.clone(), (0..5).map(|i| 400 * i + 1).collect());
+        check(even.clone(), (2000..3000).collect());
+        check(even[500..600].to_vec(), odd[..100].iter().chain(&odd[900..]).copied().collect());
+        check(even[..10].to_vec(), odd[..100].to_vec());
+        check(Vec::new(), odd.clone());
+        check(even, Vec::new());
     }
 }
