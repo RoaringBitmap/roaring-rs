@@ -419,6 +419,7 @@ impl IntervalStore {
         other.iter().map(|&f| self.contains(f) as u64).sum()
     }
 
+    #[inline]
     pub fn len(&self) -> u64 {
         self.0.iter().map(|iv| iv.run_len()).sum()
     }
