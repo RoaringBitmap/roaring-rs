@@ -833,10 +833,7 @@ impl PartialEq for Store {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Array(vec1), Array(vec2)) => vec1 == vec2,
-            (Bitmap(bits1), Bitmap(bits2)) => {
-                bits1.len() == bits2.len()
-                    && bits1.iter().zip(bits2.iter()).all(|(i1, i2)| i1 == i2)
-            }
+            (Bitmap(bits1), Bitmap(bits2)) => bits1 == bits2,
             (Run(intervals1), Run(intervals2)) => intervals1 == intervals2,
             (Run(run), Array(array)) | (Array(array), Run(run)) => {
                 run.len() == array.len() && array.iter().all(|&i| run.contains(i))
