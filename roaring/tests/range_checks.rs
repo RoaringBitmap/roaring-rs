@@ -52,7 +52,8 @@ proptest! {
     fn proptest_range_boundaries(
         // Ensure we can always subtract one from start
         start in 1..=262_143_u32,
-        len in 0..=262_143_u32,
+        // An empty range is always contained, so len must be non-zero for the negative cases to hold
+        len in 1..=262_143_u32,
     ) {
         let mut bitmap = RoaringBitmap::new();
         let end = start + len;
