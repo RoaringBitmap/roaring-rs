@@ -147,8 +147,10 @@ proptest! {
 
     #[test]
     fn proptest_range_boundaries(
+        // Ensure we can always subtract one from start
         start in 1..=262_143_u64,
-        len in 0..=262_143_u64,
+        // An empty range is always contained, so len must be non-zero for the negative cases to hold
+        len in 1..=262_143_u64,
     ) {
         let mut rb = RoaringTreemap::new();
         let end = start + len;
