@@ -20,12 +20,14 @@ license = "MIT OR Apache-2.0"
 bytemuck = { workspace = true, optional = true }
 byteorder = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
+# At least one of std and libm is required; std overrides libm.
+fearless_simd = { workspace = true, features = ["libm"] }
+fearless_simd_macros = { workspace = true }
 
 [features]
 default = ["std"]
 serde = ["dep:serde", "std"]
-simd = []
-std = ["dep:bytemuck", "dep:byteorder"]
+std = ["dep:bytemuck", "dep:byteorder", "fearless_simd/std"]
 
 [dev-dependencies]
 proptest = { workspace = true }

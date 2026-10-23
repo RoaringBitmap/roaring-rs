@@ -17,9 +17,6 @@ indicatif = { workspace = true }
 itertools = { workspace = true }
 zip = { workspace = true, default-features = false, features = ["deflate"] }
 
-[features]
-simd = ["roaring/simd"]
-
 [[bench]]
 name = "lib"
 harness = false
