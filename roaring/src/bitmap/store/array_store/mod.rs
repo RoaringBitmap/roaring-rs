@@ -695,7 +695,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "simd")]
     fn test_array_and_subset_does_not_regrow() {
         let lhs = ArrayStore::from_vec_unchecked((0..500).map(|i| i * 8).collect());
         let rhs = ArrayStore::from_vec_unchecked((0..4000).collect());
