@@ -426,6 +426,23 @@ mod test {
     }
 
     #[test]
+    fn test_from_lsb0_bytes_array_limit() {
+        for cardinality in [4095, 4096, 4097] {
+            let expected: RoaringBitmap = (0..cardinality).collect();
+            let mut bytes = vec![0u8; 8192];
+            for bit in 0..cardinality as usize {
+                bytes[bit / 8] |= 1 << (bit % 8);
+            }
+            let bitmap = RoaringBitmap::from_lsb0_bytes(0, &bytes);
+            assert_eq!(bitmap, expected);
+
+            let mut serialized = Vec::new();
+            bitmap.serialize_into(&mut serialized).unwrap();
+            assert_eq!(RoaringBitmap::deserialize_from(serialized.as_slice()).unwrap(), expected);
+        }
+    }
+
+    #[test]
     fn test_from_lsb0_bytes_not_multiple_of_8() {
         const CONTAINER_OFFSET: u32 = u64::BITS * BITMAP_LENGTH as u32;
         const CONTAINER_OFFSET_IN_BYTES: u32 = CONTAINER_OFFSET / 8;
