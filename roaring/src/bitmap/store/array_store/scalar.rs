@@ -83,7 +83,7 @@ pub fn and_skewed(small: &[u16], large: &[u16], visitor: &mut impl BinaryOperati
     }
 }
 
-/// Branchless binary searches for four targets at once.
+/// Binary searches for four targets at once, interleaved so they can overlap.
 /// `array` must not be empty.
 #[inline]
 fn lower_bounds(array: &[u16], targets: [u16; 4]) -> [usize; 4] {
@@ -92,9 +92,7 @@ fn lower_bounds(array: &[u16], targets: [u16; 4]) -> [usize; 4] {
     while n > 1 {
         let half = n / 2;
         for (base, target) in bases.iter_mut().zip(targets) {
-            // SAFETY: `half < n`, and `base + n <= len` is invariant
-            // (`base` grows by `half` only as `n` shrinks by it).
-            if unsafe { *array.get_unchecked(*base + half) } < target {
+            if array[*base + half] < target {
                 *base += half;
             }
         }
