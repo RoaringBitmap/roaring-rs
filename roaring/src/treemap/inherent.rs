@@ -462,6 +462,26 @@ impl RoaringTreemap {
         changed
     }
 
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other word, remove all elements `e` such that `f(e)` returns `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let mut rb = RoaringTreemap::from_iter(0..10);
+    /// rb.retain(|x| x % 2 == 0);
+    /// assert_eq!(rb, RoaringTreemap::from_iter([0, 2, 4, 6, 8]));
+    /// ```
+    pub fn retain(&mut self, mut f: impl FnMut(u64) -> bool) {
+        for (&key, bitmap) in &mut self.map {
+            bitmap.retain(|i| f(((key as u64) << 32) | i as u64));
+        }
+        self.map.retain(|_, bitmap| !bitmap.is_empty());
+    }
+
     /// Returns the minimum value in the set (if the set is non-empty).
     ///
     /// # Examples
@@ -613,5 +633,69 @@ mod test {
                 prop_assert!(changed);
             }
         }
+
+        #[test]
+        fn retain_preserves_values(mut treemap in RoaringTreemap::arbitrary()) {
+            let predicate = |x: u64| !x.is_multiple_of(3);
+            let expected: RoaringTreemap = treemap.iter().filter(|&x| predicate(x)).collect();
+
+            treemap.retain(predicate);
+
+            prop_assert_eq!(treemap, expected);
+        }
+
+        #[test]
+        fn retain_all_preserves(mut treemap in RoaringTreemap::arbitrary()) {
+            treemap.retain(|_| true);
+            prop_assert_eq!(treemap.iter().collect::<Vec<_>>(), treemap.iter().collect::<Vec<_>>());
+        }
+
+        #[test]
+        fn retain_none_becomes_empty(mut treemap in RoaringTreemap::arbitrary()) {
+            treemap.retain(|_| false);
+            prop_assert!(treemap.is_empty());
+        }
+    }
+
+    #[test]
+    fn retain_single_bitmap() {
+        let mut treemap = RoaringTreemap::from_iter(0..1000u64);
+        treemap.retain(|x| x % 2 == 0);
+        let expected: RoaringTreemap = (0..1000).step_by(2).collect();
+        assert_eq!(treemap, expected);
+    }
+
+    #[test]
+    fn retain_multi_bitmap() {
+        let mut treemap = RoaringTreemap::new();
+        // Fill bitmaps across multiple u32 partitions
+        for i in 0u64..200_000 {
+            treemap.insert(i);
+        }
+        treemap.retain(|x| x % 7 == 0);
+
+        let expected: RoaringTreemap = (0..200_000).filter(|&x| x % 7 == 0).collect();
+        assert_eq!(treemap, expected);
+    }
+
+    #[test]
+    fn retain_empty() {
+        let mut treemap = RoaringTreemap::new();
+        treemap.retain(|_| true);
+        assert!(treemap.is_empty());
+    }
+
+    #[test]
+    fn retain_all() {
+        let mut treemap = RoaringTreemap::from_iter(0..10_000u64);
+        treemap.retain(|_| true);
+        assert_eq!(treemap.len(), 10_000);
+    }
+
+    #[test]
+    fn retain_none() {
+        let mut treemap = RoaringTreemap::from_iter(0..10_000u64);
+        treemap.retain(|_| false);
+        assert!(treemap.is_empty());
     }
 }
