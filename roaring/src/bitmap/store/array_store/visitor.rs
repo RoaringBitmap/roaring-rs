@@ -28,8 +28,10 @@ impl VecWriter {
     /// `capacity` must be an upper bound on the length of the output.
     /// `visit_scalar` panics rather than grow past it.
     pub fn new(capacity: usize) -> VecWriter {
-        // `visit_vector` writes a whole vector before truncating it.
-        let capacity = capacity + 8;
+        // `visit_vector` writes a whole vector before truncating it. The vector algorithms only
+        // call it when both inputs hold a whole vector, and so when `capacity` is at least 8.
+        // Below that, keep tiny outputs in the smallest allocation.
+        let capacity = if capacity < 8 { capacity } else { capacity + 8 };
         let vec = Vec::with_capacity(capacity);
         VecWriter { vec }
     }
