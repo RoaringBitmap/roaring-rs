@@ -239,6 +239,7 @@ impl Store {
         }
     }
 
+    #[inline]
     pub fn len(&self) -> u64 {
         match self {
             Array(vec) => vec.len(),

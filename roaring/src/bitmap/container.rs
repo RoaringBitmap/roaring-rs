@@ -56,6 +56,7 @@ impl Container {
 }
 
 impl Container {
+    #[inline]
     pub fn len(&self) -> u64 {
         self.store.len()
     }
