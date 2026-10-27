@@ -20,7 +20,7 @@ impl RoaringTreemap {
     /// use roaring::RoaringTreemap;
     /// let rb = RoaringTreemap::new();
     /// ```
-    pub fn new() -> RoaringTreemap {
+    pub const fn new() -> RoaringTreemap {
         RoaringTreemap { map: BTreeMap::new() }
     }
 

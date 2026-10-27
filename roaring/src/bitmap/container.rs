@@ -26,7 +26,7 @@ pub(crate) struct Iter<'a> {
 }
 
 impl Container {
-    pub fn new(key: u16) -> Container {
+    pub const fn new(key: u16) -> Container {
         Container { key, store: Store::new() }
     }
 
@@ -61,7 +61,7 @@ impl Container {
         self.store.len()
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.store.is_empty()
     }
 
