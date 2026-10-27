@@ -187,7 +187,8 @@ impl ReadBitmapOperation {
                     v.n_run_containers = expected.n_run_containers;
                     v.n_bitset_containers = expected.n_bitset_containers;
                     v.n_values_array_containers = expected.n_values_array_containers;
-                    v.n_values_run_containers = expected.n_values_run_containers;
+                    v.n_values_run_containers =
+                        expected.n_values_run_containers.try_into().unwrap();
                     v.n_values_bitset_containers = expected.n_values_bitset_containers.into();
                     // The n_bytes_* fields are not directly comparable:
                     // they are based on the number of bytes of _capacity_ of the
