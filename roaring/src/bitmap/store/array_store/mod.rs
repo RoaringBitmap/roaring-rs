@@ -694,6 +694,17 @@ mod tests {
         assert_eq!(lhs.as_slice(), (100..117).collect::<Vec<u16>>());
     }
 
+    #[test]
+    fn test_array_and_subset_does_not_regrow() {
+        let lhs = ArrayStore::from_vec_unchecked((0..500).map(|i| i * 8).collect());
+        let rhs = ArrayStore::from_vec_unchecked((0..4000).collect());
+
+        let and = &lhs & &rhs;
+
+        assert_eq!(and, lhs);
+        assert!(and.vec.capacity() < 2 * lhs.vec.len());
+    }
+
     fn assert_and_matches_merge(lhs: Vec<u16>, rhs: Vec<u16>) {
         let capacity = lhs.len().min(rhs.len());
         let mut expected = VecWriter::new(capacity);
