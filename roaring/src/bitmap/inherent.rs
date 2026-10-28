@@ -300,29 +300,6 @@ impl RoaringBitmap {
 
     /// Pushes `value` in the bitmap only if it is greater than the current maximum value.
     ///
-    /// Returns whether the value was inserted.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use roaring::RoaringBitmap;
-    ///
-    /// let mut rb = RoaringBitmap::new();
-    /// assert!(rb.push(1));
-    /// assert!(rb.push(3));
-    /// assert_eq!(rb.push(3), false);
-    /// assert!(rb.push(5));
-    ///
-    /// assert_eq!(rb.iter().collect::<Vec<u32>>(), vec![1, 3, 5]);
-    /// ```
-    #[inline]
-    #[deprecated(since = "0.11.0", note = "use `try_push` instead")]
-    pub fn push(&mut self, value: u32) -> bool {
-        self.try_push(value).is_ok()
-    }
-
-    /// Pushes `value` in the bitmap only if it is greater than the current maximum value.
-    ///
     /// Returns an error if the value is not greater than the current maximum value.
     ///
     /// # Examples
