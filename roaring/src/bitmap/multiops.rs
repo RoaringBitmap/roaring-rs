@@ -9,7 +9,7 @@ use alloc::borrow::Cow;
 
 use crate::{MultiOps, RoaringBitmap};
 
-use super::{container::Container, store::Store};
+use super::{container::Container, store::Store, util::SortedInserts};
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
@@ -274,9 +274,10 @@ fn merge_container_owned(
     rhs: Vec<Container>,
     op: impl Fn(&mut Store, Store),
 ) {
+    let mut inserts = SortedInserts::new();
     for mut rhs in rhs {
         match lhs.binary_search_by_key(&rhs.key, |c| c.key) {
-            Err(loc) => lhs.insert(loc, rhs),
+            Err(loc) => inserts.insert(lhs, loc, rhs),
             Ok(loc) => {
                 let lhs = &mut lhs[loc];
                 match (&lhs.store, &rhs.store) {
@@ -288,6 +289,7 @@ fn merge_container_owned(
             }
         }
     }
+    inserts.finish(lhs);
 }
 
 #[inline]
@@ -390,11 +392,12 @@ fn merge_container_ref<'a>(
     rhs: &'a [Container],
     op: impl Fn(&mut Store, &Store),
 ) {
+    let mut inserts = SortedInserts::new();
     for rhs in rhs {
         match containers.binary_search_by_key(&rhs.key, |c| c.key) {
             Err(loc) => {
                 // A container not currently in containers. Borrow it.
-                containers.insert(loc, Cow::Borrowed(rhs))
+                inserts.insert(containers, loc, Cow::Borrowed(rhs))
             }
             Ok(loc) => {
                 // A container that is in containers. Operate on it.
@@ -431,6 +434,7 @@ fn merge_container_ref<'a>(
             }
         }
     }
+    inserts.finish(containers);
 }
 
 #[inline]
