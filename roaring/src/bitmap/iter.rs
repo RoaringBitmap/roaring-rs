@@ -359,6 +359,7 @@ impl Iter<'_> {
     /// assert_eq!(out.len(), 32);
     /// assert_eq!(out[0], 32);
     /// ```
+    #[must_use = "call to .next_many() returns a slice with the retrieved values"]
     pub fn next_many<'a>(&mut self, dst: &'a mut [u32]) -> &'a mut [u32] {
         if dst.is_empty() {
             return &mut [];
@@ -522,6 +523,7 @@ impl IntoIter {
     /// assert_eq!(out.len(), 32);
     /// assert_eq!(out[0], 32);
     /// ```
+    #[must_use = "call to .next_many() returns a slice with the retrieved values"]
     pub fn next_many<'a>(&mut self, dst: &'a mut [u32]) -> &'a mut [u32] {
         if dst.is_empty() {
             return &mut [];
