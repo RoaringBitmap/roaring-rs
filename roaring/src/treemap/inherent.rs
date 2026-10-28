@@ -109,29 +109,6 @@ impl RoaringTreemap {
 
     /// Pushes `value` in the treemap only if it is greater than the current maximum value.
     ///
-    /// Returns whether the value was inserted.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use roaring::RoaringTreemap;
-    ///
-    /// let mut rb = RoaringTreemap::new();
-    /// assert!(rb.push(1));
-    /// assert!(rb.push(3));
-    /// assert_eq!(rb.push(3), false);
-    /// assert!(rb.push(5));
-    ///
-    /// assert_eq!(rb.iter().collect::<Vec<u64>>(), vec![1, 3, 5]);
-    /// ```
-    #[deprecated(since = "0.11.0", note = "use `try_push` instead")]
-    pub fn push(&mut self, value: u64) -> bool {
-        let (hi, lo) = util::split(value);
-        self.map.entry(hi).or_default().try_push(lo).is_ok()
-    }
-
-    /// Pushes `value` in the treemap only if it is greater than the current maximum value.
-    ///
     /// Returns an error if the value is not greater than the current maximum value.
     ///
     /// # Examples
