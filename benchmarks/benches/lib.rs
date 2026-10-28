@@ -1,11 +1,11 @@
 use itertools::Itertools;
 use std::cmp::Reverse;
+use std::hint::black_box;
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
 
 use criterion::measurement::Measurement;
 use criterion::{
-    black_box, criterion_group, criterion_main, BatchSize, BenchmarkGroup, BenchmarkId, Criterion,
-    Throughput,
+    criterion_group, criterion_main, BatchSize, BenchmarkGroup, BenchmarkId, Criterion, Throughput,
 };
 
 use roaring::{MultiOps, RoaringBitmap, RoaringTreemap};
