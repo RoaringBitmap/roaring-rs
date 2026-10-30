@@ -79,15 +79,15 @@ fn intersect(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor
 }
 
 impl ArrayStore {
-    pub fn new() -> ArrayStore {
+    pub const fn new() -> ArrayStore {
         ArrayStore { vec: vec![] }
     }
 
-    pub fn serialized_byte_size(cardinality: u64) -> usize {
+    pub const fn serialized_byte_size(cardinality: u64) -> usize {
         cardinality as usize * ARRAY_ELEMENT_BYTES
     }
 
-    pub fn byte_size(&self) -> usize {
+    pub const fn byte_size(&self) -> usize {
         Self::serialized_byte_size(self.len())
     }
 
@@ -97,7 +97,7 @@ impl ArrayStore {
     }
 
     /// The number of total values that can be inserted without needing to reallocate.
-    pub fn capacity(&self) -> usize {
+    pub const fn capacity(&self) -> usize {
         self.vec.capacity()
     }
 
@@ -300,11 +300,11 @@ impl ArrayStore {
         BitmapStore::from_unchecked(len, bits)
     }
 
-    pub fn len(&self) -> u64 {
+    pub const fn len(&self) -> u64 {
         self.vec.len() as u64
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.vec.is_empty()
     }
 

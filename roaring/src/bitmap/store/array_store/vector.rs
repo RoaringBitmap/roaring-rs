@@ -31,6 +31,14 @@ const LANES: usize = 8;
 /// With `std`, this is detected at runtime on x86/x86-64 (and cached by `fearless_simd`).
 /// Otherwise, it is determined by the target features enabled at compile time.
 #[inline]
+// Scoped to `not(std)`, the only config where the lint fires; a plain `expect` would go unfulfilled.
+#[cfg_attr(
+    not(feature = "std"),
+    expect(
+        clippy::missing_const_for_fn,
+        reason = "`Level::new()` under `std` is runtime detection"
+    )
+)]
 fn level() -> Level {
     #[cfg(feature = "std")]
     return Level::new();
