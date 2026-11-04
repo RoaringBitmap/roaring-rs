@@ -167,3 +167,11 @@ fn statistics_full_run() {
     assert_eq!(stats.cardinality, expected);
     assert_eq!(stats.n_values_run_containers, expected);
 }
+
+#[test]
+fn statistics_bitset_bytes() {
+    let bitmap = RoaringBitmap::from_iter((0..10_000).map(|v| v * 2));
+    let stats = bitmap.statistics();
+    assert_eq!(stats.n_bitset_containers, 1);
+    assert_eq!(stats.n_bytes_bitset_containers, 8192);
+}
