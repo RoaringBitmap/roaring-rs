@@ -3,7 +3,7 @@ use core::mem;
 use crate::bitmap::container::Container;
 use crate::RoaringBitmap;
 
-use super::store::Store;
+use super::store::{Store, BITMAP_BYTES};
 
 /// Detailed statistics on the composition of a bitmap.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -53,7 +53,7 @@ impl RoaringBitmap {
     /// assert_eq!(statistics.n_values_array_containers, 99);
     /// assert_eq!(statistics.n_values_run_containers, 0);
     /// assert_eq!(statistics.n_values_bitset_containers, 0);
-    /// assert_eq!(statistics.n_bytes_array_containers, 512);
+    /// assert_eq!(statistics.n_bytes_array_containers, 256);
     /// assert_eq!(statistics.n_bytes_run_containers, 0);
     /// assert_eq!(statistics.n_bytes_bitset_containers, 0);
     /// assert_eq!(statistics.max_value, Some(99));
@@ -78,13 +78,13 @@ impl RoaringBitmap {
                 Store::Array(array) => {
                     cardinality += array.len();
                     n_values_array_containers += array.len() as u32;
-                    n_bytes_array_containers += (array.capacity() * mem::size_of::<u32>()) as u64;
+                    n_bytes_array_containers += (array.capacity() * mem::size_of::<u16>()) as u64;
                     n_array_containers += 1;
                 }
                 Store::Bitmap(bitmap) => {
                     cardinality += bitmap.len();
                     n_values_bitset_containers += bitmap.len();
-                    n_bytes_bitset_containers += bitmap.capacity() as u64;
+                    n_bytes_bitset_containers += BITMAP_BYTES as u64;
                     n_bitset_containers += 1;
                 }
                 Store::Run(runs) => {
