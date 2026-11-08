@@ -145,6 +145,37 @@ fn next_many_run_store() {
     assert_eq!(all_values, expected);
 }
 
+#[test]
+fn next_many_full_run() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(0..=u32::from(u16::MAX));
+    let expected: Vec<_> = bitmap.iter().collect();
+
+    for capacity in [1, 65535, 65536, 65537] {
+        for trim_back in [false, true] {
+            let mut borrowed = bitmap.iter();
+            let mut owned = bitmap.clone().into_iter();
+            let mut buf = vec![0; capacity];
+            let remaining = if trim_back {
+                assert_eq!(borrowed.next_back(), Some(65535));
+                assert_eq!(owned.next_back(), Some(65535));
+                &expected[..expected.len() - 1]
+            } else {
+                &expected[..]
+            };
+
+            for chunk in remaining.chunks(capacity) {
+                assert_eq!(borrowed.next_many(&mut buf), chunk);
+                assert_eq!(owned.next_many(&mut buf), chunk);
+            }
+            assert!(borrowed.next_many(&mut buf).is_empty());
+            assert!(owned.next_many(&mut buf).is_empty());
+            assert_eq!(borrowed.next(), None);
+            assert_eq!(owned.next_back(), None);
+        }
+    }
+}
+
 /// Test interleaving next_many with next()
 #[test]
 fn next_many_interleaved_with_next() {
