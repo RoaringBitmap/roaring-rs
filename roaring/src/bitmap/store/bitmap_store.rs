@@ -1,10 +1,14 @@
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::{Display, Formatter};
+use core::iter;
 use core::mem::size_of;
-use core::ops::{BitAndAssign, BitOrAssign, BitXorAssign, RangeInclusive, SubAssign};
+use core::ops::{
+    BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, RangeInclusive, SubAssign,
+};
 
 use crate::bitmap::util;
+use crate::level;
 
 use super::{ArrayStore, Interval};
 
@@ -13,6 +17,7 @@ use alloc::boxed::Box;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 use core::mem;
+use fearless_simd::{dispatch, u16x32, u64x8, u8x64, Bytes, Simd, SimdBase, SimdInt, SimdIntWiden};
 
 pub const BITMAP_LENGTH: usize = 1024;
 pub const BITMAP_BYTES: usize = BITMAP_LENGTH * 8;
@@ -894,18 +899,50 @@ pub fn bit(index: u16) -> usize {
     index as usize % 64
 }
 
-#[inline]
-fn op_bitmaps(bits1: &mut BitmapStore, bits2: &BitmapStore, op: impl Fn(&mut u64, u64)) {
-    bits1.len = 0;
-    for (index1, &index2) in bits1.bits.iter_mut().zip(bits2.bits.iter()) {
-        op(index1, index2);
-        bits1.len += index1.count_ones() as u64;
+#[inline(always)]
+fn op_bitmaps<S: Simd>(
+    simd: S,
+    bits1: &mut BitmapStore,
+    bits2: &BitmapStore,
+    op_vec: impl Fn(u64x8<S>, u64x8<S>) -> u64x8<S>,
+) {
+    const ITERATIONS_PER_WIDEN: usize = 16;
+    const _: () = assert!(8 * ITERATIONS_PER_WIDEN <= u8::MAX as usize);
+
+    let (lhs_chunks, []) = bits1.bits.as_chunks_mut::<8>() else {
+        unreachable!();
+    };
+    let (rhs_chunks, []) = bits2.bits.as_chunks::<8>() else {
+        unreachable!();
+    };
+    assert_eq!(lhs_chunks.len(), rhs_chunks.len());
+
+    let mut len_acc = u16x32::splat(simd, 0);
+    // Iterate in nested loops:
+    // For each vector-sized chunk, perform the operation, store the result, and count the number
+    // of bits set in each byte. The popcount can overflow after 31 iterations (8 * 32 = 256), so
+    // every 16 iterations (the next lowest power of two), widen to u16s.
+    for (lhs_chunks, rhs_chunks) in iter::zip(
+        lhs_chunks.chunks_mut(ITERATIONS_PER_WIDEN),
+        rhs_chunks.chunks(ITERATIONS_PER_WIDEN),
+    ) {
+        let mut inner_acc = u8x64::splat(simd, 0);
+        for (lhs_chunk, rhs_chunk) in iter::zip(lhs_chunks, rhs_chunks) {
+            let lhs_vec = u64x8::load_array_ref(simd, lhs_chunk);
+            let rhs_vec = u64x8::load_array_ref(simd, rhs_chunk);
+            let result_vec = op_vec(lhs_vec, rhs_vec);
+            result_vec.store_array(lhs_chunk);
+            inner_acc += result_vec.to_bytes().count_ones();
+        }
+        len_acc += inner_acc.pairwise_widening_add();
     }
+
+    bits1.len = u64::from(len_acc.pairwise_widening_add().reduce_sum());
 }
 
 impl BitOrAssign<&Self> for BitmapStore {
     fn bitor_assign(&mut self, rhs: &Self) {
-        op_bitmaps(self, rhs, BitOrAssign::bitor_assign);
+        dispatch!(level(), simd => op_bitmaps(simd, self, rhs, BitOr::bitor));
     }
 }
 
@@ -923,14 +960,14 @@ impl BitOrAssign<&ArrayStore> for BitmapStore {
 
 impl BitAndAssign<&Self> for BitmapStore {
     fn bitand_assign(&mut self, rhs: &Self) {
-        op_bitmaps(self, rhs, BitAndAssign::bitand_assign);
+        dispatch!(level(), simd => op_bitmaps(simd, self, rhs, BitAnd::bitand));
     }
 }
 
 impl SubAssign<&Self> for BitmapStore {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn sub_assign(&mut self, rhs: &Self) {
-        op_bitmaps(self, rhs, |l, r| *l &= !r);
+        dispatch!(level(), simd => op_bitmaps(simd, self, rhs, |l, r| l & !r));
     }
 }
 
@@ -949,7 +986,7 @@ impl SubAssign<&ArrayStore> for BitmapStore {
 
 impl BitXorAssign<&Self> for BitmapStore {
     fn bitxor_assign(&mut self, rhs: &Self) {
-        op_bitmaps(self, rhs, BitXorAssign::bitxor_assign);
+        dispatch!(level(), simd => op_bitmaps(simd, self, rhs, BitXor::bitxor));
     }
 }
 

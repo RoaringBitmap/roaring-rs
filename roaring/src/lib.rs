@@ -22,6 +22,7 @@ extern crate byteorder;
 extern crate alloc;
 
 use core::fmt;
+use fearless_simd::Level;
 
 /// A compressed bitmap using the [Roaring bitmap compression scheme](https://roaringbitmap.org/).
 pub mod bitmap;
@@ -106,4 +107,16 @@ pub trait MultiOps<T>: IntoIterator<Item = T> {
 
     /// The `symmetric difference` between all elements.
     fn symmetric_difference(self) -> Self::Output;
+}
+
+/// The SIMD level to use.
+///
+/// With `std`, this is detected at runtime on x86/x86-64 (and cached by `fearless_simd`).
+/// Otherwise, it is determined by the target features enabled at compile time.
+#[inline]
+fn level() -> Level {
+    #[cfg(feature = "std")]
+    return Level::new();
+    #[cfg(not(feature = "std"))]
+    return Level::baseline();
 }
