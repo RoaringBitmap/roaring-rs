@@ -895,6 +895,29 @@ impl RoaringBitmap {
         changed
     }
 
+    /// Shrinks the capacity of the bitmap's containers as much as possible.
+    ///
+    /// Operations such as intersections and differences can leave containers
+    /// with room for more values than they hold. This frees that memory.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let a = RoaringBitmap::from_iter(0..1000);
+    /// let b = RoaringBitmap::from_iter(990..2000);
+    /// let mut rb = &a & &b;
+    /// rb.shrink_to_fit();
+    /// assert_eq!(rb, RoaringBitmap::from_iter(990..1000));
+    /// ```
+    pub fn shrink_to_fit(&mut self) {
+        self.containers.shrink_to_fit();
+        for container in &mut self.containers {
+            container.store.shrink_to_fit();
+        }
+    }
+
     /// Ensure the bitmap is internally valid
     ///
     /// This is useful for development, but is not needed for normal use:

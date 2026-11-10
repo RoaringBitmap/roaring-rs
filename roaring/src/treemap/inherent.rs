@@ -439,6 +439,27 @@ impl RoaringTreemap {
         changed
     }
 
+    /// Shrinks the capacity of the underlying bitmaps as much as possible.
+    ///
+    /// See [`RoaringBitmap::shrink_to_fit`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use roaring::RoaringTreemap;
+    ///
+    /// let a = RoaringTreemap::from_iter(0..1000);
+    /// let b = RoaringTreemap::from_iter(990..2000);
+    /// let mut rb = &a & &b;
+    /// rb.shrink_to_fit();
+    /// assert_eq!(rb, RoaringTreemap::from_iter(990..1000));
+    /// ```
+    pub fn shrink_to_fit(&mut self) {
+        for bitmap in self.map.values_mut() {
+            bitmap.shrink_to_fit();
+        }
+    }
+
     /// Retains only the elements specified by the predicate.
     ///
     /// In other word, remove all elements `e` such that `f(e)` returns `false`.
