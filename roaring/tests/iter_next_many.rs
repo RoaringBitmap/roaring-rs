@@ -145,6 +145,37 @@ fn next_many_run_store() {
     assert_eq!(all_values, expected);
 }
 
+/// Test next_many with a full 16-bit run container [0, 65535]
+#[test]
+fn next_many_full_run_store() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(0..70_000);
+
+    // Single call into a full-capacity buffer
+    let mut full_buf = vec![0u32; bitmap.len() as usize];
+    let out = bitmap.iter().next_many(&mut full_buf);
+    let expected: Vec<u32> = (0..70_000).collect();
+    assert_eq!(out, &expected[..]);
+
+    // Chunked calls into a smaller buffer
+    let mut iter = bitmap.iter();
+    let mut chunk_buf = [0u32; 256];
+    let mut collected = Vec::new();
+    loop {
+        let out = iter.next_many(&mut chunk_buf);
+        if out.is_empty() {
+            break;
+        }
+        collected.extend_from_slice(out);
+    }
+    assert_eq!(collected, expected);
+
+    // Owned IntoIter with a full run container
+    let mut owned_buf = vec![0u32; bitmap.len() as usize];
+    let out = bitmap.into_iter().next_many(&mut owned_buf);
+    assert_eq!(out, &expected[..]);
+}
+
 /// Test interleaving next_many with next()
 #[test]
 fn next_many_interleaved_with_next() {
