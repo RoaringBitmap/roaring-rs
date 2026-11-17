@@ -43,7 +43,7 @@ pub(crate) enum Iter<'a> {
 }
 
 impl Store {
-    pub fn new() -> Store {
+    pub const fn new() -> Store {
         Store::Array(ArrayStore::new())
     }
 
@@ -258,7 +258,7 @@ impl Store {
         }
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         match self {
             Array(vec) => vec.is_empty(),
             Bitmap(bits) => bits.is_empty(),

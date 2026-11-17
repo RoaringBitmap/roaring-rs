@@ -20,7 +20,7 @@ impl RoaringBitmap {
     /// use roaring::RoaringBitmap;
     /// let rb = RoaringBitmap::new();
     /// ```
-    pub fn new() -> RoaringBitmap {
+    pub const fn new() -> RoaringBitmap {
         RoaringBitmap { containers: Vec::new() }
     }
 
@@ -612,7 +612,7 @@ impl RoaringBitmap {
     /// assert_eq!(rb.is_empty(), false);
     /// ```
     #[inline]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.containers.is_empty()
     }
 

@@ -34,11 +34,11 @@ impl IntervalStore {
         Self(alloc::vec![Interval::new_unchecked(0, u16::MAX)])
     }
 
-    pub fn byte_size(&self) -> usize {
+    pub const fn byte_size(&self) -> usize {
         Self::serialized_byte_size(self.run_amount())
     }
 
-    pub fn serialized_byte_size(run_amount: u64) -> usize {
+    pub const fn serialized_byte_size(run_amount: u64) -> usize {
         RUN_NUM_BYTES + (RUN_ELEMENT_BYTES * run_amount as usize)
     }
 
@@ -448,7 +448,7 @@ impl IntervalStore {
         self.0.iter().map(|iv| iv.run_len()).sum()
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
@@ -487,7 +487,7 @@ impl IntervalStore {
         None
     }
 
-    pub fn run_amount(&self) -> u64 {
+    pub const fn run_amount(&self) -> u64 {
         self.0.len() as u64
     }
 
@@ -680,7 +680,7 @@ pub(crate) struct RunIter<I: SliceIterator<Interval>> {
 }
 
 impl<I: SliceIterator<Interval>> RunIter<I> {
-    fn new(intervals: I) -> Self {
+    const fn new(intervals: I) -> Self {
         Self { forward_offset: 0, backward_offset: 0, intervals }
     }
 
@@ -1008,7 +1008,7 @@ impl IntoIterator for &'_ Interval {
     }
 }
 
-pub(crate) fn cmp_index_interval(index: u16, iv: Interval) -> Ordering {
+pub(crate) const fn cmp_index_interval(index: u16, iv: Interval) -> Ordering {
     if index < iv.start {
         Ordering::Less
     } else if index > iv.end {
@@ -1024,15 +1024,15 @@ impl Interval {
         Self { start, end }
     }
 
-    pub fn start(&self) -> u16 {
+    pub const fn start(&self) -> u16 {
         self.start
     }
 
-    pub fn end(&self) -> u16 {
+    pub const fn end(&self) -> u16 {
         self.end
     }
 
-    pub fn overlaps(&self, interval: &Self) -> bool {
+    pub const fn overlaps(&self, interval: &Self) -> bool {
         interval.start <= self.end && self.start <= interval.end
     }
 
@@ -1048,7 +1048,7 @@ impl Interval {
         u64::from(self.end - self.start) + 1
     }
 
-    pub fn is_full(&self) -> bool {
+    pub const fn is_full(&self) -> bool {
         self.start == 0 && self.end == u16::MAX
     }
 }
