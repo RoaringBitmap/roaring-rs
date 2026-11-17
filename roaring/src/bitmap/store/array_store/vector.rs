@@ -18,25 +18,14 @@
 
 use super::scalar;
 use crate::bitmap::store::array_store::visitor::BinaryOperationVisitor;
+use crate::level;
 use core::hint::select_unpredictable;
 use fearless_simd::prelude::*;
-use fearless_simd::{dispatch, mask16x8, u16x8, Level};
+use fearless_simd::{dispatch, mask16x8, u16x8};
 use fearless_simd_macros::simd;
 
 /// The number of lanes in a `u16x8`
 const LANES: usize = 8;
-
-/// The SIMD level to use.
-///
-/// With `std`, this is detected at runtime on x86/x86-64 (and cached by `fearless_simd`).
-/// Otherwise, it is determined by the target features enabled at compile time.
-#[inline]
-fn level() -> Level {
-    #[cfg(feature = "std")]
-    return Level::new();
-    #[cfg(not(feature = "std"))]
-    return Level::baseline();
-}
 
 // a one-pass union algorithm
 pub fn or(lhs: &[u16], rhs: &[u16], visitor: &mut impl BinaryOperationVisitor) {
