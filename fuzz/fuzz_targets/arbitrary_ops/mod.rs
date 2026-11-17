@@ -190,12 +190,12 @@ impl ReadBitmapOperation {
                     v.n_values_run_containers =
                         expected.n_values_run_containers.try_into().unwrap();
                     v.n_values_bitset_containers = expected.n_values_bitset_containers.into();
-                    // The n_bytes_* fields are not directly comparable:
-                    // they are based on the number of bytes of _capacity_ of the
-                    // containers, which depends on the allocation strategy.
+                    // n_bytes_array_containers is not directly comparable:
+                    // it is based on the _capacity_ of the array containers,
+                    // which depends on the allocation strategy.
                     // v.n_bytes_array_containers = expected.n_bytes_array_containers.into();
-                    // v.n_bytes_run_containers = expected.n_bytes_run_containers.into();
-                    // v.n_bytes_bitset_containers = expected.n_bytes_bitset_containers.into();
+                    v.n_bytes_run_containers = expected.n_bytes_run_containers.into();
+                    v.n_bytes_bitset_containers = expected.n_bytes_bitset_containers.into();
                     v.max_value = x.maximum();
                     v.min_value = x.minimum();
                     v.cardinality = x.cardinality();
