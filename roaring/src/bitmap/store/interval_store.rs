@@ -891,7 +891,7 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
             let end = interval.end - end_offset;
 
             // How many values can we emit from this interval?
-            let available = (end - start + 1) as usize;
+            let available = usize::from(end - start) + 1;
             let to_emit = available.min(dst.len() - count);
 
             // Emit values
