@@ -491,6 +491,10 @@ impl IntervalStore {
         self.0.len() as u64
     }
 
+    pub fn shrink_to_fit(&mut self) {
+        self.0.shrink_to_fit();
+    }
+
     pub fn to_bitmap(&self) -> BitmapStore {
         let mut bits = BitmapStore::new();
         for iv in self.0.iter() {

@@ -101,6 +101,10 @@ impl ArrayStore {
         self.vec.capacity()
     }
 
+    pub fn shrink_to_fit(&mut self) {
+        self.vec.shrink_to_fit();
+    }
+
     ///
     /// Create a new SortedU16Vec from a given vec
     /// It is up to the caller to ensure the vec is sorted and deduplicated

@@ -186,6 +186,14 @@ impl Store {
         }
     }
 
+    pub fn shrink_to_fit(&mut self) {
+        match self {
+            Array(vec) => vec.shrink_to_fit(),
+            Bitmap(_) => (),
+            Run(runs) => runs.shrink_to_fit(),
+        }
+    }
+
     pub fn contains(&self, index: u16) -> bool {
         match self {
             Array(vec) => vec.contains(index),
