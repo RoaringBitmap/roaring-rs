@@ -235,6 +235,51 @@ fn run_nth_back_max() {
     assert_eq!(iter.next_back(), None);
 }
 
+#[test]
+fn run_nth_overflow_after_advance_back_to() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(0..=u32::from(u16::MAX));
+
+    let mut iter = bitmap.iter();
+    iter.advance_back_to(u32::from(u16::MAX));
+    assert_eq!(iter.next(), Some(0));
+    assert_eq!(iter.nth(usize::from(u16::MAX)), None);
+    assert_eq!(iter.len(), 0);
+    assert_eq!(iter.next(), None);
+
+    let mut into_iter = bitmap.into_iter();
+    into_iter.advance_back_to(u32::from(u16::MAX));
+    assert_eq!(into_iter.next(), Some(0));
+    assert_eq!(into_iter.nth(usize::from(u16::MAX)), None);
+    assert_eq!(into_iter.len(), 0);
+    assert_eq!(into_iter.next(), None);
+}
+
+#[test]
+fn run_nth_overflow_partial_offset() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(0..=u32::from(u16::MAX));
+    let mut iter = bitmap.iter();
+    iter.advance_back_to(u32::from(u16::MAX));
+    let mut buf = [0u32; 100];
+    assert_eq!(iter.next_many(&mut buf).len(), 100);
+    assert_eq!(iter.nth(65_436), None);
+    assert_eq!(iter.len(), 0);
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn run_nth_full_after_next_back() {
+    let mut bitmap = RoaringBitmap::new();
+    bitmap.insert_range(0..=u32::from(u16::MAX));
+    let mut iter = bitmap.iter();
+    assert_eq!(iter.next_back(), Some(u32::from(u16::MAX)));
+    assert_eq!(iter.nth(usize::from(u16::MAX)), None);
+    assert_eq!(iter.len(), 0);
+    assert_eq!(iter.next(), None);
+    assert_eq!(iter.next_back(), None);
+}
+
 proptest! {
     #[test]
     fn interleaved_iter(values in btree_set(any::<u32>(), 50_000..=100_000)) {
