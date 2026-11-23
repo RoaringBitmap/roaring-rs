@@ -640,6 +640,45 @@ fn insert(c: &mut Criterion) {
             bitmap.insert(black_box(1_000_000));
         });
     });
+
+    // Sparse values (~1024 per container) use array stores.
+    c.bench_function("insert 64 step 0..1M", |b| {
+        b.iter(|| {
+            let mut bitmap: RoaringBitmap = RoaringBitmap::new();
+            for v in (0..64_000_000u32).step_by(64) {
+                bitmap.insert(black_box(v));
+            }
+            bitmap
+        });
+    });
+}
+
+fn try_push(c: &mut Criterion) {
+    let mut group = c.benchmark_group("try_push");
+
+    // Dense values fill whole containers, so they use bitmap stores.
+    group.bench_function("dense 0..1M", |b| {
+        b.iter(|| {
+            let mut bitmap: RoaringBitmap = RoaringBitmap::new();
+            for v in 0..1_000_000u32 {
+                bitmap.try_push(black_box(v)).unwrap();
+            }
+            bitmap
+        });
+    });
+
+    // Sparse values (~1024 per container) use array stores.
+    group.bench_function("64 step 0..1M", |b| {
+        b.iter(|| {
+            let mut bitmap: RoaringBitmap = RoaringBitmap::new();
+            for v in (0..64_000_000u32).step_by(64) {
+                bitmap.try_push(black_box(v)).unwrap();
+            }
+            bitmap
+        });
+    });
+
+    group.finish();
 }
 
 fn contains(c: &mut Criterion) {
@@ -745,6 +784,7 @@ criterion_group!(
     benches,
     creation,
     insert,
+    try_push,
     contains,
     len,
     rank,

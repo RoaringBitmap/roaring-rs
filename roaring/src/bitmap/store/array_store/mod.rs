@@ -146,7 +146,14 @@ impl ArrayStore {
 
     #[inline]
     pub fn insert(&mut self, index: u16) -> bool {
-        self.vec.binary_search(&index).map_err(|loc| self.vec.insert(loc, index)).is_err()
+        match self.vec.last().copied() {
+            // Fast path: index is bigger than the current max, insert it directly at the end.
+            Some(last) if index > last => {
+                self.vec.push(index);
+                true
+            }
+            _ => self.vec.binary_search(&index).map_err(|loc| self.vec.insert(loc, index)).is_err(),
+        }
     }
 
     pub fn insert_range(&mut self, range: RangeInclusive<u16>) -> u64 {
