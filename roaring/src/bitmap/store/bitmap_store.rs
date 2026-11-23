@@ -17,15 +17,27 @@ use core::mem;
 pub const BITMAP_LENGTH: usize = 1024;
 pub const BITMAP_BYTES: usize = BITMAP_LENGTH * 8;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone)]
 pub struct BitmapStore {
     len: u64,
     bits: Box<[u64; BITMAP_LENGTH]>,
+    /// Index of the highest word that may be non-zero; all words after it are zero.
+    /// Could be too high but never too low.
+    h: usize,
 }
+
+// Ignores `h`: it is only a hint.
+impl PartialEq for BitmapStore {
+    fn eq(&self, other: &Self) -> bool {
+        self.len == other.len && self.bits == other.bits
+    }
+}
+
+impl Eq for BitmapStore {}
 
 impl BitmapStore {
     pub fn new() -> BitmapStore {
-        BitmapStore { len: 0, bits: Box::new([0; BITMAP_LENGTH]) }
+        BitmapStore { len: 0, bits: Box::new([0; BITMAP_LENGTH]), h: 0 }
     }
 
     pub fn capacity(&self) -> usize {
@@ -37,7 +49,9 @@ impl BitmapStore {
         if len != actual_len {
             Err(Error { kind: ErrorKind::Cardinality { expected: len, actual: actual_len } })
         } else {
-            Ok(BitmapStore { len, bits })
+            // Last non-zero word.
+            let h = bits.iter().rposition(|&w| w != 0).unwrap_or(0);
+            Ok(BitmapStore { len, bits, h })
         }
     }
 
@@ -94,7 +108,8 @@ impl BitmapStore {
         if cfg!(debug_assertions) {
             BitmapStore::try_from(len, bits).unwrap()
         } else {
-            BitmapStore { len, bits }
+            let h = bits.iter().rposition(|&w| w != 0).unwrap_or(0);
+            BitmapStore { len, bits, h }
         }
     }
 
@@ -106,6 +121,7 @@ impl BitmapStore {
         let inserted = (old_w ^ new_w) >> bit; // 1 or 0
         self.bits[key] = new_w;
         self.len += inserted;
+        self.h = self.h.max(key);
         inserted != 0
     }
 
@@ -128,6 +144,7 @@ impl BitmapStore {
 
             let inserted = u64::from(end - start + 1) - u64::from(existed);
             self.len += inserted;
+            self.h = self.h.max(end_key);
             return inserted;
         }
 
@@ -153,6 +170,7 @@ impl BitmapStore {
 
         let inserted = end as u64 - start as u64 + 1 - existed as u64;
         self.len += inserted;
+        self.h = self.h.max(end_key);
         inserted
     }
 
@@ -302,7 +320,8 @@ impl BitmapStore {
 
     #[inline]
     pub fn max(&self) -> Option<u16> {
-        self.bits
+        // Skip the zero words after `h`.
+        self.bits[..=self.h]
             .iter()
             .enumerate()
             .rev()
@@ -906,6 +925,8 @@ fn op_bitmaps(bits1: &mut BitmapStore, bits2: &BitmapStore, op: impl Fn(&mut u64
 impl BitOrAssign<&Self> for BitmapStore {
     fn bitor_assign(&mut self, rhs: &Self) {
         op_bitmaps(self, rhs, BitOrAssign::bitor_assign);
+        // Result bits come from `self` or `rhs`, so take the larger `h`.
+        self.h = self.h.max(rhs.h);
     }
 }
 
@@ -916,6 +937,7 @@ impl BitOrAssign<&ArrayStore> for BitmapStore {
             let old_w = self.bits[key];
             let new_w = old_w | (1 << bit);
             self.len += (old_w ^ new_w) >> bit;
+            self.h = self.h.max(key);
             self.bits[key] = new_w;
         }
     }
@@ -950,6 +972,8 @@ impl SubAssign<&ArrayStore> for BitmapStore {
 impl BitXorAssign<&Self> for BitmapStore {
     fn bitxor_assign(&mut self, rhs: &Self) {
         op_bitmaps(self, rhs, BitXorAssign::bitxor_assign);
+        // Result bits come from `self` or `rhs`, so take the larger `h`.
+        self.h = self.h.max(rhs.h);
     }
 }
 
@@ -961,6 +985,7 @@ impl BitXorAssign<&ArrayStore> for BitmapStore {
             let old_w = self.bits[key];
             let new_w = old_w ^ (1 << bit);
             len += 1 - 2 * (((1 << bit) & old_w) >> bit) as i64; // +1 or -1
+            self.h = self.h.max(key);
             self.bits[key] = new_w;
         }
         self.len = len as u64;
