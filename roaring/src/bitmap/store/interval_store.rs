@@ -690,9 +690,6 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
         } else {
             self.intervals.next();
             self.forward_offset = 0;
-            if self.intervals.as_slice().is_empty() {
-                self.backward_offset = 0;
-            }
             return;
         }
         let only_interval = self.intervals.as_slice().len() == 1;
@@ -713,9 +710,6 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
         } else {
             self.intervals.next_back();
             self.backward_offset = 0;
-            if self.intervals.as_slice().is_empty() {
-                self.forward_offset = 0;
-            }
             return;
         }
         let only_interval = self.intervals.as_slice().len() == 1;
