@@ -947,19 +947,22 @@ impl<I: SliceIterator<Interval>> Iterator for RunIter<I> {
         let mut to_skip = n as u64;
         loop {
             let full_first_interval_len = self.intervals.as_slice().first()?.run_len();
+            let only_interval = self.intervals.as_slice().len() == 1;
             let consumed_len = u64::from(self.forward_offset)
-                + if self.intervals.as_slice().len() == 1 {
-                    u64::from(self.backward_offset)
-                } else {
-                    0
-                };
-            let to_remove = (full_first_interval_len - consumed_len).min(to_skip);
-            to_skip -= to_remove;
-            self.forward_offset += to_remove as u16;
-            if consumed_len + to_remove >= full_first_interval_len {
-                self.move_next();
-            }
-            if to_skip == 0 {
+                + if only_interval { u64::from(self.backward_offset) } else { 0 };
+            let remaining = full_first_interval_len - consumed_len;
+            if to_skip >= remaining {
+                to_skip -= remaining;
+                self.intervals.next();
+                self.forward_offset = 0;
+                if only_interval {
+                    self.backward_offset = 0;
+                }
+                if to_skip == 0 {
+                    break;
+                }
+            } else {
+                self.forward_offset += to_skip as u16;
                 break;
             }
         }
@@ -2603,6 +2606,36 @@ mod tests {
 
         let mut iter = interval_store.iter();
         assert_eq!(iter.nth(123), Some(246));
+    }
+
+    #[test]
+    fn iter_nth_full_interval_past_end() {
+        let interval_store = IntervalStore::full();
+
+        let mut iter = interval_store.iter();
+        assert_eq!(iter.next(), Some(0));
+        assert_eq!(iter.nth(usize::from(u16::MAX)), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+
+        let mut iter = interval_store.iter();
+        assert_eq!(iter.nth(99), Some(99));
+        assert_eq!(iter.nth(65_436), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+
+        let mut iter = interval_store.iter();
+        assert_eq!(iter.next_back(), Some(u16::MAX));
+        assert_eq!(iter.nth(usize::from(u16::MAX)), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next_back(), None);
+
+        let mut iter = interval_store.iter();
+        assert_eq!(iter.next_back(), Some(u16::MAX));
+        assert_eq!(iter.nth(usize::from(u16::MAX) - 1), Some(u16::MAX - 1));
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
     }
 
     #[test]
